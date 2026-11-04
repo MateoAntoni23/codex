@@ -6,6 +6,34 @@
 
 ---
 
+## Entregas completadas en la rama `feat/domain-v2-contracts`
+
+| Entrega | Commit | Tests | Descripción |
+|---|---|---|---|
+| M1a-base | `1eab3f6` | 216 | Contratos v2, validador inicial, migrador puro (20+1 test cases) |
+| M1a-audit | *(ver SHA de este commit)* | 242 | Auditoría completa: +26 casos de prueba, corrección de 2 bugs confirmados |
+
+**Bugs corregidos en la auditoría:**
+1. `validateProjectDataV2` aceptaba cables con `ends[i].portId` apuntando a puertos inexistentes → corregido.
+2. `validateProjectDataV2` aceptaba `efficiency.value = 2` en motores → corregido (rango `(0, 1]`).
+
+**Nuevas invariantes de validación activadas (validate-v2.ts):**
+- **Datum coherencia:** `status='unknown'` → `value` debe ser null; `status ∈ {estimated,provided,verified}` → `value` no puede ser null.
+- **Motor:** `efficiency.value ∈ (0, 1]`; `powerFactor.value ∈ (0, 1]` cuando no es null.
+- **Sensor:** `range.min ≤ range.max` cuando `value` conocido.
+- **Puerto:** `localDirection` no puede ser el vector cero; `pinCount` entero positivo cuando no es null.
+- **Cable:** `coreCount` entero positivo; `sectionMm2`, `outerDiameterMm`, `minBendRadiusMm` positivos cuando conocidos.
+- **Manguera:** `innerDiameterMm < outerDiameterMm` cuando ambos conocidos; `workingPressureBar` positivo cuando conocido.
+- **Endpoints de conexión:** todos los `{kind:'port'}` verifican existencia del puerto referenciado y compatibilidad de medium.
+- **InternalLink:** `conductive` → ambos extremos eléctricos; `passage` → ambos no-eléctricos del mismo medium.
+- **physicalLocation:** `factoryId` y `subareaId` verifican existencia; `subareaId` debe pertenecer al `factoryId` declarado.
+- **ElementService:** no se permiten pares `(elementId, factoryId)` duplicados.
+- **FieldEvidence:** `elementOrConnectionId` debe referenciar un elemento o conexión existente.
+- **MigrationIncident:** `elementId` debe referenciar un elemento existente.
+- **Datum evidenceIds:** todos los IDs referenciados en Datum deben existir en `evidence[]`.
+
+---
+
 ## Estado actual del proyecto
 
 ### Rama activa: `feat/categorized-scene-tree`
@@ -28,10 +56,11 @@ Base: `feat/project-save-load` @ `fd9872b`
 | A  | Árbol de escena por categorías contraíbles con contadores | `57cf161` |
 
 ### Cobertura de pruebas actual
-- **177 pruebas** distribuidas en 10 archivos de test.
-- Unitarias: conversión de coordenadas, validación, IndexedDB (fake-indexeddb).
+- **242 pruebas** distribuidas en 12 archivos de test.
+- Unitarias: conversión de coordenadas, validación v1/v2, migración v1→v2, IndexedDB (fake-indexeddb).
 - Integración: store Zustand, auto-save con timers simulados, identidad de sesión.
 - Interacción (jsdom): Inspector, OriginPanel, ProjectActions, SceneTree.
+- v2 test breakdown: 44 casos en `validate-v2.test.ts`; 21 casos en `migrate-v1-to-v2.test.ts`.
 
 ---
 
@@ -54,7 +83,7 @@ La aplicación sigue leyendo y escribiendo `schemaVersion=1` hasta la
 activación posterior a M1b, cuando visor, inspector y persistencia puedan
 trabajar conjuntamente con v2 o exista un adaptador validado.
 
-### M1a — Contratos, validadores y migrador puro 📋
+### M1a — Contratos, validadores y migrador puro ✅
 
 **Objetivo:** definir todos los tipos TypeScript de v2, el validador actualizado
 y la función de migración v1→v2 como código puro sin efectos de BD.

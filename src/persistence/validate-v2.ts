@@ -3,6 +3,11 @@
  *
  * All helpers are pure functions; no side effects.
  * Errors report field paths like `"elements[2].parentId"`.
+ *
+ * Coherencia Datum.status / value:
+ *   'unknown'  → value debe ser null
+ *   'conflict' → value puede ser null (candidatos en evidencias) o no null
+ *   'estimated'|'provided'|'verified' → value no puede ser null
  */
 
 import type {
@@ -146,6 +151,16 @@ function validateDatum<T>(
     assertString(id, `${path}.evidenceIds[${i}]`),
   );
   const value = obj.value === null ? null : validateValue(obj.value, `${path}.value`);
+  // Coherencia status ↔ value
+  if (status === 'unknown' && value !== null) {
+    throw new Error(`${path}: status='unknown' pero value no es null`);
+  }
+  if (
+    (status === 'estimated' || status === 'provided' || status === 'verified') &&
+    value === null
+  ) {
+    throw new Error(`${path}: status='${status}' pero value es null`);
+  }
   return { value, status, evidenceIds };
 }
 
@@ -178,6 +193,13 @@ function validateDatumQuantity<U extends string>(
   allowedUnits: readonly U[],
 ): Datum<Quantity<U>> {
   return validateDatum(raw, path, (v, p) => validateQuantity(v, p, allowedUnits));
+}
+
+/** Verifica que un Datum<number> positivo tenga value > 0 cuando no es null. */
+function assertDatumPositive(datum: Datum<number>, path: string): void {
+  if (datum.value !== null && datum.value <= 0) {
+    throw new Error(`${path}.value debe ser positivo cuando no es null, se recibió ${datum.value}`);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -293,7 +315,17 @@ function validateTechnicalMotor(raw: unknown, path: string): TechnicalByCategory
     ['A'] as const,
   );
   const efficiency = validateDatumNumber(obj.efficiency, `${path}.efficiency`);
+  if (efficiency.value !== null && (efficiency.value <= 0 || efficiency.value > 1)) {
+    throw new Error(
+      `${path}.efficiency.value: debe estar en (0, 1], se recibió ${efficiency.value}`,
+    );
+  }
   const powerFactor = validateDatumNumber(obj.powerFactor, `${path}.powerFactor`);
+  if (powerFactor.value !== null && (powerFactor.value <= 0 || powerFactor.value > 1)) {
+    throw new Error(
+      `${path}.powerFactor.value: debe estar en (0, 1], se recibió ${powerFactor.value}`,
+    );
+  }
   const start = validateDatum(obj.start, `${path}.start`, (v, p) =>
     assertOneOf(v, ['direct', 'star_delta', 'softstarter', 'vfd', 'other'] as const, p),
   );
@@ -308,11 +340,12 @@ function validateTechnicalSensor(raw: unknown, path: string): TechnicalByCategor
   );
   const range = validateDatum(obj.range, `${path}.range`, (v, p) => {
     const o = assertObject(v, p);
-    return {
-      min: assertFiniteNumber(o.min, `${p}.min`),
-      max: assertFiniteNumber(o.max, `${p}.max`),
-      unit: assertString(o.unit, `${p}.unit`),
-    };
+    const min = assertFiniteNumber(o.min, `${p}.min`);
+    const max = assertFiniteNumber(o.max, `${p}.max`);
+    if (min > max) {
+      throw new Error(`${p}: min (${min}) debe ser ≤ max (${max})`);
+    }
+    return { min, max, unit: assertString(o.unit, `${p}.unit`) };
   });
   const supply = validateDatum(obj.supply, `${path}.supply`, (v, p) => {
     const o = assertObject(v, p);
@@ -585,7 +618,10 @@ function validateEquipmentElement(raw: unknown, index: number): EquipmentElement
   const model = validateDatumString(obj.model, `${path}.model`);
   const geometry =
     obj.geometry === null ? null : validateGeometry(obj.geometry, `${path}.geometry`);
-  const physicalLocation = validatePhysicalLocation(obj.physicalLocation, `${path}.physicalLocation`);
+  const physicalLocation = validatePhysicalLocation(
+    obj.physicalLocation,
+    `${path}.physicalLocation`,
+  );
   const version = assertFiniteNumber(obj.version, `${path}.version`);
   if (!Number.isInteger(version) || version < 1) {
     throw new Error(`${path}.version debe ser un entero >= 1`);
@@ -595,19 +631,8 @@ function validateEquipmentElement(raw: unknown, index: number): EquipmentElement
   const technical = validateTechnicalData(category, obj.technical, `${path}.technical`);
 
   const common = {
-    id,
-    name,
-    tag,
-    aliases,
-    condition,
-    lifecycle,
-    parentId,
-    mounting,
-    manufacturer,
-    model,
-    geometry,
-    physicalLocation,
-    version,
+    id, name, tag, aliases, condition, lifecycle, parentId, mounting,
+    manufacturer, model, geometry, physicalLocation, version,
   };
 
   return { ...common, ...placement, category, technical } as EquipmentElement;
@@ -626,6 +651,13 @@ function validatePort(raw: unknown, index: number): Port {
   const name = assertNonEmptyString(obj.name, `${path}.name`);
   const localPositionMm = validateVec3(obj.localPositionMm, `${path}.localPositionMm`);
   const localDirection = validateVec3(obj.localDirection, `${path}.localDirection`);
+
+  // Direction must not be the zero vector
+  const { x: dx, y: dy, z: dz } = localDirection;
+  if (dx === 0 && dy === 0 && dz === 0) {
+    throw new Error(`${path}.localDirection no puede ser el vector cero`);
+  }
+
   const anchor = assertOneOf(
     obj.anchor,
     ['fixed_local', 'face'] as const,
@@ -661,32 +693,22 @@ function validatePort(raw: unknown, index: number): Port {
           ? null
           : assertString(obj.parentPortId, `${path}.parentPortId`);
       return {
-        ...base,
-        medium,
-        role,
-        ratedVoltageV,
-        terminalName,
-        connectorKind: 'terminal',
-        parentPortId,
+        ...base, medium, role, ratedVoltageV, terminalName,
+        connectorKind: 'terminal', parentPortId,
       } as Port;
     }
     // multipolar
     if (obj.parentPortId !== null) {
-      throw new Error(
-        `${path}.parentPortId debe ser null cuando connectorKind='multipolar'`,
-      );
+      throw new Error(`${path}.parentPortId debe ser null cuando connectorKind='multipolar'`);
     }
     const pinCount =
       obj.pinCount === null ? null : assertFiniteNumber(obj.pinCount, `${path}.pinCount`);
+    if (pinCount !== null && (!Number.isInteger(pinCount) || pinCount <= 0)) {
+      throw new Error(`${path}.pinCount debe ser un entero positivo cuando no es null`);
+    }
     return {
-      ...base,
-      medium,
-      role,
-      ratedVoltageV,
-      terminalName,
-      connectorKind: 'multipolar',
-      pinCount,
-      parentPortId: null,
+      ...base, medium, role, ratedVoltageV, terminalName,
+      connectorKind: 'multipolar', pinCount, parentPortId: null,
     } as Port;
   }
 
@@ -784,36 +806,56 @@ function validateConnection(raw: unknown, index: number): Connection {
       ['power', 'control', 'instrumentation', 'maneuver'] as const,
       `${path}.service`,
     );
+    const coreCount = validateDatumNumber(obj.coreCount, `${path}.coreCount`);
+    if (coreCount.value !== null && (!Number.isInteger(coreCount.value) || coreCount.value <= 0)) {
+      throw new Error(
+        `${path}.coreCount.value debe ser un entero positivo cuando no es null`,
+      );
+    }
+    const sectionMm2 = validateDatumNumber(obj.sectionMm2, `${path}.sectionMm2`);
+    assertDatumPositive(sectionMm2, `${path}.sectionMm2`);
+    const outerDiameterMm = validateDatumNumber(obj.outerDiameterMm, `${path}.outerDiameterMm`);
+    assertDatumPositive(outerDiameterMm, `${path}.outerDiameterMm`);
+    const minBendRadiusMm = validateDatumNumber(obj.minBendRadiusMm, `${path}.minBendRadiusMm`);
+    assertDatumPositive(minBendRadiusMm, `${path}.minBendRadiusMm`);
     return {
-      ...base,
-      kind: 'cable',
-      service,
-      coreCount: validateDatumNumber(obj.coreCount, `${path}.coreCount`),
-      sectionMm2: validateDatumNumber(obj.sectionMm2, `${path}.sectionMm2`),
-      outerDiameterMm: validateDatumNumber(obj.outerDiameterMm, `${path}.outerDiameterMm`),
-      minBendRadiusMm: validateDatumNumber(obj.minBendRadiusMm, `${path}.minBendRadiusMm`),
+      ...base, kind: 'cable', service, coreCount, sectionMm2, outerDiameterMm, minBendRadiusMm,
     } as Connection;
   }
+
   if (kind === 'hose') {
     const medium = assertOneOf(
       obj.medium,
       ['pneumatic', 'hydraulic'] as const,
       `${path}.medium`,
     );
+    const innerDiameterMm = validateDatumNumber(obj.innerDiameterMm, `${path}.innerDiameterMm`);
+    assertDatumPositive(innerDiameterMm, `${path}.innerDiameterMm`);
+    const outerDiameterMm = validateDatumNumber(obj.outerDiameterMm, `${path}.outerDiameterMm`);
+    assertDatumPositive(outerDiameterMm, `${path}.outerDiameterMm`);
+    if (
+      innerDiameterMm.value !== null &&
+      outerDiameterMm.value !== null &&
+      innerDiameterMm.value >= outerDiameterMm.value
+    ) {
+      throw new Error(
+        `${path}: innerDiameterMm (${innerDiameterMm.value}) debe ser < outerDiameterMm (${outerDiameterMm.value})`,
+      );
+    }
+    const material = validateDatumString(obj.material, `${path}.material`);
+    const workingPressureBar = validateDatumNumber(
+      obj.workingPressureBar,
+      `${path}.workingPressureBar`,
+    );
+    assertDatumPositive(workingPressureBar, `${path}.workingPressureBar`);
+    const minBendRadiusMm = validateDatumNumber(obj.minBendRadiusMm, `${path}.minBendRadiusMm`);
+    assertDatumPositive(minBendRadiusMm, `${path}.minBendRadiusMm`);
     return {
-      ...base,
-      kind: 'hose',
-      medium,
-      innerDiameterMm: validateDatumNumber(obj.innerDiameterMm, `${path}.innerDiameterMm`),
-      outerDiameterMm: validateDatumNumber(obj.outerDiameterMm, `${path}.outerDiameterMm`),
-      material: validateDatumString(obj.material, `${path}.material`),
-      workingPressureBar: validateDatumNumber(
-        obj.workingPressureBar,
-        `${path}.workingPressureBar`,
-      ),
-      minBendRadiusMm: validateDatumNumber(obj.minBendRadiusMm, `${path}.minBendRadiusMm`),
+      ...base, kind: 'hose', medium, innerDiameterMm, outerDiameterMm,
+      material, workingPressureBar, minBendRadiusMm,
     } as Connection;
   }
+
   // manifold_passage
   const medium = assertOneOf(obj.medium, ['pneumatic'] as const, `${path}.medium`);
   return { ...base, kind: 'manifold_passage', medium } as Connection;
@@ -942,26 +984,15 @@ function validateFieldEvidence(raw: unknown, index: number): FieldEvidence {
   const fileChecksum =
     obj.fileChecksum === null ? null : assertString(obj.fileChecksum, `${path}.fileChecksum`);
   const sheet = obj.sheet === null ? null : assertString(obj.sheet, `${path}.sheet`);
-  const row =
-    obj.row === null ? null : assertFiniteNumber(obj.row, `${path}.row`);
+  const row = obj.row === null ? null : assertFiniteNumber(obj.row, `${path}.row`);
   const cell = obj.cell === null ? null : assertString(obj.cell, `${path}.cell`);
   const formula = obj.formula === null ? null : assertString(obj.formula, `${path}.formula`);
   const rawValue = obj.rawValue;
   const author = obj.author === null ? null : assertString(obj.author, `${path}.author`);
   const recordedAt = assertString(obj.recordedAt, `${path}.recordedAt`);
   return {
-    id,
-    elementOrConnectionId,
-    fieldPath,
-    source,
-    fileChecksum,
-    sheet,
-    row,
-    cell,
-    formula,
-    rawValue,
-    author,
-    recordedAt,
+    id, elementOrConnectionId, fieldPath, source,
+    fileChecksum, sheet, row, cell, formula, rawValue, author, recordedAt,
   };
 }
 
@@ -986,7 +1017,7 @@ function validateMigrationIncident(raw: unknown, index: number): MigrationIncide
 }
 
 // ---------------------------------------------------------------------------
-// Cross-reference checks
+// Cross-reference helpers
 // ---------------------------------------------------------------------------
 
 function checkUniqueIds(items: { id: Id }[], collectionName: string): Set<Id> {
@@ -1051,6 +1082,28 @@ function checkTagUniqueness(elements: EquipmentElement[]): void {
   }
 }
 
+/**
+ * Recorre un objeto JSON-like y recopila todos los valores de arrays bajo
+ * la clave "evidenceIds". Usado para verificar que los IDs de evidencia
+ * referenciados en los Datum existan en el array evidence[].
+ */
+function collectEvidenceIds(obj: unknown): string[] {
+  if (typeof obj !== 'object' || obj === null) return [];
+  if (Array.isArray(obj)) return obj.flatMap(collectEvidenceIds);
+  const record = obj as Record<string, unknown>;
+  const ids: string[] = [];
+  for (const [key, val] of Object.entries(record)) {
+    if (key === 'evidenceIds' && Array.isArray(val)) {
+      for (const id of val) {
+        if (typeof id === 'string') ids.push(id);
+      }
+    } else {
+      ids.push(...collectEvidenceIds(val));
+    }
+  }
+  return ids;
+}
+
 // ---------------------------------------------------------------------------
 // Main validator
 // ---------------------------------------------------------------------------
@@ -1067,6 +1120,7 @@ export function validateProjectDataV2(raw: unknown): ProjectDataV2 {
 
   const projectOrigin = validateVec3(data.projectOrigin, 'projectOrigin');
 
+  // Structural validation
   const elements: EquipmentElement[] = assertArray(data.elements, 'elements').map((e, i) =>
     validateEquipmentElement(e, i),
   );
@@ -1102,7 +1156,10 @@ export function validateProjectDataV2(raw: unknown): ProjectDataV2 {
     'migrationIncidents',
   ).map((mi, i) => validateMigrationIncident(mi, i));
 
+  // -------------------------------------------------------------------------
   // Cross-reference checks
+  // -------------------------------------------------------------------------
+
   const elementIds = checkUniqueIds(elements, 'elements');
   const portIds = checkUniqueIds(ports, 'ports');
   const connectionIds = checkUniqueIds(connections, 'connections');
@@ -1110,7 +1167,7 @@ export function validateProjectDataV2(raw: unknown): ProjectDataV2 {
   checkUniqueIds(internalLinks, 'internalLinks');
   checkUniqueIds(functionalRelations, 'functionalRelations');
   const factoryIds = checkUniqueIds(factories, 'factories');
-  checkUniqueIds(subareas, 'subareas');
+  const subareaIds = checkUniqueIds(subareas, 'subareas');
   checkUniqueIds(elementServices, 'elementServices');
   checkUniqueIds(evidence, 'evidence');
   checkUniqueIds(migrationIncidents, 'migrationIncidents');
@@ -1118,6 +1175,7 @@ export function validateProjectDataV2(raw: unknown): ProjectDataV2 {
   checkParentIdChains(elements, elementIds);
   checkTagUniqueness(elements);
 
+  // subarea.factoryId must reference an existing factory
   for (let i = 0; i < subareas.length; i++) {
     if (!factoryIds.has(subareas[i].factoryId)) {
       throw new Error(
@@ -1126,6 +1184,32 @@ export function validateProjectDataV2(raw: unknown): ProjectDataV2 {
     }
   }
 
+  // element physicalLocation references
+  const subareaFactoryMap = new Map<Id, Id>(subareas.map((s) => [s.id, s.factoryId]));
+  for (let i = 0; i < elements.length; i++) {
+    const loc = elements[i].physicalLocation;
+    if (loc.kind === 'factory' && loc.factoryId !== null && !factoryIds.has(loc.factoryId)) {
+      throw new Error(
+        `elements[${i}].physicalLocation.factoryId: referencia inexistente "${loc.factoryId}"`,
+      );
+    }
+    if (loc.subareaId !== null) {
+      if (!subareaIds.has(loc.subareaId)) {
+        throw new Error(
+          `elements[${i}].physicalLocation.subareaId: referencia inexistente "${loc.subareaId}"`,
+        );
+      }
+      const subareaFactory = subareaFactoryMap.get(loc.subareaId);
+      if (loc.factoryId !== null && subareaFactory !== loc.factoryId) {
+        throw new Error(
+          `elements[${i}].physicalLocation: subareaId "${loc.subareaId}" no pertenece a factoryId "${loc.factoryId}"`,
+        );
+      }
+    }
+  }
+
+  // elementService existence + no duplicate (elementId, factoryId) pairs
+  const elementServicePairs = new Set<string>();
   for (let i = 0; i < elementServices.length; i++) {
     const es = elementServices[i];
     if (!elementIds.has(es.elementId)) {
@@ -1138,19 +1222,29 @@ export function validateProjectDataV2(raw: unknown): ProjectDataV2 {
         `elementServices[${i}].factoryId: referencia inexistente "${es.factoryId}"`,
       );
     }
+    const pair = `${es.elementId}::${es.factoryId}`;
+    if (elementServicePairs.has(pair)) {
+      throw new Error(
+        `elementServices[${i}]: relación duplicada entre elemento "${es.elementId}" y fábrica "${es.factoryId}"`,
+      );
+    }
+    elementServicePairs.add(pair);
   }
 
+  // port.elementId must reference an existing element
   for (let i = 0; i < ports.length; i++) {
     if (!elementIds.has(ports[i].elementId)) {
       throw new Error(`ports[${i}].elementId: referencia inexistente "${ports[i].elementId}"`);
     }
   }
 
+  // Build portMap for further cross-references
   const portMap = new Map<Id, Port>();
   for (const port of ports) {
     portMap.set(port.id, port);
   }
 
+  // Electrical terminal parentPortId must reference a multipolar port in the same element
   for (let i = 0; i < ports.length; i++) {
     const port = ports[i];
     if (
@@ -1176,6 +1270,7 @@ export function validateProjectDataV2(raw: unknown): ProjectDataV2 {
     }
   }
 
+  // internalLink port existence + medium coherence
   for (let i = 0; i < internalLinks.length; i++) {
     const il = internalLinks[i];
     if (!portIds.has(il.fromPortId)) {
@@ -1188,8 +1283,30 @@ export function validateProjectDataV2(raw: unknown): ProjectDataV2 {
         `internalLinks[${i}].toPortId: referencia inexistente "${il.toPortId}"`,
       );
     }
+    const fromPort = portMap.get(il.fromPortId)!;
+    const toPort = portMap.get(il.toPortId)!;
+    if (il.kind === 'conductive') {
+      if (fromPort.medium !== 'electrical' || toPort.medium !== 'electrical') {
+        throw new Error(
+          `internalLinks[${i}]: kind='conductive' requiere puertos eléctricos en ambos extremos`,
+        );
+      }
+    } else {
+      // passage
+      if (fromPort.medium === 'electrical' || toPort.medium === 'electrical') {
+        throw new Error(
+          `internalLinks[${i}]: kind='passage' no es compatible con puertos eléctricos`,
+        );
+      }
+      if (fromPort.medium !== toPort.medium) {
+        throw new Error(
+          `internalLinks[${i}]: kind='passage' requiere el mismo medium en ambos extremos (${fromPort.medium} ≠ ${toPort.medium})`,
+        );
+      }
+    }
   }
 
+  // functionalRelation element references
   for (let i = 0; i < functionalRelations.length; i++) {
     const fr = functionalRelations[i];
     if (!elementIds.has(fr.fromElementId)) {
@@ -1204,6 +1321,38 @@ export function validateProjectDataV2(raw: unknown): ProjectDataV2 {
     }
   }
 
+  // Connection endpoint port existence + medium compatibility
+  for (let i = 0; i < connections.length; i++) {
+    const conn = connections[i];
+    for (let e = 0; e < 2; e++) {
+      const endpoint = conn.ends[e];
+      if (endpoint.kind !== 'port') continue;
+      const refPort = portMap.get(endpoint.portId);
+      if (!refPort) {
+        throw new Error(
+          `connections[${i}].ends[${e}].portId: referencia inexistente "${endpoint.portId}"`,
+        );
+      }
+      if (conn.kind === 'cable' && refPort.medium !== 'electrical') {
+        throw new Error(
+          `connections[${i}].ends[${e}]: cable solo puede conectar puertos eléctricos, se encontró medium='${refPort.medium}'`,
+        );
+      }
+      if (conn.kind === 'hose' && refPort.medium !== conn.medium) {
+        throw new Error(
+          `connections[${i}].ends[${e}]: manguera '${conn.medium}' solo puede conectar puertos '${conn.medium}', se encontró medium='${refPort.medium}'`,
+        );
+      }
+      if (conn.kind === 'manifold_passage' && refPort.medium !== 'pneumatic') {
+        throw new Error(
+          `connections[${i}].ends[${e}]: manifold_passage solo puede conectar puertos neumáticos`,
+        );
+      }
+    }
+  }
+
+  // cableCore.cableId must reference an existing cable connection;
+  // cableCore endpoints of kind:'port' must reference electrical terminal ports
   const connectionKindMap = new Map<Id, string>(connections.map((c) => [c.id, c.kind]));
   for (let i = 0; i < cableCores.length; i++) {
     const cableId = cableCores[i].cableId;
@@ -1230,6 +1379,38 @@ export function validateProjectDataV2(raw: unknown): ProjectDataV2 {
           );
         }
       }
+    }
+  }
+
+  // FieldEvidence owner: elementOrConnectionId must reference an element or connection
+  const elementOrConnectionIds = new Set<Id>([...elementIds, ...connectionIds]);
+  for (let i = 0; i < evidence.length; i++) {
+    const ev = evidence[i];
+    if (!elementOrConnectionIds.has(ev.elementOrConnectionId)) {
+      throw new Error(
+        `evidence[${i}].elementOrConnectionId: referencia inexistente "${ev.elementOrConnectionId}"`,
+      );
+    }
+  }
+
+  // MigrationIncident element reference
+  for (let i = 0; i < migrationIncidents.length; i++) {
+    if (!elementIds.has(migrationIncidents[i].elementId)) {
+      throw new Error(
+        `migrationIncidents[${i}].elementId: referencia inexistente "${migrationIncidents[i].elementId}"`,
+      );
+    }
+  }
+
+  // Datum evidenceIds must reference existing FieldEvidence records
+  const evidenceIdSet = new Set<Id>(evidence.map((ev) => ev.id));
+  const allReferencedEvidenceIds = [
+    ...elements.flatMap(collectEvidenceIds),
+    ...connections.flatMap(collectEvidenceIds),
+  ];
+  for (const refId of allReferencedEvidenceIds) {
+    if (!evidenceIdSet.has(refId)) {
+      throw new Error(`evidenceId referenciado pero no encontrado en evidence[]: "${refId}"`);
     }
   }
 
