@@ -106,6 +106,26 @@ export type Quantity<U extends string> = { value: number; unit: U };
 
 // ─── Ubicación física ────────────────────────────────────────────────────────
 
+/**
+ * Ubicación física de un equipo.
+ *
+ * 'factory'    — el equipo reside en una fábrica concreta.
+ *                factoryId: requerido (no null).
+ *                subareaId: opcional (null si no aplica; si se indica, debe
+ *                pertenecer al factoryId declarado).
+ *
+ * 'shared'     — el equipo atiende o está entre varias fábricas; no hay
+ *                una sola fábrica de residencia.
+ *                factoryId: debe ser null (usar ElementService para registrar
+ *                las fábricas a las que atiende).
+ *                subareaId: debe ser null.
+ *
+ * 'unassigned' — ubicación aún no determinada.
+ *                factoryId: debe ser null.
+ *                subareaId: debe ser null.
+ *
+ * description: comentario libre, opcional en todos los kinds.
+ */
 export type PhysicalLocation = {
   kind: 'factory' | 'shared' | 'unassigned';
   factoryId: Id | null;

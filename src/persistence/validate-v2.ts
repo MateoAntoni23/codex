@@ -202,6 +202,27 @@ function assertDatumPositive(datum: Datum<number>, path: string): void {
   }
 }
 
+/** Verifica que un Datum<Quantity<U>> tenga value.value > 0 cuando no es null. */
+function assertDatumQuantityPositive<U extends string>(
+  datum: Datum<Quantity<U>>,
+  path: string,
+): void {
+  if (datum.value !== null && datum.value.value <= 0) {
+    throw new Error(
+      `${path}.value.value debe ser positivo cuando no es null, se recibió ${datum.value.value}`,
+    );
+  }
+}
+
+/** Verifica que un Datum<number> sea un entero positivo (≥ 1) cuando no es null. */
+function assertDatumPositiveInteger(datum: Datum<number>, path: string): void {
+  if (datum.value !== null && (!Number.isInteger(datum.value) || datum.value < 1)) {
+    throw new Error(
+      `${path}.value debe ser un entero positivo cuando no es null, se recibió ${datum.value}`,
+    );
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Physical location
 // ---------------------------------------------------------------------------
@@ -224,6 +245,14 @@ function validatePhysicalLocation(raw: unknown, path: string): PhysicalLocation 
       throw new Error(`${path}.factoryId debe ser null cuando kind='unassigned'`);
     if (subareaId !== null)
       throw new Error(`${path}.subareaId debe ser null cuando kind='unassigned'`);
+  }
+  // 'shared' = el equipo atiende o está entre varias fábricas; no hay fábrica única.
+  // factoryId y subareaId deben ser null; usar ElementService para registrar fábricas.
+  if (kind === 'shared') {
+    if (factoryId !== null)
+      throw new Error(`${path}.factoryId debe ser null cuando kind='shared' (usar ElementService)`);
+    if (subareaId !== null)
+      throw new Error(`${path}.subareaId debe ser null cuando kind='shared'`);
   }
   if (kind === 'factory' && factoryId === null) {
     throw new Error(`${path}.factoryId es requerido cuando kind='factory'`);
@@ -304,7 +333,9 @@ function validatePlacement(raw: Record<string, unknown>, path: string): Placemen
 function validateTechnicalMotor(raw: unknown, path: string): TechnicalByCategory['motor'] {
   const obj = assertObject(raw, path);
   const power = validateDatumQuantity(obj.power, `${path}.power`, ['kW', 'HP'] as const);
+  assertDatumQuantityPositive(power, `${path}.power`);
   const voltage = validateDatumQuantity(obj.voltage, `${path}.voltage`, ['V'] as const);
+  assertDatumQuantityPositive(voltage, `${path}.voltage`);
   const phases = validateDatum(obj.phases, `${path}.phases`, (v, p) => {
     if (v !== 1 && v !== 3) throw new Error(`${p} debe ser 1 o 3`);
     return v as 1 | 3;
@@ -314,6 +345,7 @@ function validateTechnicalMotor(raw: unknown, path: string): TechnicalByCategory
     `${path}.plateCurrent`,
     ['A'] as const,
   );
+  assertDatumQuantityPositive(plateCurrent, `${path}.plateCurrent`);
   const efficiency = validateDatumNumber(obj.efficiency, `${path}.efficiency`);
   if (efficiency.value !== null && (efficiency.value <= 0 || efficiency.value > 1)) {
     throw new Error(
@@ -349,8 +381,12 @@ function validateTechnicalSensor(raw: unknown, path: string): TechnicalByCategor
   });
   const supply = validateDatum(obj.supply, `${path}.supply`, (v, p) => {
     const o = assertObject(v, p);
+    const voltageV = assertFiniteNumber(o.voltageV, `${p}.voltageV`);
+    if (voltageV <= 0) {
+      throw new Error(`${p}.voltageV debe ser positivo (tensión nominal), se recibió ${voltageV}`);
+    }
     return {
-      voltageV: assertFiniteNumber(o.voltageV, `${p}.voltageV`),
+      voltageV,
       currentType: assertOneOf(o.currentType, ['AC', 'DC'] as const, `${p}.currentType`),
     };
   });
@@ -365,13 +401,21 @@ function validateTechnicalProcessValve(
   path: string,
 ): TechnicalByCategory['process_valve'] {
   const obj = assertObject(raw, path);
+  const pressure = validateDatumQuantity(obj.pressure, `${path}.pressure`, ['bar'] as const);
+  assertDatumQuantityPositive(pressure, `${path}.pressure`);
+  // temperature puede ser negativa (criogenia, refrigeración) — sin restricción de signo
+  const temperature = validateDatumQuantity(
+    obj.temperature,
+    `${path}.temperature`,
+    ['degC'] as const,
+  );
   return {
     function: validateDatumString(obj.function, `${path}.function`),
     nominalSize: validateDatumString(obj.nominalSize, `${path}.nominalSize`),
     connection: validateDatumString(obj.connection, `${path}.connection`),
     fluid: validateDatumString(obj.fluid, `${path}.fluid`),
-    pressure: validateDatumQuantity(obj.pressure, `${path}.pressure`, ['bar'] as const),
-    temperature: validateDatumQuantity(obj.temperature, `${path}.temperature`, ['degC'] as const),
+    pressure,
+    temperature,
   };
 }
 
@@ -385,20 +429,31 @@ function validateTechnicalSolenoidValve(
   );
   const coilSupply = validateDatum(obj.coilSupply, `${path}.coilSupply`, (v, p) => {
     const o = assertObject(v, p);
+    const voltageV = assertFiniteNumber(o.voltageV, `${p}.voltageV`);
+    if (voltageV <= 0) {
+      throw new Error(`${p}.voltageV debe ser positivo (tensión nominal de bobina), se recibió ${voltageV}`);
+    }
     return {
-      voltageV: assertFiniteNumber(o.voltageV, `${p}.voltageV`),
+      voltageV,
       currentType: assertOneOf(o.currentType, ['AC', 'DC'] as const, `${p}.currentType`),
     };
   });
+  // operatingPressure son presiones relativas (manométricas) en bar.
+  // minBar ≥ 0 (no se opera en vacío); minBar ≤ maxBar.
   const operatingPressure = validateDatum(
     obj.operatingPressure,
     `${path}.operatingPressure`,
     (v, p) => {
       const o = assertObject(v, p);
-      return {
-        minBar: assertFiniteNumber(o.minBar, `${p}.minBar`),
-        maxBar: assertFiniteNumber(o.maxBar, `${p}.maxBar`),
-      };
+      const minBar = assertFiniteNumber(o.minBar, `${p}.minBar`);
+      const maxBar = assertFiniteNumber(o.maxBar, `${p}.maxBar`);
+      if (minBar < 0) {
+        throw new Error(`${p}.minBar debe ser ≥ 0 (presión relativa), se recibió ${minBar}`);
+      }
+      if (minBar > maxBar) {
+        throw new Error(`${p}: minBar (${minBar}) debe ser ≤ maxBar (${maxBar})`);
+      }
+      return { minBar, maxBar };
     },
   );
   const normalState = validateDatumString(obj.normalState, `${path}.normalState`);
@@ -420,13 +475,17 @@ function validateTechnicalActuator(
     assertOneOf(v, ['linear', 'rotary'] as const, p),
   );
   const stroke = validateDatumQuantity(obj.stroke, `${path}.stroke`, ['mm'] as const);
+  assertDatumQuantityPositive(stroke, `${path}.stroke`);
   const bore = validateDatumQuantity(obj.bore, `${path}.bore`, ['mm'] as const);
+  assertDatumQuantityPositive(bore, `${path}.bore`);
   const torque = validateDatumQuantity(obj.torque, `${path}.torque`, ['Nm'] as const);
+  assertDatumQuantityPositive(torque, `${path}.torque`);
   const workingPressure = validateDatumQuantity(
     obj.workingPressure,
     `${path}.workingPressure`,
     ['bar'] as const,
   );
+  assertDatumQuantityPositive(workingPressure, `${path}.workingPressure`);
   return { technology, action, motion, stroke, bore, torque, workingPressure };
 }
 
@@ -435,9 +494,15 @@ function validateTechnicalElectricalPanel(
   path: string,
 ): TechnicalByCategory['electrical_panel'] {
   const obj = assertObject(raw, path);
+  const ratedCurrent = validateDatumQuantity(
+    obj.ratedCurrent,
+    `${path}.ratedCurrent`,
+    ['A'] as const,
+  );
+  assertDatumQuantityPositive(ratedCurrent, `${path}.ratedCurrent`);
   return {
     ipRating: validateDatumString(obj.ipRating, `${path}.ipRating`),
-    ratedCurrent: validateDatumQuantity(obj.ratedCurrent, `${path}.ratedCurrent`, ['A'] as const),
+    ratedCurrent,
   };
 }
 
@@ -446,21 +511,27 @@ function validateTechnicalPneumaticPanel(
   path: string,
 ): TechnicalByCategory['pneumatic_panel'] {
   const obj = assertObject(raw, path);
+  const inletPressure = validateDatumQuantity(
+    obj.inletPressure,
+    `${path}.inletPressure`,
+    ['bar'] as const,
+  );
+  assertDatumQuantityPositive(inletPressure, `${path}.inletPressure`);
   return {
     ipRating: validateDatumString(obj.ipRating, `${path}.ipRating`),
-    inletPressure: validateDatumQuantity(
-      obj.inletPressure,
-      `${path}.inletPressure`,
-      ['bar'] as const,
-    ),
+    inletPressure,
   };
 }
 
 function validateTechnicalPump(raw: unknown, path: string): TechnicalByCategory['pump'] {
   const obj = assertObject(raw, path);
+  const flow = validateDatumQuantity(obj.flow, `${path}.flow`, ['m3/h'] as const);
+  assertDatumQuantityPositive(flow, `${path}.flow`);
+  const head = validateDatumQuantity(obj.head, `${path}.head`, ['m'] as const);
+  assertDatumQuantityPositive(head, `${path}.head`);
   return {
-    flow: validateDatumQuantity(obj.flow, `${path}.flow`, ['m3/h'] as const),
-    head: validateDatumQuantity(obj.head, `${path}.head`, ['m'] as const),
+    flow,
+    head,
     fluid: validateDatumString(obj.fluid, `${path}.fluid`),
   };
 }
@@ -470,9 +541,13 @@ function validateTechnicalLuminaire(
   path: string,
 ): TechnicalByCategory['luminaire'] {
   const obj = assertObject(raw, path);
+  const power = validateDatumQuantity(obj.power, `${path}.power`, ['W'] as const);
+  assertDatumQuantityPositive(power, `${path}.power`);
+  const voltage = validateDatumQuantity(obj.voltage, `${path}.voltage`, ['V'] as const);
+  assertDatumQuantityPositive(voltage, `${path}.voltage`);
   return {
-    power: validateDatumQuantity(obj.power, `${path}.power`, ['W'] as const),
-    voltage: validateDatumQuantity(obj.voltage, `${path}.voltage`, ['V'] as const),
+    power,
+    voltage,
     ipRating: validateDatumString(obj.ipRating, `${path}.ipRating`),
   };
 }
@@ -494,9 +569,9 @@ function validateTechnicalTerminalBlock(
   path: string,
 ): TechnicalByCategory['terminal_block'] {
   const obj = assertObject(raw, path);
-  return {
-    terminalCount: validateDatumNumber(obj.terminalCount, `${path}.terminalCount`),
-  };
+  const terminalCount = validateDatumNumber(obj.terminalCount, `${path}.terminalCount`);
+  assertDatumPositiveInteger(terminalCount, `${path}.terminalCount`);
+  return { terminalCount };
 }
 
 function validateTechnicalManifold(
@@ -504,14 +579,15 @@ function validateTechnicalManifold(
   path: string,
 ): TechnicalByCategory['manifold'] {
   const obj = assertObject(raw, path);
-  return {
-    stationCount: validateDatumNumber(obj.stationCount, `${path}.stationCount`),
-    workingPressure: validateDatumQuantity(
-      obj.workingPressure,
-      `${path}.workingPressure`,
-      ['bar'] as const,
-    ),
-  };
+  const stationCount = validateDatumNumber(obj.stationCount, `${path}.stationCount`);
+  assertDatumPositiveInteger(stationCount, `${path}.stationCount`);
+  const workingPressure = validateDatumQuantity(
+    obj.workingPressure,
+    `${path}.workingPressure`,
+    ['bar'] as const,
+  );
+  assertDatumQuantityPositive(workingPressure, `${path}.workingPressure`);
+  return { stationCount, workingPressure };
 }
 
 function validateTechnicalInfrastructure(

@@ -11,26 +11,43 @@
 | Entrega | Commit | Tests | Descripción |
 |---|---|---|---|
 | M1a-base | `1eab3f6` | 216 | Contratos v2, validador inicial, migrador puro (20+1 test cases) |
-| M1a-audit | *(ver SHA de este commit)* | 242 | Auditoría completa: +26 casos de prueba, corrección de 2 bugs confirmados |
+| M1a-audit-1 | `7f59991` | 242 | Primera auditoría: +26 casos de prueba, corrección de 2 bugs confirmados |
+| M1a-audit-2 | *(ver SHA de este commit)* | 270 | Segunda auditoría: pendientes cerrados, +28 invariantes de dominio físico |
 
-**Bugs corregidos en la auditoría:**
-1. `validateProjectDataV2` aceptaba cables con `ends[i].portId` apuntando a puertos inexistentes → corregido.
-2. `validateProjectDataV2` aceptaba `efficiency.value = 2` en motores → corregido (rango `(0, 1]`).
+**Bugs corregidos en audit-1:**
+1. `validateProjectDataV2` aceptaba cables con `ends[i].portId` apuntando a puertos inexistentes.
+2. `validateProjectDataV2` aceptaba `efficiency.value = 2` en motores.
 
-**Nuevas invariantes de validación activadas (validate-v2.ts):**
-- **Datum coherencia:** `status='unknown'` → `value` debe ser null; `status ∈ {estimated,provided,verified}` → `value` no puede ser null.
-- **Motor:** `efficiency.value ∈ (0, 1]`; `powerFactor.value ∈ (0, 1]` cuando no es null.
-- **Sensor:** `range.min ≤ range.max` cuando `value` conocido.
-- **Puerto:** `localDirection` no puede ser el vector cero; `pinCount` entero positivo cuando no es null.
-- **Cable:** `coreCount` entero positivo; `sectionMm2`, `outerDiameterMm`, `minBendRadiusMm` positivos cuando conocidos.
-- **Manguera:** `innerDiameterMm < outerDiameterMm` cuando ambos conocidos; `workingPressureBar` positivo cuando conocido.
-- **Endpoints de conexión:** todos los `{kind:'port'}` verifican existencia del puerto referenciado y compatibilidad de medium.
-- **InternalLink:** `conductive` → ambos extremos eléctricos; `passage` → ambos no-eléctricos del mismo medium.
-- **physicalLocation:** `factoryId` y `subareaId` verifican existencia; `subareaId` debe pertenecer al `factoryId` declarado.
-- **ElementService:** no se permiten pares `(elementId, factoryId)` duplicados.
-- **FieldEvidence:** `elementOrConnectionId` debe referenciar un elemento o conexión existente.
-- **MigrationIncident:** `elementId` debe referenciar un elemento existente.
-- **Datum evidenceIds:** todos los IDs referenciados en Datum deben existir en `evidence[]`.
+**Tabla de restricciones campo→dominio físico (validate-v2.ts):**
+
+| Categoría | Campo | Restricción | Nota |
+|---|---|---|---|
+| motor | power | Quantity.value > 0 | nominal |
+| motor | voltage | Quantity.value > 0 | nominal |
+| motor | plateCurrent | Quantity.value > 0 | nominal |
+| motor | efficiency | 0 < value ≤ 1 | ratio |
+| motor | powerFactor | 0 < value ≤ 1 | ratio |
+| sensor | range.min/max | min ≤ max (pueden ser negativos) | rango de medición |
+| sensor | supply.voltageV | > 0 | nominal |
+| process_valve | pressure | Quantity.value > 0 | nominal |
+| process_valve | temperature | sin restricción de signo | puede ser negativa (criogenia) |
+| solenoid_valve | coilSupply.voltageV | > 0 | nominal |
+| solenoid_valve | operatingPressure | minBar ≥ 0, minBar ≤ maxBar | presión relativa (manométrica) |
+| actuator | stroke | Quantity.value > 0 | longitud |
+| actuator | bore | Quantity.value > 0 | diámetro |
+| actuator | torque | Quantity.value > 0 | magnitud |
+| actuator | workingPressure | Quantity.value > 0 | nominal |
+| electrical_panel | ratedCurrent | Quantity.value > 0 | nominal |
+| pneumatic_panel | inletPressure | Quantity.value > 0 | nominal |
+| pump | flow | Quantity.value > 0 | nominal |
+| pump | head | Quantity.value > 0 | nominal |
+| luminaire | power | Quantity.value > 0 | nominal |
+| luminaire | voltage | Quantity.value > 0 | nominal |
+| terminal_block | terminalCount | entero ≥ 1 | conteo |
+| manifold | stationCount | entero ≥ 1 | conteo |
+| manifold | workingPressure | Quantity.value > 0 | nominal |
+
+**PhysicalLocation.shared:** `factoryId: null`, `subareaId: null` (no hay fábrica única de residencia; usar `ElementService` para registrar las fábricas a las que atiende el equipo). Contrato documentado en `domain-v2.ts`.
 
 ---
 
@@ -56,11 +73,11 @@ Base: `feat/project-save-load` @ `fd9872b`
 | A  | Árbol de escena por categorías contraíbles con contadores | `57cf161` |
 
 ### Cobertura de pruebas actual
-- **242 pruebas** distribuidas en 12 archivos de test.
+- **270 pruebas** distribuidas en 12 archivos de test.
 - Unitarias: conversión de coordenadas, validación v1/v2, migración v1→v2, IndexedDB (fake-indexeddb).
 - Integración: store Zustand, auto-save con timers simulados, identidad de sesión.
 - Interacción (jsdom): Inspector, OriginPanel, ProjectActions, SceneTree.
-- v2 test breakdown: 44 casos en `validate-v2.test.ts`; 21 casos en `migrate-v1-to-v2.test.ts`.
+- v2 test breakdown: 72 casos en `validate-v2.test.ts`; 21 casos en `migrate-v1-to-v2.test.ts`.
 
 ---
 
