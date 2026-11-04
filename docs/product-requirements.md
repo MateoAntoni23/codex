@@ -8,6 +8,31 @@
 
 ## Descripción general
 
+### Ampliación transversal de equipos — diseño, no implementado
+
+La ficha técnica y las dimensiones editables aplican a **todos** los elementos:
+tableros eléctricos y neumáticos, motores, bombas, sensores, válvulas de proceso,
+electroválvulas, actuadores, luminarias y botoneras. Cada categoría tendrá datos
+específicos, conexiones y procedencia por campo; desconocido no equivale a cero.
+
+Un tablero neumático contiene componentes con identidad y posición local:
+borneras, manifold y electroválvulas. Recibe cables desde tableros eléctricos y
+alimenta actuadores mediante mangueras; un actuador de doble efecto puede requerir
+dos mangueras. La válvula de proceso, su actuador y la electroválvula de mando
+son elementos relacionados distintos. Las relaciones de contención, continuidad
+eléctrica/neumática y mando funcional se modelan por separado.
+
+Las dimensiones se editan con anclaje explícito. Redimensionar un tablero o nave
+no escala ni desplaza automáticamente su contenido. Los puertos y recorridos
+afectados requieren nueva validación. Agregar, duplicar y eliminar debe preservar
+integridad de conexiones e historial.
+
+Especificación propuesta: [Modelo de equipos](equipment-domain-model.md).
+Su secuencia M1–M7 amplía y precisa las fases B–D anteriores. No constituye una
+migración implementada ni cambia el formato guardado. El alcance interno de los
+tableros neumáticos sí incluye componentes; la distribución detallada interna de
+tableros eléctricos continúa siendo una entrega posterior.
+
 Aplicación web para diseñar instalaciones industriales con bandejas
 portacables. El diseñador trabaja en milímetros con eje Z vertical,
 visualiza la instalación en 3D y puede exportar el proyecto como JSON.

@@ -48,6 +48,32 @@ Base: `feat/project-save-load` @ `fd9872b`
 
 ## Próximas fases planificadas
 
+### Prioridad actual: modelo transversal de equipos (solo documentación)
+
+Diseño: [equipment-domain-model.md](equipment-domain-model.md).
+La secuencia M1–M7 de ese documento reemplaza el orden de implementación
+inmediato de A.1/B/C/D; conserva A–F como referencia de alcance histórico.
+En particular, no limitar la ficha ni las dimensiones editables a motores,
+tablero y nave. Incluir tableros neumáticos, componentes internos y actuadores.
+
+1. Revisar contratos e invariantes; sin cambios de código en esta entrega.
+2. M1: validación y migración con respaldo de schemaVersion=1.
+3. M2: organización de fábricas, FM y equipos compartidos sin duplicación.
+4. M3: ficha común y operaciones de elementos con campos por categoría.
+5. M4: geometría editable, anclajes y composición con coordenadas locales.
+6. M5: puertos, cables, mangueras y relaciones funcionales.
+7. M6: simulación de importación XLSX con vista previa y trazabilidad.
+8. M7: integración con bandejas, validaciones, BOM y campo.
+
+Anclaje propuesto: centro de base para equipos de piso/nave, centro de cara
+posterior para gabinete de pared y centro para componentes internos. Puertos
+locales y de cara se distinguen. Estas decisiones son propuestas revisables;
+no requieren pedir datos al usuario para completar esta documentación.
+
+Se preservan las fases futuras de DXF/DWG, accesorios y catálogo de bandejas,
+ruteo, PDF/BOM, PWA y backend. Ninguna de estas funciones está implementada
+por la presente entrega documental.
+
 > Las fases A–F se corresponden con los requisitos nuevos de
 > `docs/product-requirements.md`. El orden puede revisarse.
 
