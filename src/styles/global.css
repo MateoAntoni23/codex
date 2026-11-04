@@ -1,0 +1,164 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body, #root {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #1a1a2e;
+  color: #e0e0f0;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  font-size: 13px;
+}
+
+/* ── Layout principal ── */
+.app-layout {
+  display: grid;
+  grid-template-columns: 240px 1fr 280px;
+  grid-template-rows: 1fr 140px;
+  grid-template-areas:
+    "left  center right"
+    "bottom bottom bottom";
+  width: 100%;
+  height: 100%;
+  gap: 2px;
+  background: #111120;
+}
+
+.canvas-wrapper {
+  grid-area: center;
+  position: relative;
+  background: #1a1a2e;
+}
+
+.canvas-wrapper canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* ── Paneles ── */
+.panel {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.panel-left  { grid-area: left;   background: #1e1e2e; }
+.panel-right { grid-area: right;  background: #1e1e2e; }
+.panel-bottom {
+  grid-area: bottom;
+  background: #16161e;
+  flex-direction: row;
+  align-items: center;
+  padding: 0 16px;
+  border-top: 1px solid #33334a;
+}
+
+.panel-title {
+  padding: 10px 12px 8px;
+  font-weight: 700;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #8888cc;
+  border-bottom: 1px solid #2a2a44;
+  flex-shrink: 0;
+}
+
+/* ── Árbol de escena ── */
+.scene-tree {
+  list-style: none;
+  overflow-y: auto;
+  flex: 1;
+  padding: 4px 0;
+}
+
+.tree-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-left: 3px solid transparent;
+  transition: background 0.1s;
+}
+
+.tree-item--selectable {
+  cursor: pointer;
+}
+
+.tree-item--selectable:hover {
+  background: #2a2a44;
+}
+
+.tree-item--selected {
+  background: #252545;
+  border-left-color: #7777ff;
+  font-weight: 700;
+}
+
+.tree-icon { font-size: 14px; flex-shrink: 0; }
+
+.tree-name {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #d0d0ee;
+}
+
+.tree-type {
+  font-size: 10px;
+  color: #666688;
+  flex-shrink: 0;
+}
+
+/* ── Inspector ── */
+.inspector-empty {
+  padding: 16px 12px;
+  color: #555577;
+  font-style: italic;
+}
+
+.inspector-content {
+  overflow-y: auto;
+  flex: 1;
+  padding: 8px 0;
+}
+
+.inspector-section {
+  padding: 8px 12px 4px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #666688;
+}
+
+.inspector-field {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 3px 12px;
+}
+
+.inspector-label {
+  color: #8888aa;
+  font-size: 12px;
+}
+
+.inspector-value {
+  color: #ccccee;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Barra de conductores ── */
+.conductor-placeholder {
+  color: #444466;
+  font-style: italic;
+  font-size: 12px;
+}
