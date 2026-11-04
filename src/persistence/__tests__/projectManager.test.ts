@@ -655,3 +655,91 @@ describe('recoverProject — bloqueo y estado recovering', () => {
     expect(useSceneStore.getState().objects[0].id).toBe('motor-1');
   });
 });
+
+// ─── recoverProject — identidad de sesión ─────────────────────────────────────
+
+describe('recoverProject — identidad de sesión', () => {
+  it('recuperación de sesión anterior no hidrata ni cambia estado de sesión nueva', async () => {
+    mockLoad.mockRejectedValue(new Error('DB rota'));
+    let resolveSaveA!: () => void;
+    mockSave.mockReturnValueOnce(new Promise<void>((r) => { resolveSaveA = r; }));
+    const { cancel: cancelA, ready: readyA } = initProject(useSceneStore);
+    await readyA;
+
+    const recoveryA = recoverProject(useSceneStore, makeFile(JSON.stringify(SAVED_PROJECT)), () => true);
+    await Promise.resolve(); // source.text() tick → llega a fase de escritura
+    expect(useSceneStore.getState().saveStatus).toBe('recovering');
+
+    cancelA(); // sesión A termina
+
+    mockLoad.mockResolvedValue(null);
+    const { ready: readyB } = initProject(useSceneStore);
+    await readyB; // sesión B, carga exitosa → 'idle'
+    expect(useSceneStore.getState().saveStatus).toBe('idle');
+
+    resolveSaveA();
+    const resultA = await recoveryA;
+
+    expect(resultA.ok).toBe(false);
+    expect(useSceneStore.getState().saveStatus).toBe('idle'); // B intacto
+    expect(useSceneStore.getState().objects).not.toHaveLength(1); // no hidratado
+    expect(useSceneStore.getState().projectOrigin).toEqual({ x: 0, y: 0, z: 0 });
+  });
+
+  it('cancelar mientras source.text() está pendiente: no pide confirmación ni escribe', async () => {
+    mockLoad.mockRejectedValue(new Error('DB rota'));
+    let resolveText!: (s: string) => void;
+    const slowFile = {
+      text: () => new Promise<string>((r) => { resolveText = r; }),
+    } as unknown as File;
+    const confirmFn = vi.fn(() => true);
+
+    const { cancel, ready } = initProject(useSceneStore);
+    await ready;
+
+    const recoveryPromise = recoverProject(useSceneStore, slowFile, confirmFn);
+    cancel(); // sesión cancelada antes de que text() resuelva
+
+    resolveText(JSON.stringify(SAVED_PROJECT));
+    const result = await recoveryPromise;
+
+    expect(result.ok).toBe(false);
+    expect(confirmFn).not.toHaveBeenCalled();
+    expect(mockSave).not.toHaveBeenCalled();
+  });
+
+  it('recuperación antigua no libera el bloqueo de una nueva', async () => {
+    mockLoad.mockRejectedValue(new Error('DB rota'));
+    let resolveSaveA!: () => void;
+    mockSave.mockReturnValueOnce(new Promise<void>((r) => { resolveSaveA = r; }));
+    const { cancel: cancelA, ready: readyA } = initProject(useSceneStore);
+    await readyA;
+
+    const recoveryA = recoverProject(useSceneStore, makeFile(JSON.stringify(SAVED_PROJECT)), () => true);
+    await Promise.resolve(); // A llega a fase de escritura
+
+    cancelA(); // _recovering = false → permite que B inicie
+
+    mockLoad.mockRejectedValue(new Error('B error'));
+    let resolveSaveB!: () => void;
+    mockSave.mockReturnValueOnce(new Promise<void>((r) => { resolveSaveB = r; }));
+    const { ready: readyB } = initProject(useSceneStore);
+    await readyB;
+
+    const recoveryB = recoverProject(useSceneStore, makeFile(JSON.stringify(SAVED_PROJECT)), () => true);
+    await Promise.resolve(); // B llega a fase de escritura
+    expect(useSceneStore.getState().saveStatus).toBe('recovering');
+
+    resolveSaveA(); // escritura de A completa — no debe liberar el bloqueo de B
+    await Promise.resolve();
+    expect(useSceneStore.getState().saveStatus).toBe('recovering'); // B sigue bloqueado
+
+    resolveSaveB();
+    const resultB = await recoveryB;
+    expect(resultB.ok).toBe(true);
+    expect(useSceneStore.getState().saveStatus).toBe('saved');
+
+    const resultA = await recoveryA;
+    expect(resultA.ok).toBe(false);
+  });
+});

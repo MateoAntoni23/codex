@@ -35,10 +35,14 @@ let _cancelAutoSave: (() => void) | null = null;
  *  Impide recuperaciones simultáneas e indica al UI que está en proceso. */
 let _recovering = false;
 
-/** true después de que cancel() fue invocado (cleanup del efecto / desmontaje).
- *  Impide que callbacks de operaciones en vuelo modifiquen el estado de una
- *  sesión posterior. Se resetea al inicio de cada nueva sesión de initProject. */
-let _sessionCancelled = false;
+/** Incrementado por initProject (nueva sesión) y por cancel() (fin de sesión).
+ *  Cada llamada a recoverProject captura myVersion = _sessionVersion al inicio;
+ *  si difieren al continuar, la operación pertenece a una sesión obsoleta. */
+let _sessionVersion = 0;
+
+/** Incrementado por cada llamada a recoverProject; identifica qué recuperación
+ *  es propietaria del flag _recovering para no liberarlo desde otra. */
+let _recoveryToken = 0;
 
 // ─── Helpers de test ─────────────────────────────────────────────────────────
 
@@ -52,7 +56,8 @@ export function _resetInitialized(): void {
   _cancelAutoSave?.();
   _cancelAutoSave = null;
   _recovering = false;
-  _sessionCancelled = false;
+  _sessionVersion = 0;
+  _recoveryToken = 0;
 }
 
 // ─── Sesión de auto-save ──────────────────────────────────────────────────────
@@ -119,14 +124,14 @@ export function initProject(store: Store): { cancel: () => void; ready: Promise<
     return { cancel: () => {}, ready: Promise.resolve() };
   }
   _initialized = true;
-  _sessionCancelled = false; // nueva sesión comienza sin cancelación pendiente
+  ++_sessionVersion; // nueva sesión
 
   let cancelled = false;
 
   function cancel() {
     cancelled = true;
-    _sessionCancelled = true; // señal para operaciones en vuelo (recovery)
-    _recovering = false;      // permite reintento tras remount
+    ++_sessionVersion;        // invalida operaciones en vuelo de esta sesión
+    _recovering = false;      // permite nuevo recover tras remount
     _cancelAutoSave?.();
     _initialized = false;
     if (_cancelInit === cancel) _cancelInit = null;
@@ -166,12 +171,13 @@ export function initProject(store: Store): { cancel: () => void; ready: Promise<
  * Recuperación tras fallo de carga. Garantías:
  * - _recovering se establece ANTES de cualquier await; una segunda llamada
  *   concurrente recibe { ok:false } inmediatamente.
- * - La sesión de auto-save previa se cancela (junto con sus timers y
- *   sus callbacks en vuelo) antes de iniciar la escritura.
+ * - myVersion captura la identidad de sesión al inicio; tras cada await se
+ *   verifica que la sesión siga vigente antes de modificar el store.
+ * - myToken identifica qué recuperación es dueña de _recovering; solo esa
+ *   operación lo libera, impidiendo que una antigua libere el bloqueo de una nueva.
+ * - La sesión de auto-save previa se cancela antes de iniciar la escritura.
  * - Se escribe en IndexedDB ANTES de modificar el store; si la transacción
  *   falla, el store conserva su estado anterior.
- * - Tras cada await se comprueba _sessionCancelled; si la aplicación fue
- *   desmontada durante la escritura, no se hidrata ni se activa la suscripción.
  * - Si falla, _recovering vuelve a false y el usuario puede reintentar.
  */
 export async function recoverProject(
@@ -181,6 +187,8 @@ export async function recoverProject(
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   if (_recovering) return { ok: false, error: 'Recuperación ya en curso' };
   _recovering = true; // bloqueo sincrónico antes de cualquier await
+  const myToken = ++_recoveryToken;
+  const myVersion = _sessionVersion;
 
   let objects: DomainObject[];
   let projectOrigin: Vec3mm;
@@ -202,18 +210,24 @@ export async function recoverProject(
   } else {
     let raw: unknown;
     try {
-      const text = await source.text(); // único await antes de pausar auto-save
+      const text = await source.text();
       raw = JSON.parse(text);
     } catch {
-      _recovering = false;
+      if (_recoveryToken === myToken) _recovering = false;
       return { ok: false, error: 'El archivo no es un JSON válido' };
+    }
+
+    // Verificar sesión tras el primer await (source.text()).
+    if (_sessionVersion !== myVersion) {
+      if (_recoveryToken === myToken) _recovering = false;
+      return { ok: false, error: 'Sesión cancelada' };
     }
 
     let validated: ProjectData;
     try {
       validated = validateProjectData(raw);
     } catch (err) {
-      _recovering = false;
+      if (_recoveryToken === myToken) _recovering = false;
       return { ok: false, error: String(err) };
     }
 
@@ -221,8 +235,15 @@ export async function recoverProject(
       '¿Reemplazar el proyecto actual con el archivo importado?\nEsta acción no se puede deshacer.',
     );
     if (!proceed) {
-      _recovering = false;
+      if (_recoveryToken === myToken) _recovering = false;
       return { ok: false, error: 'Importación cancelada' };
+    }
+
+    // Verificación defensiva antes de escribir (confirm es síncrono pero la
+    // sesión pudo haber cambiado si confirm disparó efectos secundarios).
+    if (_sessionVersion !== myVersion) {
+      if (_recoveryToken === myToken) _recovering = false;
+      return { ok: false, error: 'Sesión cancelada' };
     }
 
     objects = validated.objects;
@@ -239,17 +260,19 @@ export async function recoverProject(
   try {
     await saveProjectToDb(dataToSave);
   } catch (err) {
-    _recovering = false;
-    if (!_sessionCancelled) {
+    if (_recoveryToken === myToken) _recovering = false;
+    if (_sessionVersion === myVersion) {
       store.getState().setSaveStatus('error', `Error al recuperar: ${String(err)}`);
     }
     return { ok: false, error: `Error al guardar: ${String(err)}` };
   }
 
-  _recovering = false;
+  // Solo libera el bloqueo si esta operación aún lo posee.
+  if (_recoveryToken === myToken) _recovering = false;
 
-  // La aplicación puede haberse desmontado mientras esperábamos la escritura.
-  if (_sessionCancelled) {
+  // Cancelar estos callbacks no aborta la transacción IndexedDB ya comprometida;
+  // los datos pueden estar ya persistidos. Simplemente declinamos hidratar el store.
+  if (_sessionVersion !== myVersion) {
     return { ok: false, error: 'Sesión cancelada' };
   }
 
