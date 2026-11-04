@@ -1,4 +1,5 @@
 import type { DomainObject } from '../types/domain';
+import { domainToViewerPosition, mmToUnits } from './coords';
 
 interface Props {
   obj: DomainObject;
@@ -6,22 +7,17 @@ interface Props {
   onSelect: () => void;
 }
 
-// Motor eléctrico: cilindro
-// Conversión mm → Three.js units (1 unidad = 1000 mm = 1 m):
-//   posición Three.js = [x/1000, z/1000, y/1000]  (Z-up → Y-up)
-//   radio Three.js    = width/2/1000
-//   altura Three.js   = height/1000
+// Motor eléctrico: cilindro vertical.
+// position es el centro → no se suma height/2 aquí.
+// radio = width/2 (el motor se modela como cilindro circular).
 export function Motor({ obj, isSelected, onSelect }: Props) {
-  const { position: p, dimensions: d } = obj;
-  const px = p.x / 1000;
-  const py = p.z / 1000 + d.height / 1000 / 2;
-  const pz = p.y / 1000;
-  const radius = d.width / 2 / 1000;
-  const height = d.height / 1000;
+  const pos = domainToViewerPosition(obj.position);
+  const radius = mmToUnits(obj.dimensions.width / 2);
+  const height = mmToUnits(obj.dimensions.height);
 
   return (
     <mesh
-      position={[px, py, pz]}
+      position={pos}
       castShadow
       onClick={(e) => { e.stopPropagation(); onSelect(); }}
     >

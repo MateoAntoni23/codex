@@ -12,7 +12,7 @@ export function SceneObjects() {
   return (
     <>
       {objects.map((obj) => {
-        if (obj.type === 'floor') return <Floor key={obj.id} />;
+        if (obj.type === 'floor') return <Floor key={obj.id} obj={obj} />;
         if (obj.type === 'building') return <Building key={obj.id} obj={obj} />;
         if (obj.type === 'panel') {
           return (

@@ -5,7 +5,7 @@ bandejas portacables en un visor 3D interactivo.
 
 ## Requisitos
 
-- [Node.js 18 o superior](https://nodejs.org/) (incluye npm)
+- [Node.js 18 o superior](https://nodejs.org/) (incluye npm) — probado con Node 24
 - [Git](https://git-scm.com/)
 
 ## Instalación (Windows)
@@ -13,11 +13,14 @@ bandejas portacables en un visor 3D interactivo.
 Abrí una terminal (CMD o PowerShell) y ejecutá:
 
 ```bat
-git clone <URL-del-repositorio> codex
+git clone https://github.com/MateoAntoni23/codex.git codex
 cd codex
 git checkout feat/initial-3d-editor
-npm install
+npm ci
 ```
+
+> `npm ci` usa el `package-lock.json` para una instalación exacta y reproducible.
+> Usá `npm install` solo si querés actualizar el lockfile.
 
 ## Iniciar en modo desarrollo
 
@@ -41,14 +44,25 @@ Los archivos quedan en la carpeta `dist/`.
 npm run typecheck
 ```
 
+## Ejecutar pruebas
+
+```bat
+npm test
+```
+
 ## Convención de coordenadas
 
 | Concepto | Valor |
 |---|---|
 | Unidad del dominio | milímetros (mm) |
 | Eje vertical | Z (arriba) |
+| `position` | centro del objeto |
 | Unidad en Three.js | 1 unidad = 1 metro = 1 000 mm |
-| Conversión posición | `[x/1000, z/1000, y/1000]` (Z-up → Y-up) |
+| Conversión posición | `[x/1000, z/1000, −y/1000]` |
+| Negativo en Y | preserva la orientación (sistema dextrógiro) |
+
+Para apoyar un objeto en el piso (`z_dominio = 0`), fijar `position.z = height / 2`.
+La conversión centralizada está en `src/scene/coords.ts`.
 
 ## Qué probar visualmente
 
@@ -65,7 +79,7 @@ npm run typecheck
    o "Motor Eléctrico" en la lista. El objeto en el visor se resalta.
 
 5. **Inspector**: verificá que muestra nombre, tipo y posición en mm
-   (por ejemplo, el tablero está en X: -7000 mm).
+   (por ejemplo, el tablero está en X: −7000 mm).
 
 6. **Deselección**: hacé clic en el fondo del visor o en el mismo
    elemento del árbol para deseleccionar.
@@ -74,20 +88,23 @@ npm run typecheck
 
 ```
 src/
-  types/domain.ts        Modelo de datos (mm, Z-up, IDs estables)
-  store/sceneStore.ts    Estado global (Zustand): objetos + selección
+  types/domain.ts           Modelo de datos (mm, Z-up, IDs estables)
+  store/sceneStore.ts       Estado global (Zustand): objetos + selección
   scene/
-    Floor.tsx            Piso y grilla
-    Building.tsx         Nave industrial (wireframe)
-    ElectricalPanel.tsx  Tablero eléctrico
-    Motor.tsx            Motor eléctrico
-    SceneObjects.tsx     Renderiza todos los objetos del store
+    coords.ts               Conversión dominio → Three.js (centralizada)
+    Floor.tsx               Piso y grilla
+    Building.tsx            Nave industrial (wireframe)
+    ElectricalPanel.tsx     Tablero eléctrico
+    Motor.tsx               Motor eléctrico
+    SceneObjects.tsx        Renderiza todos los objetos del store
+    __tests__/
+      coords.test.ts        Pruebas de conversión, distancias y apoyo en piso
   ui/
-    Layout.tsx           Distribución de los 4 paneles
-    SceneTree.tsx        Panel izquierdo: lista de objetos
-    Inspector.tsx        Panel derecho: propiedades del objeto seleccionado
-    ConductorBar.tsx     Panel inferior (reservado para conductores)
-  styles/global.css      Estilos oscuros
+    Layout.tsx              Distribución de los 4 paneles
+    SceneTree.tsx           Panel izquierdo: lista de objetos
+    Inspector.tsx           Panel derecho: propiedades del objeto seleccionado
+    ConductorBar.tsx        Panel inferior (reservado para conductores)
+  styles/global.css         Estilos oscuros
 ```
 
 ## Funciones no implementadas aún
