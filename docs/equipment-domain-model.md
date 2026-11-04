@@ -420,3 +420,23 @@ Antes de M1 revisar este diseño y preparar fixtures v1 reales. Mantener las
 pruebas existentes; no incorporar una migración únicamente para completar este
 documento. DXF/DWG, PDF, BOM, PWA, soporte de fabricantes y accesorios continúan
 en el plan general, con sus requisitos originales.
+
+## 9. Integración de la propuesta remota
+
+Se preservó el trabajo remoto del commit `51bf02d` en
+[design-history/51bf02d-equipment-domain-model.md](design-history/51bf02d-equipment-domain-model.md),
+junto con sus requisitos y plan históricos. El merge conserva ambos historiales.
+Este documento es la especificación propuesta vigente; los archivos históricos
+no son contratos alternativos para implementar.
+
+Decisiones revisadas frente a la propuesta inicial:
+- Quaternion y una única transformación local/global según padre, evitando dos
+  posiciones editables que puedan divergir y permitiendo orientaciones completas.
+- Borneras y manifold con identidad propia, continuidad interna explícita.
+- Condición y TAG desconocidos al migrar: no asumir existente ni fuente manual.
+- Conservar cilindro del motor y respaldo automático antes de migrar.
+- Migración antes de incorporar fichas persistidas; no guardar datos v2 en v1.
+- Datos por campo y evidencia de Excel disponible en esta sesión.
+
+La propuesta inicial completa permanece consultable para recuperar sus tablas
+y ejemplos; no se descartó trabajo remoto ni se realizó force push.
