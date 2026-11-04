@@ -52,13 +52,13 @@ El guardado local ocurre automáticamente en el navegador del usuario.
 - Marcador 3D de los tres ejes (X rojo, Y verde, Z azul) en el origen.
 - El snap-to-floor compensa el origen Z (`Z_mostrado = height/2 − origen.z`).
 
-### Guardado local automático (IndexedDB) ✅
+### Guardado local automático (IndexedDB) 🔧
 - El proyecto se guarda automáticamente tras 1 segundo de inactividad.
 - Al recargar la página se recupera el último estado guardado.
 - El guardado local pertenece al navegador del usuario; no requiere cuenta.
 - Indicador de estado: Cargando / Guardando / Guardado localmente / Error.
 
-### Exportación e importación JSON ✅
+### Exportación e importación JSON 🔧
 - Exportar: descarga el proyecto como archivo `.json` con fecha.
 - Importar: valida el archivo antes de reemplazar el proyecto; pide
   confirmación; un archivo inválido no altera el proyecto existente.
@@ -108,7 +108,7 @@ Cada equipo debe distinguir tres conceptos independientes:
 
 > **Aclaración importante sobre conformidad normativa:**  
 > Las referencias a normas IEC 60617 e ISO 1219 sirven como guía de
-> nomenclatura y simbología para diagramas eléctricos y neumáticos
+> simbología para diagramas eléctricos y neumáticos
 > respectivamente. **Estas normas no definen geometrías 3D universales.**
 > Usar un icono o forma inspirada en una norma **no equivale a declarar
 > conformidad normativa.** No se afirmará conformidad a ninguna norma sin
@@ -119,9 +119,6 @@ Cada equipo debe distinguir tres conceptos independientes:
 - Los símbolos utilizados en la aplicación deben provenir de recursos con
   licencia adecuada para uso comercial. **No se descargará ni incorporará
   ninguna biblioteca de símbolos en la etapa actual.**
-- Se registrarán las referencias normativas y su edición cuando corresponda
-  (p.ej. IEC 60617:2019, ISO 1219-1:2012).
-
 ### 4. Nave industrial con dimensiones editables 📋
 
 - Dimensiones editables: ancho, largo y altura de la nave.

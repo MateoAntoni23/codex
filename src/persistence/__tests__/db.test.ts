@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { IDBFactory } from 'fake-indexeddb';
-import { _setIdbFactory, _resetIdbFactory, loadProjectFromDb, saveProjectToDb } from '../db';
+import { _setIdbFactory, _resetIdbFactory, _setDbForTesting, loadProjectFromDb, saveProjectToDb } from '../db';
 import { SCHEMA_VERSION, type ProjectData } from '../schema';
 
 const SAMPLE: ProjectData = {
@@ -71,5 +71,33 @@ describe('saveProjectToDb + loadProjectFromDb', () => {
     // Si hubiera datos del test anterior, falla — pero la DB es fresca por beforeEach.
     const result = await loadProjectFromDb();
     expect(result).toBeNull();
+  });
+});
+
+describe('saveProjectToDb — aborto de transacción', () => {
+  it('rechaza cuando la transacción aborta después del put', async () => {
+    const abortErr = new DOMException('abort test', 'AbortError');
+
+    const mockTx = {
+      objectStore: () => ({ put: () => ({}) }),
+      oncomplete: null as (() => void) | null,
+      onabort: null as (() => void) | null,
+      onerror: null as (() => void) | null,
+      error: abortErr,
+    };
+
+    const mockDb = {
+      transaction: () => mockTx,
+    } as unknown as IDBDatabase;
+
+    _setDbForTesting(mockDb);
+
+    const p = saveProjectToDb(SAMPLE);
+    // openDatabase() returns an already-resolved promise, but the await inside
+    // saveProjectToDb needs one microtask tick before handlers are registered.
+    await Promise.resolve();
+    mockTx.onabort?.();
+
+    await expect(p).rejects.toBe(abortErr);
   });
 });

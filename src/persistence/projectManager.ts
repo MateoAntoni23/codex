@@ -6,14 +6,6 @@ import type { useSceneStore as StoreType } from '../store/sceneStore';
 
 type Store = typeof StoreType;
 
-function debounce(fn: () => void, ms: number): () => void {
-  let timer: ReturnType<typeof setTimeout> | null = null;
-  return () => {
-    if (timer != null) clearTimeout(timer);
-    timer = setTimeout(fn, ms);
-  };
-}
-
 function snapshotData(store: Store): ProjectData {
   const { objects, projectOrigin } = store.getState();
   return {
@@ -29,65 +21,98 @@ function snapshotData(store: Store): ProjectData {
 
 let _saveGeneration = 0;
 let _initialized = false;
-let _unsubscribe: (() => void) | null = null;
+let _currentCancel: (() => void) | null = null;
 
 /** Reset internal state — for testing only. */
 export function _resetSaveGeneration(): void {
   _saveGeneration = 0;
 }
 export function _resetInitialized(): void {
-  _initialized = false;
-  if (_unsubscribe != null) {
-    _unsubscribe();
-    _unsubscribe = null;
-  }
+  _currentCancel?.();
+  _currentCancel = null;
 }
 
 /**
  * Inicializa el proyecto: carga desde IndexedDB si existe, luego activa el
- * guardado automático. Debe llamarse una sola vez al arrancar la aplicación.
- * No escribe en la base de datos antes de terminar la carga.
- * Llamadas adicionales (p.ej. React Strict Mode) son ignoradas.
+ * guardado automático. Retorna { cancel, ready } de forma sincrónica.
+ * cancel() aborta la carga pendiente, cancela timers y elimina la suscripción.
+ * Debe llamarse desde useEffect; retornar cancel como cleanup evita dobles
+ * suscripciones en React Strict Mode.
+ * Llamadas adicionales sin cancel previo (p.ej. doble llamada sin cleanup)
+ * son ignoradas.
  */
-export async function initProject(store: Store): Promise<void> {
-  if (_initialized) return;
+export function initProject(store: Store): { cancel: () => void; ready: Promise<void> } {
+  if (_initialized) {
+    return { cancel: () => {}, ready: Promise.resolve() };
+  }
   _initialized = true;
 
-  store.getState().setSaveStatus('loading', null);
-  try {
-    const saved = await loadProjectFromDb();
-    if (saved != null) {
-      const validated = validateProjectData(saved);
-      store.getState().hydrateProject(validated.objects, validated.projectOrigin);
-      store.getState().setSaveStatus('saved', null);
-    } else {
-      store.getState().setSaveStatus('idle', null);
+  let cancelled = false;
+  let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+  let unsub: (() => void) | null = null;
+
+  function cancel() {
+    cancelled = true;
+    if (debounceTimer != null) {
+      clearTimeout(debounceTimer);
+      debounceTimer = null;
     }
-  } catch (err) {
-    store.getState().setSaveStatus('error', `Error al cargar: ${String(err)}`);
+    unsub?.();
+    unsub = null;
+    _initialized = false;
   }
 
-  // Auto-save: starts AFTER the initial load, preventing overwriting existing data.
-  const triggerSave = debounce(async () => {
-    const myGen = ++_saveGeneration;
-    store.getState().setSaveStatus('saving', null);
-    try {
-      await saveProjectToDb(snapshotData(store));
-      if (myGen === _saveGeneration) {
-        store.getState().setSaveStatus('saved', null);
-      }
-    } catch (err) {
-      if (myGen === _saveGeneration) {
-        store.getState().setSaveStatus('error', `Error al guardar: ${String(err)}`);
-      }
-    }
-  }, 1000);
+  _currentCancel = cancel;
 
-  _unsubscribe = store.subscribe((state, prev) => {
-    if (state.objects !== prev.objects || state.projectOrigin !== prev.projectOrigin) {
-      triggerSave();
+  store.getState().setSaveStatus('loading', null);
+
+  const ready = (async () => {
+    let loadOk = false;
+    try {
+      const saved = await loadProjectFromDb();
+      if (cancelled) return;
+      if (saved != null) {
+        const validated = validateProjectData(saved);
+        store.getState().hydrateProject(validated.objects, validated.projectOrigin);
+        store.getState().setSaveStatus('saved', null);
+      } else {
+        store.getState().setSaveStatus('idle', null);
+      }
+      loadOk = true;
+    } catch (err) {
+      if (cancelled) return;
+      store.getState().setSaveStatus('error', `Error al cargar: ${String(err)}`);
     }
-  });
+
+    if (!loadOk || cancelled) return;
+
+    // Auto-save: status and generation update IMMEDIATELY on change;
+    // the actual write is debounced 1 s to coalesce rapid edits.
+    unsub = store.subscribe((state, prev) => {
+      if (state.objects !== prev.objects || state.projectOrigin !== prev.projectOrigin) {
+        const myGen = ++_saveGeneration;
+        store.getState().setSaveStatus('saving', null);
+
+        if (debounceTimer != null) clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(async () => {
+          debounceTimer = null;
+          if (cancelled) return;
+          try {
+            await saveProjectToDb(snapshotData(store));
+            if (myGen === _saveGeneration) {
+              store.getState().setSaveStatus('saved', null);
+            }
+          } catch (err) {
+            if (myGen === _saveGeneration) {
+              store.getState().setSaveStatus('error', `Error al guardar: ${String(err)}`);
+            }
+          }
+        }, 1000);
+      }
+    });
+  })();
+
+  return { cancel, ready };
 }
 
 /**

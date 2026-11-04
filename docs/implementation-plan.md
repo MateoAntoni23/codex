@@ -22,6 +22,7 @@ Commit más reciente: `04f6139` (correcciones de persistencia post-auditoría)
 | 4 | Origen del proyecto: panel UI, marcador 3D, snap compensado | `863a560` |
 | 5 | Guardado local (IndexedDB), exportación e importación JSON | `05614b5` |
 | 5b | Correcciones de persistencia: db retry, guard initProject, export errors, tests con fake timers | `04f6139` |
+| 5c | Correcciones de auditoría: tx.oncomplete, estado inmediato, cancel en useEffect, bloqueo UI, docs | pendiente |
 
 ### Cobertura de pruebas actual
 - **121 pruebas** distribuidas en 9 archivos de test.

@@ -31,6 +31,8 @@ export function Inspector() {
   const selectedId = useSceneStore((s) => s.selectedId);
   const projectOrigin = useSceneStore((s) => s.projectOrigin);
   const updateObjectPosition = useSceneStore((s) => s.updateObjectPosition);
+  const saveStatus = useSceneStore((s) => s.saveStatus);
+  const isLoading = saveStatus === 'loading';
 
   const obj =
     selectedId != null ? (objects.find((o) => o.id === selectedId) ?? null) : null;
@@ -138,6 +140,7 @@ export function Inspector() {
                         type="text"
                         inputMode="numeric"
                         value={draft[axis]}
+                        disabled={isLoading}
                         onChange={(e) => handleChange(axis, e.target.value)}
                       />
                       {errorMsg != null && (
@@ -152,6 +155,7 @@ export function Inspector() {
                 <button
                   className="btn-snap"
                   type="button"
+                  disabled={isLoading}
                   onClick={handleSnapToFloor}
                 >
                   Apoyar en piso
@@ -165,6 +169,7 @@ export function Inspector() {
                 <button
                   className="btn-secondary"
                   type="button"
+                  disabled={isLoading}
                   onClick={handleCancel}
                 >
                   Cancelar
@@ -172,6 +177,7 @@ export function Inspector() {
                 <button
                   className="btn-primary"
                   type="button"
+                  disabled={isLoading}
                   onClick={handleApply}
                 >
                   Aplicar

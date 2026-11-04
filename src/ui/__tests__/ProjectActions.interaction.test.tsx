@@ -116,3 +116,27 @@ describe('ProjectActions — Restablecer ejemplo', () => {
     expect(mockReset).toHaveBeenCalledOnce();
   });
 });
+
+describe('ProjectActions — bloqueo durante carga', () => {
+  it('Importar y Restablecer están deshabilitados cuando saveStatus=loading', () => {
+    useSceneStore.setState({ saveStatus: 'loading' });
+    render(<ProjectActions />);
+    const importBtn = screen.getByRole<HTMLButtonElement>('button', { name: 'Importar' });
+    const resetBtn = screen.getByRole<HTMLButtonElement>('button', { name: 'Restablecer ejemplo' });
+    expect(importBtn.disabled).toBe(true);
+    expect(resetBtn.disabled).toBe(true);
+  });
+
+  it('Exportar permanece habilitado cuando saveStatus=loading', () => {
+    useSceneStore.setState({ saveStatus: 'loading' });
+    render(<ProjectActions />);
+    const exportBtn = screen.getByRole<HTMLButtonElement>('button', { name: 'Exportar' });
+    expect(exportBtn.disabled).toBe(false);
+  });
+
+  it('muestra hint de recuperación cuando saveStatus=error', () => {
+    useSceneStore.setState({ saveStatus: 'error', saveError: 'fallo de lectura' });
+    render(<ProjectActions />);
+    expect(screen.getByText(/importá una copia guardada/i)).toBeTruthy();
+  });
+});

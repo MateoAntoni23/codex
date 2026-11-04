@@ -6,7 +6,8 @@ import { useSceneStore } from './store/sceneStore';
 
 export function App() {
   useEffect(() => {
-    void initProject(useSceneStore);
+    const { cancel } = initProject(useSceneStore);
+    return cancel;
   }, []);
 
   return <Layout />;

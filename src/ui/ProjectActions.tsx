@@ -43,6 +43,8 @@ export function ProjectActions() {
     resetProject(useSceneStore, window.confirm);
   }
 
+  const isLoading = saveStatus === 'loading';
+
   const statusText =
     saveStatus === 'error'
       ? `Error: ${saveError ?? 'desconocido'}`
@@ -70,6 +72,7 @@ export function ProjectActions() {
         <button
           className="btn-secondary"
           type="button"
+          disabled={isLoading}
           onClick={handleImportClick}
           title="Reemplaza el proyecto con un archivo JSON exportado previamente."
         >
@@ -87,6 +90,7 @@ export function ProjectActions() {
         <button
           className="btn-secondary"
           type="button"
+          disabled={isLoading}
           onClick={handleReset}
           title="Vuelve a la escena de ejemplo. Se perderán los cambios no exportados."
         >
@@ -97,6 +101,12 @@ export function ProjectActions() {
       {importError != null && (
         <span className="project-import-error" role="alert">
           {importError}
+        </span>
+      )}
+
+      {saveStatus === 'error' && (
+        <span className="project-recovery-hint">
+          Para recuperar el proyecto, importá una copia guardada o restablecé el ejemplo.
         </span>
       )}
     </div>

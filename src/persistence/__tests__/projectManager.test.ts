@@ -61,17 +61,28 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
+// Helper: start initProject and wait for the load phase to complete.
+async function init(opts?: { load?: unknown; saveReject?: Error }) {
+  if (opts?.load !== undefined) {
+    mockLoad.mockResolvedValue(opts.load);
+  }
+  if (opts?.saveReject) {
+    mockSave.mockRejectedValue(opts.saveReject);
+  }
+  const { cancel, ready } = initProject(useSceneStore);
+  await ready;
+  return cancel;
+}
+
 describe('initProject — sin datos guardados', () => {
   it('mantiene los objetos iniciales cuando no hay datos en la DB', async () => {
-    mockLoad.mockResolvedValue(null);
-    await initProject(useSceneStore);
+    await init({ load: null });
     const objects = useSceneStore.getState().objects;
     expect(objects.some((o) => o.id === 'panel-1')).toBe(true);
   });
 
   it('establece saveStatus=idle cuando no hay datos guardados', async () => {
-    mockLoad.mockResolvedValue(null);
-    await initProject(useSceneStore);
+    await init({ load: null });
     expect(useSceneStore.getState().saveStatus).toBe('idle');
   });
 });
@@ -79,7 +90,7 @@ describe('initProject — sin datos guardados', () => {
 describe('initProject — con datos guardados', () => {
   it('hidrata el store con los datos guardados', async () => {
     mockLoad.mockResolvedValue(SAVED_PROJECT);
-    await initProject(useSceneStore);
+    await init({});
     const state = useSceneStore.getState();
     expect(state.objects).toHaveLength(1);
     expect(state.objects[0].position).toEqual({ x: 9000, y: 9000, z: 400 });
@@ -88,14 +99,14 @@ describe('initProject — con datos guardados', () => {
 
   it('establece saveStatus=saved cuando hay datos guardados', async () => {
     mockLoad.mockResolvedValue(SAVED_PROJECT);
-    await initProject(useSceneStore);
+    await init({});
     expect(useSceneStore.getState().saveStatus).toBe('saved');
   });
 
   it('no sobrescribe datos guardados con la escena inicial', async () => {
     // La DB tiene datos → al iniciar no se debe guardar la escena inicial
     mockLoad.mockResolvedValue(SAVED_PROJECT);
-    await initProject(useSceneStore);
+    await init({});
     expect(mockSave).not.toHaveBeenCalled();
   });
 });
@@ -103,12 +114,23 @@ describe('initProject — con datos guardados', () => {
 describe('initProject — fallo de IndexedDB al cargar', () => {
   it('establece saveStatus=error y conserva objetos en memoria', async () => {
     mockLoad.mockRejectedValue(new Error('Disco lleno'));
-    await initProject(useSceneStore);
+    await init({});
     const state = useSceneStore.getState();
     expect(state.saveStatus).toBe('error');
     expect(state.saveError).toMatch(/cargar/);
-    // Objetos en memoria no se pierden
     expect(state.objects.length).toBeGreaterThan(0);
+  });
+
+  it('no activa el auto-save tras un fallo de carga', async () => {
+    vi.useFakeTimers();
+    mockLoad.mockRejectedValue(new Error('DB error'));
+    await init({});
+
+    useSceneStore.getState().updateObjectPosition('panel-1', { x: 1, y: 2, z: 3 });
+    await vi.advanceTimersByTimeAsync(1100);
+
+    expect(mockSave).not.toHaveBeenCalled();
+    expect(useSceneStore.getState().saveStatus).toBe('error');
   });
 });
 
@@ -222,10 +244,22 @@ describe('resetProject', () => {
 });
 
 describe('auto-save — debounce y escritura', () => {
+  it('saveStatus cambia a saving inmediatamente al modificar (antes del debounce)', async () => {
+    vi.useFakeTimers();
+    mockLoad.mockResolvedValue(null);
+    await init({});
+
+    expect(useSceneStore.getState().saveStatus).toBe('idle');
+    useSceneStore.getState().updateObjectPosition('panel-1', { x: 999, y: 999, z: 1000 });
+
+    // Status is set synchronously by the subscription — no timer advance needed
+    expect(useSceneStore.getState().saveStatus).toBe('saving');
+  });
+
   it('guarda el estado tras 1 s de inactividad', async () => {
     vi.useFakeTimers();
     mockLoad.mockResolvedValue(null);
-    await initProject(useSceneStore);
+    await init({});
 
     useSceneStore.getState().updateObjectPosition('panel-1', { x: 999, y: 999, z: 1000 });
     expect(mockSave).not.toHaveBeenCalled(); // debounce aún no disparó
@@ -244,7 +278,7 @@ describe('auto-save — debounce y escritura', () => {
   it('múltiples cambios rápidos producen un solo auto-save (debounce)', async () => {
     vi.useFakeTimers();
     mockLoad.mockResolvedValue(null);
-    await initProject(useSceneStore);
+    await init({});
 
     useSceneStore.getState().updateObjectPosition('panel-1', { x: 100, y: 0, z: 1000 });
     await vi.advanceTimersByTimeAsync(500); // No disparó aún
@@ -261,7 +295,7 @@ describe('auto-save — debounce y escritura', () => {
   it('la carga inicial no dispara el auto-save', async () => {
     vi.useFakeTimers();
     mockLoad.mockResolvedValue(SAVED_PROJECT);
-    await initProject(useSceneStore);
+    await init({});
 
     await vi.advanceTimersByTimeAsync(2000);
 
@@ -274,7 +308,7 @@ describe('auto-save — fallo de almacenamiento', () => {
     vi.useFakeTimers();
     mockLoad.mockResolvedValue(null);
     mockSave.mockRejectedValue(new Error('Sin espacio'));
-    await initProject(useSceneStore);
+    await init({});
 
     useSceneStore.getState().updateObjectPosition('panel-1', { x: 1, y: 2, z: 3 });
     await vi.advanceTimersByTimeAsync(1100);
@@ -289,17 +323,57 @@ describe('auto-save — fallo de almacenamiento', () => {
   });
 });
 
-describe('initProject — llamadas múltiples (React Strict Mode)', () => {
-  it('segunda llamada es ignorada: no duplica suscripciones ni sobrescribe el estado', async () => {
+describe('initProject — ciclo de vida (React Strict Mode)', () => {
+  it('segunda llamada sin cleanup es ignorada (no duplica suscripciones)', async () => {
     vi.useFakeTimers();
     mockLoad.mockResolvedValue(SAVED_PROJECT);
-    await initProject(useSceneStore);
-    await initProject(useSceneStore); // Segunda llamada: debe ignorarse
+    const { ready: r1 } = initProject(useSceneStore);
+    await r1;
+    const { ready: r2 } = initProject(useSceneStore); // sin cancel previo → ignorada
+    await r2;
 
     useSceneStore.getState().updateObjectPosition('motor-1', { x: 1, y: 1, z: 1 });
     await vi.advanceTimersByTimeAsync(1100);
 
-    // Solo un guardado esperado (una única suscripción)
     expect(mockSave).toHaveBeenCalledOnce();
+  });
+
+  it('cleanup/remount (Strict Mode): una sola suscripción activa después del remount', async () => {
+    vi.useFakeTimers();
+    mockLoad.mockResolvedValue(SAVED_PROJECT);
+
+    const { cancel, ready: r1 } = initProject(useSceneStore);
+    await r1;
+    cancel(); // simula cleanup del efecto
+
+    const { ready: r2 } = initProject(useSceneStore); // remount
+    await r2;
+
+    useSceneStore.getState().updateObjectPosition('motor-1', { x: 1, y: 1, z: 1 });
+    await vi.advanceTimersByTimeAsync(1100);
+
+    expect(mockSave).toHaveBeenCalledOnce();
+  });
+
+  it('cancelar durante carga: no hidrata ni activa el auto-save', async () => {
+    vi.useFakeTimers();
+    let resolveLoad!: (v: ProjectData | null) => void;
+    mockLoad.mockReturnValue(
+      new Promise<ProjectData | null>((r) => {
+        resolveLoad = r;
+      }),
+    );
+
+    const { cancel, ready } = initProject(useSceneStore);
+    cancel(); // cancela antes de que resuelva la carga
+    resolveLoad(SAVED_PROJECT);
+    await ready;
+
+    // La hidratación no debe haberse producido
+    expect(useSceneStore.getState().objects).not.toHaveLength(1);
+    // El auto-save no debe estar activo
+    useSceneStore.getState().updateObjectPosition('panel-1', { x: 1, y: 1, z: 1 });
+    await vi.advanceTimersByTimeAsync(1100);
+    expect(mockSave).not.toHaveBeenCalled();
   });
 });

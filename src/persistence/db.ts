@@ -14,6 +14,11 @@ export function _setIdbFactory(factory: IDBFactory): void {
   _dbPromise = null;
 }
 
+/** Inject an already-open IDBDatabase (skips openDatabase). For testing tx-level errors. */
+export function _setDbForTesting(db: IDBDatabase): void {
+  _dbPromise = Promise.resolve(db);
+}
+
 /** Restore the global IDBFactory and reset the cached connection. */
 export function _resetIdbFactory(): void {
   _factory = null;
@@ -60,8 +65,9 @@ export async function saveProjectToDb(data: ProjectData): Promise<void> {
   const db = await openDatabase();
   return new Promise<void>((resolve, reject) => {
     const tx = db.transaction(STORE_NAME, 'readwrite');
-    const req = tx.objectStore(STORE_NAME).put(data, PROJECT_KEY);
-    req.onsuccess = () => resolve();
-    req.onerror = () => reject(req.error);
+    tx.objectStore(STORE_NAME).put(data, PROJECT_KEY);
+    tx.oncomplete = () => resolve();
+    tx.onabort = () => reject(tx.error ?? new Error('Transacción abortada al guardar'));
+    tx.onerror = () => reject(tx.error ?? new Error('Error en la transacción al guardar'));
   });
 }
