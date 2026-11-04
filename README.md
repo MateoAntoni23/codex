@@ -125,14 +125,49 @@ La conversión centralizada está en `src/scene/coords.ts`.
       debe mostrar `500` (= 1000 − 500). Al aplicar, el tablero queda
       con su base en Z global = 0.
 
+11. **Guardado y recuperación automática** (barra inferior):
+    - Al abrir la app, el indicador muestra "Cargando..." mientras se
+      lee IndexedDB y luego "Guardado localmente" si había un proyecto.
+    - Mové el tablero (inspector → Aplicar) y observá "Guardando..." → 
+      "Guardado localmente" al cabo de ~1 s.
+    - **Prueba de recarga**: con el tablero en una posición personalizada
+      y el origen modificado, recargá la página (F5 o Ctrl+R). El
+      inspector y el marcador 3D deben mostrar los valores que tenían
+      antes de recargar, no los de la escena de ejemplo.
+    - **Exportar**: hacé clic en **Exportar**. El navegador descarga
+      `proyecto-bandejas-YYYY-MM-DD.json`. Abrí el archivo con un editor
+      de texto y verificá que contiene `schemaVersion`, `objects` y
+      `projectOrigin` (en mm respecto del sistema global).
+    - **Importar**: modificá el JSON descargado (p. ej. cambiá X del
+      tablero a `0`), guardá y hacé clic en **Importar**. Confirmá el
+      diálogo. El tablero debe desplazarse a la nueva posición.
+    - **Importar archivo inválido**: intentá importar un `.json` que no
+      sea un proyecto (p. ej. `{"foo":"bar"}`). Aparece el mensaje de
+      error en la barra inferior y el proyecto permanece inalterado.
+    - **Restablecer ejemplo**: hacé clic en **Restablecer ejemplo** y
+      confirmá. La escena vuelve a los objetos de ejemplo; el origen
+      regresa a `{0, 0, 0}`.
+    - **El guardado local pertenece a este navegador**: si abrís la app
+      en otro navegador o perfil, comenzará con la escena de ejemplo.
+      Usá **Exportar** para mover el proyecto entre navegadores.
+
 ## Estructura del proyecto
 
 ```
 src/
   types/domain.ts           Modelo de datos (mm, Z-up, IDs estables)
   store/
-    sceneStore.ts           Estado global (Zustand): objetos + selección + origen
+    sceneStore.ts           Estado global (Zustand): objetos + selección + origen + estado de guardado
     initialObjects.ts       Objetos de ejemplo de la escena
+  persistence/
+    schema.ts               Versión de esquema y tipo ProjectData
+    validate.ts             Validación en tiempo de ejecución del JSON importado
+    db.ts                   Wrapper de IndexedDB (sin dependencias externas)
+    projectManager.ts       initProject, exportProject, importProject, resetProject
+    __tests__/
+      validate.test.ts      Pruebas unitarias del validador
+      db.test.ts            Pruebas de IndexedDB (fake-indexeddb)
+      projectManager.test.ts Pruebas de guardar/cargar/importar/exportar (mocked DB)
   scene/
     coords.ts               Conversión dominio → Three.js (centralizada)
     Floor.tsx               Piso y grilla
@@ -148,12 +183,15 @@ src/
     SceneTree.tsx           Panel izquierdo: lista de objetos
     Inspector.tsx           Panel derecho: propiedades + editor de posición
     OriginPanel.tsx         Sección inferior izquierda: origen del proyecto
-    ConductorBar.tsx        Panel inferior (reservado para conductores)
+    ProjectActions.tsx      Barra inferior: estado, Exportar, Importar, Restablecer
+    ConductorBar.tsx        Panel inferior: acciones del proyecto + placeholder de conductores
     positionEditor.ts       Funciones puras: validación y snap-to-floor
     __tests__/
-      positionEditor.test.ts           Pruebas unitarias de positionEditor
-      Inspector.interaction.test.tsx   Pruebas de interacción del inspector (jsdom)
-      OriginPanel.interaction.test.tsx Pruebas de interacción del panel de origen (jsdom)
+      positionEditor.test.ts              Pruebas unitarias de positionEditor
+      Inspector.interaction.test.tsx      Pruebas de interacción del inspector (jsdom)
+      OriginPanel.interaction.test.tsx    Pruebas de interacción del panel de origen (jsdom)
+      ProjectActions.interaction.test.tsx Pruebas de interacción de acciones del proyecto (jsdom)
+  App.tsx                   Punto de entrada: monta el Layout y llama a initProject
   styles/global.css         Estilos oscuros
 ```
 
@@ -162,5 +200,4 @@ src/
 - Bandejas portacables
 - Lista de conductores
 - Importación/exportación DXF
-- Edición de propiedades desde el inspector
-- Backend y autenticación
+- Backend, cuentas de usuario y sincronización en la nube

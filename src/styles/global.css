@@ -317,3 +317,44 @@ html, body, #root {
   font-style: italic;
   font-size: 12px;
 }
+
+.conductor-divider {
+  width: 1px;
+  height: 20px;
+  background: #2a2a44;
+  flex-shrink: 0;
+}
+
+/* ── Acciones del proyecto ── */
+.project-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.project-actions-buttons {
+  display: flex;
+  gap: 4px;
+}
+
+.save-status {
+  font-size: 11px;
+  min-width: 150px;
+  font-variant-numeric: tabular-nums;
+}
+
+.save-status--saved  { color: #66cc88; }
+.save-status--saving { color: #aaaacc; font-style: italic; }
+.save-status--loading { color: #aaaacc; font-style: italic; }
+.save-status--error  { color: #ff6666; }
+.save-status--idle   { color: transparent; pointer-events: none; }
+
+.project-import-error {
+  font-size: 11px;
+  color: #ff6666;
+  max-width: 220px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
