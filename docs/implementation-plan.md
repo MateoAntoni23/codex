@@ -119,47 +119,56 @@ usuario antes de agregar `fabricaId` al esquema.
 
 ---
 
-### Fase B — Dimensiones editables de tablero y nave 📋
+### Fase B — Modelo de dominio extendido 📋
 
-**Objetivo:** permitir editar ancho, profundidad y altura del tablero y la
-nave directamente desde el inspector.
+> Ver `docs/equipment-domain-model.md` para el diseño completo.
 
-**Decisiones de diseño a tomar antes de implementar:**
-- ¿Qué punto permanece fijo al redimensionar? (propuesta: el punto inferior
-  central de la base, equivalente a mantener `position.x`, `position.y` y
-  `position.z - height/2` constantes).
-- Redimensionar **no mueve ni escala** los objetos interiores.
-- Validación: dimensiones positivas (y `height=0` solo para `floor`).
+El modelo v1 (lista plana de 4 tipos) se reemplaza por el modelo v2 con
+base común, 10 categorías, composición padre/hijo, conexiones, fábricas
+y geometría extendida. Las fases B.1–B.8 implementan este modelo en
+entregas pequeñas y verificables.
 
-**Alcance:**
-- Nuevas acciones en el store: `updateObjectDimensions`.
-- Formulario en el inspector similar al de posición.
-- Actualización del campo `dimensions` en `DomainObject`.
+**Fases planificadas:**
 
-**No incluye:** modo de montaje (piso/pared) del tablero, puertos.
+| Sub-fase | Objetivo |
+|---|---|
+| B.1 | Tipos TypeScript extendidos (sin UI ni migración) |
+| B.2 | TAG y campos base en Inspector |
+| B.3 | Ficha técnica Motor y Sensor |
+| B.4 | Composición padre/hijo |
+| B.5 | Puertos y conexiones (cables) |
+| B.6 | Mangueras y actuadores |
+| B.7 | Migración schemaVersion 1 → 2 |
+| B.8 | Fábricas y organización en UI |
+
+**Decisiones pendientes antes de B.1:**
+- ¿Manifold es entidad propia o atributo de electroválvula?
+- ¿Borneras como equipos o como segmentos de cable?
+- ¿v1 y v2 conviven en el validador o hay migración automática?
+
+**No incluye en estas fases:** modo de montaje con CAD, cálculo eléctrico,
+cálculo neumático.
 
 ---
 
-### Fase C — Catálogo básico y etiquetas de equipos 📋
+### Fase C — Visualización 3D por categoría y etiquetas 📋
 
-**Objetivo:** separar categoría del equipo, geometría 3D y datos técnicos.
-Agregar etiqueta configurable visible en el visor.
+**Objetivo:** geometría 3D reconocible y etiqueta configurable para cada
+categoría del catálogo extendido.
+
+**Prerequisito:** Fase B.1 (tipos TypeScript extendidos).
 
 **Alcance:**
-- Nuevos tipos: `pump`, `valve`, `sensor`, `luminaire`, `pushbutton`.
-- Geometría 3D simplificada y reconocible para cada tipo (caja con icono).
+- Geometría 3D simplificada para las 10 categorías (caja para tableros,
+  cilindro para bombas/actuadores, etc.).
 - Etiqueta configurable visible sobre el objeto en el visor (`Html` de drei).
 - La identificación nunca depende únicamente del color.
-- Propiedades técnicas básicas por categoría (a definir por tipo).
-- Separación clara en `domain.ts`: `ObjectType` (categoría), `DomainObject`
-  (datos), geometría (scene components).
+- Separación clara: `EquipmentCategory` (tipo), `EquipmentBase` (datos),
+  SceneComponent (visualización).
 
-**Requisitos previos:** Fase A (árbol por categorías).
-
-**Consideración normativa:**
-- Iconos y geometrías son representaciones propias; no se afirma conformidad
-  con IEC 60617 ni ISO 1219.
-- Los símbolos deben usar recursos con licencia adecuada.
+**Consideración normativa:** iconos y geometrías son representaciones
+propias; no se afirma conformidad con IEC 60617 ni ISO 1219. Los símbolos
+deben usar recursos con licencia adecuada.
 
 ---
 

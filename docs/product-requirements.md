@@ -85,34 +85,38 @@ El guardado local ocurre automáticamente en el navegador del usuario.
 > Los requisitos de esta sección se documentan para orientar el diseño
 > futuro. **No están implementados en la versión actual.**
 
-### 1. Tableros configurables 📋
+### 1. Modelo de dominio extendido 📋
 
-- Nombre y etiqueta editables.
-- Dimensiones editables: ancho, profundidad y altura.
-- Modo de montaje: en piso o en pared.
-- Posición editable (ya implementada para el tipo actual).
-- Puertos de entrada/salida: a definir en etapa posterior.
-- Distribución interna (interruptores, barras, etc.): reservada para etapa
-  posterior, fuera del alcance actual.
+> Ver `docs/equipment-domain-model.md` para el diseño completo del modelo.
 
-### 2. Catálogo de equipos 📋
+Todos los equipos comparten una **base común** con: ID estable, TAG único,
+nombre, categoría, condición (existente/nuevo), estado de confirmación,
+posición, orientación, geometría, puertos, datos técnicos, organización
+(fábricas/subáreas) y procedencia.
 
-**Categorías previstas:** motores, bombas, válvulas, sensores, luminarias,
-botoneras.
+**Categorías previstas (10):**
+tablero eléctrico, tablero neumático, motor, bomba, sensor, válvula de
+proceso, electroválvula, actuador, luminaria, botonera.
 
-Cada equipo debe distinguir tres conceptos independientes:
+Cada categoría tiene su propia ficha técnica (ver sección 5 del modelo).
+Los valores desconocidos se representan como `null`, nunca como `0`.
 
-| Concepto | Descripción |
-|---|---|
-| Categoría | Grupo funcional del equipo (p.ej. motor, válvula). |
-| Representación gráfica | Geometría 3D simplificada y reconocible. No depende únicamente del color. |
-| Datos técnicos | Propiedades como potencia, presión, voltaje, según categoría. |
+**Dimensiones editables** para todos los elementos, con forma (caja o
+cilindro) y punto de anclaje al redimensionar.
 
-- Etiqueta visible configurable directamente sobre el objeto 3D.
-- Icono de categoría para identificación rápida.
-- La identificación nunca debe depender exclusivamente del color.
+**Composición:** un tablero neumático contiene electroválvulas y manifold.
+Las posiciones de los hijos son locales respecto del padre. No se permiten
+ciclos. Los hijos no se escalan automáticamente al redimensionar el contenedor.
 
-### 3. Normas y símbolos 📋
+**Conexiones** como entidades propias: cables (tablero eléctrico → componentes)
+y mangueras (electroválvula → actuador). Un actuador de doble efecto requiere
+dos mangueras. Los puertos eléctricos y neumáticos son incompatibles.
+
+### 2. Organización 📋
+
+Ver sección 8 de este documento (Jerarquía de fábricas y subáreas).
+
+### 3. Normas, símbolos y representación gráfica 📋
 
 > **Aclaración importante sobre conformidad normativa:**  
 > Las referencias a normas IEC 60617 e ISO 1219 sirven como guía de
