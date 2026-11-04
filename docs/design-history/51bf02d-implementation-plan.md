@@ -3,8 +3,8 @@
 
 # Plan de implementación — Diseñador de Bandejas Portacables 3D
 
-> **Estado del documento:** activo  
-> **Última actualización:** 2026-11-04  
+> **Estado del documento:** activo
+> **Última actualización:** 2026-11-04
 > **Referencia:** `docs/product-requirements.md`
 
 ---

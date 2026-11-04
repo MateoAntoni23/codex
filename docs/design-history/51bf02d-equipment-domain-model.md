@@ -3,8 +3,8 @@
 
 # Modelo de dominio de equipos
 
-> **Estado:** propuesta de diseño — sin implementar  
-> **Última actualización:** 2026-11-04  
+> **Estado:** propuesta de diseño — sin implementar
+> **Última actualización:** 2026-11-04
 > **Referencia:** `docs/product-requirements.md`, `docs/implementation-plan.md`
 
 ---

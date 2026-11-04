@@ -3,8 +3,8 @@
 
 # Requisitos del producto — Diseñador de Bandejas Portacables 3D
 
-> **Estado del documento:** activo  
-> **Última actualización:** 2026-11-04  
+> **Estado del documento:** activo
+> **Última actualización:** 2026-11-04
 > **Convención de estado:** ✅ Implementado · 🔧 En corrección · 📋 Planificado
 
 ---
@@ -121,7 +121,7 @@ Ver sección 8 de este documento (Jerarquía de fábricas y subáreas).
 
 ### 3. Normas, símbolos y representación gráfica 📋
 
-> **Aclaración importante sobre conformidad normativa:**  
+> **Aclaración importante sobre conformidad normativa:**
 > Las referencias a normas IEC 60617 e ISO 1219 sirven como guía de
 > simbología para diagramas eléctricos y neumáticos
 > respectivamente. **Estas normas no definen geometrías 3D universales.**
