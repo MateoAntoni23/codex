@@ -28,18 +28,31 @@ function snapshotData(store: Store): ProjectData {
 }
 
 let _saveGeneration = 0;
+let _initialized = false;
+let _unsubscribe: (() => void) | null = null;
 
-/** Reset the generation counter — for testing only. */
+/** Reset internal state — for testing only. */
 export function _resetSaveGeneration(): void {
   _saveGeneration = 0;
+}
+export function _resetInitialized(): void {
+  _initialized = false;
+  if (_unsubscribe != null) {
+    _unsubscribe();
+    _unsubscribe = null;
+  }
 }
 
 /**
  * Inicializa el proyecto: carga desde IndexedDB si existe, luego activa el
  * guardado automático. Debe llamarse una sola vez al arrancar la aplicación.
  * No escribe en la base de datos antes de terminar la carga.
+ * Llamadas adicionales (p.ej. React Strict Mode) son ignoradas.
  */
 export async function initProject(store: Store): Promise<void> {
+  if (_initialized) return;
+  _initialized = true;
+
   store.getState().setSaveStatus('loading', null);
   try {
     const saved = await loadProjectFromDb();
@@ -70,7 +83,7 @@ export async function initProject(store: Store): Promise<void> {
     }
   }, 1000);
 
-  store.subscribe((state, prev) => {
+  _unsubscribe = store.subscribe((state, prev) => {
     if (state.objects !== prev.objects || state.projectOrigin !== prev.projectOrigin) {
       triggerSave();
     }
@@ -82,15 +95,19 @@ export async function initProject(store: Store): Promise<void> {
  * El origen se expresa en mm respecto del sistema global.
  */
 export function exportProject(store: Store): void {
-  const data = snapshotData(store);
-  const json = JSON.stringify(data, null, 2);
-  const blob = new Blob([json], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement('a');
-  anchor.href = url;
-  anchor.download = `proyecto-bandejas-${new Date().toISOString().slice(0, 10)}.json`;
-  anchor.click();
-  URL.revokeObjectURL(url);
+  try {
+    const data = snapshotData(store);
+    const json = JSON.stringify(data, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `proyecto-bandejas-${new Date().toISOString().slice(0, 10)}.json`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  } catch (err) {
+    store.getState().setSaveStatus('error', `Error al exportar: ${String(err)}`);
+  }
 }
 
 /**

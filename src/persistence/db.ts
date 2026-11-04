@@ -34,8 +34,14 @@ function openDatabase(): Promise<IDBDatabase> {
       req.result.createObjectStore(STORE_NAME);
     };
     req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
-    req.onblocked = () => reject(new Error('La base de datos está bloqueada por otra pestaña'));
+    req.onerror = () => {
+      _dbPromise = null; // Permite reintentar la conexión en la próxima llamada
+      reject(req.error);
+    };
+    req.onblocked = () => {
+      _dbPromise = null;
+      reject(new Error('La base de datos está bloqueada por otra pestaña'));
+    };
   });
   return _dbPromise;
 }

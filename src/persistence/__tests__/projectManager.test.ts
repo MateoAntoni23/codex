@@ -17,6 +17,7 @@ import {
   importProject,
   resetProject,
   _resetSaveGeneration,
+  _resetInitialized,
 } from '../projectManager';
 
 const mockLoad = loadProjectFromDb as ReturnType<typeof vi.fn>;
@@ -49,6 +50,7 @@ function resetStore() {
 beforeEach(() => {
   resetStore();
   _resetSaveGeneration();
+  _resetInitialized();
   mockLoad.mockReset();
   mockSave.mockReset();
   mockSave.mockResolvedValue(undefined);
@@ -56,6 +58,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.clearAllTimers();
+  vi.useRealTimers();
 });
 
 describe('initProject — sin datos guardados', () => {
@@ -218,20 +221,85 @@ describe('resetProject', () => {
   });
 });
 
-describe('fallo de guardado — estado en memoria se conserva', () => {
-  it('saveStatus=error no borra los objetos en memoria', async () => {
+describe('auto-save — debounce y escritura', () => {
+  it('guarda el estado tras 1 s de inactividad', async () => {
+    vi.useFakeTimers();
+    mockLoad.mockResolvedValue(null);
+    await initProject(useSceneStore);
+
+    useSceneStore.getState().updateObjectPosition('panel-1', { x: 999, y: 999, z: 1000 });
+    expect(mockSave).not.toHaveBeenCalled(); // debounce aún no disparó
+
+    await vi.advanceTimersByTimeAsync(1100);
+
+    expect(mockSave).toHaveBeenCalledOnce();
+    const saved = mockSave.mock.calls[0][0] as ProjectData;
+    expect(saved.objects.find((o) => o.id === 'panel-1')?.position).toEqual({
+      x: 999,
+      y: 999,
+      z: 1000,
+    });
+  });
+
+  it('múltiples cambios rápidos producen un solo auto-save (debounce)', async () => {
+    vi.useFakeTimers();
+    mockLoad.mockResolvedValue(null);
+    await initProject(useSceneStore);
+
+    useSceneStore.getState().updateObjectPosition('panel-1', { x: 100, y: 0, z: 1000 });
+    await vi.advanceTimersByTimeAsync(500); // No disparó aún
+    useSceneStore.getState().updateObjectPosition('panel-1', { x: 200, y: 0, z: 1000 });
+    await vi.advanceTimersByTimeAsync(500); // Reinició el debounce
+    useSceneStore.getState().updateObjectPosition('panel-1', { x: 300, y: 0, z: 1000 });
+    await vi.advanceTimersByTimeAsync(1100); // Dispara una vez con el último valor
+
+    expect(mockSave).toHaveBeenCalledOnce();
+    const saved = mockSave.mock.calls[0][0] as ProjectData;
+    expect(saved.objects.find((o) => o.id === 'panel-1')?.position.x).toBe(300);
+  });
+
+  it('la carga inicial no dispara el auto-save', async () => {
+    vi.useFakeTimers();
+    mockLoad.mockResolvedValue(SAVED_PROJECT);
+    await initProject(useSceneStore);
+
+    await vi.advanceTimersByTimeAsync(2000);
+
+    expect(mockSave).not.toHaveBeenCalled();
+  });
+});
+
+describe('auto-save — fallo de almacenamiento', () => {
+  it('saveStatus pasa a error y los objetos en memoria se conservan', async () => {
+    vi.useFakeTimers();
     mockLoad.mockResolvedValue(null);
     mockSave.mockRejectedValue(new Error('Sin espacio'));
     await initProject(useSceneStore);
 
-    // Trigger auto-save synchronously by moving an object (debounce will fire later)
-    // We test the error path by calling saveProjectToDb directly via the store subscription
-    // Here we verify that even with save failure the objects remain intact.
-    const before = useSceneStore.getState().objects;
     useSceneStore.getState().updateObjectPosition('panel-1', { x: 1, y: 2, z: 3 });
-    // Objects changed in memory regardless of save status
-    const after = useSceneStore.getState().objects.find((o) => o.id === 'panel-1');
-    expect(after?.position).toEqual({ x: 1, y: 2, z: 3 });
-    expect(useSceneStore.getState().objects.length).toBe(before.length);
+    await vi.advanceTimersByTimeAsync(1100);
+
+    expect(useSceneStore.getState().saveStatus).toBe('error');
+    expect(useSceneStore.getState().saveError).toMatch(/Sin espacio/);
+    expect(useSceneStore.getState().objects.find((o) => o.id === 'panel-1')?.position).toEqual({
+      x: 1,
+      y: 2,
+      z: 3,
+    });
+  });
+});
+
+describe('initProject — llamadas múltiples (React Strict Mode)', () => {
+  it('segunda llamada es ignorada: no duplica suscripciones ni sobrescribe el estado', async () => {
+    vi.useFakeTimers();
+    mockLoad.mockResolvedValue(SAVED_PROJECT);
+    await initProject(useSceneStore);
+    await initProject(useSceneStore); // Segunda llamada: debe ignorarse
+
+    useSceneStore.getState().updateObjectPosition('motor-1', { x: 1, y: 1, z: 1 });
+    await vi.advanceTimersByTimeAsync(1100);
+
+    // Solo un guardado esperado (una única suscripción)
+    expect(mockSave).toHaveBeenCalledOnce();
   });
 });

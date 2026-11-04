@@ -7,6 +7,8 @@ function resetStore() {
     objects: INITIAL_OBJECTS.map((o) => ({ ...o, position: { ...o.position } })),
     selectedId: null,
     projectOrigin: { x: 0, y: 0, z: 0 },
+    saveStatus: 'idle',
+    saveError: null,
   });
 }
 
