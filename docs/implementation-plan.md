@@ -12,14 +12,15 @@
 |---|---|---|---|
 | M1a-base | `1eab3f6` | 216 | Contratos v2, validador inicial, migrador puro (20+1 test cases) |
 | M1a-audit-1 | `7f59991` | 242 | Primera auditoría: +26 casos de prueba, corrección de 2 bugs confirmados |
-| M1a-audit-2 | `80e8e9c` | 270 | Segunda auditoría: pendientes cerrados, +28 invariantes de dominio físico |
+| M1a-audit-2 | `80e8e9c` | 270 | Segunda auditoría: pendientes cerrados, +28 invariantes de dominio físico ✅ auditado |
 
 ## Entregas completadas en la rama `feat/project-migration-backup`
 
 | Entrega | Commit | Tests | Descripción |
 |---|---|---|---|
 | M1b-base | `13b232e` | 298 | API transaccional de respaldo para migración v1→v2 (no activada) |
-| M1b-audit-1 | *(ver SHA de este commit)* | 310 | Auditoría: restauraciones únicas, recoverabilidad de desplazados, atomicidad, coordinación |
+| M1b-audit-1 | `e661160` | 310 | Auditoría: restauraciones únicas, recoverabilidad de desplazados, atomicidad, coordinación |
+| M1b-audit-2 | `4e43abc` | 310 | Atomicidad precisa: aborto desde onsuccess real del primer write ✅ auditado |
 
 ### M1b — Respaldo transaccional y recuperación para migración v1→v2
 
@@ -122,11 +123,11 @@ Base: `feat/project-save-load` @ `fd9872b`
 | A  | Árbol de escena por categorías contraíbles con contadores | `57cf161` |
 
 ### Cobertura de pruebas actual
-- **270 pruebas** distribuidas en 12 archivos de test.
+- **310 pruebas** distribuidas en 13 archivos de test.
 - Unitarias: conversión de coordenadas, validación v1/v2, migración v1→v2, IndexedDB (fake-indexeddb).
 - Integración: store Zustand, auto-save con timers simulados, identidad de sesión.
 - Interacción (jsdom): Inspector, OriginPanel, ProjectActions, SceneTree.
-- v2 test breakdown: 72 casos en `validate-v2.test.ts`; 21 casos en `migrate-v1-to-v2.test.ts`.
+- v2 test breakdown: 72 casos en `validate-v2.test.ts`; 21 casos en `migrate-v1-to-v2.test.ts`; 40 casos en `migration-backup.test.ts`.
 
 ---
 
@@ -145,6 +146,8 @@ Base: `feat/project-save-load` @ `fd9872b`
 
 La secuencia M1a–M7 es el orden de implementación inmediato.
 Diseño completo: [equipment-domain-model.md](equipment-domain-model.md).
+Plan de integración v2 completo: [v2-integration-plan.md](v2-integration-plan.md).
+
 La aplicación sigue leyendo y escribiendo `schemaVersion=1` hasta la
 activación posterior a M1b, cuando visor, inspector y persistencia puedan
 trabajar conjuntamente con v2 o exista un adaptador validado.
