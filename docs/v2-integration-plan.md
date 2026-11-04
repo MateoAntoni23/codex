@@ -1,7 +1,7 @@
 # Plan de integración v2 — Diseñador de Bandejas Portacables 3D
 
 > **Estado:** borrador activo — solo documentación, sin código de producción modificado  
-> **Redactado:** 2026-11-04  
+> **Revisión:** 2026-11-04 (correcciones post-auditoría de 0c2bfa9)  
 > **Rama:** `docs/v2-integration-plan` desde `4e43abc` (M1b auditado)  
 > **Prerequisito:** M1a ✅ `80e8e9c` · M1b ✅ `4e43abc`
 
@@ -14,22 +14,22 @@ La API de respaldo transaccional está implementada y auditada (M1b).
 Ninguna de estas piezas está activa en producción: la aplicación continúa
 leyendo y escribiendo `schemaVersion=1`.
 
-Este documento planifica **la activación coordinada de v2** y todas las
-adaptaciones necesarias en capas de UI, store y persistencia.
+Este documento planifica **la activación coordinada de v2** y las adaptaciones
+necesarias en capas de UI, store y persistencia.
 
 **Objetivos de la integración:**
 - v2 pasa a ser la única fuente de verdad en store, IndexedDB y exportación.
 - Los componentes existentes (visor, inspector, árbol) siguen funcionando sin
   pérdida de campos v2 durante la edición.
-- La activación es reversible: si falla, el respaldo de M1b permite restaurar v1.
-- Una pestaña antigua con v1 cargado no puede sobrescribir un proyecto ya migrado.
+- La activación es reversible mediante el flujo de recuperación (§9.3).
+- Una pestaña antigua con v1 cargado no puede sobrescribir un proyecto migrado.
 
-**Fuera del alcance de este plan (futuras entregas M3–M7):**
-- Fichas de equipos con campos técnicos editables desde la UI.
-- Modelado de fábricas, subareas y vínculos de servicio.
-- Gestión de circuitos neumáticos completa.
-- Exportación DXF / integración de campo.
-- Conexiones de cables y canalizaciones.
+**Entregas de integración:** se denominan I1–I_act para distinguirlas de las
+fases de producto M2–M7 (ver §13). No reutilizan esos números.
+
+**Fuera del alcance de este plan:** M2–M7 según `implementation-plan.md`:
+fábricas, fichas técnicas, geometría editable, puertos y conexiones, XLSX,
+ruteo, BOM, DXF y PWA. Estos requisitos no se eliminan.
 
 ---
 
@@ -45,14 +45,13 @@ interface SceneState {
   saveStatus: SaveStatus;         // 'idle'|'loading'|'saving'|'saved'|'recovering'|'error'
   saveError: string | null;
 }
-// Acciones relevantes para la activación:
 hydrateProject(objects, projectOrigin)   // reemplaza todo, limpia selección
 updateObjectPosition(id, position)       // parche de posición
-_cancelAutoSave()                        // pausa debounce + desubscribe
+_cancelAutoSave()                        // cancela debounce (no persiste en vuelo)
 ```
 
-Auto-save: debounce 1 s, `saveGeneration` evita writes obsoletos,
-`sessionVersion` invalida operaciones de sesiones anteriores.
+Auto-save: debounce 1 s, `saveGeneration` evita writes obsoletos.
+`projectManager` NO expone actualmente la promesa de escritura en curso.
 
 ### Persistencia (`src/persistence/db.ts`)
 
@@ -62,31 +61,25 @@ Auto-save: debounce 1 s, `saveGeneration` evita writes obsoletos,
 | `migration-backups` | Respaldos M1b + entradas displaced |
 | `project-v2` (key `current`) | v2 preparado — inactivo |
 
-### Schema v1 (`src/persistence/schema.ts`)
+`DB_VERSION = 2`. No existe store `config`.
 
-```typescript
-interface DomainObject {
-  id: string; name: string; type: ObjectType;
-  position: Vec3mm;              // centro, mm, Z-arriba
-  dimensions: { width; depth; height }; // mm
-}
-```
-
-### Schema v2 (`src/types/domain-v2.ts`) — campos relevantes para rendering
+### Schema v2 — campos relevantes para rendering
 
 ```typescript
 interface EquipmentElement {
-  id: Id; name: string; version: number; // ≥ 1, incrementa por cambio confirmado
+  id: Id; name: string; version: number;
   placementStatus: 'placed' | 'unplaced';
   transform: { positionMm: Vec3; rotation: Quaternion } | null;
+  // Invariante: si placementStatus='placed', transform != null
+  // Invariante: si placementStatus='unplaced', transform debe ser null
   geometry: Geometry | null;
   // Geometry = { kind: 'box', widthMm, depthMm, heightMm }
   //           | { kind: 'cylinder', diameterMm, lengthMm }
   //           | { kind: 'plane', widthMm, depthMm }
-  //           | { kind: 'asset', assetId, boundsMm }
+  //           | { kind: 'asset', assetId, boundsMm: Vec3 }
   category: Category; // 13 categorías
-  physicalLocation: PhysicalLocation;
-  // ... todos los campos técnicos (Datum<T>) no tocados por la UI de posición
+  parentId: Id | null;
+  // ... todos los campos técnicos (Datum<T>)
 }
 ```
 
@@ -95,39 +88,37 @@ interface EquipmentElement {
 ## 3. Arquitectura del sistema con v2 activo
 
 ```
-┌─────────────────────────────────────────────────┐
-│  projectManager v2                               │
-│  subscribe(elements, projectOrigin)              │
-│  debounce 1s → saveProjectV2ToDb()               │
-└────────────────────────┬────────────────────────┘
-                         │
-              ┌──────────▼──────────┐
-              │  Zustand Store       │
-              │  elements: Element[] │  ← fuente de verdad
-              │  projectOrigin: Vec3 │
-              │  selectedId: string? │
-              └────┬────────────────┘
-          ┌────────┴───────────┐
-          │                    │
-   ┌──────▼──────┐    ┌────────▼────────┐
-   │  Visor 3D   │    │  Inspector / UI  │
-   │  v2→render  │    │  acciones        │
-   │  props      │    │  granulares      │
-   └──────┬──────┘    └────────┬────────┘
-          │                    │
-          └──────────┬─────────┘
-                     │
-          ┌──────────▼──────────┐
-          │  IndexedDB           │
-          │  project-v2/current  │  ← ProjectDataV2 serializado
-          │  migration-backups   │  ← respaldos M1b
-          └─────────────────────┘
+┌────────────────────────────────────────────────────┐
+│  projectManager v2                                  │
+│  subscribe(elements, origin, …)                     │
+│  debounce 1s → saveProjectV2ToDb() con generation   │
+│  check en la misma transacción IDB                  │
+└───────────────────────┬────────────────────────────┘
+                        │
+             ┌──────────▼──────────┐
+             │  Zustand Store       │
+             │  elements: Element[] │  ← fuente de verdad
+             │  projectOrigin: Vec3 │
+             │  selectedId: string? │
+             │  migrationIncidents  │
+             └────┬────────────────┘
+         ┌────────┴───────────┐
+         │                    │
+  ┌──────▼──────┐    ┌────────▼────────┐
+  │  Visor 3D   │    │  Inspector / UI  │
+  │  v2→render  │    │  acciones        │
+  │  props      │    │  granulares      │
+  └──────┬──────┘    └────────┬────────┘
+         │                    │
+         └──────────┬─────────┘
+                    │
+         ┌──────────▼──────────┐
+         │  IndexedDB v3        │
+         │  project-v2/current  │  ← ProjectDataV2 serializado
+         │  config/active-format│  ← metadatos de activación
+         │  migration-backups   │  ← respaldos M1b
+         └─────────────────────┘
 ```
-
-**Cambio estructural central:** el store deja de tener `DomainObject[]` y pasa a
-tener `EquipmentElement[]` (junto con los arreglos satelitales: `factories`,
-`subareas`, `ports`, `connections`, etc.). El auto-save serializa
-`ProjectDataV2` completo al store IDB `project-v2`.
 
 ---
 
@@ -135,31 +126,13 @@ tener `EquipmentElement[]` (junto con los arreglos satelitales: `factories`,
 
 ### 4.1 Persistencia
 
-**Funciones nuevas en `db.ts`:**
+#### DB_VERSION = 3 — versión estructural, no activación
 
-```typescript
-export const V2_ACTIVE_KEY = 'v2-activated';
-
-// Lee el proyecto v2 activo (post-activación)
-export async function loadProjectV2FromDb(): Promise<ProjectDataV2 | null>
-
-// Guarda el proyecto v2 activo
-export async function saveProjectV2ToDb(data: ProjectDataV2): Promise<void>
-
-// Lee y escribe la bandera de activación persistente
-export async function getActivationFlag(): Promise<boolean>
-export async function setActivationFlag(): Promise<void>
-```
-
-La bandera de activación se almacena en un nuevo object store `config`
-(DB_VERSION = 3) con clave `v2-activated = true`. Su presencia determina
-qué formato cargar al abrir la aplicación.
-
-**Bump de versión IDB (3 → activa v2):**
+Subir a versión 3 es un cambio de **esquema de IndexedDB** que crea el store
+`config`. Esta operación no activa v2 ni escribe `schemaVersion=2`. Abrir la
+BD con versión 3 en una sesión pre-migración es transparente para el usuario.
 
 ```
-DB_VERSION = 3
-
 onupgradeneeded:
   oldVersion < 1 → createObjectStore('project')
   oldVersion < 2 → createObjectStore('migration-backups')
@@ -167,12 +140,86 @@ onupgradeneeded:
   oldVersion < 3 → createObjectStore('config')
 ```
 
-El bump de versión a 3 sirve de señal secundaria a pestañas antiguas
-(ver §10 — seguridad multi-pestaña).
+#### Funciones nuevas en `db.ts` (I1)
+
+```typescript
+// Proyecto v2 activo
+export async function loadProjectV2FromDb(): Promise<ProjectDataV2 | null>
+export async function saveProjectV2ToDb(
+  data: ProjectDataV2,
+  expectedGeneration: number,  // para comprobación transaccional
+): Promise<void>
+
+// Metadatos de formato activo (escritos solo por activateMigrationWithBackup)
+export interface ActiveFormatMetadata {
+  format: 'v2';
+  backupId: string;
+  activatedAt: string;
+  generation: number;  // incrementa con cada escritura post-activación
+}
+export async function readActiveFormatMetadata(): Promise<ActiveFormatMetadata | null>
+```
+
+La bandera de activación NO se escribe por una función separada.
+Se escribe exclusivamente dentro de la transacción de activación (ver §8).
+
+#### `pauseAndFlush` — operación requerida en `projectManager.ts` (I1)
+
+`_cancelAutoSave()` cancela el debounce pero no persiste la última edición
+en memoria. Para la activación necesitamos una operación que:
+
+1. Bloquea nuevas ediciones en la UI (`setEditBlocked(true)`).
+2. Cancela el timer del debounce sin descartar el estado en memoria.
+3. Persiste explícitamente el estado actual del store a IndexedDB.
+4. Espera `oncomplete` (confirmación real, no solo el callback de la promesa).
+5. Retorna el snapshot confirmado (el mismo que quedó en `project`).
+
+```typescript
+// En projectManager.ts
+export async function pauseAndFlush(): Promise<ProjectData> {
+  // 1. Bloquear nuevas ediciones
+  store.setEditBlocked(true)
+  
+  // 2. Cancelar solo el timer del debounce (no descarta memoria)
+  cancelDebounceTimer()
+  
+  // 3. Capturar estado actual desde el store
+  const snapshot = buildProjectDataFromStore(store.getState())
+  
+  // 4. Persistir y esperar oncomplete
+  await saveProjectToDb(snapshot)   // resuelve solo en oncomplete
+  
+  // 5. Retornar el snapshot confirmado
+  return snapshot
+  // NOTA: si falla, relanzar el error; el llamador decide si desbloquear
+}
+```
+
+**Si `pauseAndFlush` falla:** el llamador no debe migrar datos potencialmente
+obsoletos. Debe desbloquear la edición, reportar el error y mantener el
+auto-save v1 activo. El usuario puede exportar el proyecto desde memoria
+(la exportación siempre lee el store, no IDB).
+
+#### `saveProjectV2ToDb` con comprobación de generación (I1 + I_act)
+
+Cada escritura del auto-save v2 verifica que el formato activo siga siendo v2
+y que la generación sea la esperada, dentro de la misma transacción IDB:
+
+```typescript
+// Dentro de la transacción readwrite([V2_STORE, 'config']):
+// 1. Leer config/active-format
+// 2. Si format !== 'v2' o generation !== expected → abortar (tx.abort())
+// 3. Escribir nuevo ProjectDataV2 con generation + 1
+// Resuelve solo en oncomplete
+```
+
+Esto asegura que si una pestaña antigua revirtiera el formato (escenario
+hipotético), la escritura del auto-save v2 fallará de forma detectada,
+no silenciosa.
 
 ### 4.2 Store (Zustand)
 
-**Estado nuevo:**
+#### Estado v2
 
 ```typescript
 interface SceneStateV2 {
@@ -187,37 +234,130 @@ interface SceneStateV2 {
   internalLinks: InternalLink[];
   functionalRelations: FunctionalRelation[];
   evidence: FieldEvidence[];
+  migrationIncidents: MigrationIncident[];  // preservados entre sesiones
 
   // --- UI ---
   selectedId: string | null;
   saveStatus: SaveStatus;
   saveError: string | null;
+  editBlocked: boolean;
 }
 ```
 
-**Acciones granulares nuevas (ninguna reconstruye el elemento completo):**
+#### Acciones granulares (ninguna reconstruye el elemento completo)
 
 ```typescript
 // Hidratación completa (activación, apertura, importación)
+// → reemplaza todos los arreglos, limpia selectedId, limpia editBlocked
 hydrateProjectV2(data: ProjectDataV2): void
 
-// Posición — solo toca transform.positionMm y bumps version
+// Posición — solo toca transform y bumps version
+// Invariante: siempre establece placementStatus='placed'
 updateElementPosition(id: string, positionMm: Vec3): void
 
 // Geometría — solo toca geometry y bumps version
 updateElementGeometry(id: string, geometry: Geometry): void
 
-// Origen del proyecto — no mueve elementos
+// Origen — no mueve elementos
 setProjectOriginV2(origin: Vec3): void
+
+// Bloqueo de edición (activación, carga)
+setEditBlocked(blocked: boolean): void
 ```
 
-Las acciones existentes `hydrateProject`, `updateObjectPosition` y
-`setProjectOrigin` se mantienen en paralelo durante las entregas M2a–M2d
-para no romper tests existentes, y se eliminan en M2e (activación).
+#### Invariantes de las acciones
+
+`updateElementPosition` siempre establece `placementStatus = 'placed'` y
+`transform != null`:
+
+```typescript
+updateElementPosition(id, positionMm) {
+  set(state => ({
+    elements: state.elements.map(el =>
+      el.id !== id ? el : {
+        ...el,
+        version: el.version + 1,
+        placementStatus: 'placed',           // siempre placed al asignar posición
+        transform: {
+          positionMm,
+          rotation: el.transform?.rotation ?? IDENTITY_QUATERNION,
+        },
+      }
+    ),
+  }))
+}
+```
+
+No puede existir un elemento con `placementStatus='placed'` y `transform=null`,
+ni con `placementStatus='unplaced'` y `transform!=null`.
+
+#### Selección
+
+`hydrateProjectV2()` limpia `selectedId` (comportamiento consistente con
+`hydrateProject` v1 existente). Las acciones granulares no tocan `selectedId`.
+Al abrir una sesión posterior, la selección comienza en `null` (no se persiste
+en IDB).
+
+#### Acciones v1 durante la transición
+
+Las acciones v1 (`hydrateProject`, `updateObjectPosition`, `setProjectOrigin`)
+se mantienen hasta I_act, cuando se eliminan como breaking change.
 
 ### 4.3 Visor 3D
 
-**Adaptador `elementToRenderProps`** (`src/scene/v2-adapter.ts`, nuevo):
+#### Transformación global — resolución de jerarquía
+
+El elemento puede tener `parentId != null`. Su `transform` es **local** relativo
+al padre. La posición en el visor requiere la transformación **global**:
+
+```typescript
+interface GlobalTransform {
+  positionMm: Vec3;
+  rotation: Quaternion;
+}
+
+function resolveGlobalTransform(
+  id: Id,
+  elements: EquipmentElement[],
+  cache: Map<Id, GlobalTransform | null> = new Map(),
+): GlobalTransform | null {
+  if (cache.has(id)) return cache.get(id)!
+
+  const el = elements.find(e => e.id === id)
+  if (!el || el.placementStatus === 'unplaced' || !el.transform) {
+    cache.set(id, null)
+    return null
+  }
+
+  if (el.parentId === null) {
+    const gt = { positionMm: el.transform.positionMm, rotation: el.transform.rotation }
+    cache.set(id, gt)
+    return gt
+  }
+
+  const parentGt = resolveGlobalTransform(el.parentId, elements, cache)
+  if (parentGt === null) {
+    cache.set(id, null)
+    return null  // padre sin ubicar → hijo sin ubicar
+  }
+
+  const globalPos = addVec3(
+    parentGt.positionMm,
+    rotateVec3(el.transform.positionMm, parentGt.rotation),
+  )
+  const globalRot = multiplyQuaternions(parentGt.rotation, el.transform.rotation)
+  const gt = { positionMm: globalPos, rotation: globalRot }
+  cache.set(id, gt)
+  return gt
+}
+```
+
+Para los proyectos migrados de v1, todos los elementos tienen `parentId=null`
+y `rotation=IDENTITY_QUATERNION`, por lo que `resolveGlobalTransform` retorna
+el `transform.positionMm` directamente. La función soporta casos futuros
+(M4 — composición padre/hijo) sin cambios de interfaz.
+
+#### Adaptador `elementToRenderProps` (`src/scene/v2-adapter.ts`)
 
 ```typescript
 interface ElementRenderProps {
@@ -225,104 +365,137 @@ interface ElementRenderProps {
   name: string;
   category: Category;
   placed: boolean;
-  positionViewer: [number, number, number] | null; // null si unplaced
-  sizeViewer: [number, number, number] | null;     // null si geometry null
+  positionViewer: [number, number, number] | null;  // null si unplaced
+  rotationViewer: [number, number, number, number] | null;  // quaternion XYZW, null si unplaced
+  sizeViewer: [number, number, number] | null;
+  geometryKind: Geometry['kind'] | 'unknown';  // 'unknown' si geometry=null
   isFloor: boolean;
 }
 
 function elementToRenderProps(
   el: EquipmentElement,
+  elements: EquipmentElement[],
 ): ElementRenderProps
 ```
 
-Reglas de mapeo:
+El campo `geometryKind: 'unknown'` identifica explícitamente los elementos
+sin geometría conocida; el renderizador usa este valor para mostrar un
+marcador etiquetado como "geometría no disponible" (no una esfera genérica
+sin identificar).
 
-| Condición | positionViewer | sizeViewer |
-|---|---|---|
-| `placementStatus='placed'` y `transform != null` | `domainToViewerPosition(transform.positionMm)` | según geometry |
-| `placementStatus='unplaced'` o `transform == null` | `null` | `null` |
-| `geometry == null` | (mantener posición) | `null` → bbox de fallback |
+#### Coordenadas: base de dominio → visor
 
-**Geometrías v2 → viewer:**
+La función `domainToViewerPosition` existente no cambia:
+```
+domainToViewerPosition({ x, y, z }) → [x/1000, z/1000, -(y/1000)]
+  domain X (derecha)   → viewer X (derecha)
+  domain Z (arriba)    → viewer Y (arriba)
+  domain Y (profundidad) → viewer −Z (hacia el fondo)
+```
 
-| geometry.kind | Renderizado | sizeViewer |
+La rotación del visor toma el quaternion global del elemento y aplica la
+misma conversión de base:
+```
+// El quaternion del dominio (Z-arriba) debe convertirse a base Y-arriba.
+// rotación around Z-domain → alrededor de Y-viewer
+// Esta conversión se implementa en la entrega I2.
+```
+
+#### Geometrías v2 → viewer (correcciones)
+
+| geometry.kind | Renderizado Three.js | sizeViewer `[W, H, D]` |
 |---|---|---|
 | `box` | `<boxGeometry>` | `[widthMm/1000, heightMm/1000, depthMm/1000]` |
-| `cylinder` | `<cylinderGeometry>` | `[diameter/1000, length/1000, diameter/1000]` |
+| `cylinder` | `<cylinderGeometry>` | `[diameterMm/1000, lengthMm/1000, diameterMm/1000]` |
 | `plane` | `<planeGeometry>` / grid | `[widthMm/1000, 0, depthMm/1000]` |
-| `asset` | `<boxGeometry>` con boundsMm | `[x/1000, y/1000, z/1000]` |
-| `null` | esfera de radio 0.25 m | `[0.5, 0.5, 0.5]` (fallback visual) |
+| `asset` | `<boxGeometry>` con boundsMm | `[x/1000, z/1000, y/1000]` ¹ |
+| `null` (kind='unknown') | marcador etiquetado | `[0.5, 0.5, 0.5]` |
 
-Los elementos con `placed = false` no se renderizan en la escena 3D.
-Se listarán en el árbol con un indicador visual diferente.
+¹ `asset.boundsMm = { x: ancho, y: profundidad, z: altura }` en dominio.
+En visor: `W = x/1000`, `H = z/1000` (domain Z → viewer Y), `D = y/1000`.
+La conversión es `[x/1000, z/1000, y/1000]`, **no** `[x/1000, y/1000, z/1000]`.
 
-**La transformación de coordenadas no cambia:**
-
-```typescript
-// Sigue siendo la misma función coords.ts
-domainToViewerPosition({ x, y, z }):
-  → [x/1000, z/1000, -(y/1000)]
-```
+Elementos con `placementStatus='unplaced'` no se renderizan en la escena.
 
 ### 4.4 Inspector
 
-El inspector pasa de leer `obj.position` / `obj.dimensions` a leer
-`element.transform.positionMm` y `element.geometry`.
+#### Coordenadas relativas y globales
 
-**Principio anti-pérdida de campos:**  
-El inspector NUNCA envía el elemento completo al store. Solo invoca
-acciones granulares:
+El inspector **muestra** la posición relativa al origen del proyecto, pero
+**envía** al store la posición global (en mm desde el origen del sistema).
+La distinción debe ser explícita en el código:
+
+```
+// Valor mostrado al usuario (editable en los inputs)
+displayPos = globalTransform.positionMm - projectOrigin
+
+// Valor enviado al store al aplicar
+globalPos = displayPos + projectOrigin
+store.updateElementPosition(selectedId, globalPos)
+```
+
+La acción `updateElementPosition` recibe siempre coordenadas globales.
+
+#### Snap to floor — corrección por tipo de geometría
+
+| geometry.kind | Dimensión de altura | Fórmula snap Z (global) |
+|---|---|---|
+| `box` | `heightMm` | `projectOrigin.z + geometry.heightMm / 2` |
+| `cylinder` | `lengthMm` | `projectOrigin.z + geometry.lengthMm / 2` |
+| otros o `null` | — | botón deshabilitado |
+
+La fórmula deja la base del objeto en `Z = 0` global. El inspector calcula
+`globalPos.z` y envía `updateElementPosition(id, { x, y, z: computed })`.
+
+**Elementos rotados o con padre:** el snap asume que la geometría está
+alineada con el eje Z del sistema global. Si el elemento tiene rotación no
+identidad o `parentId != null`, el cálculo de apoyo geométrico correcto
+requiere descomponer la rotación global, lo que no se implementa en esta
+integración. Para esos casos, el botón Snap to floor se deshabilita con el
+texto "No disponible para elementos rotados o compuestos."
+
+#### Anti-pérdida de campos
+
+El inspector nunca envía el elemento completo al store. Cada campo editable
+llama a su acción granular correspondiente. El spread inmutable en la acción
+preserva todos los `Datum<T>` y campos técnicos:
 
 ```typescript
-// Al aplicar posición editada:
-updateElementPosition(selectedId, newPositionMm)
-// no: store.patchElement(selectedId, { transform: { positionMm: ... } })
-// no: store.replaceElement(selectedId, reconstructedElement)
+// Inspector apply handler:
+store.updateElementPosition(selectedId, newGlobalPos)
+// no: store.patchElement({ ...partialFromUI })
 ```
 
-La lógica de coordenadas relativas al origen sigue igual:
-```
-display = transform.positionMm - projectOrigin
-on apply: positionMm = displayValue + projectOrigin
-```
+#### Campos técnicos
 
-**Snap to floor** sigue siendo:
-```
-positionMm.z = geometry.heightMm / 2 - projectOrigin.z
-```
-(solo aplica si geometry?.kind === 'box' | 'cylinder').
-
-**Campos técnicos** (Datum<T>): se muestran en modo lectura en esta fase.
-La edición de campos técnicos (fichas) queda para M3+.
-
-**Elementos sin geometría conocida:** el inspector muestra
-`"Dimensiones: no disponibles"` y oculta el botón Snap to floor.
+Los campos `Datum<T>` se muestran en modo lectura. Edición en M3
+(fichas técnicas). Los incidents de migración (`migrationIncidents`) son
+visibles en el inspector si existen para el elemento.
 
 ### 4.5 Árbol de escena
 
-Cambios necesarios:
+#### Categorías v2 → grupos de display
 
-1. **Categorías de display:** mapear las 13 categorías v2 a los grupos de
-   árbol existentes más las nuevas necesarias.
+| Grupo en árbol | Categorías v2 |
+|---|---|
+| Tableros | `electrical_panel`, `pneumatic_panel` |
+| Motores | `motor` |
+| Bombas | `pump` |
+| Válvulas / electroválvulas | `process_valve`, `solenoid_valve` |
+| Sensores | `sensor` |
+| Actuadores | `actuator` |
+| Iluminación | `luminaire` |
+| Botoneras / bloques | `pushbutton`, `terminal_block` ² |
+| Manifolds | `manifold` |
+| Infraestructura | `infrastructure` |
 
-   | Grupos actuales | Categorías v2 agrupadas |
-   |---|---|
-   | Tableros | `electrical_panel`, `pneumatic_panel` |
-   | Motores | `motor` |
-   | Bombas | `pump` |
-   | Válvulas / electroválvulas | `process_valve`, `solenoid_valve` |
-   | Sensores | `sensor` |
-   | Actuadores | `actuator` |
-   | Iluminación | `luminaire` |
-   | Botoneras / bloques | `pushbutton_station`, `terminal_block` |
-   | Manifolds | `manifold` |
-   | Infraestructura | `infrastructure` |
+² La categoría correcta del contrato es `pushbutton` (no `pushbutton_station`).
 
-2. **Indicadores de estado:**
-   - `lifecycle='retired'` → icono/color diferente (inactivo).
-   - `placementStatus='unplaced'` → icono de posición pendiente.
+#### Indicadores de estado
 
-3. **Selección:** sigue usando `id`; `selectedId` es string en ambas versiones.
+- `lifecycle='retired'` → icono/color de inactivo.
+- `placementStatus='unplaced'` → icono de posición pendiente.
+- `migrationIncidents` existentes para el elemento → indicador de advertencia.
 
 ---
 
@@ -336,57 +509,50 @@ reemplazos parciales del elemento, esos campos se perderían silenciosamente.
 
 ### La solución: acciones granulares con spread inmutable
 
-Cada acción del store solo toca el sub-objeto que modifica:
-
 ```typescript
 updateElementPosition(id, positionMm) {
   set(state => ({
     elements: state.elements.map(el =>
       el.id !== id ? el : {
-        ...el,
+        ...el,                               // preserva todos los campos técnicos
         version: el.version + 1,
-        transform: el.transform
-          ? { ...el.transform, positionMm }
-          : { positionMm, rotation: IDENTITY_QUATERNION },
+        placementStatus: 'placed',
+        transform: {
+          positionMm,
+          rotation: el.transform?.rotation ?? IDENTITY_QUATERNION,
+        },
       }
     ),
   }))
 }
 ```
 
-El spread `{ ...el, ... }` preserva todos los campos técnicos de `el`
-(`manufacturer`, `model`, `technical`, `physicalLocation`, etc.) porque
-solo se sobreescriben `version` y `transform`.
-
 ### Regla de diseño
 
 > Ninguna acción del store reconstruye un `EquipmentElement` desde datos
-> de UI. Las acciones solo reciben el delta (el campo y el nuevo valor)
-> y aplican un spread del elemento existente.
+> de UI. Las acciones reciben solo el delta y aplican un spread del
+> elemento existente.
 
 ---
 
 ## 6. Elementos sin ubicar y sin dimensiones conocidas
 
-### Elementos sin ubicar (`placementStatus = 'unplaced'`)
+### Sin ubicar (`placementStatus = 'unplaced'`)
 
-- **Visor 3D:** no se renderizan (omitidos en SceneObjects).
-- **Árbol:** se muestran con un indicador visual (p. ej. icono de pin vacío).
-- **Inspector:** muestra nombre y campos técnicos; oculta posición.
-- **Acción "Colocar":** futura acción que asigna `transform` y cambia
-  `placementStatus` a `'placed'`.
+- **Visor 3D:** no se renderizan.
+- **Árbol:** indicador de posición pendiente.
+- **Inspector:** muestra nombre y campos técnicos; sin inputs de posición.
+- **`updateElementPosition`:** establece `placementStatus='placed'` automáticamente.
 
-Los migrados de v1 siempre tienen `placementStatus = 'placed'` porque
-todos los objetos v1 tienen posición.
+### Sin geometría conocida (`geometry = null`)
 
-### Elementos sin geometría conocida (`geometry = null`)
+Estos elementos no provienen de la migración v1→v2 (todos los objetos v1
+tienen dimensiones). Pueden aparecer al crear elementos directamente en v2.
 
-Estos no existen en la migración v1→v2 (todos los objetos v1 tienen
-dimensiones). Pueden aparecer al crear elementos directamente en v2.
-
-- **Visor 3D:** esfera de radio 0.25 m como marcador (no es la geometría real).
-- **Inspector:** no muestra dimensiones ni snap to floor.
-- **Árbol:** se muestra normalmente (la geometría no es requisito para listado).
+- **Visor 3D:** marcador etiquetado como "geometría no disponible" (no es
+  una esfera genérica anónima; `geometryKind = 'unknown'` lo identifica).
+- **Inspector:** sección de dimensiones muestra "No disponibles"; snap deshabilitado.
+- **Árbol:** se muestra normalmente.
 
 ---
 
@@ -394,13 +560,11 @@ dimensiones). Pueden aparecer al crear elementos directamente en v2.
 
 ### Posición
 
-La posición se conserva tal como viene de v1 en `transform.positionMm`.
+La posición se conserva en `transform.positionMm` tal como viene de v1.
 Ningún paso de activación la modifica. La convención "posición = centro"
-(z = height/2 para objetos sobre el piso) no cambia.
+(z = heightMm/2 para objetos sobre el piso) no cambia.
 
 ### Geometría
-
-La migración v1→v2 ya convierte:
 
 | Tipo v1 | Geometry v2 |
 |---|---|
@@ -408,117 +572,138 @@ La migración v1→v2 ya convierte:
 | `building`, `panel` | `{ kind:'box', widthMm, depthMm, heightMm }` |
 | `motor` | `{ kind:'cylinder', diameterMm:width, lengthMm:height }` |
 
-Estos valores están almacenados en el respaldo (M1b) y no se recalculan.
+Los valores están almacenados en el respaldo M1b y no se recalculan.
 
-### Origen del proyecto
+### Origen
 
-`projectOrigin: Vec3mm` v1 → `projectOrigin: Vec3` v2 (misma semántica, mismo
-valor). Se migra directamente.
+`projectOrigin: Vec3mm` v1 → `projectOrigin: Vec3` v2 (mismo valor y semántica).
 
-### Selección
+### Selección y `migrationIncidents`
 
-`selectedId: string | null` no cambia de tipo. Los IDs son los mismos en v1
-y v2 (el migrador los preserva). La selección activa no necesita ajuste.
+`hydrateProjectV2()` limpia `selectedId` (igual que `hydrateProject` v1).
+`migrationIncidents` se carga desde `ProjectDataV2` al hidratar y se persiste
+en cada escritura del auto-save.
 
 ### Rotación
 
-Todos los objetos migrados tienen `rotation: IDENTITY_QUATERNION { x:0, y:0, z:0, w:1 }`.
-El visor aún no renderiza rotaciones; cuando lo haga, leerá `transform.rotation`.
+Todos los objetos migrados de v1 tienen `rotation = IDENTITY_QUATERNION`.
+El visor aplica la rotación global (§4.3). Las importaciones con rotaciones
+no identidad se soportan mediante `resolveGlobalTransform`.
 
 ---
 
 ## 8. Secuencia de activación coordinada
 
-La activación es un evento único, explícito, y no reversible sin usar
-el flujo de recuperación.
+La activación es un evento único, explícito, y sin camino de retorno
+automático (ver §9.3 para recuperación).
 
-### Pre-condición
+### Pre-condiciones
 
-La función `prepareMigrationWithBackup` (M1b) ya fue llamada: existe un
-respaldo en `migration-backups` y el v2 preparado en `project-v2`.
-Los adaptadores del visor, inspector y árbol ya existen y fueron probados.
+- Los adaptadores de visor, inspector y árbol existen y fueron probados (I2–I4).
+- La función `pauseAndFlush` existe en `projectManager` (I1).
+- La función `activateMigrationWithBackup` existe en `migration-backup.ts` (I_act).
+- El upgrade de BD a versión 3 ya ocurrió (I1).
+- No hay otras pestañas con la BD abierta al iniciar la activación.
 
 ### Protocolo paso a paso
 
 ```
-1. BLOQUEAR EDICIÓN
-   store.setEditBlocked(true)
-   → Deshabilita todos los inputs y botones de modificación en la UI.
+1. VERIFICAR EXCLUSIVIDAD
+   await verifyNoOtherTabsHoldDb()
+   → Intentar upgrade de BD sin otra pestaña abierta.
+   → Si onblocked dispara: ABORTAR activación.
+     Mostrar: "Cerrá otras pestañas antes de migrar."
+     NO forzar cierre ni eliminar datos.
 
-2. CANCELAR AUTO-SAVE
-   _cancelAutoSave()
-   → Cancela el debounce pendiente. No habrá nuevas escrituras v1.
+2. PAUSAR Y CONFIRMAR ESCRITURA EN MEMORIA
+   const v1Snapshot = await pauseAndFlush()
+   → Bloquea edición, persiste estado actual, espera oncomplete.
+   → Si falla: desbloquear, mantener auto-save v1, reportar error.
+     El usuario puede exportar el proyecto y reintentar.
 
-3. ESPERAR ESCRITURA EN VUELO
-   await currentSavePromise   ← nueva handle expuesta por projectManager
-   (no es suficiente consultar saveStatus; ver §8.1)
+3. ACTIVAR MIGRACIÓN — TRANSACCIÓN ATÓMICA
+   const { backupId, v2Data } = await activateMigrationWithBackup(v1Snapshot, {
+     backupId,
+     timestamp,
+     recordedAt,
+     activatedAt: new Date().toISOString(),
+   })
+   → Transacción readwrite([project, migration-backups, project-v2, config])
+   → Dentro de la transacción:
+     a. Re-leer v1 y verificar fingerprint (STALE_V1_DATA si difiere)
+     b. Verificar que backupId no exista (BACKUP_EXISTS si existe)
+     c. Validar v2 generado (INVALID_V2 si falla)
+     d. Escribir respaldo en migration-backups (add)
+     e. Escribir v2 en project-v2 (put)
+     f. Escribir metadatos de activación en config/active-format:
+        { format: 'v2', backupId, activatedAt, generation: 1 }
+   → Resuelve solo en oncomplete.
+   → Si cualquier paso falla: CERO escrituras. Desbloquear. Auto-save v1 intacto.
 
-4. LEER V1 ACTUAL
-   const v1 = await loadProjectFromDb()
-   → Snapshot justo antes de la transacción.
-
-5. RESPALDAR Y PREPARAR V2 (M1b)
-   const { backupId } = await prepareMigrationWithBackup(v1, { backupId, timestamp })
-   → Si falla (STALE_V1_DATA, INVALID_V2, etc.), desbloquear edición y reportar error.
-
-6. ESCRIBIR BANDERA DE ACTIVACIÓN Y BUMP DE VERSION IDB
-   _resetIdbFactory() / await setActivationFlag()
-   → DB_VERSION sube a 3; otras pestañas reciben 'versionchange'.
-
-7. SEÑALIZAR OTRAS PESTAÑAS
+4. SEÑALIZAR OTRAS PESTAÑAS
    broadcastChannel.postMessage({ type: 'v2-activated', backupId })
-   → Pestañas antiguas reciben el mensaje y se bloquean (ver §10).
+   → Es un aviso, no una garantía de exclusión (ver §10).
 
-8. HIDRATAR STORE CON V2
-   const backup = await readMigrationBackup(backupId)
-   store.hydrateProjectV2(backup.v2Data)
-   → El store ahora tiene EquipmentElement[]. La selección se limpia.
+5. HIDRATAR STORE CON V2
+   store.hydrateProjectV2(v2Data)
+   → El store tiene EquipmentElement[]. selectedId = null.
 
-9. ARRANCAR AUTO-SAVE V2
-   initProjectManagerV2(store)
-   → Nueva subscripción a elements/projectOrigin, guarda en project-v2.
+6. ARRANCAR AUTO-SAVE V2
+   initProjectManagerV2(store, generation: 1)
+   → Subscripción a elements, projectOrigin, etc.
+   → Cada escritura usa saveProjectV2ToDb con generation check.
 
-10. DESBLOQUEAR EDICIÓN
-    store.setEditBlocked(false)
+7. DESBLOQUEAR EDICIÓN
+   store.setEditBlocked(false)
 ```
 
-### 8.1 Esperar la escritura en vuelo
+### 8.1 `activateMigrationWithBackup` — extensión de M1b
 
-Consultar `saveStatus !== 'saving'` es insuficiente porque:
-- `saveStatus` refleja el estado del debounce en JavaScript, no la
-  confirmación de IndexedDB (`oncomplete`).
-- Una escritura puede estar en curso con `saveStatus` ya en `'saved'`
-  si la promesa aún no resolvió.
-
-**Solución requerida:** `projectManager.ts` debe exponer la promesa
-de la escritura activa:
+Esta función extiende `prepareMigrationWithBackup` agregando el store `config`
+a la transacción. El backupId incluido en los metadatos vincula la bandera de
+activación con el respaldo exacto que contiene los datos migrados.
 
 ```typescript
-// En projectManager.ts
-let _currentSavePromise: Promise<void> = Promise.resolve();
-
-export function getCurrentSavePromise(): Promise<void> {
-  return _currentSavePromise;
+export interface ActivateMigrationOptions {
+  backupId: string;
+  timestamp: string;
+  recordedAt: string;
+  activatedAt: string;
 }
+
+export interface ActivateMigrationResult {
+  backupId: string;
+  v2Data: ProjectDataV2;
+  incidents: MigrationIncident[];
+}
+
+export async function activateMigrationWithBackup(
+  v1Snapshot: ProjectData,
+  options: ActivateMigrationOptions,
+): Promise<ActivateMigrationResult>
+// Transacción readwrite([STORE_NAME, BACKUP_STORE, V2_STORE, 'config'])
+// Incluye todos los checks de prepareMigrationWithBackup más:
+// - Escribe config/active-format en la misma transacción
+// - Resuelve solo en oncomplete
 ```
 
-La secuencia de activación await-ea `getCurrentSavePromise()` antes de
-leer el v1.
+No existe una función separada `setActivationFlag()`. La bandera solo puede
+escribirse a través de esta transacción.
 
-### 8.2 Gestión de errores en la activación
+### 8.2 Gestión de errores
 
-| Error en paso | Acción |
+| Situación | Acción |
 |---|---|
-| Paso 5 `STALE_V1_DATA` | Desbloquear, mostrar error, el usuario reintenta |
-| Paso 5 `INVALID_V2` | Desbloquear, mostrar error, reportar bug |
-| Paso 5 `BACKUP_EXISTS` | No debería ocurrir con backupId único; desbloquear |
-| Paso 6–8 error IDB | Desbloquear; v1 auto-save NO se reactiva; usar recuperación |
-| Ningún error | No reactivar auto-save v1 jamás |
+| Paso 1: `onblocked` | Desbloquear. Pedir cerrar otras pestañas. |
+| Paso 2: `pauseAndFlush` falla | Desbloquear. Auto-save v1 sigue. Permitir exportación. |
+| Paso 3: `STALE_V1_DATA` | Desbloquear. Auto-save v1 sigue. El usuario reintenta. |
+| Paso 3: `INVALID_V2` | Desbloquear. Reportar bug. No migrar. |
+| Paso 3: cualquier error IDB | Desbloquear. Auto-save v1 sigue. Config intacto. |
+| Pasos 5–7 fallan post-oncomplete | No reactivar auto-save v1. Usar recuperación §9.3. |
 
-> **Crítico:** una vez que la bandera de activación está escrita (paso 6),
-> el auto-save v1 no debe reactivarse bajo ninguna circunstancia.
-> Si los pasos 7–9 fallan, el usuario debe usar el flujo de recuperación
-> (§9.3) para restaurar el respaldo, no reiniciar el auto-save v1.
+> **Regla crítica:** una vez que `activateMigrationWithBackup` resuelve en
+> `oncomplete`, el auto-save v1 no se reactiva bajo ninguna circunstancia.
+> El formato está comprometido como v2. La vía de retorno es §9.3.
 
 ---
 
@@ -527,152 +712,188 @@ leer el v1.
 ### 9.1 Apertura de sesión posterior (ya activado)
 
 ```
-openDatabase()
-  → DB_VERSION = 3; config store existe
-getActivationFlag()
-  → true (v2 activo)
+openDatabase() → DB_VERSION 3, config store presente
+readActiveFormatMetadata()
+  → { format: 'v2', backupId, generation }
 loadProjectV2FromDb()
   → ProjectDataV2 | null
 validateProjectDataV2(data)
-  → si falla: ir a flujo de recuperación (§9.3)
+  → si falla → §9.3 flujo de recuperación
 store.hydrateProjectV2(data)
-initProjectManagerV2(store)
+initProjectManagerV2(store, generation)
 ```
 
-Si `getActivationFlag()` retorna false (sesión pre-activación):
+Si `readActiveFormatMetadata()` retorna `null` (pre-activación):
 ```
 loadProjectFromDb() → ProjectData v1
-store.hydrateProject(objects, origin)   // flujo actual
-initProjectManager(store)               // auto-save v1 actual
+store.hydrateProject(objects, origin)
+initProjectManager(store)
 ```
 
-### 9.2 Importación y exportación v2
+### 9.2 Importación de proyecto
 
-**Exportación:**
-
-```typescript
-// projectActions.ts (v2)
-function exportProjectV2(store) {
-  const data: ProjectDataV2 = buildProjectDataV2FromStore(store)
-  const json = JSON.stringify(data, null, 2)
-  download(`proyecto-bandejas-v2-${DATE}.json`, json)
-}
-```
-
-**Importación — detección de versión:**
-
-```typescript
-function importProject(file) {
-  const raw = JSON.parse(await file.text())
-  if (raw.schemaVersion === 2) {
-    const data = validateProjectDataV2(raw)   // lanza si inválido
-    confirm("Reemplazar proyecto actual?")
-    store.hydrateProjectV2(data)
-  } else if (raw.schemaVersion === 1) {
-    if (activationFlag) {
-      error("El proyecto importado es v1. Migralo primero o usá una sesión anterior.")
-    } else {
-      const data = validateProjectData(raw)
-      confirm("Reemplazar proyecto actual?")
-      store.hydrateProject(data.objects, data.projectOrigin)
-    }
-  } else {
-    error("Formato de proyecto no reconocido.")
-  }
-}
-```
-
-**Regla:** después de la activación, solo se puede importar v2.
-Si el usuario necesita importar v1, debe hacerlo en una sesión
-anterior (con `restoreFromBackup`) o migrar el archivo manualmente.
-
-### 9.3 Recuperación
-
-**Caso: v2 inválido al abrir**
+#### Sesión v2 — importar archivo v2
 
 ```
-loadProjectV2FromDb() → validateProjectDataV2 falla
-→ Mostrar: "El proyecto tiene un problema. ¿Restaurar desde respaldo?"
+raw.schemaVersion === 2
+→ validateProjectDataV2(raw)
+→ confirmar("¿Reemplazar proyecto actual?")
+→ Transacción atómica:
+    - Desplazar v2 actual a migration-backups (add con key único)
+    - Escribir nuevo v2 en project-v2
+    - Actualizar config/generation
+→ store.hydrateProjectV2(raw)
+```
+
+#### Sesión v2 — importar archivo v1 (permitido mediante migración en memoria)
+
+No se requiere que el usuario abra software anterior ni exporte a v1 primero:
+
+```
+raw.schemaVersion === 1
+→ validateProjectData(raw)                     // valida el v1 importado
+→ migrateV1ToV2(v1Data, { recordedAt })        // migración en memoria, pura
+→ validateProjectDataV2(v2Data)                // valida el v2 generado
+→ Mostrar vista previa:
+    "Se convertirán X elementos. Incidentes: [lista]."
+→ confirmar("¿Importar y convertir?")
+→ Transacción atómica (misma estructura que importar v2):
+    - Desplazar v2 actual a migration-backups
+    - Escribir nuevo v2 en project-v2
+    - Actualizar config/generation
+    - Guardar respaldo del v1 importado en migration-backups
+      (para trazabilidad, no para downgrade)
+→ store.hydrateProjectV2(v2Data)
+```
+
+Downgrade intencional (v2 → v1 activo) queda fuera del alcance de este plan.
+
+#### Sesión v2 — exportación
+
+```
+buildProjectDataV2FromStore(store.getState())
+→ JSON.stringify(data, null, 2)
+→ download("proyecto-bandejas-v2-{DATE}.json")
+```
+
+El archivo exportado tiene `schemaVersion: 2` y todos los campos de
+`ProjectDataV2`, incluyendo `migrationIncidents`.
+
+### 9.3 Recuperación desde respaldo M1b
+
+#### Caso: `project-v2` inválido o corrupto al abrir
+
+```
+validateProjectDataV2(data) falla
+→ Mostrar: "El proyecto tiene un problema. Restaurar desde respaldo?"
 → listMigrationBackups() → listar respaldos disponibles
-→ usuario elige → restoreFromBackup(backupId)
-→ La bandera de activación queda activa: NO restaura v1 auto-save
-   (el respaldo restaura el v1 en STORE_NAME; para usarlo hay
-   que reactivar v1 explícitamente o re-migrar)
+→ usuario elige el respaldo
+→ readMigrationBackup(backupId)
+   → { v1Data, v2Data }  ← el respaldo ya tiene el v2 validado de M1b
+→ validateProjectDataV2(backup.v2Data)
+   → si falla: informar al usuario que el respaldo también está dañado
+→ Transacción atómica (project-v2 + migration-backups):
+    - Desplazar el project-v2 actual (posiblemente corrupto) como displaced
+      (con clave única; usar add, no put) ← preserva los datos, no los elimina
+    - Escribir backup.v2Data en project-v2
+    - Actualizar config/generation
+→ store.hydrateProjectV2(backup.v2Data)
+→ initProjectManagerV2(store, nuevaGeneration)
 ```
 
-**Caso: quiere volver a v1 intencionalmente**
+**No hay `resetDb`; no se eliminan respaldos; el formato sigue siendo v2.**
 
-```
-1. restoreFromBackup(backupId)   → restaura v1 en STORE_NAME
-2. deleteActivationFlag()        → borra bandera de activación
-3. resetDb o DB_VERSION bump     → opcional, dependiendo del estado
-4. hydrateProject(v1Data)        → store vuelve a v1
-5. initProjectManager(store)     → auto-save v1
-```
-
-Este flujo es manual y deliberado; no hay botón de "desactivar v2" en la UI
-(requiere implementación futura).
+La recuperación no reactiva el auto-save v1. Si el usuario necesita
+restaurar v1 como proyecto activo, es una operación deliberada y manual
+fuera del alcance de este plan.
 
 ---
 
 ## 10. Seguridad multi-pestaña
 
-### El problema
+### El riesgo
 
-Tab A activa v2 y empieza a guardar en `project-v2`.
-Tab B tiene v1 cargado con auto-save activo y escribe en `project`.
-Resultado: el store IDB tiene datos inconsistentes.
+Tab B tiene v1 cargado con auto-save activo cuando Tab A activa v2.
+Tab B podría escribir en `project/current` después de la activación.
+Esto no corrompe `project-v2/current` directamente, pero puede confundir
+si Tab B se recarga y encuentra v1 más reciente que el respaldo.
 
-### Solución en dos capas
+### Mecanismo 1 — Upgrade bloqueado como barrera de activación
 
-**Capa 1 — BroadcastChannel (señal inmediata):**
+Cuando Tab A intenta abrir la BD a versión 3 con otra pestaña que tiene v2
+abierta, `onblocked` dispara:
 
 ```typescript
-// En projectManager.ts
-const channel = new BroadcastChannel('codex-v2-channel')
-
-// Al activar (Tab A):
-channel.postMessage({ type: 'v2-activated', timestamp: Date.now() })
-
-// En todas las pestañas:
-channel.onmessage = (e) => {
-  if (e.data.type === 'v2-activated') {
-    _cancelAutoSave()           // parar writes v1
-    store.setEditBlocked(true)  // bloquear UI
-    showReloadPrompt()          // "Esta sesión fue actualizada, recargá"
-  }
+req.onblocked = () => {
+  // La activación DEBE abortarse aquí
+  store.setEditBlocked(false)
+  reportError("Cerrá otras pestañas antes de migrar.")
 }
 ```
 
-**Capa 2 — IDB `versionchange` (fallback si BroadcastChannel falla):**
+La activación no procede si otra pestaña bloquea el upgrade. No se fuerza
+el cierre de otras pestañas ni se eliminan datos.
+
+### Mecanismo 2 — `db.onversionchange` en pestañas abiertas
 
 ```typescript
-// En db.ts, cuando se abre la conexión:
+// En db.ts, al abrir la conexión (entrega I1):
 req.onsuccess = () => {
   const db = req.result
   db.onversionchange = () => {
-    db.close()           // liberar la conexión
-    _cancelAutoSave()    // en projectManager
-    showReloadPrompt()
+    db.close()           // libera la conexión para que el upgrade proceda
+    _cancelDebounceTimer()
+    store.setEditBlocked(true)
+    showReloadBanner()   // "Otra pestaña actualizó el proyecto. Recargá."
   }
   resolve(db)
 }
 ```
 
-Cuando el Tab A eleva DB_VERSION a 3 (paso 6 de la activación), los
-Tabs B y C reciben `onversionchange` y cierran su conexión. Sus próximas
-llamadas a `getDb()` abrirán la v3 con el handler de upgrade y se
-bloquearán en la parte de código que no conoce v3.
+Este handler se agrega en I1. Pestañas que carguen código anterior (sin I1)
+no tendrán este handler; para ellas, el upgrade queda en `onblocked` hasta
+que el usuario las cierre manualmente.
 
-**Combinación:** BroadcastChannel reacciona en < 50 ms (misma máquina).
-`onversionchange` es el safety net si el canal falla o si la pestaña
-estaba en segundo plano.
+### Mecanismo 3 — BroadcastChannel (aviso, no garantía)
 
-### Qué NO hace esta solución
+```typescript
+// Al activar (Tab A, en pasos 4 de §8):
+channel.postMessage({ type: 'v2-activated', backupId })
 
-- No protege contra pestañas en dispositivos distintos (sin sincronización remota).
-- No protege contra una pestaña que ignoró o no recibió el mensaje (p.ej.,
-  worker Service Worker). Documentar como limitación conocida.
+// En todas las pestañas con I_act:
+channel.onmessage = (e) => {
+  if (e.data.type === 'v2-activated') {
+    _cancelDebounceTimer()
+    store.setEditBlocked(true)
+    showReloadBanner()
+  }
+}
+```
+
+BroadcastChannel es un aviso de buena fe. No garantiza entrega en pestañas
+con código anterior, en segundo plano, ni en situaciones de alta carga.
+No sustituye a `onversionchange` ni a la verificación de generación.
+
+### Mecanismo 4 — Comprobación de generación en cada escritura v2
+
+Cada escritura del auto-save v2 lee el campo `generation` de `config/active-format`
+dentro de la misma transacción IDB antes de escribir (ver §4.1). Si la generación
+no coincide con la esperada, la escritura aborta y el auto-save registra un error.
+
+### Límites conocidos
+
+- Pestañas con código anterior (sin los handlers de I1 o I_act) no responden
+  automáticamente al upgrade. El usuario debe cerrarlas manualmente.
+- El auto-save v1 en Tab B seguirá escribiendo en `project/current` hasta que
+  Tab B cierre o recargue. Esto no afecta `project-v2` pero puede confundir
+  si se inspecciona la BD directamente.
+- No hay protección contra instancias en dispositivos distintos (sin
+  sincronización remota, fuera del alcance).
+- No se promete tiempo de entrega de mensajes de BroadcastChannel ni cierre
+  automático garantizado de otras pestañas.
+
+**Procedimiento recomendado para el usuario:** antes de activar la migración,
+abrir la aplicación en una sola pestaña y cerrar todas las demás instancias.
 
 ---
 
@@ -680,165 +901,192 @@ estaba en segundo plano.
 
 ### 11.1 Pruebas automáticas por entrega
 
-**M2a (persistencia):**
+**I1 (persistencia + pauseAndFlush):**
 - `loadProjectV2FromDb` retorna null en BD vacía.
 - `saveProjectV2ToDb` + `loadProjectV2FromDb` round-trip.
-- `setActivationFlag` / `getActivationFlag` persisten entre conexiones.
-- Upgrade de BD v2→v3 no destruye `migration-backups`.
-- Usar fake-indexeddb.
+- Upgrade v2→v3 no destruye `migration-backups` ni `project-v2`.
+- `pauseAndFlush` persiste el estado del store antes de retornar.
+- `pauseAndFlush` falla si el guardado falla; no descarta memoria.
+- `db.onversionchange` llama `_cancelDebounceTimer` y `setEditBlocked`.
+- `saveProjectV2ToDb` con generation incorrecta → aborta sin escribir.
 
-**M2b/M2c/M2d (adaptadores — vitest con fixtures v2):**
+**I2 (adaptador de visor):**
+- `resolveGlobalTransform` para elemento raíz = `transform.positionMm`.
+- `resolveGlobalTransform` para hijo con padre colocado = posición compuesta.
+- `resolveGlobalTransform` para hijo con padre `unplaced` = `null`.
 - `elementToRenderProps` para cada `geometry.kind` produce coordenadas correctas.
-- `elementToRenderProps` con `placementStatus='unplaced'` produce `null`.
-- `elementToRenderProps` con `geometry=null` produce bbox de fallback.
-- Inspector: `updateElementPosition` no modifica campos técnicos del elemento.
-- Inspector: "snap to floor" calcula Z correcto con geometría box y cylinder.
-- Árbol: elemento con `lifecycle='retired'` recibe la clase CSS de inactivo.
-- Árbol: elemento con `placementStatus='unplaced'` recibe indicador correcto.
+- `elementToRenderProps` con `placementStatus='unplaced'` → `positionViewer=null`.
+- `elementToRenderProps` con `geometry=null` → `geometryKind='unknown'`.
+- `asset.boundsMm` → `sizeViewer = [x/1000, z/1000, y/1000]` (no `y` en segundo lugar).
 
-**M2e (store + activación — vitest + fake-indexeddb):**
-- `hydrateProjectV2(data)` reemplaza `elements`, limpia `selectedId`.
-- `updateElementPosition` hace spread correcto (no pierde campos técnicos).
-- Activación completa con mock de `prepareMigrationWithBackup`:
-  - Verifica que `_cancelAutoSave` fue llamado antes del read.
-  - Verifica que `setEditBlocked(true)` ocurrió antes.
-  - Verifica que el auto-save v2 escribe en `project-v2`, no en `project`.
-  - Verifica que el auto-save v1 no se reactiva después.
+**I3 (adaptador de inspector):**
+- `updateElementPosition` establece `placementStatus='placed'` siempre.
+- `updateElementPosition` preserva todos los campos técnicos del elemento.
+- `updateElementPosition` con rotación preexistente preserva la rotación.
+- Snap: `box` usa `heightMm`; `cylinder` usa `lengthMm`.
+- Snap deshabilitado si `geometry=null`, rotación no identidad, o `parentId!=null`.
+- Display Z = `globalPos.z - projectOrigin.z`; apply envía `globalPos.z`.
 
-**M2f (multi-pestaña — vitest con BroadcastChannel mock):**
-- El mensaje `v2-activated` cancela auto-save y bloquea edición.
-- `db.onversionchange` llama `_cancelAutoSave`.
+**I4 (árbol de escena):**
+- Categoría `pushbutton` aparece en grupo "Botoneras / bloques".
+- Categoría `pushbutton_station` NO existe (typo corregido).
+- `lifecycle='retired'` → clase CSS o indicador visual de inactivo.
+- `placementStatus='unplaced'` → indicador de posición pendiente.
 
-**M2g (import/export):**
-- Export → JSON con `schemaVersion:2`.
-- Import de JSON v2 válido → hidrata store con v2.
-- Import de JSON v1 en sesión activada → error claro.
-- Import de JSON v2 inválido → error claro con mensaje del validador.
-- Round-trip completo: export → reimport → mismos `elements`.
+**I5 (import/export):**
+- Export → `schemaVersion:2` y `migrationIncidents` incluidos.
+- Import v2 válido → hidrata store.
+- Import v1 en sesión v2 → migra en memoria, muestra preview, hidrata.
+- Import v1 inválido → error claro, store sin cambios.
+- Import v2 inválido → error claro.
+- Round-trip: export → reimport → `elements` idénticos.
+- Import v2 reemplaza v2 actual con atomic transaction (desplazado conservado).
 
-### 11.2 Pasos manuales de aceptación (por entrega)
+**I6 (recuperación UI):**
+- `listMigrationBackups` retorna los respaldos disponibles.
+- Recuperación usa `backup.v2Data` (no re-migra el v1).
+- El v2 corrupto queda como displaced, no eliminado.
+- Si `backup.v2Data` es inválido, se informa sin intentar hidratar.
 
-**Al terminar M2e (activación completa):**
+**I7 (seguridad multi-pestaña):**
+- BroadcastChannel `v2-activated` → cancela debounce, bloquea edición.
+- `onversionchange` → cancela debounce, bloquea edición.
+- `saveProjectV2ToDb` generation mismatch → aborta transacción.
 
-1. Cargar la aplicación sin sesión previa.
-   - Verificar: se muestra el proyecto v1 inicial.
-   - Verificar: `saveStatus` llega a `'saved'`.
+**I_act (activación completa):**
+- `pauseAndFlush` es llamado antes de leer v1.
+- Upgrade `onblocked` → activación abortada, edición desbloqueada, auto-save v1 intacto.
+- Transacción atómica: si falla en config → ni respaldo ni v2 ni config escritos.
+- Transacción atómica: si falla en v2 → ni respaldo ni v2 ni config escritos.
+- Post-activación: auto-save escribe en `project-v2`, no en `project`.
+- Post-activación: auto-save v1 no se reactiva.
+- `migrationIncidents` persisten en `project-v2` entre sesiones.
 
-2. Activar v2 (desde la función de activación, sin UI).
-   - Verificar: el visor sigue mostrando los mismos objetos en las mismas posiciones.
-   - Verificar: el inspector abre para un motor y muestra posición correcta.
-   - Verificar: editar la posición → el motor se mueve en la escena.
-   - Verificar: recargar la página → el proyecto v2 se carga con las mismas posiciones.
-   - Verificar: en DevTools, `project-v2/current` contiene `schemaVersion:2`.
-   - Verificar: `project/current` NO fue modificado después de la activación.
+### 11.2 Pasos manuales de aceptación (al terminar I_act)
 
-3. Abrir una segunda pestaña antes de activar.
-   - Activar v2 en Tab 1.
-   - Verificar: Tab 2 muestra prompt de recarga y no guarda más.
-   - Verificar: en Tab 2, el auto-save no escribe en `project/current`.
+1. **Sesión limpia:**
+   - Cargar la aplicación. Verificar: proyecto v1 inicial, `saveStatus='saved'`.
 
-4. Exportar desde la sesión v2.
-   - Verificar: el JSON descargado tiene `"schemaVersion":2`.
-   - Importar ese JSON en la misma sesión.
-   - Verificar: el proyecto no cambia.
+2. **Activación:**
+   - Activar v2 (desde la función de activación, sin UI de botón aún).
+   - Verificar: visor muestra los mismos objetos en las mismas posiciones.
+   - Verificar: inspector muestra posición correcta relativa al origen.
+   - Verificar: editar posición → el objeto se mueve en la escena.
+   - Verificar: recargar → mismo proyecto v2 cargado.
+   - DevTools: `project-v2/current.schemaVersion === 2`.
+   - DevTools: `config/active-format.format === 'v2'`.
+   - DevTools: `project/current` NO modificado post-activación.
 
-5. Simular fallo de activación (paso 5 con STALE_V1_DATA):
-   - Verificar: la edición se desbloquea.
-   - Verificar: el auto-save v1 sigue funcionando.
-   - Verificar: el proyecto está intacto.
+3. **Multi-pestaña:**
+   - Abrir dos pestañas antes de activar.
+   - Intentar activar → `onblocked` → verificar mensaje de error, edición desbloqueada.
+   - Cerrar una pestaña → activar en la restante.
+   - Verificar: Tab cerrada no dejó datos corruptos.
 
-6. Verificar recuperación desde respaldo:
-   - Desde DevTools, corromper `project-v2/current`.
-   - Recargar.
-   - Verificar: se muestra opción de recuperación.
-   - Restaurar desde respaldo.
-   - Verificar: el proyecto v1 original es accesible.
+4. **Importar v1 en sesión v2:**
+   - Exportar un proyecto v1 desde una sesión pre-activación.
+   - Importar ese archivo JSON en la sesión v2.
+   - Verificar: se muestra preview de migración con elementos y posibles incidents.
+   - Confirmar → proyecto v2 cargado con los datos del v1 importado.
+   - Verificar: v2 anterior conservado como displaced.
+
+5. **Recuperación:**
+   - Corromper `project-v2/current` desde DevTools.
+   - Recargar → verificar prompt de recuperación.
+   - Restaurar desde respaldo → proyecto v2 recuperado desde `backup.v2Data`.
+   - Verificar: datos corruptos conservados como displaced, no eliminados.
+
+6. **Fallo en activación:**
+   - Simular `STALE_V1_DATA` (guardar un cambio justo antes de migrar).
+   - Verificar: edición desbloqueada, auto-save v1 sigue funcionando.
+   - Verificar: `config/active-format` no fue escrito.
 
 ---
 
-## 12. Desglose en entregas
+## 12. Desglose en entregas (I1–I_act)
 
-### Dependencias entre entregas
+Los identificadores I1–I_act son específicos de la integración v1→v2.
+No interfieren con M2–M7 (ver §13).
+
+### Dependencias
 
 ```
-M2a (persistencia)  ──────────────────────┐
-M2b (adaptador visor)   ┐                 │
-M2c (adaptador inspector)│ paralelas       │
-M2d (adaptador árbol)   ┘                 │
-                                          ▼
-M2e (store + activación) ← necesita M2a + M2b + M2c + M2d
-     │
-     ▼
-M2f (multi-pestaña) ← necesita M2e
-M2g (import/export) ← necesita M2e (paralelo con M2f)
-M2h (recuperación UI) ← necesita M2e
+I1 (persistencia, pauseAndFlush, onversionchange)
+I2 (adaptador visor)   ┐
+I3 (adaptador inspector)│ paralelas, requieren M1a auditado
+I4 (adaptador árbol)   ┘
+I5 (import/export)
+I6 (recuperación UI)
+I7 (multi-pestaña)
+       │
+       └── I_act (activación) ← requiere todos los anteriores
 ```
 
-### M2a — Persistencia v2
+I5, I6, I7 pueden desarrollarse en paralelo con I2–I4.
+I_act es el único paso que activa v2 en producción.
 
-**Objetivo:** funciones IDB para v2, bandera de activación, DB_VERSION=3.  
-**Archivos:** `src/persistence/db.ts`  
-**Tests:** 6–8 tests fake-indexeddb  
-**NO activa v2; NO cambia UI.**
+### I1 — Persistencia v2 y pauseAndFlush
+
+**Objetivo:** funciones IDB para v2, DB_VERSION=3, `pauseAndFlush`, generation check.  
+**Archivos:** `src/persistence/db.ts`, `src/persistence/projectManager.ts`  
+**NO activa v2; NO cambia UI.**  
+**Tests:** 8–12 tests fake-indexeddb.
 
 Deliverables:
-- `loadProjectV2FromDb()`, `saveProjectV2ToDb()`
-- `getActivationFlag()`, `setActivationFlag()`
-- `DB_VERSION = 3`, store `config`, `onversionchange` handler
-- `getCurrentSavePromise()` expuesto por projectManager
+- `loadProjectV2FromDb()`, `saveProjectV2ToDb(data, generation)`
+- `readActiveFormatMetadata()`
+- `DB_VERSION = 3`, store `config`, handler `onversionchange`
+- `pauseAndFlush()` en projectManager
 
-### M2b — Adaptador de visor
+### I2 — Adaptador de visor
 
-**Objetivo:** `elementToRenderProps` que convierte v2 → props de renderizado.  
-**Archivos:** `src/scene/v2-adapter.ts` (nuevo), tests  
-**NO toca SceneObjects ni el store.**  
-**Tests:** 10–15 tests unitarios con fixtures v2.
+**Objetivo:** `elementToRenderProps`, `resolveGlobalTransform`, conversión de base.  
+**Archivos:** `src/scene/v2-adapter.ts` (nuevo)  
+**NO toca SceneObjects ni el store de producción.**  
+**Tests:** 15–20 tests unitarios.
 
-### M2c — Adaptador de inspector
+### I3 — Adaptador de inspector
 
-**Objetivo:** inspector leyendo desde v2, acciones granulares en store.  
+**Objetivo:** acciones granulares en store, inspector leyendo v2, snap corregido.  
 **Archivos:** `src/store/sceneStore.ts` (acciones nuevas), `src/ui/Inspector.tsx`  
-**NO elimina la lógica v1 todavía.**  
-**Tests:** unitarios de acciones del store; tests de interacción del inspector.
+**NO elimina la lógica v1.**  
+**Tests:** unitarios de acciones del store; tests de interacción.
 
-### M2d — Adaptador de árbol
+### I4 — Adaptador de árbol
 
-**Objetivo:** SceneTree mapeando categorías v2 con indicadores de estado.  
+**Objetivo:** SceneTree con 13 categorías v2 y estados.  
 **Archivos:** `src/ui/SceneTree.tsx`  
 **Tests:** tests de interacción con fixtures v2.
 
-### M2e — Store v2 + activación coordinada
+### I5 — Importación/exportación v2
 
-**Objetivo:** migrar el store de v1 a v2; implementar la secuencia de
-activación completa incluyendo `hydrateProjectV2`, `initProjectManagerV2`
-y `setEditBlocked`.  
-**Archivos:** `src/store/sceneStore.ts`, `src/persistence/projectManager.ts`,
-nuevo `src/persistence/activationCoordinator.ts`  
-**Esta entrega activa v2 en la aplicación.**  
-**Tests:** integración completa con fake-indexeddb y store mock.
+**Objetivo:** import detecta versión; v1 en sesión v2 migra en memoria con preview;
+export serializa v2 con `migrationIncidents`.  
+**Archivos:** `src/ui/ProjectActions.tsx`, nuevo helper de migración en memoria.  
+**Tests:** detección, round-trip, v1-en-v2 con preview.
 
-Incluye:
-- Remover las acciones y tipos v1 del store (breaking change).
-- Adaptar `initProject` para detectar si abrir v1 o v2.
-- Implementar la secuencia de los 10 pasos del §8.
+### I6 — Recuperación UI
 
-### M2f — Seguridad multi-pestaña
+**Objetivo:** panel para listar respaldos M1b; restaurar usando `backup.v2Data`;
+displaced conservado.  
+**Archivos:** `src/ui/RecoveryPanel.tsx` (nuevo).  
+**Tests:** integración con mock de `listMigrationBackups` / `readMigrationBackup`.
 
-**Objetivo:** BroadcastChannel + `db.onversionchange` que bloquean pestañas antiguas.  
+### I7 — Seguridad multi-pestaña
+
+**Objetivo:** `onversionchange` y BroadcastChannel handlers en código de producción;
+generation check en escrituras v2.  
 **Archivos:** `src/persistence/db.ts`, `src/persistence/projectManager.ts`  
-**Tests:** con BroadcastChannel mock y `_setDbForTesting`.
+**Tests:** con BroadcastChannel mock, `_setDbForTesting`, generation mismatch.
 
-### M2g — Importación/exportación v2
+### I_act — Activación completa
 
-**Objetivo:** import/export detecta versión; en sesión v2 exporta v2 e importa v2.  
-**Archivos:** `src/ui/ProjectActions.tsx`, `src/persistence/projectManager.ts`  
-**Tests:** unitarios de detección, round-trip, error en v1 sobre sesión v2.
-
-### M2h — Recuperación UI
-
-**Objetivo:** listar respaldos disponibles en la UI; flujo de restauración guiado.  
-**Archivos:** nuevo `src/ui/RecoveryPanel.tsx`  
-**Tests:** integración con mock de `listMigrationBackups` / `restoreFromBackup`.
+**Objetivo:** implementar `activateMigrationWithBackup` extendiendo M1b; implementar
+`initProjectManagerV2`; cablear la secuencia de activación de §8.  
+**Archivos:** `src/persistence/migration-backup.ts`, `src/persistence/projectManager.ts`,
+nuevo `src/persistence/activationCoordinator.ts`  
+**Esta es la única entrega que activa v2 en producción.**  
+**Tests:** integración completa, incluyendo todos los casos de error de §8.2.
 
 ---
 
@@ -855,59 +1103,75 @@ Incluye:
 | `feat/project-migration-backup` | M1b-audit-1 | `e661160` | 310 | ✅ |
 | `feat/project-migration-backup` | M1b-audit-2 | `4e43abc` | 310 | ✅ auditado |
 
-### Entregas planificadas (M2+)
+### Entregas de integración (I1–I_act)
 
-| Entrega | Rama sugerida | Requisitos previos | Prioridad |
+| Entrega | Rama sugerida | Requisitos | Activa v2 |
 |---|---|---|---|
-| M2a | `feat/v2-persistence` | M1b auditado | Alta |
-| M2b | `feat/v2-viewer-adapter` | M1a auditado | Alta |
-| M2c | `feat/v2-inspector-adapter` | M1a auditado | Alta |
-| M2d | `feat/v2-tree-adapter` | M1a auditado | Media |
-| M2e | `feat/v2-activation` | M2a + M2b + M2c + M2d | Alta |
-| M2f | `feat/v2-multitab` | M2e | Media |
-| M2g | `feat/v2-import-export` | M2e | Media |
-| M2h | `feat/v2-recovery-ui` | M2e | Baja |
+| I1 | `feat/v2-persistence` | M1b auditado | No |
+| I2 | `feat/v2-viewer-adapter` | M1a auditado | No |
+| I3 | `feat/v2-inspector-adapter` | M1a auditado | No |
+| I4 | `feat/v2-tree-adapter` | M1a auditado | No |
+| I5 | `feat/v2-import-export` | I3 | No |
+| I6 | `feat/v2-recovery-ui` | I1 | No |
+| I7 | `feat/v2-multitab` | I1 | No |
+| I_act | `feat/v2-activation` | I1–I7 completos | **Sí** |
 
-### Fases futuras (M3–M7, no en el alcance de este documento)
+### Fases de producto (M2–M7, sin cambios respecto al modelo auditado)
+
+Las fases M2–M7 definidas en `implementation-plan.md` y `equipment-domain-model.md`
+no se modifican. Sus requisitos son independientes de la integración v1→v2:
 
 | Fase | Descripción |
 |---|---|
-| M3 | Fichas técnicas editables: campos Datum<T> por categoría; equipos de vacío |
-| M4 | Gestión de fábricas, subareas y vínculos de servicio (ElementService) |
-| M5 | Puertos, conexiones y canalizaciones de cables |
-| M6 | Circuitos neumáticos, manifolds y racords |
-| M7 | Exportación DXF e integración de campo; importación desde datasheet/xlsx |
+| M2 | Fábricas, subáreas y asociaciones |
+| M3 | Ficha común y operaciones de elementos (13 categorías, Datum<T> editable) |
+| M4 | Geometría editable y composición padre/hijo |
+| M5 | Puertos, conexiones, cables y mangueras |
+| M6 | Importación XLSX con trazabilidad por campo |
+| M7 | Ruteo, BOM, checklist de campo |
 
-Los requisitos de M3–M7 están documentados en `equipment-domain-model.md` y
-en los contratos de `domain-v2.ts`. Este plan no los modifica.
+**Requisitos preservados fuera de M1–M7:** DXF, PDF/BOM imprimible, PWA,
+catálogo de bandejas, cálculos eléctrico/neumático/hidráulico (fuera del
+alcance actual, documentados en `implementation-plan.md` §Funcionalidades
+fuera del alcance).
 
 ---
 
-## Apéndice A — Decisiones de diseño y alternativas descartadas
+## Apéndice A — Decisiones de diseño
 
-### A.1 ¿Por qué no mantener v1 y v2 en paralelo en el store?
+### A.1 ¿Por qué no activar v2 parcialmente entrega por entrega?
 
-Mantener dos fuentes de verdad simultáneas requeriría sincronización
-permanente entre `DomainObject[]` (v1) y `EquipmentElement[]` (v2).
-Cualquier edición debería reflejarse en ambas representaciones, con riesgo
-de divergencia. Se prefiere la migración limpia en el punto de activación.
+La lógica condicional `if (v2Active)` penetraría en todos los componentes
+y persistiría hasta eliminar el flag. La activación atómica produce código
+más limpio: I2–I7 se construyen y prueban contra fixtures v2 sin activar v2
+en producción, y I_act hace el corte limpio.
 
-### A.2 ¿Por qué acciones granulares en lugar de `Partial<EquipmentElement>`?
+### A.2 ¿Por qué `activateMigrationWithBackup` y no dos funciones separadas?
 
-`Partial<EquipmentElement>` permite accidentalmente omitir campos requeridos
-o sobrescribir campos técnicos con `undefined`. Las acciones granulares son
-contratos explícitos: el caller solo provee lo que sabe cambiar.
+Separar el commit de datos del commit de la bandera de activación crea
+una ventana donde existe v2 escrito pero la bandera aún no está.
+Si se fuerza un cierre entre los dos commits, la sesión siguiente no
+encuentra bandera y recarga el v1 obsoleto, perdiendo la migración.
+Una sola transacción elimina esa ventana.
 
-### A.3 ¿Por qué DB_VERSION=3 y no una clave en project-v2?
+### A.3 ¿Por qué DB_VERSION=3 no activa v2?
 
-Una clave en `project-v2` puede ser escrita sin coordinación de versión IDB.
-El bump de versión garantiza que las pestañas antiguas (con conexión v2)
-reciban el evento `versionchange` y cierren su conexión antes de que el
-auto-save v1 siguiente pueda ejecutarse.
+Abrir IDB v3 crea el store `config`, nada más. La activación solo ocurre
+cuando `activateMigrationWithBackup` escribe en `config/active-format`.
+Esto permite que I1 (que sube a v3) se despliegue sin activar v2, en
+cualquier sesión pre-migración.
 
-### A.4 ¿Por qué no activar v2 de forma gradual (feature flag)?
+### A.4 ¿Por qué no garantizar cierre automático de otras pestañas?
 
-La lógica condicional `if (v2Active) { ... } else { ... }` penetra en todos
-los componentes y persiste indefinidamente hasta que se elimina el flag.
-La activación puntual produce código más limpio: los adaptadores se construyen
-antes de la activación y se usan desde el primer momento en que v2 está activo.
+Las pestañas con código anterior no tienen los handlers de I1/I_act.
+`onversionchange` no puede cerrar pestañas remotamente; solo notifica.
+El procedimiento seguro es que el usuario cierre otras instancias antes
+de activar. Prometer cierre automático generaría falsa sensación de seguridad.
+
+### A.5 ¿Por qué el downgrade intencional está fuera del alcance?
+
+El flujo de recuperación (§9.3) ya permite volver a un estado v2 conocido-bueno
+desde los respaldos M1b. Implementar un downgrade real (config → v1, auto-save → v1)
+requiere razonar sobre todos los datos v2-exclusivos que no tienen representación
+en v1 (physicalLocation, evidence, connections, etc.). Ese análisis corresponde
+a una entrega propia si el requisito se confirma.
