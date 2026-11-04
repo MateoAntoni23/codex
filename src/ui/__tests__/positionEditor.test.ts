@@ -114,3 +114,30 @@ describe('snapToFloorZ', () => {
     expect(snapToFloorZ(0)).toBe(0);
   });
 });
+
+describe('snapToFloorZ con originZ distinto de cero', () => {
+  it('originZ=500 → Z_mostrado = 1000 − 500 = 500', () => {
+    expect(snapToFloorZ(2000, 500)).toBe(500);
+  });
+
+  it('Z_mostrado + originZ siempre da height/2 (invariante piso)', () => {
+    const cases: [number, number][] = [
+      [2000, 500],
+      [800, 400],
+      [8000, 1000],
+      [2000, -300],
+    ];
+    for (const [h, oz] of cases) {
+      expect(snapToFloorZ(h, oz) + oz).toBe(h / 2);
+    }
+  });
+
+  it('originZ negativo eleva la Z mostrada', () => {
+    // origin.z = -500 → Z_mostrado = 1000 − (−500) = 1500
+    expect(snapToFloorZ(2000, -500)).toBe(1500);
+  });
+
+  it('sin segundo argumento se comporta igual que originZ=0', () => {
+    expect(snapToFloorZ(2000)).toBe(snapToFloorZ(2000, 0));
+  });
+});

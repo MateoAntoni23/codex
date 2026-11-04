@@ -44,7 +44,16 @@ export function parsePositionDraft(draft: PositionDraft): ParseResult {
   return { ok: true, value };
 }
 
-/** Z del centro para que la base del objeto quede sobre el piso (Z_dominio = 0). */
-export function snapToFloorZ(heightMm: number): number {
-  return heightMm / 2;
+/**
+ * Z del centro para que la base quede sobre el piso global (Z = 0).
+ *
+ * Cuando hay origen, la Z mostrada en el inspector es relativa al origen:
+ *   Z_mostrado = Z_global − origen.z
+ * Para Z_global = height/2 (base en piso):
+ *   Z_mostrado = height/2 − originZ
+ *
+ * Con originZ = 0 (valor por defecto) devuelve height/2, igual que antes.
+ */
+export function snapToFloorZ(heightMm: number, originZ = 0): number {
+  return heightMm / 2 - originZ;
 }

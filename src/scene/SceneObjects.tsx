@@ -3,6 +3,7 @@ import { Floor } from './Floor';
 import { Building } from './Building';
 import { ElectricalPanel } from './ElectricalPanel';
 import { Motor } from './Motor';
+import { OriginMarker } from './OriginMarker';
 
 export function SceneObjects() {
   const objects = useSceneStore((s) => s.objects);
@@ -11,6 +12,8 @@ export function SceneObjects() {
 
   return (
     <>
+      <OriginMarker />
+
       {objects.map((obj) => {
         if (obj.type === 'floor') return <Floor key={obj.id} obj={obj} />;
         if (obj.type === 'building') return <Building key={obj.id} obj={obj} />;

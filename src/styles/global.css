@@ -49,6 +49,11 @@ html, body, #root {
 
 .panel-left  { grid-area: left;   background: #1e1e2e; }
 .panel-right { grid-area: right;  background: #1e1e2e; }
+
+/* SceneTree ocupa el espacio restante dentro del panel izquierdo */
+.panel-left .scene-tree {
+  min-height: 0; /* permite que flex shrink funcione correctamente */
+}
 .panel-bottom {
   grid-area: bottom;
   background: #16161e;
@@ -260,6 +265,50 @@ html, body, #root {
 
 .btn-snap:hover {
   background: #254530;
+}
+
+/* ── Panel de origen del proyecto ── */
+.origin-panel {
+  flex-shrink: 0;
+  border-top: 2px solid #2a2a44;
+  background: #181828;
+  overflow-y: auto;
+  max-height: 290px;
+  padding-bottom: 6px;
+}
+
+.origin-disclaimer {
+  margin: 0 12px 6px;
+  font-size: 10px;
+  color: #555577;
+  line-height: 1.4;
+  font-style: italic;
+}
+
+.origin-actions {
+  display: flex;
+  gap: 4px;
+  padding: 6px 12px 2px;
+  justify-content: flex-end;
+}
+
+.origin-btn-reset {
+  font-size: 11px;
+}
+
+.origin-use-center {
+  padding: 4px 12px 2px;
+}
+
+.origin-use-center .btn-snap {
+  width: 100%;
+  text-align: center;
+  font-size: 11px;
+}
+
+.origin-use-center .btn-snap:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 /* ── Barra de conductores ── */

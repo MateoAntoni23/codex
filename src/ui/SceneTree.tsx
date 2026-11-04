@@ -17,6 +17,7 @@ const TYPE_LABEL: Record<ObjectType, string> = {
 
 const SELECTABLE: ObjectType[] = ['panel', 'motor'];
 
+// El panel contenedor (panel-left) lo gestiona Layout.tsx.
 export function SceneTree() {
   const objects = useSceneStore((s) => s.objects);
   const selectedId = useSceneStore((s) => s.selectedId);
@@ -24,7 +25,7 @@ export function SceneTree() {
   const clearSelection = useSceneStore((s) => s.clearSelection);
 
   return (
-    <div className="panel panel-left">
+    <>
       <div className="panel-title">Elementos de la Escena</div>
       <ul className="scene-tree">
         {objects.map((obj) => {
@@ -47,6 +48,6 @@ export function SceneTree() {
           );
         })}
       </ul>
-    </div>
+    </>
   );
 }

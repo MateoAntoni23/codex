@@ -15,7 +15,6 @@ const TYPE_LABEL: Record<ObjectType, string> = {
   motor: 'Motor Eléctrico',
 };
 
-// Solo panel y motor permiten editar posición.
 const EDITABLE_TYPES: ReadonlySet<ObjectType> = new Set(['panel', 'motor']);
 
 function ReadField({ label, value }: { label: string; value: string }) {
@@ -30,6 +29,7 @@ function ReadField({ label, value }: { label: string; value: string }) {
 export function Inspector() {
   const objects = useSceneStore((s) => s.objects);
   const selectedId = useSceneStore((s) => s.selectedId);
+  const projectOrigin = useSceneStore((s) => s.projectOrigin);
   const updateObjectPosition = useSceneStore((s) => s.updateObjectPosition);
 
   const obj =
@@ -39,20 +39,23 @@ export function Inspector() {
   const [draft, setDraft] = useState<PositionDraft>({ x: '', y: '', z: '' });
   const [errors, setErrors] = useState<PositionErrors>({});
 
-  // Inicializa el borrador cada vez que cambia la selección.
-  // No depende de obj para evitar resetear el input en cada aplicación.
+  // Reinicia el borrador cada vez que cambia la selección o el origen.
+  // Al cambiar el origen, los valores anteriores quedan bajo otro sistema
+  // de referencia y deben descartarse.
   useEffect(() => {
-    const { objects: objs, selectedId: sid } = useSceneStore.getState();
-    const current = sid != null ? (objs.find((o) => o.id === sid) ?? null) : null;
+    const { objects: objs, selectedId: sid, projectOrigin: origin } =
+      useSceneStore.getState();
+    const current =
+      sid != null ? (objs.find((o) => o.id === sid) ?? null) : null;
     if (current != null && EDITABLE_TYPES.has(current.type)) {
       setDraft({
-        x: String(current.position.x),
-        y: String(current.position.y),
-        z: String(current.position.z),
+        x: String(current.position.x - origin.x),
+        y: String(current.position.y - origin.y),
+        z: String(current.position.z - origin.z),
       });
     }
     setErrors({});
-  }, [selectedId]);
+  }, [selectedId, projectOrigin]); // ambas dependencias son intencionales
 
   function handleChange(axis: keyof PositionDraft, value: string) {
     setDraft((d) => ({ ...d, [axis]: value }));
@@ -66,16 +69,21 @@ export function Inspector() {
       setErrors(result.errors);
       return;
     }
-    updateObjectPosition(selectedId, result.value);
+    // Posición global = posición ingresada (relativa al origen) + origen
+    updateObjectPosition(selectedId, {
+      x: result.value.x + projectOrigin.x,
+      y: result.value.y + projectOrigin.y,
+      z: result.value.z + projectOrigin.z,
+    });
     setErrors({});
   }
 
   function handleCancel() {
     if (obj != null) {
       setDraft({
-        x: String(obj.position.x),
-        y: String(obj.position.y),
-        z: String(obj.position.z),
+        x: String(obj.position.x - projectOrigin.x),
+        y: String(obj.position.y - projectOrigin.y),
+        z: String(obj.position.z - projectOrigin.z),
       });
     }
     setErrors({});
@@ -83,7 +91,8 @@ export function Inspector() {
 
   function handleSnapToFloor() {
     if (obj != null) {
-      const z = snapToFloorZ(obj.dimensions.height);
+      // Z mostrado = height/2 − origen.z → al aplicar: global Z = height/2 (base en piso)
+      const z = snapToFloorZ(obj.dimensions.height, projectOrigin.z);
       setDraft((d) => ({ ...d, z: String(z) }));
       setErrors((e) => ({ ...e, z: undefined }));
     }
@@ -105,7 +114,7 @@ export function Inspector() {
           <ReadField label="Prof." value={`${obj.dimensions.depth} mm`} />
           <ReadField label="Alto" value={`${obj.dimensions.height} mm`} />
 
-          <div className="inspector-section">Posición (mm)</div>
+          <div className="inspector-section">Posición respecto del origen (mm)</div>
 
           {editable ? (
             <>
@@ -147,7 +156,9 @@ export function Inspector() {
                 >
                   Apoyar en piso
                 </button>
-                <span className="inspector-hint">Z = alto / 2</span>
+                <span className="inspector-hint">
+                  Z global = alto / 2
+                </span>
               </div>
 
               <div className="inspector-actions">
@@ -169,9 +180,12 @@ export function Inspector() {
             </>
           ) : (
             <>
-              <ReadField label="X" value={`${obj.position.x} mm`} />
-              <ReadField label="Y" value={`${obj.position.y} mm`} />
-              <ReadField label="Z (centro)" value={`${obj.position.z} mm`} />
+              <ReadField label="X" value={`${obj.position.x - projectOrigin.x} mm`} />
+              <ReadField label="Y" value={`${obj.position.y - projectOrigin.y} mm`} />
+              <ReadField
+                label="Z (centro)"
+                value={`${obj.position.z - projectOrigin.z} mm`}
+              />
             </>
           )}
         </div>
