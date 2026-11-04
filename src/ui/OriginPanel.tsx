@@ -7,6 +7,8 @@ export function OriginPanel() {
   const setProjectOrigin = useSceneStore((s) => s.setProjectOrigin);
   const selectedId = useSceneStore((s) => s.selectedId);
   const objects = useSceneStore((s) => s.objects);
+  const saveStatus = useSceneStore((s) => s.saveStatus);
+  const isLoading = saveStatus === 'loading';
 
   const selectedObj =
     selectedId != null ? (objects.find((o) => o.id === selectedId) ?? null) : null;
@@ -89,6 +91,7 @@ export function OriginPanel() {
                 type="text"
                 inputMode="numeric"
                 value={draft[axis]}
+                disabled={isLoading}
                 onChange={(e) => handleChange(axis, e.target.value)}
               />
               {errorMsg != null && (
@@ -100,13 +103,13 @@ export function OriginPanel() {
       })}
 
       <div className="origin-actions">
-        <button className="btn-secondary" type="button" onClick={handleCancel}>
+        <button className="btn-secondary" type="button" disabled={isLoading} onClick={handleCancel}>
           Cancelar
         </button>
-        <button className="btn-secondary origin-btn-reset" type="button" onClick={handleReset}>
+        <button className="btn-secondary origin-btn-reset" type="button" disabled={isLoading} onClick={handleReset}>
           Restablecer
         </button>
-        <button className="btn-primary" type="button" onClick={handleApply}>
+        <button className="btn-primary" type="button" disabled={isLoading} onClick={handleApply}>
           Aplicar
         </button>
       </div>
@@ -116,7 +119,7 @@ export function OriginPanel() {
           className="btn-snap"
           type="button"
           onClick={handleUseCenterAsOrigin}
-          disabled={selectedObj == null}
+          disabled={isLoading || selectedObj == null}
           title={
             selectedObj == null
               ? 'Seleccioná un objeto en la escena'

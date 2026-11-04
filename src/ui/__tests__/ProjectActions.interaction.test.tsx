@@ -11,14 +11,16 @@ vi.mock('../../persistence/projectManager', () => ({
   exportProject: vi.fn(),
   importProject: vi.fn(),
   resetProject: vi.fn(),
+  recoverProject: vi.fn(),
   initProject: vi.fn(),
 }));
 
-import { exportProject, importProject, resetProject } from '../../persistence/projectManager';
+import { exportProject, importProject, resetProject, recoverProject } from '../../persistence/projectManager';
 
 const mockExport = exportProject as ReturnType<typeof vi.fn>;
 const mockImport = importProject as ReturnType<typeof vi.fn>;
 const mockReset = resetProject as ReturnType<typeof vi.fn>;
+const mockRecover = recoverProject as ReturnType<typeof vi.fn>;
 
 function resetStore() {
   useSceneStore.setState({
@@ -35,7 +37,9 @@ beforeEach(() => {
   mockExport.mockReset();
   mockImport.mockReset();
   mockReset.mockReset();
+  mockRecover.mockReset();
   mockImport.mockResolvedValue({ ok: true });
+  mockRecover.mockResolvedValue({ ok: true });
 });
 
 afterEach(() => {
@@ -114,6 +118,55 @@ describe('ProjectActions — Restablecer ejemplo', () => {
     render(<ProjectActions />);
     await userEvent.click(screen.getByRole('button', { name: 'Restablecer ejemplo' }));
     expect(mockReset).toHaveBeenCalledOnce();
+  });
+});
+
+describe('ProjectActions — recuperación tras fallo de carga', () => {
+  it('Importar llama a recoverProject (no importProject) cuando saveStatus=error', async () => {
+    useSceneStore.setState({ saveStatus: 'error', saveError: 'fallo de lectura' });
+    render(<ProjectActions />);
+
+    const fileInput = document.querySelector<HTMLInputElement>('[data-testid="file-input"]')!;
+    const file = new File(['{}'], 'recovery.json', { type: 'application/json' });
+    await userEvent.upload(fileInput, file);
+
+    expect(mockRecover).toHaveBeenCalledOnce();
+    expect(mockImport).not.toHaveBeenCalled();
+  });
+
+  it('Restablecer llama a recoverProject (no resetProject) cuando saveStatus=error', async () => {
+    useSceneStore.setState({ saveStatus: 'error', saveError: 'fallo de lectura' });
+    render(<ProjectActions />);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Restablecer ejemplo' }));
+
+    expect(mockRecover).toHaveBeenCalledOnce();
+    expect(mockReset).not.toHaveBeenCalled();
+  });
+
+  it('muestra error si recoverProject falla durante recuperación', async () => {
+    useSceneStore.setState({ saveStatus: 'error', saveError: 'fallo de lectura' });
+    mockRecover.mockResolvedValue({ ok: false, error: 'Error al guardar: sin espacio' });
+    render(<ProjectActions />);
+
+    const fileInput = document.querySelector<HTMLInputElement>('[data-testid="file-input"]')!;
+    const file = new File(['{}'], 'recovery.json', { type: 'application/json' });
+    await userEvent.upload(fileInput, file);
+
+    expect(screen.getByRole('alert')).toBeTruthy();
+    expect(screen.getByText(/Error al guardar: sin espacio/)).toBeTruthy();
+  });
+
+  it('no muestra error si el usuario cancela durante recuperación', async () => {
+    useSceneStore.setState({ saveStatus: 'error', saveError: 'fallo de lectura' });
+    mockRecover.mockResolvedValue({ ok: false, error: 'Importación cancelada' });
+    render(<ProjectActions />);
+
+    const fileInput = document.querySelector<HTMLInputElement>('[data-testid="file-input"]')!;
+    const file = new File(['{}'], 'recovery.json', { type: 'application/json' });
+    await userEvent.upload(fileInput, file);
+
+    expect(screen.queryByRole('alert')).toBeNull();
   });
 });
 

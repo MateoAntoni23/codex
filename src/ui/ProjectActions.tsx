@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { useSceneStore, type SaveStatus } from '../store/sceneStore';
-import { exportProject, importProject, resetProject } from '../persistence/projectManager';
+import { exportProject, importProject, resetProject, recoverProject } from '../persistence/projectManager';
 
 const STATUS_LABEL: Record<SaveStatus, string> = {
   idle: '',
@@ -30,17 +30,33 @@ export function ProjectActions() {
     const file = e.target.files?.[0];
     e.currentTarget.value = '';
     if (file == null) return;
-    const result = await importProject(useSceneStore, file, window.confirm);
-    if (!result.ok && result.error !== 'Importación cancelada') {
+    setImportError(null);
+
+    // Tras fallo de carga, importar usa el flujo de recuperación:
+    // guarda primero, hidrata solo si la transacción confirma y reactiva auto-save.
+    const result =
+      saveStatus === 'error'
+        ? await recoverProject(useSceneStore, file, window.confirm)
+        : await importProject(useSceneStore, file, window.confirm);
+
+    const cancelled = result.ok === false && (
+      result.error === 'Importación cancelada'
+    );
+    if (!result.ok && !cancelled) {
       setImportError(result.error);
-    } else {
-      setImportError(null);
     }
   }
 
-  function handleReset() {
+  async function handleReset() {
     setImportError(null);
-    resetProject(useSceneStore, window.confirm);
+    if (saveStatus === 'error') {
+      const result = await recoverProject(useSceneStore, 'reset', window.confirm);
+      if (!result.ok && result.error !== 'Restablecimiento cancelado') {
+        setImportError(result.error);
+      }
+    } else {
+      resetProject(useSceneStore, window.confirm);
+    }
   }
 
   const isLoading = saveStatus === 'loading';

@@ -80,6 +80,37 @@ describe('OriginPanel — Restablecer', () => {
   });
 });
 
+describe('OriginPanel — bloqueo durante carga', () => {
+  it('inputs y acciones deshabilitados cuando saveStatus=loading', () => {
+    useSceneStore.setState({ saveStatus: 'loading' });
+    render(<OriginPanel />);
+
+    const xInput = screen.getByRole<HTMLInputElement>('textbox', { name: /^X/i });
+    expect(xInput.disabled).toBe(true);
+
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Aplicar' }).disabled).toBe(true);
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Cancelar' }).disabled).toBe(true);
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Restablecer' }).disabled).toBe(true);
+    expect(
+      screen.getByRole<HTMLButtonElement>('button', {
+        name: /Usar centro del objeto seleccionado/i,
+      }).disabled,
+    ).toBe(true);
+  });
+
+  it('no modifica el origen durante carga aunque el store cambie', () => {
+    useSceneStore.setState({ saveStatus: 'loading', projectOrigin: { x: 500, y: 300, z: 0 } });
+    render(<OriginPanel />);
+
+    const xInput = screen.getByRole<HTMLInputElement>('textbox', { name: /^X/i });
+    // El input refleja el origen actual pero está deshabilitado
+    expect(xInput.value).toBe('500');
+    expect(xInput.disabled).toBe(true);
+    // El origen no cambia (nadie puede presionar Aplicar)
+    expect(useSceneStore.getState().projectOrigin).toEqual({ x: 500, y: 300, z: 0 });
+  });
+});
+
 describe('OriginPanel — Usar centro del objeto seleccionado', () => {
   it('sin selección el botón está deshabilitado', () => {
     render(<OriginPanel />);
