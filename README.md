@@ -77,8 +77,15 @@ La conversión centralizada está en `src/scene/coords.ts`.
    El objeto se ilumina y el panel derecho muestra sus propiedades con
    campos de edición para X, Y y Z (en mm).
 
-4. **Selección desde el panel izquierdo**: hacé clic en "Tablero Eléctrico"
-   o "Motor Eléctrico" en la lista. El objeto en el visor se resalta.
+4. **Árbol por categorías**: el panel izquierdo muestra 8 categorías
+   contraíbles (Tableros, Motores, Bombas, Válvulas, Sensores, Iluminación,
+   Botoneras, Infraestructura) con el contador de elementos de cada una.
+   Las categorías con objetos están abiertas por defecto; las vacías,
+   cerradas. Hacé clic en la cabecera de una categoría (o usá Enter/Space
+   con el teclado) para expandirla o contraerla. Contraer una categoría
+   no deselecciona el objeto activo.
+   Hacé clic en "Tablero Eléctrico" o "Motor Eléctrico" para seleccionarlos.
+   El objeto en el visor se resalta.
 
 5. **Editar posición**:
    - Seleccioná el tablero. En el inspector aparecen campos editables
@@ -180,7 +187,7 @@ src/
       coords.test.ts        Pruebas de conversión, distancias y apoyo en piso
   ui/
     Layout.tsx              Distribución de los 4 paneles
-    SceneTree.tsx           Panel izquierdo: lista de objetos
+    SceneTree.tsx           Panel izquierdo: árbol por categorías contraíbles
     Inspector.tsx           Panel derecho: propiedades + editor de posición
     OriginPanel.tsx         Sección inferior izquierda: origen del proyecto
     ProjectActions.tsx      Barra inferior: estado, Exportar, Importar, Restablecer
@@ -191,6 +198,7 @@ src/
       Inspector.interaction.test.tsx      Pruebas de interacción del inspector (jsdom)
       OriginPanel.interaction.test.tsx    Pruebas de interacción del panel de origen (jsdom)
       ProjectActions.interaction.test.tsx Pruebas de interacción de acciones del proyecto (jsdom)
+      SceneTree.interaction.test.tsx      Pruebas de interacción del árbol (jsdom)
   App.tsx                   Punto de entrada: monta el Layout y llama a initProject
   styles/global.css         Estilos oscuros
 ```

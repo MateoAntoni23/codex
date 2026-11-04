@@ -50,10 +50,15 @@ html, body, #root {
 .panel-left  { grid-area: left;   background: #1e1e2e; }
 .panel-right { grid-area: right;  background: #1e1e2e; }
 
-/* SceneTree ocupa el espacio restante dentro del panel izquierdo */
-.panel-left .scene-tree {
-  min-height: 0; /* permite que flex shrink funcione correctamente */
+/* SceneTree: el contenedor ocupa el espacio disponible y gestiona el scroll */
+.scene-tree-panel {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
+
 .panel-bottom {
   grid-area: bottom;
   background: #16161e;
@@ -82,13 +87,66 @@ html, body, #root {
   padding: 4px 0;
 }
 
+/* Cabecera de categoría */
+.tree-category-header {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 5px 10px 5px 8px;
+  background: none;
+  border: none;
+  color: #8888cc;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  gap: 4px;
+  text-align: left;
+  font-family: inherit;
+}
+
+.tree-category-header:hover {
+  background: #22223a;
+  color: #aaaaee;
+}
+
+.tree-category-header:focus-visible {
+  outline: 2px solid #6666cc;
+  outline-offset: -2px;
+}
+
+.tree-category-chevron {
+  font-size: 10px;
+  flex-shrink: 0;
+  width: 12px;
+  line-height: 1;
+}
+
+.tree-category-label {
+  flex: 1;
+}
+
+.tree-category-count {
+  font-weight: 400;
+  font-size: 10px;
+  color: #555577;
+}
+
+.tree-category-items {
+  list-style: none;
+}
+
+/* Elementos individuales */
 .tree-item {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 12px;
+  padding: 5px 12px 5px 24px;
   border-left: 3px solid transparent;
   transition: background 0.1s;
+  color: #c0c0e8;
+  font-size: 12px;
 }
 
 .tree-item--selectable {
@@ -105,7 +163,10 @@ html, body, #root {
   font-weight: 700;
 }
 
-.tree-icon { font-size: 14px; flex-shrink: 0; }
+.tree-item:focus-visible {
+  outline: 2px solid #6666cc;
+  outline-offset: -2px;
+}
 
 .tree-name {
   flex: 1;
@@ -113,12 +174,6 @@ html, body, #root {
   overflow: hidden;
   text-overflow: ellipsis;
   color: #d0d0ee;
-}
-
-.tree-type {
-  font-size: 10px;
-  color: #666688;
-  flex-shrink: 0;
 }
 
 /* ── Inspector ── */
@@ -344,11 +399,12 @@ html, body, #root {
   font-variant-numeric: tabular-nums;
 }
 
-.save-status--saved  { color: #66cc88; }
-.save-status--saving { color: #aaaacc; font-style: italic; }
-.save-status--loading { color: #aaaacc; font-style: italic; }
-.save-status--error  { color: #ff6666; }
-.save-status--idle   { color: transparent; pointer-events: none; }
+.save-status--saved      { color: #66cc88; }
+.save-status--saving     { color: #aaaacc; font-style: italic; }
+.save-status--loading    { color: #aaaacc; font-style: italic; }
+.save-status--recovering { color: #aaaacc; font-style: italic; }
+.save-status--error      { color: #ff6666; }
+.save-status--idle       { color: transparent; pointer-events: none; }
 
 .project-import-error {
   font-size: 11px;
@@ -357,4 +413,10 @@ html, body, #root {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.project-recovery-hint {
+  font-size: 11px;
+  color: #cc9944;
+  max-width: 280px;
 }

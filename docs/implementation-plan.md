@@ -8,8 +8,8 @@
 
 ## Estado actual del proyecto
 
-### Rama principal auditada: `feat/project-save-load`
-Commit más reciente: `04f6139` (correcciones de persistencia post-auditoría)
+### Rama activa: `feat/categorized-scene-tree`
+Base: `feat/project-save-load` @ `fd9872b`
 
 ### Lo que ya está terminado
 
@@ -23,13 +23,15 @@ Commit más reciente: `04f6139` (correcciones de persistencia post-auditoría)
 | 5 | Guardado local (IndexedDB), exportación e importación JSON | `05614b5` |
 | 5b | Correcciones de persistencia: db retry, guard initProject, export errors, tests con fake timers | `04f6139` |
 | 5c | Correcciones de auditoría: tx.oncomplete, estado inmediato, cancel en useEffect, bloqueo UI, docs | `a490dcc` |
-| 5d | Bloqueo OriginPanel, recoverProject, write-cancel check, PDF/BOM/PWA en plan | pendiente |
+| 5d | Bloqueo OriginPanel, recoverProject, write-cancel check, estado recovering | `6e93cf2` |
+| 5e | Identidad de sesión en recoverProject: _sessionVersion/_recoveryToken | `fd9872b` |
+| A  | Árbol de escena por categorías contraíbles con contadores | rama activa |
 
 ### Cobertura de pruebas actual
-- **121 pruebas** distribuidas en 9 archivos de test.
+- **177 pruebas** distribuidas en 10 archivos de test.
 - Unitarias: conversión de coordenadas, validación, IndexedDB (fake-indexeddb).
-- Integración: store Zustand, auto-save con timers simulados.
-- Interacción (jsdom): Inspector, OriginPanel, ProjectActions.
+- Integración: store Zustand, auto-save con timers simulados, identidad de sesión.
+- Interacción (jsdom): Inspector, OriginPanel, ProjectActions, SceneTree.
 
 ---
 
@@ -49,23 +51,71 @@ Commit más reciente: `04f6139` (correcciones de persistencia post-auditoría)
 > Las fases A–F se corresponden con los requisitos nuevos de
 > `docs/product-requirements.md`. El orden puede revisarse.
 
-### Fase A — Árbol de elementos por categorías 📋
+### Fase A — Árbol de elementos por categorías ✅
 
 **Objetivo:** reemplazar la lista plana por un árbol jerárquico con
 categorías contraíbles y conteo de elementos.
 
-**Alcance:**
-- Categorías: Tableros, Motores, Bombas, Válvulas, Sensores, Iluminación,
+**Alcance implementado:**
+- 8 categorías: Tableros, Motores, Bombas, Válvulas, Sensores, Iluminación,
   Botoneras, Infraestructura.
-- Conteo de elementos por categoría.
+- Piso y Nave Industrial agrupados en Infraestructura.
+- Conteo de elementos por categoría (incluye cero).
+- Categorías con elementos abiertas al iniciar; vacías, cerradas.
+- Contraer una categoría no deselecciona el objeto activo.
 - Selección sincronizada con visor e inspector (sin cambios en el store).
-- El campo `type` del `DomainObject` mapea a la categoría correspondiente.
+- Accesibilidad: `aria-expanded` en botones de cabecera, `tabIndex={0}`
+  en items seleccionables, `onKeyDown` para Enter/Space, `:focus-visible`.
+- El estado expandido/contraído es UI-only: no modifica objetos, origen
+  ni dispara guardado automático.
+- 20 pruebas de interacción (jsdom).
 
-**No incluye en esta fase:** búsqueda por nombre/etiqueta, categorías
-anidadas, drag-and-drop.
+**No incluye:** búsqueda por nombre/etiqueta, jerarquía de fábricas,
+drag-and-drop.
 
-**Archivos clave:** `src/ui/SceneTree.tsx`, `src/types/domain.ts`,
-`src/styles/global.css`.
+**Archivos modificados:** `src/ui/SceneTree.tsx`, `src/styles/global.css`,
+`src/ui/__tests__/SceneTree.interaction.test.tsx`.
+
+---
+
+### Fase A.1 — Jerarquía fábrica → categoría → equipo 📋
+
+> **Decisiones confirmadas por el usuario (2026-11-04):**
+>
+> - **Tres fábricas:** Secado (códigos SEC / S1), Evaporador A (EVA / EA),
+>   Evaporador B (EVB / EB).
+> - **Filtro de manga (FM):** subárea de Secado. No es una cuarta fábrica
+>   ni un alcance excluido; debe conservar su identificación como subárea.
+> - **TAB-B:** tablero único que atiende a ambos evaporadores. No crear dos
+>   objetos para representarlo; la asociación con múltiples evaporadores se
+>   modela como atributo de relación, no como duplicación de objetos.
+> - **Ubicación física ≠ fábricas atendidas:** no inferir la ubicación física
+>   de un tablero por sus asociaciones lógicas.
+> - **Sin asignación arbitraria:** los objetos de ejemplo (panel-1, motor-1,
+>   etc.) no deben asignarse a ninguna fábrica hasta que el usuario lo indique
+>   explícitamente.
+
+**Jerarquía prevista:**
+
+```
+Fábrica (Secado | Evaporador A | Evaporador B)
+  └── Subárea (opcional, p. ej. Filtro de Manga en Secado)
+        └── Categoría (Tableros | Motores | Bombas | …)
+              └── Equipo (DomainObject con id, name, type, position, …)
+```
+
+**Asociaciones compartidas (p. ej. TAB-B):**
+- Un equipo puede estar asociado a más de una fábrica sin duplicarse.
+- La asociación se modela como relación `{equipoId, fabricaId}` fuera del
+  objeto mismo; no se duplica el `DomainObject`.
+
+**Restricciones de esta fase:**
+- No modificar el formato JSON persistido hasta que se audite el modelo.
+- No implementar importación desde Excel todavía.
+- No asignar los objetos de ejemplo a fábricas arbitrariamente.
+
+**Prerequisito para implementar:** auditoría del modelo de datos con el
+usuario antes de agregar `fabricaId` al esquema.
 
 ---
 

@@ -30,9 +30,17 @@ El guardado local ocurre automáticamente en el navegador del usuario.
 - Motor eléctrico (`motor`): objeto 3D seleccionable.
 - Todos los objetos se apoyan sobre el piso (`position.z = height / 2`).
 
-### Árbol de escena ✅
-- Lista plana de objetos en el panel izquierdo.
+### Árbol de escena por categorías ✅
+- 8 categorías contraíbles: Tableros, Motores, Bombas, Válvulas, Sensores,
+  Iluminación, Botoneras, Infraestructura.
+- Piso y Nave Industrial agrupados en Infraestructura.
+- Contador de elementos por categoría (incluye cero).
+- Categorías con elementos abiertas al iniciar; vacías, cerradas.
 - Selección sincronizada con el visor y el inspector.
+- Contraer una categoría no deselecciona el objeto activo.
+- Accesible por teclado: `aria-expanded`, Enter/Space, foco visible.
+- El estado expandido/contraído es UI-only: no modifica datos ni dispara
+  guardado automático.
 - Deselección al hacer clic en el fondo del visor.
 
 ### Inspector de propiedades ✅
@@ -129,29 +137,65 @@ Cada equipo debe distinguir tres conceptos independientes:
 - Etapa posterior: paredes con grosor, columnas, vigas y aperturas (puertas,
   ventanas). Fuera del alcance de la próxima entrega.
 
-### 5. Árbol de elementos por categorías 📋
+### 5. Árbol de elementos por categorías ✅
 
-La lista plana actual se reemplazará por un árbol jerárquico:
+Implementado en `feat/categorized-scene-tree`. Véase la sección
+"Árbol de escena por categorías" en Funcionalidades implementadas.
+
+**Pendiente para etapas posteriores:**
+- Búsqueda por nombre y etiqueta.
+- Jerarquía fábrica → categoría → equipo (ver requisito 8).
+
+---
+
+### 8. Jerarquía de fábricas y subáreas 📋
+
+> **Decisiones confirmadas (2026-11-04):**
+
+#### Fábricas del proyecto
+
+| Nombre | Códigos |
+|---|---|
+| Secado | SEC, S1 |
+| Evaporador A | EVA, EA |
+| Evaporador B | EVB, EB |
+
+**Filtro de manga (FM):** subárea de Secado. No es una cuarta fábrica
+independiente ni un alcance excluido; conserva su identificación como
+subárea de Secado.
+
+#### Equipos compartidos entre fábricas
+
+- **TAB-B** atiende a Evaporador A y Evaporador B. Se representa como
+  un único `DomainObject`; la asociación con múltiples fábricas se modela
+  como relación separada, no como duplicación del objeto.
+- La ubicación física de un equipo no se infiere de sus asociaciones
+  lógicas (un tablero puede estar en un área y atender a otra).
+
+#### Jerarquía prevista
 
 ```
-▾ Tableros (1)
-    Tablero Eléctrico
-▾ Motores (1)
-    Motor Eléctrico
-▸ Bombas (0)
-▸ Válvulas (0)
-▸ Sensores (0)
-▸ Iluminación (0)
-▸ Botoneras (0)
-▸ Infraestructura (2)
-    Nave Industrial
-    Piso
+Fábrica
+  └── Subárea (opcional, p. ej. Filtro de Manga en Secado)
+        └── Categoría (Tableros | Motores | Bombas | …)
+              └── Equipo
 ```
 
-- Cada categoría muestra la cantidad de elementos.
-- Categorías contraíbles y expandibles.
-- Selección en el árbol sincronizada con el visor y el inspector.
-- Búsqueda por nombre y etiqueta (a implementar en etapa posterior).
+#### Restricciones actuales
+
+- Los objetos de ejemplo (panel-1, motor-1, etc.) **no** están asignados
+  a ninguna fábrica. La asignación será explícita y manual.
+- El formato JSON persistido no incluye `fabricaId` todavía.
+  Se auditará el modelo antes de modificar el esquema.
+- No se implementará importación desde Excel hasta que se defina el modelo.
+
+#### Criterios de diseño
+
+1. Un equipo puede asociarse a más de una fábrica sin duplicar el objeto.
+2. Separar ubicación física de fábricas atendidas.
+3. Las subáreas son atributos de clasificación, no fábricas separadas.
+4. El árbol mostrará la jerarquía fábrica → categoría → equipo cuando
+   se implemente esta fase.
 
 ### 6. Neumática 📋
 
