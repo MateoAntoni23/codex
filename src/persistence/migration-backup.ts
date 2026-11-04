@@ -41,10 +41,14 @@
  * la migración en una entrega futura, deberá:
  *   1. Llamar a `_cancelAutoSave()` antes de leer el v1 que se pasará a
  *      `prepareMigrationWithBackup`.
- *   2. Esperar a que se complete cualquier escritura en vuelo (consultar
- *      `saveStatus !== 'saving'`).
+ *   2. Esperar explícitamente a que se complete cualquier escritura en vuelo:
+ *      consultar `saveStatus !== 'saving'` es insuficiente, ya que solo
+ *      refleja el estado del debounce, no la confirmación de IndexedDB
+ *      (oncomplete). Se requiere una operación de pausa que aguarde la
+ *      resolución de la promesa de guardado en vuelo antes de continuar.
  *   3. Pasar el v1 leído inmediatamente a `prepareMigrationWithBackup`.
- *   4. Reactivar el auto-save solo después de que oncomplete resuelva.
+ *   4. No reactivar el auto-save v1 tras activar v2: una vez que el proyecto
+ *      activo es v2, el guardado debe operar sobre el nuevo formato.
  * Sin este protocolo, la comprobación de datos estancados puede rechazar
  * la migración por una escritura de auto-save entre la pre-lectura y la
  * transacción.
@@ -92,6 +96,13 @@ export interface MigrationBackupSummary {
   id: string;
   timestamp: string;
   incidentCount: number;
+}
+
+/** Resumen de proyecto desplazado para listados. */
+export interface DisplacedProjectSummary {
+  id: string;
+  backupId: string;
+  restoredAt: string;
 }
 
 /** Resultado de una migración exitosa. */
@@ -343,6 +354,29 @@ export interface RestoreFromBackupOptions {
    * Por defecto: new Date().toISOString().
    */
   restoredAt?: string;
+  /**
+   * Clave única para la entrada desplazada en migration-backups.
+   * Por defecto: `displaced-{backupId}-{Date.now()}`.
+   * Inyectar en tests para reproducibilidad.
+   * La operación usa `add` (no `put`): si ya existe una entrada con
+   * este ID, la transacción aborta con TRANSACTION_ABORTED.
+   */
+  displacedId?: string;
+}
+
+/** Opciones para restoreFromDisplaced. */
+export interface RestoreFromDisplacedOptions {
+  /**
+   * Timestamp ISO 8601 del momento de restauración.
+   * Por defecto: new Date().toISOString().
+   */
+  restoredAt?: string;
+  /**
+   * Clave única para la entrada que conserva el proyecto activo desplazado.
+   * Por defecto: `displaced-{displacedId}-{Date.now()}`.
+   * Inyectar en tests para reproducibilidad.
+   */
+  displacedId?: string;
 }
 
 /**
@@ -375,6 +409,7 @@ export async function restoreFromBackup(
   }
 
   const restoredAt = options.restoredAt ?? new Date().toISOString();
+  const displacedId = options.displacedId ?? `displaced-${backupId}-${Date.now()}`;
   const db = await getDb();
 
   return new Promise<void>((resolve, reject) => {
@@ -400,20 +435,135 @@ export async function restoreFromBackup(
     getReq.onsuccess = () => {
       const currentData = getReq.result as ProjectData | undefined;
 
-      // Conservar el proyecto activo desplazado (si existe)
+      // Conservar el proyecto activo desplazado usando add (no put) para
+      // que IndexedDB rechace silenciosas colisiones de clave.
       if (currentData !== undefined) {
         const displaced: DisplacedProjectEntry = {
-          id: `displaced-${backupId}`,
+          id: displacedId,
           kind: 'displaced',
           backupId,
           restoredAt,
           data: currentData,
         };
-        tx.objectStore(BACKUP_STORE).put(displaced, `displaced-${backupId}`);
+        tx.objectStore(BACKUP_STORE).add(displaced, displacedId);
       }
 
       // Restaurar v1 como proyecto activo
       tx.objectStore(STORE_NAME).put(restoredV1, PROJECT_KEY);
+    };
+  });
+}
+
+// ─── Proyectos desplazados ────────────────────────────────────────────────────
+
+/**
+ * Lista todos los proyectos desplazados por restauraciones previas (kind='displaced').
+ * No incluye los respaldos de migración.
+ */
+export async function listDisplacedProjects(): Promise<DisplacedProjectSummary[]> {
+  const db = await getDb();
+  return new Promise<DisplacedProjectSummary[]>((resolve, reject) => {
+    const tx = db.transaction(BACKUP_STORE, 'readonly');
+    const req = tx.objectStore(BACKUP_STORE).getAll();
+    req.onsuccess = () => {
+      const all = req.result as Array<MigrationBackupEntry | DisplacedProjectEntry>;
+      resolve(
+        all
+          .filter((e): e is DisplacedProjectEntry => e.kind === 'displaced')
+          .map(e => ({ id: e.id, backupId: e.backupId, restoredAt: e.restoredAt })),
+      );
+    };
+    req.onerror = () => reject(req.error);
+  });
+}
+
+/**
+ * Lee el contenido completo de un proyecto desplazado por ID.
+ * Lanza MigrationOperationError con código BACKUP_NOT_FOUND si no existe.
+ */
+export async function readDisplacedProject(id: string): Promise<DisplacedProjectEntry> {
+  const db = await getDb();
+  return new Promise<DisplacedProjectEntry>((resolve, reject) => {
+    const tx = db.transaction(BACKUP_STORE, 'readonly');
+    const req = tx.objectStore(BACKUP_STORE).get(id);
+    req.onsuccess = () => {
+      const entry = req.result as MigrationBackupEntry | DisplacedProjectEntry | undefined;
+      if (!entry || entry.kind !== 'displaced') {
+        reject(new MigrationOperationError(
+          'BACKUP_NOT_FOUND',
+          `Proyecto desplazado "${id}" no encontrado`,
+        ));
+        return;
+      }
+      resolve(entry);
+    };
+    req.onerror = () => reject(req.error);
+  });
+}
+
+/**
+ * Restaura un proyecto desplazado como proyecto activo.
+ *
+ * El proyecto activo desplazado se conserva en migration-backups bajo la
+ * clave `options.displacedId` (o `displaced-{id}-{Date.now()}` por defecto).
+ * Se usa `add` para que IndexedDB rechace colisiones de clave.
+ *
+ * La operación valida el contenido antes de restaurar (INVALID_V1 si falla).
+ * Es atómica: si la transacción aborta, el proyecto activo no se modifica.
+ */
+export async function restoreFromDisplaced(
+  id: string,
+  options: RestoreFromDisplacedOptions = {},
+): Promise<void> {
+  const displaced = await readDisplacedProject(id);
+  let restoredData: ProjectData;
+  try {
+    restoredData = validateProjectData(displaced.data);
+  } catch (err) {
+    throw new MigrationOperationError(
+      'INVALID_V1',
+      `Datos en proyecto desplazado "${id}" son inválidos: ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
+
+  const restoredAt = options.restoredAt ?? new Date().toISOString();
+  const newDisplacedId = options.displacedId ?? `displaced-${id}-${Date.now()}`;
+  const db = await getDb();
+
+  return new Promise<void>((resolve, reject) => {
+    let tx: IDBTransaction;
+    try {
+      tx = db.transaction([STORE_NAME, BACKUP_STORE], 'readwrite');
+    } catch (err) {
+      reject(new MigrationOperationError(
+        'TRANSACTION_ABORTED',
+        `No se pudo abrir la transacción: ${err instanceof Error ? err.message : String(err)}`,
+      ));
+      return;
+    }
+
+    tx.onerror = () =>
+      reject(tx.error ?? new MigrationOperationError('TRANSACTION_ABORTED', 'Error en restauración desde desplazado'));
+    tx.onabort = () =>
+      reject(tx.error ?? new MigrationOperationError('TRANSACTION_ABORTED', 'Restauración desde desplazado abortada'));
+    tx.oncomplete = () => resolve();
+
+    const getReq = tx.objectStore(STORE_NAME).get(PROJECT_KEY);
+    getReq.onsuccess = () => {
+      const currentData = getReq.result as ProjectData | undefined;
+
+      if (currentData !== undefined) {
+        const newDisplaced: DisplacedProjectEntry = {
+          id: newDisplacedId,
+          kind: 'displaced',
+          backupId: id,
+          restoredAt,
+          data: currentData,
+        };
+        tx.objectStore(BACKUP_STORE).add(newDisplaced, newDisplacedId);
+      }
+
+      tx.objectStore(STORE_NAME).put(restoredData, PROJECT_KEY);
     };
   });
 }

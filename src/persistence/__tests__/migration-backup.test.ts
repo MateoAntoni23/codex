@@ -16,9 +16,11 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { IDBFactory } from 'fake-indexeddb';
 import {
   _setIdbFactory,
+  _setDbForTesting,
   _resetIdbFactory,
   loadProjectFromDb,
   saveProjectToDb,
+  getDb,
   DB_NAME,
 } from '../db';
 import {
@@ -26,11 +28,77 @@ import {
   listMigrationBackups,
   readMigrationBackup,
   restoreFromBackup,
+  listDisplacedProjects,
+  readDisplacedProject,
+  restoreFromDisplaced,
   MigrationOperationError,
   type MigrationBackupEntry,
 } from '../migration-backup';
 import { SCHEMA_VERSION, type ProjectData } from '../schema';
 import { INITIAL_OBJECTS } from '../../store/initialObjects';
+
+// ─── Helper: proxy de BD que aborta en la N-ésima escritura ──────────────────
+
+/**
+ * Envuelve una IDBDatabase de forma que la N-ésima llamada a put/add dentro
+ * de cualquier transacción llame a tx.abort() en lugar de completar.
+ * Permite verificar que las escrituras previas son revertidas.
+ */
+function wrapDbAbortOnNthWrite(realDb: IDBDatabase, n: number): IDBDatabase {
+  return new Proxy(realDb, {
+    get(dbTarget, dbProp) {
+      if (dbProp !== 'transaction') {
+        const v = Reflect.get(dbTarget, dbProp, dbTarget);
+        return typeof v === 'function' ? (v as (...a: unknown[]) => unknown).bind(dbTarget) : v;
+      }
+
+      return function(...txArgs: Parameters<IDBDatabase['transaction']>): IDBTransaction {
+        const realTx: IDBTransaction = (dbTarget.transaction as (...a: unknown[]) => IDBTransaction)
+          .apply(dbTarget, txArgs);
+        let writeCount = 0;
+
+        return new Proxy(realTx, {
+          get(txTarget, txProp) {
+            if (txProp === 'objectStore') {
+              return function(storeName: string): IDBObjectStore {
+                const realStore: IDBObjectStore = txTarget.objectStore(storeName);
+
+                return new Proxy(realStore, {
+                  get(storeTarget, storeProp) {
+                    if (storeProp === 'put' || storeProp === 'add') {
+                      return function(...writeArgs: unknown[]): IDBRequest {
+                        writeCount++;
+                        if (writeCount >= n) {
+                          realTx.abort();
+                          return null as unknown as IDBRequest;
+                        }
+                        return (storeTarget[storeProp as 'put'] as (...a: unknown[]) => IDBRequest)
+                          .apply(storeTarget, writeArgs);
+                      };
+                    }
+                    const v = Reflect.get(storeTarget, storeProp, storeTarget);
+                    return typeof v === 'function'
+                      ? (v as (...a: unknown[]) => unknown).bind(storeTarget)
+                      : v;
+                  },
+                });
+              };
+            }
+
+            const v = Reflect.get(txTarget, txProp, txTarget);
+            return typeof v === 'function'
+              ? (v as (...a: unknown[]) => unknown).bind(txTarget)
+              : v;
+          },
+
+          set(txTarget, txProp, value) {
+            return Reflect.set(txTarget, txProp, value);
+          },
+        });
+      };
+    },
+  });
+}
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
 
@@ -335,22 +403,76 @@ describe('T6: restoreFromBackup — recupera v1 y conserva proyecto desplazado',
 
     // El proyecto activo es VALID_V1_B al momento de restaurar
     await saveProjectToDb(VALID_V1_B);
-    await restoreFromBackup('test-backup-001', { restoredAt: '2026-11-04T13:00:00.000Z' });
-
-    // Leer el proyecto desplazado directamente desde IndexedDB
-    const db = await import('../db').then(m => m.getDb());
-    const displaced = await new Promise<unknown>((resolve, reject) => {
-      const tx = db.transaction('migration-backups', 'readonly');
-      const req = tx.objectStore('migration-backups').get('displaced-test-backup-001');
-      req.onsuccess = () => resolve(req.result);
-      req.onerror = () => reject(req.error);
+    await restoreFromBackup('test-backup-001', {
+      restoredAt: '2026-11-04T13:00:00.000Z',
+      displacedId: 'displaced-test-backup-001',
     });
 
-    expect(displaced).not.toBeUndefined();
-    const d = displaced as { kind: string; backupId: string; data: ProjectData };
-    expect(d.kind).toBe('displaced');
-    expect(d.backupId).toBe('test-backup-001');
-    expect(d.data).toEqual(VALID_V1_B);
+    const entry = await readDisplacedProject('displaced-test-backup-001');
+    expect(entry.kind).toBe('displaced');
+    expect(entry.backupId).toBe('test-backup-001');
+    expect(entry.data).toEqual(VALID_V1_B);
+  });
+
+  it('dos restauraciones con estados activos distintos conservan ambos desplazados', async () => {
+    const VALID_V1_C: ProjectData = {
+      schemaVersion: SCHEMA_VERSION,
+      objects: [],
+      projectOrigin: { x: 50, y: 100, z: 0 },
+    };
+
+    await saveProjectToDb(VALID_V1);
+    await prepareMigrationWithBackup(VALID_V1, DETERMINISTIC_OPTIONS);
+
+    // Primera restauración desplaza VALID_V1_B
+    await saveProjectToDb(VALID_V1_B);
+    await restoreFromBackup('test-backup-001', {
+      restoredAt: '2026-11-04T13:00:00.000Z',
+      displacedId: 'disp-first',
+    });
+
+    // Segunda restauración desplaza VALID_V1_C
+    await saveProjectToDb(VALID_V1_C);
+    await restoreFromBackup('test-backup-001', {
+      restoredAt: '2026-11-04T14:00:00.000Z',
+      displacedId: 'disp-second',
+    });
+
+    // Ambas entradas desplazadas deben existir
+    const disp1 = await readDisplacedProject('disp-first');
+    expect(disp1.data).toEqual(VALID_V1_B);
+
+    const disp2 = await readDisplacedProject('disp-second');
+    expect(disp2.data).toEqual(VALID_V1_C);
+
+    // El proyecto activo es el v1 restaurado desde el backup
+    const active = await loadProjectFromDb();
+    expect(active).toEqual(VALID_V1);
+
+    // listDisplacedProjects muestra las dos
+    const displaced = await listDisplacedProjects();
+    expect(displaced.map(d => d.id).sort()).toEqual(['disp-first', 'disp-second']);
+  });
+
+  it('rechaza restauración si ya existe una entrada displaced con el mismo ID (add no put)', async () => {
+    await saveProjectToDb(VALID_V1);
+    await prepareMigrationWithBackup(VALID_V1, DETERMINISTIC_OPTIONS);
+
+    await saveProjectToDb(VALID_V1_B);
+    await restoreFromBackup('test-backup-001', {
+      restoredAt: '2026-11-04T13:00:00.000Z',
+      displacedId: 'disp-fixed',
+    });
+
+    // Segundo intento con el mismo displacedId → IndexedDB debe rechazarlo
+    await saveProjectToDb(VALID_V1_B);
+    const error = await restoreFromBackup('test-backup-001', {
+      restoredAt: '2026-11-04T14:00:00.000Z',
+      displacedId: 'disp-fixed',
+    }).catch(e => e);
+
+    expect(error).toBeInstanceOf(MigrationOperationError);
+    expect((error as MigrationOperationError).code).toBe('TRANSACTION_ABORTED');
   });
 
   it('el respaldo original sigue disponible después de restaurar', async () => {
@@ -501,5 +623,191 @@ describe('readMigrationBackup — edge cases', () => {
     // Re-validar el v2 tras round-trip
     const { validateProjectDataV2 } = await import('../validate-v2');
     expect(() => validateProjectDataV2(deserialized)).not.toThrow();
+  });
+});
+
+// ─── T9: Atomicidad — aborto tras escritura revierte todo ────────────────────
+
+describe('T9: atomicidad — aborto después de escritura deja stores intactos', () => {
+  it('migración: aborto tras escribir backup revierte backup y v2 preparado', async () => {
+    await saveProjectToDb(VALID_V1);
+    const realDb = await getDb();
+
+    // Proxy que aborta en el 2° write (V2_STORE.put), después del backup
+    _setDbForTesting(wrapDbAbortOnNthWrite(realDb, 2));
+
+    const error = await prepareMigrationWithBackup(VALID_V1, DETERMINISTIC_OPTIONS).catch(e => e);
+
+    expect(error).toBeInstanceOf(MigrationOperationError);
+    expect((error as MigrationOperationError).code).toBe('TRANSACTION_ABORTED');
+
+    // Verificar con la BD real: sin escrituras parciales
+    _setDbForTesting(realDb);
+
+    const list = await listMigrationBackups();
+    expect(list).toHaveLength(0);
+
+    const active = await loadProjectFromDb();
+    expect(active).toEqual(VALID_V1);
+  });
+
+  it('restauración: aborto tras escribir displaced deja proyecto activo intacto', async () => {
+    await saveProjectToDb(VALID_V1);
+    await prepareMigrationWithBackup(VALID_V1, DETERMINISTIC_OPTIONS);
+    await saveProjectToDb(VALID_V1_B);
+
+    const realDb = await getDb();
+
+    // Proxy que aborta en el 2° write (STORE_NAME.put con restoredV1)
+    _setDbForTesting(wrapDbAbortOnNthWrite(realDb, 2));
+
+    const error = await restoreFromBackup('test-backup-001', {
+      restoredAt: '2026-11-04T13:00:00.000Z',
+      displacedId: 'disp-atomic',
+    }).catch(e => e);
+
+    expect(error).toBeInstanceOf(MigrationOperationError);
+    expect((error as MigrationOperationError).code).toBe('TRANSACTION_ABORTED');
+
+    // Verificar con la BD real
+    _setDbForTesting(realDb);
+
+    // Proyecto activo sigue siendo VALID_V1_B (no fue reemplazado)
+    const active = await loadProjectFromDb();
+    expect(active).toEqual(VALID_V1_B);
+
+    // Sin entrada displaced parcial
+    const displaced = await listDisplacedProjects();
+    expect(displaced).toHaveLength(0);
+  });
+});
+
+// ─── T10: API de proyectos desplazados ───────────────────────────────────────
+
+describe('T10: listDisplacedProjects + readDisplacedProject + restoreFromDisplaced', () => {
+  it('listDisplacedProjects devuelve las entradas displaced y no los backups', async () => {
+    await saveProjectToDb(VALID_V1);
+    await prepareMigrationWithBackup(VALID_V1, DETERMINISTIC_OPTIONS);
+    await saveProjectToDb(VALID_V1_B);
+    await restoreFromBackup('test-backup-001', {
+      restoredAt: '2026-11-04T13:00:00.000Z',
+      displacedId: 'disp-001',
+    });
+
+    const displacedList = await listDisplacedProjects();
+    expect(displacedList).toHaveLength(1);
+    expect(displacedList[0].id).toBe('disp-001');
+    expect(displacedList[0].backupId).toBe('test-backup-001');
+    expect(displacedList[0].restoredAt).toBe('2026-11-04T13:00:00.000Z');
+
+    // Los backups de migración no aparecen en la lista de desplazados
+    const backups = await listMigrationBackups();
+    expect(backups).toHaveLength(1);
+    expect(backups[0].id).toBe('test-backup-001');
+  });
+
+  it('readDisplacedProject devuelve la entrada completa con datos v1', async () => {
+    await saveProjectToDb(VALID_V1);
+    await prepareMigrationWithBackup(VALID_V1, DETERMINISTIC_OPTIONS);
+    await saveProjectToDb(VALID_V1_B);
+    await restoreFromBackup('test-backup-001', {
+      restoredAt: '2026-11-04T13:00:00.000Z',
+      displacedId: 'disp-001',
+    });
+
+    const entry = await readDisplacedProject('disp-001');
+    expect(entry.kind).toBe('displaced');
+    expect(entry.data).toEqual(VALID_V1_B);
+    expect(entry.backupId).toBe('test-backup-001');
+  });
+
+  it('readDisplacedProject lanza BACKUP_NOT_FOUND para ID inexistente', async () => {
+    const error = await readDisplacedProject('no-existe').catch(e => e);
+    expect(error).toBeInstanceOf(MigrationOperationError);
+    expect((error as MigrationOperationError).code).toBe('BACKUP_NOT_FOUND');
+  });
+
+  it('readDisplacedProject lanza BACKUP_NOT_FOUND si el ID corresponde a un backup (no displaced)', async () => {
+    await saveProjectToDb(VALID_V1);
+    await prepareMigrationWithBackup(VALID_V1, DETERMINISTIC_OPTIONS);
+
+    const error = await readDisplacedProject('test-backup-001').catch(e => e);
+    expect(error).toBeInstanceOf(MigrationOperationError);
+    expect((error as MigrationOperationError).code).toBe('BACKUP_NOT_FOUND');
+  });
+
+  it('restoreFromDisplaced restaura el proyecto desplazado como activo', async () => {
+    await saveProjectToDb(VALID_V1);
+    await prepareMigrationWithBackup(VALID_V1, DETERMINISTIC_OPTIONS);
+
+    // Desplazar VALID_V1_B al restaurar el backup
+    await saveProjectToDb(VALID_V1_B);
+    await restoreFromBackup('test-backup-001', {
+      restoredAt: '2026-11-04T13:00:00.000Z',
+      displacedId: 'disp-001',
+    });
+
+    // Activo es ahora VALID_V1; restauramos el desplazado VALID_V1_B
+    const activeBefore = await loadProjectFromDb();
+    expect(activeBefore).toEqual(VALID_V1);
+
+    await restoreFromDisplaced('disp-001', {
+      restoredAt: '2026-11-04T14:00:00.000Z',
+      displacedId: 'disp-002',
+    });
+
+    const activeAfter = await loadProjectFromDb();
+    expect(activeAfter).toEqual(VALID_V1_B);
+
+    // El anterior activo (VALID_V1) queda ahora desplazado
+    const disp2 = await readDisplacedProject('disp-002');
+    expect(disp2.data).toEqual(VALID_V1);
+    expect(disp2.backupId).toBe('disp-001');
+  });
+
+  it('restoreFromDisplaced conserva el proyecto activo al desplazarlo', async () => {
+    await saveProjectToDb(VALID_V1);
+    await prepareMigrationWithBackup(VALID_V1, DETERMINISTIC_OPTIONS);
+    await saveProjectToDb(VALID_V1_B);
+    await restoreFromBackup('test-backup-001', {
+      restoredAt: '2026-11-04T13:00:00.000Z',
+      displacedId: 'disp-001',
+    });
+
+    await restoreFromDisplaced('disp-001', {
+      restoredAt: '2026-11-04T14:00:00.000Z',
+      displacedId: 'disp-002',
+    });
+
+    // Ahora hay dos entradas displaced
+    const all = await listDisplacedProjects();
+    expect(all.map(d => d.id).sort()).toEqual(['disp-001', 'disp-002']);
+  });
+
+  it('restoreFromDisplaced lanza BACKUP_NOT_FOUND para ID inexistente', async () => {
+    const error = await restoreFromDisplaced('no-existe').catch(e => e);
+    expect(error).toBeInstanceOf(MigrationOperationError);
+    expect((error as MigrationOperationError).code).toBe('BACKUP_NOT_FOUND');
+  });
+
+  it('listMigrationBackups no incluye entradas displaced', async () => {
+    await saveProjectToDb(VALID_V1);
+    await prepareMigrationWithBackup(VALID_V1, DETERMINISTIC_OPTIONS);
+    await saveProjectToDb(VALID_V1_B);
+    await restoreFromBackup('test-backup-001', {
+      restoredAt: '2026-11-04T13:00:00.000Z',
+      displacedId: 'disp-001',
+    });
+    await restoreFromDisplaced('disp-001', {
+      restoredAt: '2026-11-04T14:00:00.000Z',
+      displacedId: 'disp-002',
+    });
+
+    const backups = await listMigrationBackups();
+    expect(backups).toHaveLength(1);
+    expect(backups[0].id).toBe('test-backup-001');
+
+    const displaced = await listDisplacedProjects();
+    expect(displaced).toHaveLength(2);
   });
 });

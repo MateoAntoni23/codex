@@ -12,7 +12,56 @@
 |---|---|---|---|
 | M1a-base | `1eab3f6` | 216 | Contratos v2, validador inicial, migrador puro (20+1 test cases) |
 | M1a-audit-1 | `7f59991` | 242 | Primera auditoría: +26 casos de prueba, corrección de 2 bugs confirmados |
-| M1a-audit-2 | *(ver SHA de este commit)* | 270 | Segunda auditoría: pendientes cerrados, +28 invariantes de dominio físico |
+| M1a-audit-2 | `80e8e9c` | 270 | Segunda auditoría: pendientes cerrados, +28 invariantes de dominio físico |
+
+## Entregas completadas en la rama `feat/project-migration-backup`
+
+| Entrega | Commit | Tests | Descripción |
+|---|---|---|---|
+| M1b-base | `13b232e` | 298 | API transaccional de respaldo para migración v1→v2 (no activada) |
+| M1b-audit-1 | *(ver SHA de este commit)* | 310 | Auditoría: restauraciones únicas, recoverabilidad de desplazados, atomicidad, coordinación |
+
+### M1b — Respaldo transaccional y recuperación para migración v1→v2
+
+**Objetivo:** preparar la infraestructura de respaldo atómica para una activación futura de v2. La aplicación sigue leyendo y escribiendo `schemaVersion=1`; la API no se llama desde la UI.
+
+#### Distinción crítica: versión de IndexedDB vs. schemaVersion del proyecto
+
+| Concepto | Valor actual | Significado |
+|---|---|---|
+| `DB_VERSION` en `db.ts` | `2` | Versión del *esquema de IndexedDB* (cuántos object stores existen). Ya activa. |
+| `schemaVersion` en `ProjectData` | `1` | Versión del *formato del proyecto* guardado. No ha cambiado. |
+| `schemaVersion` en `ProjectDataV2` | `2` | Versión del formato que producirá el migrador. No está activa en producción. |
+
+La apertura de la BD a versión 2 ya ocurre (agrega los stores `migration-backups` y `project-v2`), pero el proyecto activo sigue siendo v1 hasta la activación explícita posterior.
+
+#### API pública (`src/persistence/migration-backup.ts`)
+
+| Función | Descripción |
+|---|---|
+| `prepareMigrationWithBackup(v1, opts)` | Valida v1, migra a v2, escribe backup + v2 en transacción atómica. No activa v2. |
+| `listMigrationBackups()` | Lista resúmenes de respaldos de migración (kind='migration'). |
+| `readMigrationBackup(id)` | Lee respaldo completo; lanza `BACKUP_NOT_FOUND` si no existe. |
+| `restoreFromBackup(id, opts)` | Restaura v1 desde respaldo; conserva activo desplazado con `add` (clave única). |
+| `listDisplacedProjects()` | Lista resúmenes de proyectos desplazados por restauraciones. |
+| `readDisplacedProject(id)` | Lee desplazado completo; lanza `BACKUP_NOT_FOUND` si no existe. |
+| `restoreFromDisplaced(id, opts)` | Restaura un proyecto desplazado; conserva el activo desplazado con `add`. |
+
+#### Garantías
+
+1. **Atomicidad:** backup de v1, proyecto v2 y project-v2 en una única transacción IDB. Si aborta, no hay escritura parcial (verificado con proxy de test que aborta mid-transaction).
+2. **Stale-data check:** re-lectura de v1 dentro de la transacción; aborta si difiere del snapshot.
+3. **Sin sobreescritura de backups:** `checkReq` verifica que el `backupId` no exista antes de escribir.
+4. **Restauración no destructiva:** el activo desplazado se conserva usando `add` (IDB rechaza colisiones de clave a nivel de motor, no solo por convención).
+5. **Claves únicas por restauración:** `displaced-{backupId}-{Date.now()}` por defecto, inyectable en tests.
+6. **Solo `oncomplete` resuelve:** las promesas se resuelven únicamente cuando IDB confirma la persistencia.
+
+#### Limitaciones conocidas
+
+- **Equipos de vacío:** `solenoid_valve.operatingPressure.minBar ≥ 0` (presión relativa). Presiones negativas (vacío) no soportadas hasta M3.
+- **Sin UI de recuperación:** no hay interfaz para listar/restaurar respaldos en esta entrega.
+- **Paginación:** `list*` devuelve todos los registros en memoria; adecuado para los volúmenes esperados.
+- **Coordinación con auto-save (pendiente de activación):** ver comentario en `migration-backup.ts`. Nota: verificar `saveStatus !== 'saving'` es insuficiente — se requiere esperar la promesa de guardado en vuelo (ver sección `COORDINACIÓN CON EL GUARDADO AUTOMÁTICO` en el módulo). No reactivar auto-save v1 tras activar v2.
 
 **Bugs corregidos en audit-1:**
 1. `validateProjectDataV2` aceptaba cables con `ends[i].portId` apuntando a puertos inexistentes.
