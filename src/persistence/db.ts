@@ -1,8 +1,18 @@
 import type { ProjectData } from './schema';
 
-const DB_NAME = 'codex-cable-tray-v1';
-const STORE_NAME = 'project';
-const PROJECT_KEY = 'current';
+export const DB_NAME = 'codex-cable-tray-v1';
+export const STORE_NAME = 'project';
+export const PROJECT_KEY = 'current';
+/** Object store para respaldos de migración v1→v2 y proyectos desplazados. */
+export const BACKUP_STORE = 'migration-backups';
+/** Object store para el proyecto v2 preparado (inactivo hasta activación en M1b+). */
+export const V2_STORE = 'project-v2';
+export const V2_KEY = 'current';
+
+// DB version history:
+//   1 — esquema inicial: solo 'project'
+//   2 — agrega 'migration-backups' y 'project-v2' para M1b
+const DB_VERSION = 2;
 
 // Injectable factory — override in tests with fake-indexeddb
 let _factory: IDBFactory | null = null;
@@ -34,9 +44,18 @@ function getFactory(): IDBFactory {
 function openDatabase(): Promise<IDBDatabase> {
   if (_dbPromise != null) return _dbPromise;
   _dbPromise = new Promise<IDBDatabase>((resolve, reject) => {
-    const req = getFactory().open(DB_NAME, 1);
-    req.onupgradeneeded = () => {
-      req.result.createObjectStore(STORE_NAME);
+    const req = getFactory().open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = (event) => {
+      const db = req.result;
+      // Versión 1: store de proyecto activo v1
+      if (event.oldVersion < 1) {
+        db.createObjectStore(STORE_NAME);
+      }
+      // Versión 2: agrega stores de migración (no modifica datos existentes)
+      if (event.oldVersion < 2) {
+        db.createObjectStore(BACKUP_STORE);
+        db.createObjectStore(V2_STORE);
+      }
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => {
@@ -49,6 +68,14 @@ function openDatabase(): Promise<IDBDatabase> {
     };
   });
   return _dbPromise;
+}
+
+/**
+ * Returns the open IDBDatabase instance (shared across modules).
+ * Used by migration-backup.ts for multi-store transactions.
+ */
+export async function getDb(): Promise<IDBDatabase> {
+  return openDatabase();
 }
 
 export async function loadProjectFromDb(): Promise<ProjectData | null> {
