@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import type { DomainObject, Vec3mm } from '../types/domain';
 import { INITIAL_OBJECTS } from './initialObjects';
 
-export type SaveStatus = 'idle' | 'loading' | 'saving' | 'saved' | 'error';
+export type SaveStatus = 'idle' | 'loading' | 'saving' | 'saved' | 'recovering' | 'error';
 
 interface SceneState {
   objects: DomainObject[];

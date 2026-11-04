@@ -170,26 +170,35 @@ describe('ProjectActions — recuperación tras fallo de carga', () => {
   });
 });
 
-describe('ProjectActions — bloqueo durante carga', () => {
-  it('Importar y Restablecer están deshabilitados cuando saveStatus=loading', () => {
-    useSceneStore.setState({ saveStatus: 'loading' });
-    render(<ProjectActions />);
-    const importBtn = screen.getByRole<HTMLButtonElement>('button', { name: 'Importar' });
-    const resetBtn = screen.getByRole<HTMLButtonElement>('button', { name: 'Restablecer ejemplo' });
-    expect(importBtn.disabled).toBe(true);
-    expect(resetBtn.disabled).toBe(true);
-  });
+describe('ProjectActions — bloqueo durante carga y recuperación', () => {
+  it.each(['loading', 'recovering'] as const)(
+    'Importar y Restablecer están deshabilitados cuando saveStatus=%s',
+    (status) => {
+      useSceneStore.setState({ saveStatus: status });
+      render(<ProjectActions />);
+      expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Importar' }).disabled).toBe(true);
+      expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Restablecer ejemplo' }).disabled).toBe(true);
+    },
+  );
 
-  it('Exportar permanece habilitado cuando saveStatus=loading', () => {
-    useSceneStore.setState({ saveStatus: 'loading' });
-    render(<ProjectActions />);
-    const exportBtn = screen.getByRole<HTMLButtonElement>('button', { name: 'Exportar' });
-    expect(exportBtn.disabled).toBe(false);
-  });
+  it.each(['loading', 'recovering'] as const)(
+    'Exportar permanece habilitado cuando saveStatus=%s',
+    (status) => {
+      useSceneStore.setState({ saveStatus: status });
+      render(<ProjectActions />);
+      expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Exportar' }).disabled).toBe(false);
+    },
+  );
 
   it('muestra hint de recuperación cuando saveStatus=error', () => {
     useSceneStore.setState({ saveStatus: 'error', saveError: 'fallo de lectura' });
     render(<ProjectActions />);
     expect(screen.getByText(/importá una copia guardada/i)).toBeTruthy();
+  });
+
+  it('muestra "Recuperando..." cuando saveStatus=recovering', () => {
+    useSceneStore.setState({ saveStatus: 'recovering' });
+    render(<ProjectActions />);
+    expect(screen.getByText('Recuperando...')).toBeTruthy();
   });
 });

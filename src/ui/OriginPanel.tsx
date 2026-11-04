@@ -8,7 +8,7 @@ export function OriginPanel() {
   const selectedId = useSceneStore((s) => s.selectedId);
   const objects = useSceneStore((s) => s.objects);
   const saveStatus = useSceneStore((s) => s.saveStatus);
-  const isLoading = saveStatus === 'loading';
+  const isLoading = saveStatus === 'loading' || saveStatus === 'recovering';
 
   const selectedObj =
     selectedId != null ? (objects.find((o) => o.id === selectedId) ?? null) : null;

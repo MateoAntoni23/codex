@@ -7,6 +7,7 @@ const STATUS_LABEL: Record<SaveStatus, string> = {
   loading: 'Cargando...',
   saving: 'Guardando...',
   saved: 'Guardado localmente',
+  recovering: 'Recuperando...',
   error: '', // se usa saveError
 };
 
@@ -59,7 +60,7 @@ export function ProjectActions() {
     }
   }
 
-  const isLoading = saveStatus === 'loading';
+  const isLoading = saveStatus === 'loading' || saveStatus === 'recovering';
 
   const statusText =
     saveStatus === 'error'

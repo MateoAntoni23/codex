@@ -32,7 +32,7 @@ export function Inspector() {
   const projectOrigin = useSceneStore((s) => s.projectOrigin);
   const updateObjectPosition = useSceneStore((s) => s.updateObjectPosition);
   const saveStatus = useSceneStore((s) => s.saveStatus);
-  const isLoading = saveStatus === 'loading';
+  const isLoading = saveStatus === 'loading' || saveStatus === 'recovering';
 
   const obj =
     selectedId != null ? (objects.find((o) => o.id === selectedId) ?? null) : null;

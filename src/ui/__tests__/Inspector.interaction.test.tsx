@@ -18,6 +18,8 @@ function resetStore() {
 
 beforeEach(resetStore);
 
+const BLOCKING_STATUSES = ['loading', 'recovering'] as const;
+
 describe('Inspector — visualización con origen', () => {
   it('motor seleccionado con origen X=2000 muestra X=2000 (global 4000 − 2000)', () => {
     useSceneStore.setState({ selectedId: 'motor-1', projectOrigin: { x: 2000, y: 0, z: 0 } });
@@ -114,4 +116,20 @@ describe('Inspector — Apoyar en piso con origen Z', () => {
     const zInput = screen.getByRole<HTMLInputElement>('textbox', { name: /Z/i });
     expect(zInput.value).toBe('500'); // 2000/2 - 500
   });
+});
+
+describe('Inspector — bloqueo durante loading y recovering', () => {
+  it.each(BLOCKING_STATUSES)(
+    'inputs y botones deshabilitados cuando saveStatus=%s',
+    (status) => {
+      useSceneStore.setState({ selectedId: 'panel-1', saveStatus: status });
+      render(<Inspector />);
+
+      const xInput = screen.getByRole<HTMLInputElement>('textbox', { name: /^X/i });
+      expect(xInput.disabled).toBe(true);
+      expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Aplicar' }).disabled).toBe(true);
+      expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Cancelar' }).disabled).toBe(true);
+      expect(screen.getByRole<HTMLButtonElement>('button', { name: /Apoyar en piso/i }).disabled).toBe(true);
+    },
+  );
 });

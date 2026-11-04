@@ -28,37 +28,44 @@ let _initialized = false;
 /** Cancel handle del ciclo de initProject (retornado como cleanup del efecto). */
 let _cancelInit: (() => void) | null = null;
 
-/** Cancel handle de la suscripción de auto-save.
- *  Puede ser establecido por initProject (carga exitosa) o por recoverProject. */
+/** Cancel handle de la suscripción de auto-save. */
 let _cancelAutoSave: (() => void) | null = null;
+
+/** true mientras recoverProject está esperando la escritura en IndexedDB.
+ *  Impide recuperaciones simultáneas e indica al UI que está en proceso. */
+let _recovering = false;
+
+/** true después de que cancel() fue invocado (cleanup del efecto / desmontaje).
+ *  Impide que callbacks de operaciones en vuelo modifiquen el estado de una
+ *  sesión posterior. Se resetea al inicio de cada nueva sesión de initProject. */
+let _sessionCancelled = false;
 
 // ─── Helpers de test ─────────────────────────────────────────────────────────
 
-/** Reset interno — solo para pruebas. */
 export function _resetSaveGeneration(): void {
   _saveGeneration = 0;
 }
 
-/** Cancela la sesión activa (init + auto-save) y resetea flags — solo para pruebas. */
 export function _resetInitialized(): void {
   _cancelInit?.();
   _cancelInit = null;
   _cancelAutoSave?.();
   _cancelAutoSave = null;
+  _recovering = false;
+  _sessionCancelled = false;
 }
 
-// ─── Auto-save session ───────────────────────────────────────────────────────
+// ─── Sesión de auto-save ──────────────────────────────────────────────────────
 
 /**
  * Instala una única suscripción de guardado automático con debounce de 1 s.
- * El estado y la generación se actualizan INMEDIATAMENTE en la suscripción;
- * la escritura real se pospone para coalescer cambios rápidos.
- * Cancela cualquier suscripción previa antes de instalar la nueva.
- * Los callbacks verifican `cancelled` antes de modificar saveStatus,
+ * El estado y la generación se actualizan INMEDIATAMENTE en la suscripción.
+ * Los callbacks comprueban `cancelled` antes de modificar saveStatus,
  * evitando que una escritura en vuelo afecte una sesión posterior.
+ * Cancela cualquier sesión anterior antes de instalar la nueva.
  */
 function _startAutoSaveSession(store: Store): void {
-  _cancelAutoSave?.(); // asegura una única suscripción activa
+  _cancelAutoSave?.();
 
   let cancelled = false;
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
@@ -99,16 +106,12 @@ function _startAutoSaveSession(store: Store): void {
   _cancelAutoSave = cancelAutoSave;
 }
 
-// ─── API pública ─────────────────────────────────────────────────────────────
+// ─── API pública ──────────────────────────────────────────────────────────────
 
 /**
  * Inicializa el proyecto: carga desde IndexedDB si existe, luego activa el
  * guardado automático. Retorna { cancel, ready } de forma sincrónica.
- * Usar `cancel` como cleanup del useEffect evita dobles suscripciones en
- * React Strict Mode y cancela la carga si el componente se desmonta antes
- * de que termine.
- * El auto-save NO se activa si la carga falla; usar `recoverProject` para
- * restaurar el guardado tras un error de carga.
+ * El auto-save NO se activa si la carga falla; usar recoverProject.
  * Llamadas adicionales sin cancel previo son ignoradas.
  */
 export function initProject(store: Store): { cancel: () => void; ready: Promise<void> } {
@@ -116,11 +119,14 @@ export function initProject(store: Store): { cancel: () => void; ready: Promise<
     return { cancel: () => {}, ready: Promise.resolve() };
   }
   _initialized = true;
+  _sessionCancelled = false; // nueva sesión comienza sin cancelación pendiente
 
   let cancelled = false;
 
   function cancel() {
     cancelled = true;
+    _sessionCancelled = true; // señal para operaciones en vuelo (recovery)
+    _recovering = false;      // permite reintento tras remount
     _cancelAutoSave?.();
     _initialized = false;
     if (_cancelInit === cancel) _cancelInit = null;
@@ -157,22 +163,25 @@ export function initProject(store: Store): { cancel: () => void; ready: Promise<
 }
 
 /**
- * Recuperación tras fallo de carga. Valida el origen (archivo o escena por
- * defecto), pide confirmación, guarda en la base de datos ANTES de modificar
- * el store y, solo si la transacción confirma, hidrata el store y reactiva
- * el guardado automático.
- *
- * Garantías:
- * - Cancelar o recibir un archivo inválido no altera el store.
- * - Si la escritura falla, el store conserva los datos previos y se informa
- *   el error; el usuario puede reintentar o exportar.
- * - Tras el éxito se instala una única suscripción de auto-save.
+ * Recuperación tras fallo de carga. Garantías:
+ * - _recovering se establece ANTES de cualquier await; una segunda llamada
+ *   concurrente recibe { ok:false } inmediatamente.
+ * - La sesión de auto-save previa se cancela (junto con sus timers y
+ *   sus callbacks en vuelo) antes de iniciar la escritura.
+ * - Se escribe en IndexedDB ANTES de modificar el store; si la transacción
+ *   falla, el store conserva su estado anterior.
+ * - Tras cada await se comprueba _sessionCancelled; si la aplicación fue
+ *   desmontada durante la escritura, no se hidrata ni se activa la suscripción.
+ * - Si falla, _recovering vuelve a false y el usuario puede reintentar.
  */
 export async function recoverProject(
   store: Store,
   source: 'reset' | File,
   confirm: (msg: string) => boolean,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (_recovering) return { ok: false, error: 'Recuperación ya en curso' };
+  _recovering = true; // bloqueo sincrónico antes de cualquier await
+
   let objects: DomainObject[];
   let projectOrigin: Vec3mm;
 
@@ -180,7 +189,10 @@ export async function recoverProject(
     const proceed = confirm(
       '¿Restablecer la escena de ejemplo?\nSe perderán todos los cambios del proyecto actual.',
     );
-    if (!proceed) return { ok: false, error: 'Restablecimiento cancelado' };
+    if (!proceed) {
+      _recovering = false;
+      return { ok: false, error: 'Restablecimiento cancelado' };
+    }
     objects = INITIAL_OBJECTS.map((o) => ({
       ...o,
       position: { ...o.position },
@@ -190,9 +202,10 @@ export async function recoverProject(
   } else {
     let raw: unknown;
     try {
-      const text = await source.text();
+      const text = await source.text(); // único await antes de pausar auto-save
       raw = JSON.parse(text);
     } catch {
+      _recovering = false;
       return { ok: false, error: 'El archivo no es un JSON válido' };
     }
 
@@ -200,30 +213,46 @@ export async function recoverProject(
     try {
       validated = validateProjectData(raw);
     } catch (err) {
+      _recovering = false;
       return { ok: false, error: String(err) };
     }
 
     const proceed = confirm(
       '¿Reemplazar el proyecto actual con el archivo importado?\nEsta acción no se puede deshacer.',
     );
-    if (!proceed) return { ok: false, error: 'Importación cancelada' };
+    if (!proceed) {
+      _recovering = false;
+      return { ok: false, error: 'Importación cancelada' };
+    }
 
     objects = validated.objects;
     projectOrigin = validated.projectOrigin;
   }
 
-  // Guardar ANTES de hidratar: si la transacción falla, el store no se modifica.
+  // Pausa el auto-save previo antes de escribir para evitar que una escritura
+  // en vuelo sobrescriba el proyecto recuperado o modifique saveStatus.
+  _cancelAutoSave?.();
+  store.getState().setSaveStatus('recovering', null);
+
   const dataToSave: ProjectData = { schemaVersion: SCHEMA_VERSION, objects, projectOrigin };
-  store.getState().setSaveStatus('saving', null);
 
   try {
     await saveProjectToDb(dataToSave);
   } catch (err) {
-    store.getState().setSaveStatus('error', `Error al recuperar: ${String(err)}`);
+    _recovering = false;
+    if (!_sessionCancelled) {
+      store.getState().setSaveStatus('error', `Error al recuperar: ${String(err)}`);
+    }
     return { ok: false, error: `Error al guardar: ${String(err)}` };
   }
 
-  // La transacción confirmó: hidratar store y reactivar auto-save.
+  _recovering = false;
+
+  // La aplicación puede haberse desmontado mientras esperábamos la escritura.
+  if (_sessionCancelled) {
+    return { ok: false, error: 'Sesión cancelada' };
+  }
+
   store.getState().hydrateProject(objects, projectOrigin);
   store.getState().setSaveStatus('saved', null);
   _startAutoSaveSession(store);
@@ -233,7 +262,6 @@ export async function recoverProject(
 
 /**
  * Exporta el proyecto como archivo JSON descargable.
- * El origen se expresa en mm respecto del sistema global.
  */
 export function exportProject(store: Store): void {
   try {
@@ -253,9 +281,7 @@ export function exportProject(store: Store): void {
 
 /**
  * Importa un proyecto desde un archivo JSON (flujo normal, sin fallo de carga).
- * Valida antes de modificar el proyecto y pide confirmación al usuario.
- * Un archivo inválido no altera el proyecto existente.
- * Para recuperar tras un fallo de carga usar `recoverProject`.
+ * Para recuperar tras un fallo de carga usar recoverProject.
  */
 export async function importProject(
   store: Store,
@@ -287,8 +313,8 @@ export async function importProject(
 }
 
 /**
- * Restablece la escena de ejemplo después de pedir confirmación (flujo normal).
- * Para recuperar tras un fallo de carga usar `recoverProject`.
+ * Restablece la escena de ejemplo (flujo normal).
+ * Para recuperar tras un fallo de carga usar recoverProject.
  */
 export function resetProject(store: Store, confirm: (msg: string) => boolean): void {
   const proceed = confirm(

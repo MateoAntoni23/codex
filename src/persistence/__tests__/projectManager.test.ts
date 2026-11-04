@@ -545,3 +545,113 @@ describe('recoverProject — recuperación tras fallo de carga', () => {
     expect(saved.objects[0].position).toEqual({ x: 1, y: 2, z: 3 });
   });
 });
+
+// ─── recoverProject — bloqueo de operaciones concurrentes ────────────────────
+
+describe('recoverProject — bloqueo y estado recovering', () => {
+  it('recuperación pendiente bloquea nuevas recuperaciones (saveStatus=recovering)', async () => {
+    let resolveSave!: () => void;
+    mockSave.mockReturnValue(new Promise<void>((r) => { resolveSave = r; }));
+    mockLoad.mockRejectedValue(new Error('DB rota'));
+    await init({});
+
+    // Primera recuperación: bloqueará en la escritura
+    const recoveryPromise = recoverProject(
+      useSceneStore,
+      makeFile(JSON.stringify(SAVED_PROJECT)),
+      () => true,
+    );
+    await Promise.resolve(); // source.text() tick → llega a setSaveStatus('recovering')
+
+    expect(useSceneStore.getState().saveStatus).toBe('recovering');
+
+    // Intento simultáneo de recuperación: debe rechazarse inmediatamente
+    const second = await recoverProject(useSceneStore, makeFile(JSON.stringify(SAVED_PROJECT)), () => true);
+    expect(second.ok).toBe(false);
+    if (!second.ok) expect(second.error).toMatch(/curso/);
+
+    // Completar la primera recuperación
+    resolveSave();
+    const first = await recoveryPromise;
+    expect(first.ok).toBe(true);
+    expect(useSceneStore.getState().saveStatus).toBe('saved');
+  });
+
+  it('write de auto-save anterior no afecta el proyecto recuperado', async () => {
+    vi.useFakeTimers();
+    let resolveOldSave!: () => void;
+    mockSave
+      .mockReturnValueOnce(new Promise<void>((r) => { resolveOldSave = r; }))
+      .mockResolvedValue(undefined);
+
+    mockLoad.mockResolvedValue(null);
+    await init({});
+
+    // Disparar auto-save
+    useSceneStore.getState().updateObjectPosition('panel-1', { x: 50, y: 0, z: 1000 });
+    await vi.advanceTimersByTimeAsync(1100); // timer dispara, write anterior en vuelo
+
+    // Iniciar recuperación (cancela la sesión de auto-save anterior)
+    const recoveryPromise = recoverProject(
+      useSceneStore,
+      makeFile(JSON.stringify(SAVED_PROJECT)),
+      () => true,
+    );
+
+    // El write anterior completa: su callback tiene cancelled=true → no-op
+    resolveOldSave();
+
+    const result = await recoveryPromise;
+
+    expect(result.ok).toBe(true);
+    expect(useSceneStore.getState().saveStatus).toBe('saved');
+    expect(useSceneStore.getState().objects[0].id).toBe('motor-1');
+  });
+
+  it('cancelar sesión durante escritura: no hidrata ni activa suscripción', async () => {
+    let resolveSave!: () => void;
+    mockSave.mockReturnValue(new Promise<void>((r) => { resolveSave = r; }));
+    mockLoad.mockRejectedValue(new Error('DB rota'));
+    const { cancel, ready } = initProject(useSceneStore);
+    await ready;
+
+    const recoveryPromise = recoverProject(
+      useSceneStore,
+      makeFile(JSON.stringify(SAVED_PROJECT)),
+      () => true,
+    );
+
+    await Promise.resolve(); // source.text() → llega a fase de escritura
+    expect(useSceneStore.getState().saveStatus).toBe('recovering');
+
+    cancel(); // desmontaje de la aplicación durante la escritura
+    resolveSave();
+    const result = await recoveryPromise;
+
+    expect(result.ok).toBe(false);
+    // Store no fue hidratado: SAVED_PROJECT tiene 1 objeto, el store inicial tiene más
+    expect(useSceneStore.getState().objects).not.toHaveLength(1);
+    // El origen tampoco fue reemplazado por el de SAVED_PROJECT
+    expect(useSceneStore.getState().projectOrigin).toEqual({ x: 0, y: 0, z: 0 });
+  });
+
+  it('fallo de escritura conserva datos y permite reintentar', async () => {
+    mockLoad.mockRejectedValue(new Error('DB rota'));
+    await init({});
+    const originalIds = useSceneStore.getState().objects.map((o) => o.id);
+
+    // Primer intento falla
+    mockSave.mockRejectedValueOnce(new Error('sin espacio'));
+    const r1 = await recoverProject(useSceneStore, makeFile(JSON.stringify(SAVED_PROJECT)), () => true);
+    expect(r1.ok).toBe(false);
+    expect(useSceneStore.getState().objects.map((o) => o.id)).toEqual(originalIds);
+    expect(useSceneStore.getState().saveStatus).toBe('error');
+
+    // Segundo intento (reintento) tiene éxito
+    mockSave.mockResolvedValue(undefined);
+    const r2 = await recoverProject(useSceneStore, makeFile(JSON.stringify(SAVED_PROJECT)), () => true);
+    expect(r2.ok).toBe(true);
+    expect(useSceneStore.getState().saveStatus).toBe('saved');
+    expect(useSceneStore.getState().objects[0].id).toBe('motor-1');
+  });
+});
