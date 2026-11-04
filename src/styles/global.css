@@ -156,6 +156,112 @@ html, body, #root {
   font-variant-numeric: tabular-nums;
 }
 
+/* ── Editor de posición ── */
+.inspector-edit-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 3px 12px;
+}
+
+.inspector-edit-row .inspector-label {
+  width: 48px;
+  flex-shrink: 0;
+  padding-top: 4px;
+}
+
+.inspector-input-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.inspector-input {
+  width: 100%;
+  background: #12121e;
+  border: 1px solid #3a3a5a;
+  border-radius: 3px;
+  color: #d0d0ee;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  padding: 3px 6px;
+  outline: none;
+}
+
+.inspector-input:focus {
+  border-color: #6666cc;
+}
+
+.inspector-input--error {
+  border-color: #cc4444;
+}
+
+.inspector-error {
+  font-size: 10px;
+  color: #ff6666;
+}
+
+.inspector-hint {
+  font-size: 10px;
+  color: #555577;
+}
+
+.inspector-snap-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px 2px;
+}
+
+.inspector-actions {
+  display: flex;
+  gap: 6px;
+  padding: 8px 12px 10px;
+  justify-content: flex-end;
+}
+
+.btn-primary,
+.btn-secondary,
+.btn-snap {
+  padding: 4px 10px;
+  border-radius: 3px;
+  font-size: 12px;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.btn-primary {
+  background: #4455bb;
+  color: #e8e8ff;
+  border-color: #5566cc;
+}
+
+.btn-primary:hover {
+  background: #5566cc;
+}
+
+.btn-secondary {
+  background: #2a2a44;
+  color: #aaaacc;
+  border-color: #3a3a5a;
+}
+
+.btn-secondary:hover {
+  background: #33334a;
+}
+
+.btn-snap {
+  background: #1e3a2a;
+  color: #88cc99;
+  border-color: #2a4a36;
+  font-size: 11px;
+}
+
+.btn-snap:hover {
+  background: #254530;
+}
+
 /* ── Barra de conductores ── */
 .conductor-placeholder {
   color: #444466;

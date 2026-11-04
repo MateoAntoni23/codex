@@ -67,21 +67,41 @@ La conversión centralizada está en `src/scene/coords.ts`.
 ## Qué probar visualmente
 
 1. **Carga de la escena**: debés ver el piso gris con grilla, el contorno
-   de la nave industrial, el tablero eléctrico azul y el motor verde.
+   de la nave industrial, el tablero eléctrico azul y el motor verde,
+   todos apoyados sobre el piso.
 
 2. **Cámara**: arrastrá para orbitar, rueda del mouse para zoom,
    clic-derecho + arrastrar para desplazar.
 
 3. **Selección desde el visor**: hacé clic sobre el tablero o el motor.
-   El objeto se ilumina y el panel derecho muestra sus propiedades.
+   El objeto se ilumina y el panel derecho muestra sus propiedades con
+   campos de edición para X, Y y Z (en mm).
 
 4. **Selección desde el panel izquierdo**: hacé clic en "Tablero Eléctrico"
    o "Motor Eléctrico" en la lista. El objeto en el visor se resalta.
 
-5. **Inspector**: verificá que muestra nombre, tipo y posición en mm
-   (por ejemplo, el tablero está en X: −7000 mm).
+5. **Editar posición**:
+   - Seleccioná el tablero. En el inspector aparecen campos editables
+     para X, Y y Z (Z indica que es el centro del objeto).
+   - Cambiá X a `0` y hacé clic en **Aplicar**. El tablero se mueve al
+     centro en X dentro del visor inmediatamente.
+   - Cambiá X a un valor no numérico (p. ej. `abc`). Aparece el mensaje
+     de error. El objeto no se modifica.
+   - Dejá un campo vacío y hacé clic en **Aplicar**. Aparece el error
+     de campo vacío.
 
-6. **Deselección**: hacé clic en el fondo del visor o en el mismo
+6. **Cancelar**: modificá un campo sin aplicar y hacé clic en **Cancelar**.
+   Los campos vuelven a la posición guardada; el objeto no cambia.
+
+7. **Apoyar en piso**: con el tablero o el motor seleccionado, hacé clic
+   en el botón **Apoyar en piso**. El campo Z se actualiza a `alto / 2`
+   (p. ej. 1000 para el tablero de 2000 mm de alto). Luego hacé clic en
+   **Aplicar** para confirmar el cambio.
+
+8. **Inspector de piso/nave** (solo lectura): seleccioná el piso o la nave
+   en el árbol. El inspector muestra las posiciones sin campos editables.
+
+9. **Deselección**: hacé clic en el fondo del visor o en el mismo
    elemento del árbol para deseleccionar.
 
 ## Estructura del proyecto

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { domainToViewerPosition, domainToViewerSize, mmToUnits } from '../coords';
+import { domainToViewerPosition, domainToViewerSize, mmToUnits, floorRenderProps } from '../coords';
 import { INITIAL_OBJECTS } from '../../store/initialObjects';
+import type { DomainObject } from '../../types/domain';
 
 describe('mmToUnits', () => {
   it('convierte milímetros a metros', () => {
@@ -62,15 +63,29 @@ describe('apoyo en piso — objetos iniciales reales', () => {
     });
   });
 
-  // Regresión para Floor.tsx: si el componente vuelve a hardcodear Y=0,
-  // un piso elevado en el dominio quedaría en el nivel equivocado en el visor.
-  it('piso elevado: position.z no nula produce Y distinto de cero en visor', () => {
-    const elevatedFloor = INITIAL_OBJECTS[0]; // floor-1, z=0, sirve como base
-    // Construimos un piso hipotético a 500 mm de altura sin alterar INITIAL_OBJECTS.
-    const pos = { ...elevatedFloor.position, z: 500 };
-    const [, py] = domainToViewerPosition(pos);
-    expect(py).toBeCloseTo(0.5); // 500 mm = 0.5 m en Three.js
-    expect(py).toBeGreaterThan(0);
+  // Regresión para Floor.tsx: comprueba los valores que el componente
+  // pasa realmente a <mesh position> y <Grid position> (via floorRenderProps).
+  // Si Floor.tsx vuelve a hardcodear Y=0, esta prueba fallará.
+  it('piso elevado: mesh y Grid reciben posición Y = 0.5 m (500 mm)', () => {
+    const elevatedFloor: DomainObject = {
+      id: 'floor-elevated',
+      name: 'Piso elevado',
+      type: 'floor',
+      position: { x: 2000, y: -1000, z: 500 }, // z=500 mm → Y Three.js = 0.5 m
+      dimensions: { width: 10000, depth: 8000, height: 0 },
+    };
+    const { position, planeArgs } = floorRenderProps(elevatedFloor);
+
+    // Y Three.js refleja z=500 mm del dominio
+    expect(position[1]).toBeCloseTo(0.5);
+    // X Three.js refleja x=2000 mm
+    expect(position[0]).toBeCloseTo(2);
+    // Z Three.js refleja −y_dominio = −(−1000)/1000 = 1
+    expect(position[2]).toBeCloseTo(1);
+
+    // Plano: width=10000→10 m, depth=8000→8 m
+    expect(planeArgs[0]).toBeCloseTo(10);
+    expect(planeArgs[1]).toBeCloseTo(8);
   });
 });
 

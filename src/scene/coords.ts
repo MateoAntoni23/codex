@@ -44,3 +44,21 @@ export function domainToViewerSize(
     d.depth  / MM_PER_UNIT,  // profun → Z Three.js
   ];
 }
+
+/** Props de renderizado que Floor pasa a su mesh y a Grid. */
+export interface FloorRenderProps {
+  /** Posición Three.js: [x, y, z] en metros. */
+  position: [number, number, number];
+  /** Tamaño del plano Three.js: [ancho, profundidad] en metros. */
+  planeArgs: [number, number];
+}
+
+/**
+ * Calcula los valores concretos que Floor.tsx pasa a <mesh position> y <Grid position>.
+ * Extraído para poder verificarse sin renderizar el componente React.
+ */
+export function floorRenderProps(obj: DomainObject): FloorRenderProps {
+  const position = domainToViewerPosition(obj.position);
+  const [sw, , sd] = domainToViewerSize(obj.dimensions);
+  return { position, planeArgs: [sw, sd] };
+}
