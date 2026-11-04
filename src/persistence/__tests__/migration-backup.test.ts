@@ -37,15 +37,27 @@ import {
 import { SCHEMA_VERSION, type ProjectData } from '../schema';
 import { INITIAL_OBJECTS } from '../../store/initialObjects';
 
-// ─── Helper: proxy de BD que aborta en la N-ésima escritura ──────────────────
+// ─── Helper: proxy de BD que aborta desde el onsuccess del primer write ──────
 
 /**
- * Envuelve una IDBDatabase de forma que la N-ésima llamada a put/add dentro
- * de cualquier transacción llame a tx.abort() en lugar de completar.
- * Permite verificar que las escrituras previas son revertidas.
+ * Envuelve una IDBDatabase de forma que el onsuccess del PRIMER put/add de
+ * la transacción llame a tx.abort() antes de que oncomplete pueda dispararse.
+ *
+ * A diferencia de abortar en la llamada al segundo write, este helper espera
+ * a que IndexedDB confirme el primer request (onsuccess real), lo registra,
+ * y solo entonces aborta. Esto demuestra que IDB revierte writes confirmados
+ * dentro de una transacción, no solo escrituras pendientes.
+ *
+ * Precondición: la producción no asigna onsuccess a los requests put/add,
+ * por lo que podemos colocarlo directamente sobre el request real.
  */
-function wrapDbAbortOnNthWrite(realDb: IDBDatabase, n: number): IDBDatabase {
-  return new Proxy(realDb, {
+function wrapDbAbortAfterFirstWriteSuccess(realDb: IDBDatabase): {
+  proxy: IDBDatabase;
+  firstWriteSuccessFired: () => boolean;
+} {
+  let firstSuccessFired = false;
+
+  const proxy = new Proxy(realDb, {
     get(dbTarget, dbProp) {
       if (dbProp !== 'transaction') {
         const v = Reflect.get(dbTarget, dbProp, dbTarget);
@@ -68,12 +80,20 @@ function wrapDbAbortOnNthWrite(realDb: IDBDatabase, n: number): IDBDatabase {
                     if (storeProp === 'put' || storeProp === 'add') {
                       return function(...writeArgs: unknown[]): IDBRequest {
                         writeCount++;
-                        if (writeCount >= n) {
-                          realTx.abort();
-                          return null as unknown as IDBRequest;
-                        }
-                        return (storeTarget[storeProp as 'put'] as (...a: unknown[]) => IDBRequest)
+                        const req = (storeTarget[storeProp as 'put'] as (...a: unknown[]) => IDBRequest)
                           .apply(storeTarget, writeArgs);
+
+                        if (writeCount === 1) {
+                          // Colocamos nuestro onsuccess sobre el request real.
+                          // Cuando IndexedDB lo dispare (write confirmado en scope
+                          // de la tx), registramos el hecho y abortamos desde ahí.
+                          req.onsuccess = () => {
+                            firstSuccessFired = true;
+                            realTx.abort();
+                          };
+                        }
+
+                        return req;
                       };
                     }
                     const v = Reflect.get(storeTarget, storeProp, storeTarget);
@@ -98,6 +118,8 @@ function wrapDbAbortOnNthWrite(realDb: IDBDatabase, n: number): IDBDatabase {
       };
     },
   });
+
+  return { proxy, firstWriteSuccessFired: () => firstSuccessFired };
 }
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
@@ -626,40 +648,45 @@ describe('readMigrationBackup — edge cases', () => {
   });
 });
 
-// ─── T9: Atomicidad — aborto tras escritura revierte todo ────────────────────
+// ─── T9: Atomicidad — aborto desde onsuccess del primer write revierte todo ───
 
-describe('T9: atomicidad — aborto después de escritura deja stores intactos', () => {
-  it('migración: aborto tras escribir backup revierte backup y v2 preparado', async () => {
+describe('T9: atomicidad — aborto desde onsuccess del primer request revierte escrituras confirmadas', () => {
+  it('migración: onsuccess del backup se dispara, luego abort revierte backup y v2 preparado', async () => {
     await saveProjectToDb(VALID_V1);
     const realDb = await getDb();
 
-    // Proxy que aborta en el 2° write (V2_STORE.put), después del backup
-    _setDbForTesting(wrapDbAbortOnNthWrite(realDb, 2));
+    const { proxy, firstWriteSuccessFired } = wrapDbAbortAfterFirstWriteSuccess(realDb);
+    _setDbForTesting(proxy);
 
     const error = await prepareMigrationWithBackup(VALID_V1, DETERMINISTIC_OPTIONS).catch(e => e);
 
+    // La operación debe rechazarse con TRANSACTION_ABORTED
     expect(error).toBeInstanceOf(MigrationOperationError);
     expect((error as MigrationOperationError).code).toBe('TRANSACTION_ABORTED');
 
-    // Verificar con la BD real: sin escrituras parciales
+    // El onsuccess del primer request (backup put) efectivamente se disparó
+    // antes del abort — no es una simulación de rechazo
+    expect(firstWriteSuccessFired()).toBe(true);
+
+    // Cambiar a la BD real para verificar que no quedaron escrituras parciales
     _setDbForTesting(realDb);
 
     const list = await listMigrationBackups();
-    expect(list).toHaveLength(0);
+    expect(list).toHaveLength(0); // Backup revertido aunque su onsuccess había disparado
 
     const active = await loadProjectFromDb();
-    expect(active).toEqual(VALID_V1);
+    expect(active).toEqual(VALID_V1); // Proyecto intacto
   });
 
-  it('restauración: aborto tras escribir displaced deja proyecto activo intacto', async () => {
+  it('restauración: onsuccess del displaced add se dispara, luego abort revierte displaced y deja activo intacto', async () => {
     await saveProjectToDb(VALID_V1);
     await prepareMigrationWithBackup(VALID_V1, DETERMINISTIC_OPTIONS);
     await saveProjectToDb(VALID_V1_B);
 
     const realDb = await getDb();
 
-    // Proxy que aborta en el 2° write (STORE_NAME.put con restoredV1)
-    _setDbForTesting(wrapDbAbortOnNthWrite(realDb, 2));
+    const { proxy, firstWriteSuccessFired } = wrapDbAbortAfterFirstWriteSuccess(realDb);
+    _setDbForTesting(proxy);
 
     const error = await restoreFromBackup('test-backup-001', {
       restoredAt: '2026-11-04T13:00:00.000Z',
@@ -669,14 +696,17 @@ describe('T9: atomicidad — aborto después de escritura deja stores intactos',
     expect(error).toBeInstanceOf(MigrationOperationError);
     expect((error as MigrationOperationError).code).toBe('TRANSACTION_ABORTED');
 
-    // Verificar con la BD real
+    // El onsuccess del primer request (displaced add) efectivamente se disparó
+    expect(firstWriteSuccessFired()).toBe(true);
+
+    // Cambiar a la BD real para verificar
     _setDbForTesting(realDb);
 
-    // Proyecto activo sigue siendo VALID_V1_B (no fue reemplazado)
+    // El proyecto activo sigue siendo VALID_V1_B (el put de restauración fue revertido)
     const active = await loadProjectFromDb();
     expect(active).toEqual(VALID_V1_B);
 
-    // Sin entrada displaced parcial
+    // No quedó ninguna entrada displaced parcial (el add fue revertido)
     const displaced = await listDisplacedProjects();
     expect(displaced).toHaveLength(0);
   });
