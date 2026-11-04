@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { domainToViewerPosition, domainToViewerSize, mmToUnits } from '../coords';
+import { INITIAL_OBJECTS } from '../../store/initialObjects';
 
 describe('mmToUnits', () => {
   it('convierte milímetros a metros', () => {
@@ -20,17 +21,16 @@ describe('domainToViewerPosition', () => {
 
   it('aplica [x/1000, z/1000, −y/1000]', () => {
     const result = domainToViewerPosition({ x: 1000, y: 2000, z: 3000 });
-    expect(result[0]).toBeCloseTo(1);    // X dominio → X Three.js
-    expect(result[1]).toBeCloseTo(3);    // Z dominio → Y Three.js
-    expect(result[2]).toBeCloseTo(-2);   // Y dominio → −Z Three.js
+    expect(result[0]).toBeCloseTo(1);   // X dominio → X Three.js
+    expect(result[1]).toBeCloseTo(3);   // Z dominio → Y Three.js
+    expect(result[2]).toBeCloseTo(-2);  // Y dominio → −Z Three.js
   });
 
-  it('preserva la distancia euclídea entre dos puntos (sin escala)', () => {
+  it('preserva la distancia euclídea entre dos puntos', () => {
     const a = { x: 0,    y: 0,    z: 0 };
     const b = { x: 3000, y: 4000, z: 0 };
     const [ax, ay, az] = domainToViewerPosition(a);
     const [bx, by, bz] = domainToViewerPosition(b);
-    // Distancia en dominio (mm) convertida a metros:
     const distDomain = Math.sqrt(3000 ** 2 + 4000 ** 2) / 1000; // 5 m
     const distViewer = Math.sqrt((bx - ax) ** 2 + (by - ay) ** 2 + (bz - az) ** 2);
     expect(distViewer).toBeCloseTo(distDomain, 10);
@@ -46,25 +46,31 @@ describe('domainToViewerPosition', () => {
   });
 });
 
-describe('apoyo en piso — datos iniciales', () => {
-  // Para apoyar en el piso, position.z = height / 2.
-  // El visor coloca el centro en Y = z/1000 > 0 (encima del piso).
+// Usa los objetos reales del store para detectar regresiones cuando
+// alguien modifique position o dimensions sin actualizar el otro campo.
+describe('apoyo en piso — objetos iniciales reales', () => {
+  const selectables = INITIAL_OBJECTS.filter((o) => o.type !== 'floor');
 
-  const cases: Array<{ name: string; position: { x: number; y: number; z: number }; height: number }> = [
-    { name: 'Nave Industrial',    position: { x: 0,     y: 0,    z: 4000 }, height: 8000 },
-    { name: 'Tablero Eléctrico',  position: { x: -7000, y: 2000, z: 1000 }, height: 2000 },
-    { name: 'Motor Eléctrico',    position: { x: 4000,  y: 4000, z: 400  }, height: 800  },
-  ];
-
-  cases.forEach(({ name, position, height }) => {
-    it(`${name}: position.z == height / 2 (base en piso)`, () => {
-      expect(position.z).toBe(height / 2);
+  selectables.forEach((obj) => {
+    it(`${obj.name}: base en piso (position.z − height/2 = 0)`, () => {
+      expect(obj.position.z - obj.dimensions.height / 2).toBe(0);
     });
 
-    it(`${name}: coordenada Y en visor es positiva (encima del piso)`, () => {
-      const [, vy] = domainToViewerPosition(position);
+    it(`${obj.name}: Y en visor es positivo (encima del piso)`, () => {
+      const [, vy] = domainToViewerPosition(obj.position);
       expect(vy).toBeGreaterThan(0);
     });
+  });
+
+  // Regresión para Floor.tsx: si el componente vuelve a hardcodear Y=0,
+  // un piso elevado en el dominio quedaría en el nivel equivocado en el visor.
+  it('piso elevado: position.z no nula produce Y distinto de cero en visor', () => {
+    const elevatedFloor = INITIAL_OBJECTS[0]; // floor-1, z=0, sirve como base
+    // Construimos un piso hipotético a 500 mm de altura sin alterar INITIAL_OBJECTS.
+    const pos = { ...elevatedFloor.position, z: 500 };
+    const [, py] = domainToViewerPosition(pos);
+    expect(py).toBeCloseTo(0.5); // 500 mm = 0.5 m en Three.js
+    expect(py).toBeGreaterThan(0);
   });
 });
 

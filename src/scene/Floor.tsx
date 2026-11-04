@@ -6,21 +6,22 @@ interface Props {
   obj: DomainObject;
 }
 
-// Piso plano. position.z = 0 → Y Three.js = 0 (nivel del piso).
+// Piso plano. Usa las tres coordenadas de domainToViewerPosition para
+// respetar position.z del dominio (p.ej. un piso elevado sobre el nivel cero).
 // La grilla tiene celdas de 1 m (= 1 000 mm).
 export function Floor({ obj }: Props) {
-  const [px, , pz] = domainToViewerPosition(obj.position);
+  const [px, py, pz] = domainToViewerPosition(obj.position);
   const [sw, , sd] = domainToViewerSize(obj.dimensions);
   // sw = ancho en X (m), sd = profundidad en Z (m)
 
   return (
     <>
-      <mesh position={[px, 0, pz]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+      <mesh position={[px, py, pz]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <planeGeometry args={[sw, sd]} />
         <meshStandardMaterial color="#2a2a3a" />
       </mesh>
       <Grid
-        position={[px, 0, pz]}
+        position={[px, py, pz]}
         args={[sw, sd]}
         cellSize={1}
         cellThickness={0.4}

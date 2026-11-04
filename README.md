@@ -5,7 +5,7 @@ bandejas portacables en un visor 3D interactivo.
 
 ## Requisitos
 
-- [Node.js 18 o superior](https://nodejs.org/) (incluye npm) — probado con Node 24
+- [Node.js 24 LTS](https://nodejs.org/) (incluye npm) — versión recomendada y comprobada
 - [Git](https://git-scm.com/)
 
 ## Instalación (Windows)
