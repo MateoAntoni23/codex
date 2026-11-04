@@ -25,7 +25,7 @@ Base: `feat/project-save-load` @ `fd9872b`
 | 5c | Correcciones de auditoría: tx.oncomplete, estado inmediato, cancel en useEffect, bloqueo UI, docs | `a490dcc` |
 | 5d | Bloqueo OriginPanel, recoverProject, write-cancel check, estado recovering | `6e93cf2` |
 | 5e | Identidad de sesión en recoverProject: _sessionVersion/_recoveryToken | `fd9872b` |
-| A  | Árbol de escena por categorías contraíbles con contadores | rama activa |
+| A  | Árbol de escena por categorías contraíbles con contadores | `57cf161` |
 
 ### Cobertura de pruebas actual
 - **177 pruebas** distribuidas en 10 archivos de test.
@@ -46,214 +46,207 @@ Base: `feat/project-save-load` @ `fd9872b`
 
 ---
 
-## Próximas fases planificadas
+## Próximas fases — secuencia vigente M1a–M7
 
-### Prioridad actual: modelo transversal de equipos (solo documentación)
+La secuencia M1a–M7 es el orden de implementación inmediato.
+Diseño completo: [equipment-domain-model.md](equipment-domain-model.md).
+La aplicación sigue leyendo y escribiendo `schemaVersion=1` hasta la
+activación posterior a M1b, cuando visor, inspector y persistencia puedan
+trabajar conjuntamente con v2 o exista un adaptador validado.
 
-Diseño: [equipment-domain-model.md](equipment-domain-model.md).
-La secuencia M1–M7 de ese documento reemplaza el orden de implementación
-inmediato de A.1/B/C/D; conserva A–F como referencia de alcance histórico.
-En particular, no limitar la ficha ni las dimensiones editables a motores,
-tablero y nave. Incluir tableros neumáticos, componentes internos y actuadores.
+### M1a — Contratos, validadores y migrador puro 📋
 
-1. Revisar contratos e invariantes; sin cambios de código en esta entrega.
-2. M1: validación y migración con respaldo de schemaVersion=1.
-3. M2: organización de fábricas, FM y equipos compartidos sin duplicación.
-4. M3: ficha común y operaciones de elementos con campos por categoría.
-5. M4: geometría editable, anclajes y composición con coordenadas locales.
-6. M5: puertos, cables, mangueras y relaciones funcionales.
-7. M6: simulación de importación XLSX con vista previa y trazabilidad.
-8. M7: integración con bandejas, validaciones, BOM y campo.
+**Objetivo:** definir todos los tipos TypeScript de v2, el validador actualizado
+y la función de migración v1→v2 como código puro sin efectos de BD.
 
-Anclaje propuesto: centro de base para equipos de piso/nave, centro de cara
-posterior para gabinete de pared y centro para componentes internos. Puertos
-locales y de cara se distinguen. Estas decisiones son propuestas revisables;
-no requieren pedir datos al usuario para completar esta documentación.
-
-Se preservan las fases futuras de DXF/DWG, accesorios y catálogo de bandejas,
-ruteo, PDF/BOM, PWA y backend. Ninguna de estas funciones está implementada
-por la presente entrega documental.
-
-> Las fases A–F se corresponden con los requisitos nuevos de
-> `docs/product-requirements.md`. El orden puede revisarse.
-
-### Fase A — Árbol de elementos por categorías ✅
-
-**Objetivo:** reemplazar la lista plana por un árbol jerárquico con
-categorías contraíbles y conteo de elementos.
-
-**Alcance implementado:**
-- 8 categorías: Tableros, Motores, Bombas, Válvulas, Sensores, Iluminación,
-  Botoneras, Infraestructura.
-- Piso y Nave Industrial agrupados en Infraestructura.
-- Conteo de elementos por categoría (incluye cero).
-- Categorías con elementos abiertas al iniciar; vacías, cerradas.
-- Contraer una categoría no deselecciona el objeto activo.
-- Selección sincronizada con visor e inspector (sin cambios en el store).
-- Accesibilidad: `aria-expanded` en botones de cabecera, `tabIndex={0}`
-  en items seleccionables, `onKeyDown` para Enter/Space, `:focus-visible`.
-- El estado expandido/contraído es UI-only: no modifica objetos, origen
-  ni dispara guardado automático.
-- 20 pruebas de interacción (jsdom).
-
-**No incluye:** búsqueda por nombre/etiqueta, jerarquía de fábricas,
-drag-and-drop.
-
-**Archivos modificados:** `src/ui/SceneTree.tsx`, `src/styles/global.css`,
-`src/ui/__tests__/SceneTree.interaction.test.tsx`.
-
----
-
-### Fase A.1 — Jerarquía fábrica → categoría → equipo 📋
-
-> **Decisiones confirmadas por el usuario (2026-11-04):**
->
-> - **Tres fábricas:** Secado (códigos SEC / S1), Evaporador A (EVA / EA),
->   Evaporador B (EVB / EB).
-> - **Filtro de manga (FM):** subárea de Secado. No es una cuarta fábrica
->   ni un alcance excluido; debe conservar su identificación como subárea.
-> - **TAB-B:** tablero único que atiende a ambos evaporadores. No crear dos
->   objetos para representarlo; la asociación con múltiples evaporadores se
->   modela como atributo de relación, no como duplicación de objetos.
-> - **Ubicación física ≠ fábricas atendidas:** no inferir la ubicación física
->   de un tablero por sus asociaciones lógicas.
-> - **Sin asignación arbitraria:** los objetos de ejemplo (panel-1, motor-1,
->   etc.) no deben asignarse a ninguna fábrica hasta que el usuario lo indique
->   explícitamente.
-
-**Jerarquía prevista:**
-
-```
-Fábrica (Secado | Evaporador A | Evaporador B)
-  └── Subárea (opcional, p. ej. Filtro de Manga en Secado)
-        └── Categoría (Tableros | Motores | Bombas | …)
-              └── Equipo (DomainObject con id, name, type, position, …)
-```
-
-**Asociaciones compartidas (p. ej. TAB-B):**
-- Un equipo puede estar asociado a más de una fábrica sin duplicarse.
-- La asociación se modela como relación `{equipoId, fabricaId}` fuera del
-  objeto mismo; no se duplica el `DomainObject`.
-
-**Restricciones de esta fase:**
-- No modificar el formato JSON persistido hasta que se audite el modelo.
-- No implementar importación desde Excel todavía.
-- No asignar los objetos de ejemplo a fábricas arbitrariamente.
-
-**Prerequisito para implementar:** auditoría del modelo de datos con el
-usuario antes de agregar `fabricaId` al esquema.
-
----
-
-### Fase B — Dimensiones editables de tablero y nave 📋
-
-**Objetivo:** permitir editar ancho, profundidad y altura del tablero y la
-nave directamente desde el inspector.
-
-**Decisiones de diseño a tomar antes de implementar:**
-- ¿Qué punto permanece fijo al redimensionar? (propuesta: el punto inferior
-  central de la base, equivalente a mantener `position.x`, `position.y` y
-  `position.z - height/2` constantes).
-- Redimensionar **no mueve ni escala** los objetos interiores.
-- Validación: dimensiones positivas (y `height=0` solo para `floor`).
+**Prerequisito:** revisar contratos en `equipment-domain-model.md` y preparar
+fixtures v1 reales antes de codificar.
 
 **Alcance:**
-- Nuevas acciones en el store: `updateObjectDimensions`.
-- Formulario en el inspector similar al de posición.
-- Actualización del campo `dimensions` en `DomainObject`.
+- Tipos TS: `ProjectDataV2`, `Element`, `ElementBase`, `Placement`, `Datum<T>`,
+  `Geometry`, `Port`, `Connection`, `CableCore`, `Factory`, `Subarea`,
+  `ElementService`, `InternalLink`, `FunctionalRelation`, `FieldEvidence`.
+  `RouteAssignment` como stub documentado; no se inicializa en la migración.
+- Función pura `migrateV1toV2(data: ProjectDataV1): ProjectDataV2`:
+  sin efectos secundarios, sin IndexedDB, determinista.
+- `validateV2` actualizado con nuevas invariantes (unicidad de TAG y alias,
+  `version ≥ 1`, `transform` coherente con `placementStatus`, etc.).
+- Semántica de `version`: inicializado en 1 al crear o migrar; incrementa
+  exactamente una vez por cambio confirmado; no incrementa por selección ni
+  borradores cancelados.
 
-**No incluye:** modo de montaje (piso/pared) del tablero, puertos.
+**Verificación requerida:**
+- Round-trip: v1 → migrate → v2 → export → import → validate sin pérdida.
+- IDs, posiciones y nombres intactos tras la migración.
+- Motor: `diámetro = width`, `longitud = height`; `status: 'conflict'` si
+  `depth ≠ width`; no se normaliza silenciosamente.
+- Elemento sin TAG: `tag: null`, `aliases: []`, `condition: 'unknown'`.
+- Validador rechaza v2 inválido (referencias rotas, `version < 1`, etc.).
+
+**No incluye:** cambios de UI, IndexedDB, activación en producción.
 
 ---
 
-### Fase C — Catálogo básico y etiquetas de equipos 📋
+### M1b — Respaldo transaccional y recuperación 📋
 
-**Objetivo:** separar categoría del equipo, geometría 3D y datos técnicos.
-Agregar etiqueta configurable visible en el visor.
+**Objetivo:** backup atómico de v1 antes de cualquier escritura de v2;
+ruta de recuperación si la migración falla.
+
+**Prerequisito:** M1a aprobado y mergeado.
 
 **Alcance:**
-- Nuevos tipos: `pump`, `valve`, `sensor`, `luminaire`, `pushbutton`.
-- Geometría 3D simplificada y reconocible para cada tipo (caja con icono).
-- Etiqueta configurable visible sobre el objeto en el visor (`Html` de drei).
-- La identificación nunca depende únicamente del color.
-- Propiedades técnicas básicas por categoría (a definir por tipo).
-- Separación clara en `domain.ts`: `ObjectType` (categoría), `DomainObject`
-  (datos), geometría (scene components).
+- Guardar copia íntegra recuperable de v1 en clave separada de IndexedDB
+  antes de reemplazar el registro activo.
+- Si la escritura de v2 falla: v1 permanece activo y exportable; sin downgrade
+  destructivo.
+- Importación acepta v1 mediante migración en memoria; versiones futuras
+  desconocidas se rechazan sin modificar el proyecto.
+- v2 no se activa en producción en esta sub-entrega.
 
-**Requisitos previos:** Fase A (árbol por categorías).
+**Verificación requerida:**
+- Fallo transaccional conserva v1 activo (prueba con fake-indexeddb).
+- Respaldo recuperable mediante función de restauración.
+- Pruebas existentes siguen pasando sin cambios de comportamiento en v1.
 
-**Consideración normativa:**
-- Iconos y geometrías son representaciones propias; no se afirma conformidad
-  con IEC 60617 ni ISO 1219.
-- Los símbolos deben usar recursos con licencia adecuada.
+**Activación de v2:** solo cuando visor, inspector y persistencia puedan
+trabajar conjuntamente con v2, o cuando exista un adaptador validado que
+permita a los componentes existentes leer v2 sin regresiones.
 
 ---
 
-### Fase D — Puertos de conexión 📋
+### M2 — Fábricas, subáreas y asociaciones 📋
 
-**Objetivo:** agregar puntos de conexión a los objetos del catálogo.
+**Objetivo:** árbol de elementos con jerarquía fábrica → categoría → equipo.
 
 **Alcance:**
-- Tipo `Port` en el dominio: posición relativa al centro del equipo,
-  medio compatible (eléctrico, neumático, hidráulico).
-- Visualización de puertos en el visor (esfera pequeña).
-- El inspector permite ver los puertos disponibles (solo lectura inicialmente).
+- Fábricas: Secado (SEC/S1), Evaporador A (EVA/EA), Evaporador B (EVB/EB).
+- FM como subárea de Secado; no es una cuarta fábrica independiente.
+- TAB-B: un único elemento con dos `ElementService`; no duplicar el objeto.
+- Árbol muestra grupos «Compartidos» y «Sin asignar».
+- BOM deduplica por ID al mostrar equipos en más de una fábrica.
+- Los objetos de ejemplo (`panel-1`, `motor-1`, etc.) permanecen sin asignar.
 
-**No incluye en esta fase:** conexión de cables/mangueras entre puertos.
+**Verificación requerida:**
+- FM aparece bajo Secado, no como raíz.
+- TAB-B tiene un único ID visible en dos vistas del árbol.
+- BOM sin duplicación de cantidades para equipos compartidos.
 
 ---
 
-### Fase E — Bandejas y recorridos 📋
+### M3 — Ficha común y operaciones de elementos 📋
 
-**Objetivo:** modelar bandejas portacables como entidades del dominio con
-trayectoria y propiedades físicas.
+**Objetivo:** alta, edición y archivo de elementos con campos por categoría.
 
 **Alcance:**
-- Tipo `CableTray` en el dominio: puntos de trayectoria, ancho, alto,
-  material.
-- Visualización 3D simplificada (extrusión a lo largo de la trayectoria).
-- Distinción entre "compartir corredor" y "compartir la misma bandeja".
-- Prever compartimentos y reglas de compatibilidad.
+- Ficha: Identificación, Técnica, Geometría, Conexiones, Componentes,
+  Procedencia/pendientes.
+- Todos los tipos (13 categorías); campos desconocidos explícitos; borradores
+  cancelables sin mutar el store.
+- Parámetros no aplicables a una tecnología se ocultan y validan
+  condicionalmente; un actuador eléctrico no recibe presión neumática.
+- Duplicar: nuevos IDs, TAG pendiente de confirmar, sin copiar conexiones
+  externas ni confirmaciones de campo.
+- Eliminar: mostrar dependencias, ofrecer archivar; no borrar conexiones
+  silenciosamente.
+
+**Verificación requerida:**
+- Desconocidos explícitos (`null` + `status: 'unknown'`), nunca `0` falso.
+- Borrador cancelable: cancelar no muta el store.
+- Archivado preferible sobre eliminación para elementos ya montados.
 
 ---
 
-### Fase F — Cables, mangueras, asignación y validaciones 📋
+### M4 — Geometría editable y composición 📋
 
-**Objetivo:** modelar cables y mangueras como entidades propias, asignarlos
-a bandejas y calcular ocupación y metraje.
+**Objetivo:** dimensiones editables con anclajes correctos y composición
+padre/hijo sin escalado automático.
 
-**Cables:**
-- Tipo, sección, tensión, número de conductores, origen, destino.
+**Alcance:**
+- Dimensiones editables para todos los tipos; anclaje configurable.
+- Anclaje por defecto: centro de base para piso/nave; cara posterior para
+  gabinete de pared; centro para objetos internos.
+- Redimensionar el padre no mueve ni escala los hijos; compensar coordenadas
+  locales para conservar posición global de los hijos.
+- Mover o rotar el padre sí mueve los hijos.
+- Validar ausencia de ciclos en `parentId`; rechazar referencias inexistentes.
+- Nave: redimensionar conserva centro de base; equipos raíz no se desplazan.
 
-**Mangueras:**
-- Diámetro exterior/interior, material, presión de trabajo, radio mínimo,
-  origen, destino.
+**Verificación requerida:**
+- Anclajes correctos en las tres clases de objeto.
+- Hijos conservan posición global al redimensionar el padre.
+- Ciclos en `parentId` rechazados.
 
-**Validaciones:**
-- Ocupación física: considera diámetro exterior y carga si están disponibles.
+---
+
+### M5 — Puertos, conexiones y fichas técnicas específicas 📋
+
+**Objetivo:** puntos de conexión, cables, mangueras y relaciones funcionales.
+
+**Alcance:**
+- `Port` con `connectorKind: 'terminal' | 'multipolar'` y medium eléctrico /
+  neumático / hidráulico (hidráulico previsto en contratos, sin cálculos).
+- `CableCore` con extremos en terminales individuales; PE y apantallamiento
+  explícitos.
+- `InternalLink` para continuidad en borneras y paso fluídico en manifold.
+- `FunctionalRelation` para electroválvula→actuador y actuador→válvula de
+  proceso.
+- Visualización de puertos en visor (esfera pequeña).
+- Inspector: puertos disponibles y conexiones (solo lectura inicialmente).
+- Composición interna de conectores multipolares: definir en esta fase si
+  se vinculan mediante `parentPortId` o `InternalLink`.
+
+**Verificación requerida:**
+- Cable y manguera diferenciados por `medium`.
+- Bornera intermedia: `InternalLink{kind:'conductive'}` correcto.
+- Actuador doble efecto: dos mangueras neumáticas a puertos A y B.
+- `CableCore.ends` solo referencian `Port{connectorKind:'terminal'}`.
+
+---
+
+### M6 — Simulación de importación XLSX 📋
+
+**Objetivo:** importar una muestra del Excel con vista previa, conciliación
+de identidad y trazabilidad por campo.
+
+**Alcance:**
+- Checksum del archivo y referencia hoja/fila/celda en `FieldEvidence`.
+  No incrustar el archivo binario en el proyecto.
+- Vista previa de altas, cambios y conflictos antes de confirmar.
+- Reglas de conciliación de TAGs (ver sección 7 del modelo de dominio):
+  TAG repetido → conciliar o presentar ambigüedad; no fusionar automáticamente;
+  no renumerar CB ni IDs; no sobreescribir decisiones manuales.
+- Descripciones libres no se usan como claves de conciliación.
+- Sin rutas automáticas: `routeId: null` para todas las conexiones importadas.
+
+**Verificación requerida:**
+- Vista previa muestra altas, cambios y conflictos por separado.
+- Decisiones manuales previas no se sobreescriben sin confirmación.
+- Proyecto permanece inalterado si el usuario cancela la importación.
+
+---
+
+### M7 — Integración con ruteo, BOM y campo 📋
+
+**Objetivo:** `RouteAssignment`, metraje, ocupación y validaciones de campo.
+
+**Alcance:**
+- `RouteAssignment`: tramos de bandeja asignados a conexiones.
+- BOM: metraje separado por medio (eléctrico / neumático).
+- Checklist de campo: estado de instalación por conexión.
+- Rutas compartidas: suman ocupación de cables y mangueras sin asumir
+  compatibilidad normativa.
 - Si falta un dato necesario: estado "pendiente de validación", no "válido".
-- BOM y checklist distinguen cables de mangueras.
-- No se asume que compartir bandeja está siempre permitido.
 
-**No incluye:** cálculo de caída de tensión, selección automática de sección.
-
----
-
-## Decisiones pendientes (requieren alineación antes de implementar)
-
-| Tema | Pregunta abierta |
-|---|---|
-| Redimensionar nave/tablero | ¿Qué punto geométrico permanece fijo? |
-| Puertos | ¿Coordenadas relativas al centro o a la cara? |
-| Símbolos/iconos | ¿Qué fuente con licencia adecuada se usará? |
-| Catálogo externo | ¿Los equipos se definen solo en código o hay un archivo de configuración? |
-| Validación de recorridos | ¿Qué reglas de compatibilidad aplican en el contexto específico del proyecto? |
+**Verificación requerida:**
+- Metraje separado de validación eléctrica/neumática.
+- Ocupación calculada a partir de diámetros exteriores; sin asumir
+  compatibilidad entre medios distintos.
 
 ---
 
-## Lo que NO se implementará en las fases A–F
-> Estas funcionalidades están previstas para etapas futuras; no se
-> eliminan del plan general.
+## Funcionalidades fuera del alcance M1a–M7
+
+> Previstas para etapas futuras; no eliminadas del plan general.
 
 - Backend, autenticación ni sincronización en la nube.
 - Importación/exportación DXF (formato de intercambio CAD).
@@ -261,4 +254,51 @@ a bandejas y calcular ocupación y metraje.
 - Aplicación web progresiva (PWA) para uso sin conexión en campo.
 - Cálculo eléctrico (caída de tensión, selección de sección).
 - Cálculo neumático (pérdida de carga, selección de compresor).
+- Cálculo hidráulico (contratos de medio previstos en M5; sin cálculos).
 - Conformidad normativa certificada.
+- Catálogo de bandejas portacables, accesorios y soportes.
+
+---
+
+## Referencia histórica — fases anteriores A.1 y B–F
+
+> Estas fases fueron reemplazadas por la secuencia M1a–M7.
+> Se conservan como referencia de requisitos; no son el plan activo.
+> Los requisitos de fondo (fichas técnicas, dimensiones editables, puertos,
+> bandejas, cables, mangueras) están cubiertos en M1a–M7 con mayor detalle.
+
+### Fase A.1 — Jerarquía fábrica → categoría → equipo
+
+Requisitos absorbidos por M2. Decisiones confirmadas:
+- Tres fábricas: Secado (SEC/S1), Evaporador A (EVA/EA), Evaporador B (EVB/EB).
+- FM: subárea de Secado; no es una cuarta fábrica.
+- TAB-B: un único objeto con dos `ElementService`.
+- Ubicación física ≠ fábricas atendidas.
+- Sin asignación arbitraria de los objetos de ejemplo.
+
+### Fase B — Dimensiones editables de tablero y nave
+
+Requisitos absorbidos por M4. Punto de anclaje a definir antes de implementar.
+Redimensionar no mueve ni escala objetos interiores.
+
+### Fase C — Catálogo básico y etiquetas de equipos
+
+Requisitos absorbidos por M3. Nuevas categorías (10 tipos), geometría 3D
+simplificada y etiqueta configurable en el visor.
+Consideración normativa: iconos y geometrías son representaciones propias;
+no se afirma conformidad con IEC 60617 ni ISO 1219.
+
+### Fase D — Puertos de conexión
+
+Requisitos absorbidos por M5. Visualización de puertos; inspector en modo
+solo lectura inicialmente.
+
+### Fase E — Bandejas y recorridos
+
+Requisitos absorbidos por M7. `CableTray` con trayectoria y propiedades físicas;
+distinción entre "compartir corredor" y "compartir la misma bandeja".
+
+### Fase F — Cables, mangueras, asignación y validaciones
+
+Requisitos absorbidos por M5 (cables y mangueras) y M7 (metraje y validaciones).
+BOM y checklist distinguen cables de mangueras por separado.
