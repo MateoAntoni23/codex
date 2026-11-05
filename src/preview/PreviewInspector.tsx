@@ -15,7 +15,7 @@ import {
   type CommonTechnicalDraft, type MotorTechnicalDraft, type SensorTechnicalDraft,
   type PanelTechnicalDraft, type TechDraftErrors,
 } from './technicalEditor';
-import type { Category, EquipmentElement, Vec3 } from '../types/domain-v2';
+import type { Category, EquipmentElement, TechnicalByCategory, Vec3 } from '../types/domain-v2';
 
 const CATEGORY_LABEL: Record<Category, string> = {
   electrical_panel: 'Tablero Eléctrico',
@@ -60,7 +60,7 @@ function canEdit(el: EquipmentElement): boolean {
   return false;
 }
 
-// ─── Subcomponentes de entrada ────────────────────────────────────────────────
+// ─── Subcomponentes básicos de entrada ────────────────────────────────────────
 
 interface EditFieldProps {
   id: string;
@@ -71,9 +71,14 @@ interface EditFieldProps {
   hint?: string;
   inputMode?: React.HTMLAttributes<HTMLInputElement>['inputMode'];
   wide?: boolean;
+  datumStatus?: string;
 }
 
-function EditField({ id, label, value, error, onChange, hint, inputMode = 'numeric', wide }: EditFieldProps) {
+function EditField({ id, label, value, error, onChange, hint, inputMode = 'numeric', wide, datumStatus }: EditFieldProps) {
+  const statusNote =
+    datumStatus === 'estimated' ? 'estimado'
+    : datumStatus === 'verified' ? 'verificado — al modificar pasará a "proporcionado"'
+    : null;
   return (
     <div className={`inspector-edit-row${wide ? ' inspector-edit-row--wide' : ''}`}>
       <label className="inspector-label" htmlFor={id}>{label}</label>
@@ -86,7 +91,10 @@ function EditField({ id, label, value, error, onChange, hint, inputMode = 'numer
           onChange={(e) => onChange(e.target.value)}
         />
         {error && <span className="inspector-error">{error}</span>}
-        {hint && !error && <span className="inspector-hint">{hint}</span>}
+        {!error && statusNote && (
+          <span className={`inspector-hint datum-status--${datumStatus}`}>{statusNote}</span>
+        )}
+        {!error && hint && !statusNote && <span className="inspector-hint">{hint}</span>}
       </div>
     </div>
   );
@@ -100,9 +108,14 @@ interface SelectFieldProps {
   options: { value: string; label: string }[];
   error?: string;
   wide?: boolean;
+  datumStatus?: string;
 }
 
-function SelectField({ id, label, value, onChange, options, error, wide }: SelectFieldProps) {
+function SelectField({ id, label, value, onChange, options, error, wide, datumStatus }: SelectFieldProps) {
+  const statusNote =
+    datumStatus === 'estimated' ? 'estimado'
+    : datumStatus === 'verified' ? 'verificado — al modificar pasará a "proporcionado"'
+    : null;
   return (
     <div className={`inspector-edit-row${wide ? ' inspector-edit-row--wide' : ''}`}>
       <label className="inspector-label" htmlFor={id}>{label}</label>
@@ -118,7 +131,283 @@ function SelectField({ id, label, value, onChange, options, error, wide }: Selec
           ))}
         </select>
         {error && <span className="inspector-error">{error}</span>}
+        {!error && statusNote && (
+          <span className={`inspector-hint datum-status--${datumStatus}`}>{statusNote}</span>
+        )}
       </div>
+    </div>
+  );
+}
+
+function ConflictField({ label, displayValue }: { label: string; displayValue: string }) {
+  return (
+    <div className="inspector-edit-row inspector-edit-row--wide">
+      <span className="inspector-label">{label}</span>
+      <div className="inspector-input-wrap">
+        <span className="inspector-value">{displayValue}</span>
+        <span className="inspector-hint datum-status--conflict">
+          ⚠ Conflicto — solo lectura. Revisá las fuentes para resolver.
+        </span>
+      </div>
+    </div>
+  );
+}
+
+// ─── Secciones técnicas por categoría ─────────────────────────────────────────
+
+interface MotorTechSectionProps {
+  tech: TechnicalByCategory['motor'];
+  draft: MotorTechnicalDraft;
+  errors: TechDraftErrors;
+  setDraft: React.Dispatch<React.SetStateAction<MotorTechnicalDraft>>;
+  setErrors: React.Dispatch<React.SetStateAction<TechDraftErrors>>;
+}
+
+function MotorTechSection({ tech, draft, errors, setDraft, setErrors }: MotorTechSectionProps) {
+  return (
+    <div className="inspector-tech-section">
+      <div className="inspector-section">Datos técnicos del motor</div>
+
+      {tech.power.status === 'conflict' ? (
+        <ConflictField
+          label="Potencia"
+          displayValue={tech.power.value != null
+            ? `${tech.power.value.value} ${tech.power.value.unit}` : '—'}
+        />
+      ) : (
+        <div className="inspector-edit-row inspector-edit-row--wide">
+          <label className="inspector-label" htmlFor="pi-power">Potencia</label>
+          <div className="inspector-input-wrap">
+            <div style={{ display: 'flex', gap: 4 }}>
+              <input
+                id="pi-power"
+                className={`inspector-input${errors.power ? ' inspector-input--error' : ''}`}
+                value={draft.power}
+                inputMode="decimal"
+                style={{ flex: 1 }}
+                onChange={(e) => {
+                  setDraft((d) => ({ ...d, power: e.target.value }));
+                  setErrors((er) => ({ ...er, power: undefined }));
+                }}
+              />
+              <select
+                aria-label="Unidad de potencia"
+                className="inspector-input"
+                value={draft.powerUnit}
+                style={{ width: 50, flexShrink: 0 }}
+                onChange={(e) => setDraft((d) => ({ ...d, powerUnit: e.target.value as 'kW' | 'HP' }))}
+              >
+                <option value="kW">kW</option>
+                <option value="HP">HP</option>
+              </select>
+            </div>
+            {errors.power && <span className="inspector-error">{errors.power}</span>}
+            {!errors.power && tech.power.status === 'estimated' && (
+              <span className="inspector-hint datum-status--estimated">estimado</span>
+            )}
+            {!errors.power && tech.power.status === 'verified' && (
+              <span className="inspector-hint datum-status--verified">verificado — al modificar pasará a "proporcionado"</span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {tech.voltage.status === 'conflict' ? (
+        <ConflictField
+          label="Tensión (V)"
+          displayValue={tech.voltage.value != null ? `${tech.voltage.value.value} V` : '—'}
+        />
+      ) : (
+        <EditField id="pi-voltage" label="Tensión (V)" value={draft.voltage}
+          error={errors.voltage} wide datumStatus={tech.voltage.status}
+          onChange={(v) => { setDraft((d) => ({ ...d, voltage: v })); setErrors((er) => ({ ...er, voltage: undefined })); }} />
+      )}
+
+      {tech.phases.status === 'conflict' ? (
+        <ConflictField
+          label="Fases"
+          displayValue={tech.phases.value != null ? String(tech.phases.value) : '—'}
+        />
+      ) : (
+        <SelectField id="pi-phases" label="Fases" value={draft.phases}
+          error={errors.phases} wide datumStatus={tech.phases.status}
+          onChange={(v) => { setDraft((d) => ({ ...d, phases: v as MotorTechnicalDraft['phases'] })); setErrors((er) => ({ ...er, phases: undefined })); }}
+          options={[
+            { value: '', label: '—' },
+            { value: '1', label: 'Monofásico (1)' },
+            { value: '3', label: 'Trifásico (3)' },
+          ]} />
+      )}
+
+      {tech.plateCurrent.status === 'conflict' ? (
+        <ConflictField
+          label="Corriente (A)"
+          displayValue={tech.plateCurrent.value != null ? `${tech.plateCurrent.value.value} A` : '—'}
+        />
+      ) : (
+        <EditField id="pi-platecurrent" label="Corriente (A)" value={draft.plateCurrent}
+          error={errors.plateCurrent} wide datumStatus={tech.plateCurrent.status}
+          onChange={(v) => { setDraft((d) => ({ ...d, plateCurrent: v })); setErrors((er) => ({ ...er, plateCurrent: undefined })); }} />
+      )}
+
+      {tech.efficiency.status === 'conflict' ? (
+        <ConflictField
+          label="Eficiencia"
+          displayValue={tech.efficiency.value != null ? String(tech.efficiency.value) : '—'}
+        />
+      ) : (
+        <EditField id="pi-efficiency" label="Eficiencia" value={draft.efficiency}
+          error={errors.efficiency} hint="0 < η ≤ 1" wide datumStatus={tech.efficiency.status}
+          onChange={(v) => { setDraft((d) => ({ ...d, efficiency: v })); setErrors((er) => ({ ...er, efficiency: undefined })); }} />
+      )}
+
+      {tech.powerFactor.status === 'conflict' ? (
+        <ConflictField
+          label="Cos φ"
+          displayValue={tech.powerFactor.value != null ? String(tech.powerFactor.value) : '—'}
+        />
+      ) : (
+        <EditField id="pi-powerfactor" label="Cos φ" value={draft.powerFactor}
+          error={errors.powerFactor} hint="0 < cosφ ≤ 1" wide datumStatus={tech.powerFactor.status}
+          onChange={(v) => { setDraft((d) => ({ ...d, powerFactor: v })); setErrors((er) => ({ ...er, powerFactor: undefined })); }} />
+      )}
+
+      {tech.start.status === 'conflict' ? (
+        <ConflictField
+          label="Arranque"
+          displayValue={tech.start.value ?? '—'}
+        />
+      ) : (
+        <SelectField id="pi-start" label="Arranque" value={draft.start}
+          error={errors.start} wide datumStatus={tech.start.status}
+          onChange={(v) => { setDraft((d) => ({ ...d, start: v as MotorTechnicalDraft['start'] })); setErrors((er) => ({ ...er, start: undefined })); }}
+          options={[
+            { value: '',            label: '—' },
+            { value: 'direct',      label: 'Directo' },
+            { value: 'star_delta',  label: 'Estrella-triángulo' },
+            { value: 'softstarter', label: 'Softstarter' },
+            { value: 'vfd',         label: 'Variador de frecuencia (VFD)' },
+            { value: 'other',       label: 'Otro' },
+          ]} />
+      )}
+    </div>
+  );
+}
+
+interface SensorTechSectionProps {
+  tech: TechnicalByCategory['sensor'];
+  draft: SensorTechnicalDraft;
+  errors: TechDraftErrors;
+  setDraft: React.Dispatch<React.SetStateAction<SensorTechnicalDraft>>;
+  setErrors: React.Dispatch<React.SetStateAction<TechDraftErrors>>;
+}
+
+function SensorTechSection({ tech, draft, errors, setDraft, setErrors }: SensorTechSectionProps) {
+  return (
+    <div className="inspector-tech-section">
+      <div className="inspector-section">Datos técnicos del sensor</div>
+
+      {tech.measuredVariable.status === 'conflict' ? (
+        <ConflictField label="Variable" displayValue={tech.measuredVariable.value ?? '—'} />
+      ) : (
+        <EditField id="pi-measvar" label="Variable" value={draft.measuredVariable}
+          inputMode="text" error={errors.measuredVariable} wide datumStatus={tech.measuredVariable.status}
+          onChange={(v) => { setDraft((d) => ({ ...d, measuredVariable: v })); setErrors((er) => ({ ...er, measuredVariable: undefined })); }} />
+      )}
+
+      {tech.range.status === 'conflict' ? (
+        <ConflictField
+          label="Rango"
+          displayValue={tech.range.value != null
+            ? `${tech.range.value.min}..${tech.range.value.max} ${tech.range.value.unit}` : '—'}
+        />
+      ) : (
+        <>
+          <EditField id="pi-rangemin" label="Rango mín" value={draft.rangeMin}
+            error={errors.rangeMin} wide datumStatus={tech.range.status === 'estimated' || tech.range.status === 'verified' ? tech.range.status : undefined}
+            onChange={(v) => { setDraft((d) => ({ ...d, rangeMin: v })); setErrors((er) => ({ ...er, rangeMin: undefined })); }} />
+          <EditField id="pi-rangemax" label="Rango máx" value={draft.rangeMax}
+            error={errors.rangeMax} wide
+            onChange={(v) => { setDraft((d) => ({ ...d, rangeMax: v })); setErrors((er) => ({ ...er, rangeMax: undefined })); }} />
+          <EditField id="pi-rangeunit" label="Unidad" value={draft.rangeUnit}
+            inputMode="text" wide
+            onChange={(v) => setDraft((d) => ({ ...d, rangeUnit: v }))} />
+        </>
+      )}
+
+      {tech.supply.status === 'conflict' ? (
+        <ConflictField
+          label="Alimentación"
+          displayValue={tech.supply.value != null
+            ? `${tech.supply.value.voltageV} V ${tech.supply.value.currentType}` : '—'}
+        />
+      ) : (
+        <>
+          <EditField id="pi-supplyvoltage" label="Alim. (V)" value={draft.supplyVoltage}
+            error={errors.supplyVoltage} wide datumStatus={tech.supply.status === 'estimated' || tech.supply.status === 'verified' ? tech.supply.status : undefined}
+            onChange={(v) => { setDraft((d) => ({ ...d, supplyVoltage: v })); setErrors((er) => ({ ...er, supplyVoltage: undefined })); }} />
+          <SelectField id="pi-supplycurrenttype" label="Tipo AC/DC" value={draft.supplyCurrentType}
+            error={errors.supplyCurrentType} wide
+            onChange={(v) => { setDraft((d) => ({ ...d, supplyCurrentType: v as SensorTechnicalDraft['supplyCurrentType'] })); setErrors((er) => ({ ...er, supplyCurrentType: undefined })); }}
+            options={[
+              { value: '',   label: '—' },
+              { value: 'AC', label: 'AC' },
+              { value: 'DC', label: 'DC' },
+            ]} />
+        </>
+      )}
+
+      {tech.signal.status === 'conflict' ? (
+        <ConflictField label="Señal" displayValue={tech.signal.value ?? '—'} />
+      ) : (
+        <SelectField id="pi-signal" label="Señal" value={draft.signal}
+          error={errors.signal} wide datumStatus={tech.signal.status}
+          onChange={(v) => { setDraft((d) => ({ ...d, signal: v as SensorTechnicalDraft['signal'] })); setErrors((er) => ({ ...er, signal: undefined })); }}
+          options={[
+            { value: '',       label: '—' },
+            { value: 'DI',     label: 'Digital (DI)' },
+            { value: '4_20mA', label: '4–20 mA' },
+            { value: '0_10V',  label: '0–10 V' },
+            { value: 'RTD',    label: 'RTD' },
+            { value: 'bus',    label: 'Bus de campo' },
+            { value: 'other',  label: 'Otro' },
+          ]} />
+      )}
+    </div>
+  );
+}
+
+interface PanelTechSectionProps {
+  tech: TechnicalByCategory['electrical_panel'];
+  draft: PanelTechnicalDraft;
+  errors: TechDraftErrors;
+  setDraft: React.Dispatch<React.SetStateAction<PanelTechnicalDraft>>;
+  setErrors: React.Dispatch<React.SetStateAction<TechDraftErrors>>;
+}
+
+function PanelTechSection({ tech, draft, errors, setDraft, setErrors }: PanelTechSectionProps) {
+  return (
+    <div className="inspector-tech-section">
+      <div className="inspector-section">Datos técnicos del tablero</div>
+
+      {tech.ipRating.status === 'conflict' ? (
+        <ConflictField label="IP Rating" displayValue={tech.ipRating.value ?? '—'} />
+      ) : (
+        <EditField id="pi-iprating" label="IP Rating" value={draft.ipRating}
+          inputMode="text" error={errors.ipRating} wide datumStatus={tech.ipRating.status}
+          onChange={(v) => { setDraft((d) => ({ ...d, ipRating: v })); setErrors((er) => ({ ...er, ipRating: undefined })); }} />
+      )}
+
+      {tech.ratedCurrent.status === 'conflict' ? (
+        <ConflictField
+          label="I nominal (A)"
+          displayValue={tech.ratedCurrent.value != null ? `${tech.ratedCurrent.value.value} A` : '—'}
+        />
+      ) : (
+        <EditField id="pi-ratedcurrent" label="I nominal (A)" value={draft.ratedCurrent}
+          error={errors.ratedCurrent} wide datumStatus={tech.ratedCurrent.status}
+          onChange={(v) => { setDraft((d) => ({ ...d, ratedCurrent: v })); setErrors((er) => ({ ...er, ratedCurrent: undefined })); }} />
+      )}
     </div>
   );
 }
@@ -166,7 +455,7 @@ export function PreviewInspector() {
   });
   const [techErrors, setTechErrors] = useState<TechDraftErrors>({});
 
-  // ── Sync draft desde un elemento y lista de elementos ────────────────────
+  // ── Sync draft desde un elemento ─────────────────────────────────────────
 
   const syncDraft = useCallback((el: EquipmentElement, allElements: EquipmentElement[]) => {
     setNameDraft(el.name);
@@ -206,7 +495,6 @@ export function PreviewInspector() {
 
   useEffect(() => {
     if (element != null && canEdit(element)) syncDraft(element, elements);
-    // Sync solo cuando cambia la selección, no en cada actualización de elements.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedId]);
 
@@ -236,7 +524,6 @@ export function PreviewInspector() {
   const handleApply = () => {
     if (element == null || !canEdit(element)) return;
 
-    // 1. Validar posición, geometría y nombre
     const nameResult = parseName(nameDraft);
     const posResult  = parsePositionDraft(posDraft);
     const boxResult  =
@@ -248,7 +535,6 @@ export function PreviewInspector() {
         ? parseCylinderSizeDraft(cylDraft)
         : null;
 
-    // 2. Validar datos técnicos
     let techResult:
       | ReturnType<typeof applyMotorTechnicalDraft>
       | ReturnType<typeof applySensorTechnicalDraft>
@@ -263,7 +549,7 @@ export function PreviewInspector() {
       techResult = applyPanelTechnicalDraft(element, panelDraft, commonDraft);
     }
 
-    // 3. Propagar todos los errores (mostrar todos a la vez)
+    // Propagar todos los errores (mostrar todos a la vez)
     setNameError(nameResult.ok ? undefined : nameResult.error);
     setPosErrors(posResult.ok  ? {}        : posResult.errors);
     if (boxResult) setBoxErrors(boxResult.ok ? {} : boxResult.errors);
@@ -274,15 +560,12 @@ export function PreviewInspector() {
     const techOk = techResult == null || techResult.ok;
     if (!nameResult.ok || !posResult.ok || !sizeOk || !techOk) return;
 
-    // 4. Convertir posición global → local si tiene padre
     const parentTransform = element.parentId != null
       ? resolveGlobalTransform(element.parentId, elements)
       : null;
 
-    // 5. Aplicar posición
     let updated = applyPositionEdit(element, posResult.value as Vec3, parentTransform);
 
-    // 6. Aplicar dimensiones
     let childDeltaZ = 0;
     if (boxResult?.ok) {
       const r = applyBoxSizeEdit(updated, boxResult.value.width, boxResult.value.depth, boxResult.value.height);
@@ -294,10 +577,8 @@ export function PreviewInspector() {
       childDeltaZ = r.childDeltaZ;
     }
 
-    // 7. Aplicar nombre
     updated = applyNameEdit(updated, nameResult.value);
 
-    // 8. Mergear datos técnicos y evidencia
     if (techResult?.ok) {
       updated = {
         ...updated,
@@ -308,33 +589,29 @@ export function PreviewInspector() {
       for (const ev of techResult.newEvidence) addEvidence(ev);
     }
 
-    // 9. Incrementar versión solo si algo cambió
-    const posChanged = (
+    const posChanged  = (
       updated.transform?.positionMm.x !== element.transform?.positionMm.x ||
       updated.transform?.positionMm.y !== element.transform?.positionMm.y ||
       updated.transform?.positionMm.z !== element.transform?.positionMm.z
     );
-    const geoChanged    = JSON.stringify(updated.geometry)     !== JSON.stringify(element.geometry);
-    const nameChanged   = updated.name                         !== element.name;
-    const techChanged   = JSON.stringify(updated.technical)    !== JSON.stringify(element.technical);
-    const mfgChanged    = JSON.stringify(updated.manufacturer) !== JSON.stringify(element.manufacturer);
-    const modelChanged  = JSON.stringify(updated.model)        !== JSON.stringify(element.model);
+    const geoChanged   = JSON.stringify(updated.geometry)     !== JSON.stringify(element.geometry);
+    const nameChanged  = updated.name                         !== element.name;
+    const techChanged  = JSON.stringify(updated.technical)    !== JSON.stringify(element.technical);
+    const mfgChanged   = JSON.stringify(updated.manufacturer) !== JSON.stringify(element.manufacturer);
+    const modelChanged = JSON.stringify(updated.model)        !== JSON.stringify(element.model);
 
     if (posChanged || geoChanged || nameChanged || techChanged || mfgChanged || modelChanged) {
       updated = { ...updated, version: element.version + 1 } as EquipmentElement;
     }
 
-    // 10. Guardar en store
     updateElement(updated);
 
-    // 11. Ajustar hijos para conservar sus posiciones globales
     if (childDeltaZ !== 0) {
       for (const child of elements.filter((e) => e.parentId === element.id)) {
         updateElement(adjustChildLocalZ(child, childDeltaZ));
       }
     }
 
-    // 12. Re-sincronizar el formulario a los valores realmente guardados
     const updatedElements = elements.map((e) => (e.id === updated.id ? updated : e));
     syncDraft(updated, updatedElements);
   };
@@ -348,7 +625,6 @@ export function PreviewInspector() {
       {element == null ? (
         <p className="inspector-empty">Seleccioná un elemento</p>
       ) : editable ? (
-        // ── Formulario de edición ──────────────────────────────────────────
         <div className="inspector-content">
 
           {/* Nombre */}
@@ -370,7 +646,7 @@ export function PreviewInspector() {
           <ReadField label="Geometría" value={GEOMETRY_LABEL[renderProps?.geometryKind ?? 'unknown']} />
           <ReadField label="Versión"   value={String(element.version)} />
 
-          {/* Posición global (en mm) */}
+          {/* Posición global */}
           <div className="inspector-section">Posición en mm (global, respecto al origen)</div>
           <EditField id="pi-pos-x" label="X" value={posDraft.x} error={posErrors.x}
             onChange={(v) => { setPosDraft((d) => ({ ...d, x: v })); setPosErrors((e) => ({ ...e, x: undefined })); }} />
@@ -406,11 +682,10 @@ export function PreviewInspector() {
           )}
 
           {/* Dimensiones (solo box de tableros o cilindro de motores) */}
-          {(element.geometry?.kind === 'box' && element.category === 'electrical_panel') ||
-           element.geometry?.kind === 'cylinder'
-            ? (
-              <div className="inspector-section">Dimensiones (mm)</div>
-            ) : null}
+          {((element.geometry?.kind === 'box' && element.category === 'electrical_panel') ||
+            element.geometry?.kind === 'cylinder') && (
+            <div className="inspector-section">Dimensiones (mm)</div>
+          )}
 
           {element.geometry?.kind === 'box' && element.category === 'electrical_panel' && (
             <>
@@ -436,150 +711,44 @@ export function PreviewInspector() {
 
           {/* Fabricante y modelo */}
           <div className="inspector-section">Fabricante y modelo</div>
-          <EditField id="pi-manufacturer" label="Fabricante" value={commonDraft.manufacturer}
-            inputMode="text" wide
-            onChange={(v) => setCommonDraft((d) => ({ ...d, manufacturer: v }))} />
-          <EditField id="pi-model" label="Modelo" value={commonDraft.model}
-            inputMode="text" wide
-            onChange={(v) => setCommonDraft((d) => ({ ...d, model: v }))} />
 
-          {/* Datos técnicos del motor */}
+          {element.manufacturer.status === 'conflict' ? (
+            <ConflictField label="Fabricante" displayValue={element.manufacturer.value ?? '—'} />
+          ) : (
+            <EditField id="pi-manufacturer" label="Fabricante" value={commonDraft.manufacturer}
+              inputMode="text" wide datumStatus={element.manufacturer.status}
+              onChange={(v) => setCommonDraft((d) => ({ ...d, manufacturer: v }))} />
+          )}
+
+          {element.model.status === 'conflict' ? (
+            <ConflictField label="Modelo" displayValue={element.model.value ?? '—'} />
+          ) : (
+            <EditField id="pi-model" label="Modelo" value={commonDraft.model}
+              inputMode="text" wide datumStatus={element.model.status}
+              onChange={(v) => setCommonDraft((d) => ({ ...d, model: v }))} />
+          )}
+
+          {/* Secciones técnicas por categoría */}
           {element.category === 'motor' && (
-            <div className="inspector-tech-section">
-              <div className="inspector-section">Datos técnicos del motor</div>
-
-              {/* Potencia con unidad */}
-              <div className="inspector-edit-row inspector-edit-row--wide">
-                <label className="inspector-label" htmlFor="pi-power">Potencia</label>
-                <div className="inspector-input-wrap">
-                  <div style={{ display: 'flex', gap: 4 }}>
-                    <input
-                      id="pi-power"
-                      className={`inspector-input${techErrors.power ? ' inspector-input--error' : ''}`}
-                      value={motorDraft.power}
-                      inputMode="decimal"
-                      style={{ flex: 1 }}
-                      onChange={(e) => {
-                        setMotorDraft((d) => ({ ...d, power: e.target.value }));
-                        setTechErrors((er) => ({ ...er, power: undefined }));
-                      }}
-                    />
-                    <select
-                      aria-label="Unidad de potencia"
-                      className="inspector-input"
-                      value={motorDraft.powerUnit}
-                      style={{ width: 50, flexShrink: 0 }}
-                      onChange={(e) => setMotorDraft((d) => ({ ...d, powerUnit: e.target.value as 'kW' | 'HP' }))}
-                    >
-                      <option value="kW">kW</option>
-                      <option value="HP">HP</option>
-                    </select>
-                  </div>
-                  {techErrors.power && <span className="inspector-error">{techErrors.power}</span>}
-                </div>
-              </div>
-
-              <EditField id="pi-voltage" label="Tensión (V)" value={motorDraft.voltage}
-                error={techErrors.voltage} wide
-                onChange={(v) => { setMotorDraft((d) => ({ ...d, voltage: v })); setTechErrors((er) => ({ ...er, voltage: undefined })); }} />
-
-              <SelectField id="pi-phases" label="Fases" value={motorDraft.phases}
-                error={techErrors.phases} wide
-                onChange={(v) => { setMotorDraft((d) => ({ ...d, phases: v as MotorTechnicalDraft['phases'] })); setTechErrors((er) => ({ ...er, phases: undefined })); }}
-                options={[
-                  { value: '', label: '—' },
-                  { value: '1', label: 'Monofásico (1)' },
-                  { value: '3', label: 'Trifásico (3)' },
-                ]} />
-
-              <EditField id="pi-platecurrent" label="Corriente (A)" value={motorDraft.plateCurrent}
-                error={techErrors.plateCurrent} wide
-                onChange={(v) => { setMotorDraft((d) => ({ ...d, plateCurrent: v })); setTechErrors((er) => ({ ...er, plateCurrent: undefined })); }} />
-
-              <EditField id="pi-efficiency" label="Eficiencia" value={motorDraft.efficiency}
-                error={techErrors.efficiency} hint="0 < η ≤ 1" wide
-                onChange={(v) => { setMotorDraft((d) => ({ ...d, efficiency: v })); setTechErrors((er) => ({ ...er, efficiency: undefined })); }} />
-
-              <EditField id="pi-powerfactor" label="Cos φ" value={motorDraft.powerFactor}
-                error={techErrors.powerFactor} hint="0 < cosφ ≤ 1" wide
-                onChange={(v) => { setMotorDraft((d) => ({ ...d, powerFactor: v })); setTechErrors((er) => ({ ...er, powerFactor: undefined })); }} />
-
-              <SelectField id="pi-start" label="Arranque" value={motorDraft.start}
-                error={techErrors.start} wide
-                onChange={(v) => { setMotorDraft((d) => ({ ...d, start: v as MotorTechnicalDraft['start'] })); setTechErrors((er) => ({ ...er, start: undefined })); }}
-                options={[
-                  { value: '',            label: '—' },
-                  { value: 'direct',      label: 'Directo' },
-                  { value: 'star_delta',  label: 'Estrella-triángulo' },
-                  { value: 'softstarter', label: 'Softstarter' },
-                  { value: 'vfd',         label: 'Variador de frecuencia (VFD)' },
-                  { value: 'other',       label: 'Otro' },
-                ]} />
-            </div>
+            <MotorTechSection
+              tech={element.technical}
+              draft={motorDraft} errors={techErrors}
+              setDraft={setMotorDraft} setErrors={setTechErrors}
+            />
           )}
-
-          {/* Datos técnicos del sensor */}
           {element.category === 'sensor' && (
-            <div className="inspector-tech-section">
-              <div className="inspector-section">Datos técnicos del sensor</div>
-
-              <EditField id="pi-measvar" label="Variable" value={sensorDraft.measuredVariable}
-                inputMode="text" error={techErrors.measuredVariable} wide
-                onChange={(v) => { setSensorDraft((d) => ({ ...d, measuredVariable: v })); setTechErrors((er) => ({ ...er, measuredVariable: undefined })); }} />
-
-              <EditField id="pi-rangemin" label="Rango mín" value={sensorDraft.rangeMin}
-                error={techErrors.rangeMin} wide
-                onChange={(v) => { setSensorDraft((d) => ({ ...d, rangeMin: v })); setTechErrors((er) => ({ ...er, rangeMin: undefined })); }} />
-
-              <EditField id="pi-rangemax" label="Rango máx" value={sensorDraft.rangeMax}
-                error={techErrors.rangeMax} wide
-                onChange={(v) => { setSensorDraft((d) => ({ ...d, rangeMax: v })); setTechErrors((er) => ({ ...er, rangeMax: undefined })); }} />
-
-              <EditField id="pi-rangeunit" label="Unidad" value={sensorDraft.rangeUnit}
-                inputMode="text" wide
-                onChange={(v) => setSensorDraft((d) => ({ ...d, rangeUnit: v }))} />
-
-              <EditField id="pi-supplyvoltage" label="Alim. (V)" value={sensorDraft.supplyVoltage}
-                error={techErrors.supplyVoltage} wide
-                onChange={(v) => { setSensorDraft((d) => ({ ...d, supplyVoltage: v })); setTechErrors((er) => ({ ...er, supplyVoltage: undefined })); }} />
-
-              <SelectField id="pi-supplycurrenttype" label="Tipo AC/DC" value={sensorDraft.supplyCurrentType}
-                error={techErrors.supplyCurrentType} wide
-                onChange={(v) => { setSensorDraft((d) => ({ ...d, supplyCurrentType: v as SensorTechnicalDraft['supplyCurrentType'] })); setTechErrors((er) => ({ ...er, supplyCurrentType: undefined })); }}
-                options={[
-                  { value: '',   label: '—' },
-                  { value: 'AC', label: 'AC' },
-                  { value: 'DC', label: 'DC' },
-                ]} />
-
-              <SelectField id="pi-signal" label="Señal" value={sensorDraft.signal}
-                error={techErrors.signal} wide
-                onChange={(v) => { setSensorDraft((d) => ({ ...d, signal: v as SensorTechnicalDraft['signal'] })); setTechErrors((er) => ({ ...er, signal: undefined })); }}
-                options={[
-                  { value: '',       label: '—' },
-                  { value: 'DI',     label: 'Digital (DI)' },
-                  { value: '4_20mA', label: '4–20 mA' },
-                  { value: '0_10V',  label: '0–10 V' },
-                  { value: 'RTD',    label: 'RTD' },
-                  { value: 'bus',    label: 'Bus de campo' },
-                  { value: 'other',  label: 'Otro' },
-                ]} />
-            </div>
+            <SensorTechSection
+              tech={element.technical}
+              draft={sensorDraft} errors={techErrors}
+              setDraft={setSensorDraft} setErrors={setTechErrors}
+            />
           )}
-
-          {/* Datos técnicos del tablero eléctrico */}
           {element.category === 'electrical_panel' && (
-            <div className="inspector-tech-section">
-              <div className="inspector-section">Datos técnicos del tablero</div>
-
-              <EditField id="pi-iprating" label="IP Rating" value={panelDraft.ipRating}
-                inputMode="text" error={techErrors.ipRating} wide
-                onChange={(v) => { setPanelDraft((d) => ({ ...d, ipRating: v })); setTechErrors((er) => ({ ...er, ipRating: undefined })); }} />
-
-              <EditField id="pi-ratedcurrent" label="I nominal (A)" value={panelDraft.ratedCurrent}
-                error={techErrors.ratedCurrent} wide
-                onChange={(v) => { setPanelDraft((d) => ({ ...d, ratedCurrent: v })); setTechErrors((er) => ({ ...er, ratedCurrent: undefined })); }} />
-            </div>
+            <PanelTechSection
+              tech={element.technical}
+              draft={panelDraft} errors={techErrors}
+              setDraft={setPanelDraft} setErrors={setTechErrors}
+            />
           )}
 
           {/* Conexiones */}
@@ -607,7 +776,7 @@ export function PreviewInspector() {
 
         </div>
       ) : (
-        // ── Vista de solo lectura (no editables) ──────────────────────────
+        // ── Vista de solo lectura ──────────────────────────────────────────
         <div className="inspector-content">
           <ReadField label="Nombre"    value={element.name} />
           <ReadField label="ID"        value={element.id} />

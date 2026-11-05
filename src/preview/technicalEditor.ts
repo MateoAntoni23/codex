@@ -73,27 +73,34 @@ function buildDatum<T>(
   elementId: string,
   newEvidence: FieldEvidence[],
 ): Datum<T> {
-  const changed = JSON.stringify(current.value) !== JSON.stringify(newValue);
-  let evidenceIds = current.evidenceIds;
-  if (changed) {
-    const ev = createManualEvidence(elementId, fieldPath, rawDraft);
-    newEvidence.push(ev);
-    evidenceIds = [...current.evidenceIds, ev.id];
-  }
+  // Return original Datum unchanged if value is the same (preserves status, evidenceIds).
+  if (JSON.stringify(current.value) === JSON.stringify(newValue)) return current;
+
+  // Conflict fields are read-only: do not modify them.
+  if (current.status === 'conflict') return current;
+
+  const ev = createManualEvidence(elementId, fieldPath, rawDraft);
+  newEvidence.push(ev);
+  const evidenceIds = [...current.evidenceIds, ev.id];
+
   if (newValue === null) return { value: null, status: 'unknown', evidenceIds };
-  // No marcar verificado automáticamente; edición manual → 'provided'.
+  // Manual edit → 'provided'. Never auto-verify; a new value is not yet verified.
   return { value: newValue, status: 'provided', evidenceIds };
 }
 
 // ─── Evidencia manual ─────────────────────────────────────────────────────────
+
+// Module-level counter guarantees unique IDs even when Date.now() returns the same value.
+let _evCounter = 0;
 
 export function createManualEvidence(
   elementId: string,
   fieldPath: string,
   rawValue: unknown,
 ): FieldEvidence {
+  const uid = `${Date.now()}-${(++_evCounter).toString(36)}`;
   return {
-    id:                     `ev-manual-${elementId}-${fieldPath.replace(/\./g, '_')}-${Date.now()}`,
+    id:                     `ev-manual-${elementId}-${fieldPath.replace(/\./g, '_')}-${uid}`,
     elementOrConnectionId:  elementId,
     fieldPath,
     source:                 'manual',
@@ -196,19 +203,22 @@ export function applyMotorTechnicalDraft(
   const newPower = bd(
     tech.power,
     powerVal !== null ? { value: powerVal as number, unit: draft.powerUnit } : null,
-    'technical.power', draft.power,
+    'technical.power',
+    draft.power !== '' ? `${draft.power} ${draft.powerUnit}` : '',
   );
   const newVoltage = bd(
     tech.voltage,
     voltageVal !== null ? { value: voltageVal as number, unit: 'V' as const } : null,
-    'technical.voltage', draft.voltage,
+    'technical.voltage',
+    draft.voltage !== '' ? `${draft.voltage} V` : '',
   );
   const phasesNum: 1 | 3 | null = draft.phases === '1' ? 1 : draft.phases === '3' ? 3 : null;
   const newPhases       = bd(tech.phases,       phasesNum,                        'technical.phases',       draft.phases);
   const newPlateCurrent = bd(
     tech.plateCurrent,
     plateCurrentVal !== null ? { value: plateCurrentVal as number, unit: 'A' as const } : null,
-    'technical.plateCurrent', draft.plateCurrent,
+    'technical.plateCurrent',
+    draft.plateCurrent !== '' ? `${draft.plateCurrent} A` : '',
   );
   const newEfficiency  = bd(tech.efficiency,  efficiencyVal  !== null ? efficiencyVal  as number : null, 'technical.efficiency',  draft.efficiency);
   const newPowerFactor = bd(tech.powerFactor, powerFactorVal !== null ? powerFactorVal as number : null, 'technical.powerFactor', draft.powerFactor);
@@ -340,7 +350,8 @@ export function applyPanelTechnicalDraft(
   const newRatedCurrent = bd(
     tech.ratedCurrent,
     ratedCurrentVal !== null ? { value: ratedCurrentVal as number, unit: 'A' as const } : null,
-    'technical.ratedCurrent', draft.ratedCurrent,
+    'technical.ratedCurrent',
+    draft.ratedCurrent !== '' ? `${draft.ratedCurrent} A` : '',
   );
   const newManufacturer = bd(el.manufacturer, commonDraft.manufacturer.trim() || null, 'manufacturer', commonDraft.manufacturer);
   const newModel        = bd(el.model,        commonDraft.model.trim()        || null, 'model',        commonDraft.model);
