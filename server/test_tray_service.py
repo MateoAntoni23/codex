@@ -30,3 +30,11 @@ class AdapterTest(unittest.TestCase):
         req=urllib.request.Request(self.url+'/v1/catalogos',headers={'Origin':'https://invalid.example'})
         with self.assertRaises(urllib.error.HTTPError) as error:urllib.request.urlopen(req)
         self.assertEqual(error.exception.code,403)
+    def test_catalog_descriptions_have_accented_chars(self):
+        # Verifica que los JSON se leen con encoding='utf-8': las descripciones
+        # del catálogo contienen tildes (ó, é, á, í, ú, ñ) que cp1252 no puede
+        # decodificar correctamente desde los archivos fuente.
+        data=self.get('/v1/catalogos')
+        text=json.dumps(data,ensure_ascii=False)
+        accented=set('áéíóúÁÉÍÓÚüÜñÑ')
+        self.assertTrue(any(c in accented for c in text),'El catálogo no contiene caracteres con tilde; posible error de encoding')

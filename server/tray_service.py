@@ -17,8 +17,8 @@ def create_server(port=8765, origin='http://localhost:5173'):
     Base = server.RequestHandlerClass
     context = cargar_contexto_trazado()
     decisions_hash = hashlib.sha256((ROOT / "datos/decisiones_producto.json").read_bytes()).hexdigest()
-    catalog = json.loads((ROOT / "datos/catalogo/catalogo_bandejas_snapshot.json").read_text())
-    datasets = [json.loads(p.read_text()) for p in sorted((ROOT / "datos/cables").glob("*.json"))]
+    catalog = json.loads((ROOT / "datos/catalogo/catalogo_bandejas_snapshot.json").read_text(encoding='utf-8'))
+    datasets = [json.loads(p.read_text(encoding='utf-8')) for p in sorted((ROOT / "datos/cables").glob("*.json"))]
 
     class Handler(Base):
         def do_GET(self):
@@ -28,7 +28,7 @@ def create_server(port=8765, origin='http://localhost:5173'):
                 elif self.path == '/v1/ejemplos':
                     names = ['caso1_4_separados', 'caso2_8_separados', 'caso3_8_contacto', 'trazado_derivacion_pe']
                     self._responder(200, a_json({'version_api': 'cad/1', 'ejemplos': {
-                        n: json.loads((ROOT / 'ejemplos' / (n + '.json')).read_text()) for n in names}}))
+                        n: json.loads((ROOT / 'ejemplos' / (n + '.json')).read_text(encoding='utf-8')) for n in names}}))
                 else:
                     self._responder(404, a_json({'estado': 'error', 'error': {'codigo': 'RUTA_INEXISTENTE', 'mensaje': 'Ruta inexistente', 'version_error': '1'}}))
             if self.path in ['/v1/salud']:
