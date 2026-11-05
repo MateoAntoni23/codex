@@ -91,13 +91,15 @@ function StepConfiguringSegment({ onConfirmDirect, onNeedsReduction, onCancel }:
   );
 
   const compat = useMemo(() => {
-    if (!existingProduct || !selectedProduct || !context) return null;
+    if (!existingProduct || !selectedProduct || !context || !startPort) return null;
     return checkDirectCompatibility(
       { compatibilidades: context.compatibilidades ?? [], componentesUnion: context.componentesUnion ?? [] },
       existingProduct,
+      startPort.portName,
       selectedProduct,
+      'P1',
     );
-  }, [context, existingProduct, selectedProduct]);
+  }, [context, existingProduct, selectedProduct, startPort]);
 
   const effectiveDir = useMemo(() => {
     if (!startPort) return null;
@@ -183,7 +185,7 @@ function StepConfiguringSegment({ onConfirmDirect, onNeedsReduction, onCancel }:
           {compat.reason}
           {compat.ok && compat.requiredUnion.length > 0 && (
             <div style={{ marginTop: 4, color: '#aaaacc' }}>
-              Accesorios requeridos: {compat.requiredUnion.map((u) => `${u.quantity}× ${u.productId}`).join(', ')}
+              Conexión con accesorios de unión — Python los calculará en el cómputo al calcular el trazado.
             </div>
           )}
         </div>
@@ -316,6 +318,10 @@ function StepConfirmingReduction({ onConfirm, onBack }: {
     setError(null);
     if (!effectiveReductionId) { setError('Seleccioná una reducción.'); return; }
     if (!selectedCandidate) { setError('La reducción seleccionada ya no es válida. Elegí otra.'); return; }
+    if (!selectedCandidate.geometryDocumented) {
+      setError('Pendiente — longitud no documentada en el catálogo. Esta reducción no puede insertarse hasta que el catálogo incluya su longitud.');
+      return;
+    }
     if (reductionLengthMm <= 0) { setError('La longitud de la reducción debe ser mayor que 0.'); return; }
     onConfirm();
   };
@@ -347,7 +353,9 @@ function StepConfirmingReduction({ onConfirm, onBack }: {
               <option value="">— Elegí una reducción —</option>
               {candidates.map((c) => (
                 <option key={c.reductionProduct.producto_id} value={c.reductionProduct.producto_id}>
-                  {c.reductionProduct.sku} (P{c.reductionPortToExisting}→exist. / P{c.reductionPortToNew}→nuevo)
+                  {c.reductionProduct.sku}
+                  {!c.geometryDocumented ? ' (pendiente — sin longitud)' : ''}
+                  {' '}(P{c.reductionPortToExisting}→exist. / P{c.reductionPortToNew}→nuevo)
                 </option>
               ))}
             </select>
@@ -363,38 +371,39 @@ function StepConfirmingReduction({ onConfirm, onBack }: {
             <div style={{ marginBottom: 8, padding: '5px 8px', borderRadius: 3, fontSize: 10, background: '#1a2235', color: '#8899bb', lineHeight: 1.5 }}>
               Puerto {selectedCandidate.reductionPortToExisting} conecta al tramo existente ·
               Puerto {selectedCandidate.reductionPortToNew} conecta al nuevo tramo
-              {selectedCandidate.unionForExistingConn.length > 0 && (
+              {(selectedCandidate.unionForExistingConn.length > 0 || selectedCandidate.unionForNewConn.length > 0) && (
                 <div style={{ marginTop: 2, color: '#aaaacc' }}>
-                  Accesorios lado existente: {selectedCandidate.unionForExistingConn.map((u) => `${u.quantity}× ${u.productId}`).join(', ')}
-                </div>
-              )}
-              {selectedCandidate.unionForNewConn.length > 0 && (
-                <div style={{ marginTop: 2, color: '#aaaacc' }}>
-                  Accesorios lado nuevo: {selectedCandidate.unionForNewConn.map((u) => `${u.quantity}× ${u.productId}`).join(', ')}
+                  Conexión con accesorios de unión — Python los calculará en el cómputo al calcular el trazado.
                 </div>
               )}
             </div>
           )}
 
-          <div style={{ marginBottom: 10 }}>
-            <label style={{ color: '#8888aa', display: 'block', marginBottom: 3 }}>
-              Longitud de la reducción (mm)
-            </label>
-            <input
-              type="number"
-              className="inspector-input"
-              style={{ width: '100%' }}
-              min={1}
-              step={50}
-              value={reductionLengthMm}
-              onChange={(e) => setReductionLength(Number(e.target.value))}
-            />
-          </div>
-
-          {/* Summary */}
-          <div style={{ marginBottom: 8, padding: '6px 8px', background: '#1a2235', borderRadius: 3, fontSize: 10, color: '#8899bb', lineHeight: 1.5 }}>
-            Tramo existente → reducción ({reductionLengthMm} mm) → nuevo tramo ({newProduct?.ancho_nominal_mm ?? '?'} mm)
-          </div>
+          {selectedCandidate?.geometryDocumented ? (
+            <>
+              <div style={{ marginBottom: 10 }}>
+                <label style={{ color: '#8888aa', display: 'block', marginBottom: 3 }}>
+                  Longitud de la reducción (mm)
+                </label>
+                <input
+                  type="number"
+                  className="inspector-input"
+                  style={{ width: '100%' }}
+                  min={1}
+                  step={50}
+                  value={reductionLengthMm}
+                  onChange={(e) => setReductionLength(Number(e.target.value))}
+                />
+              </div>
+              <div style={{ marginBottom: 8, padding: '6px 8px', background: '#1a2235', borderRadius: 3, fontSize: 10, color: '#8899bb', lineHeight: 1.5 }}>
+                Tramo existente → reducción ({reductionLengthMm} mm) → nuevo tramo ({newProduct?.ancho_nominal_mm ?? '?'} mm)
+              </div>
+            </>
+          ) : selectedCandidate && (
+            <div style={{ marginBottom: 8, padding: '6px 8px', background: '#2a2211', borderRadius: 3, fontSize: 10, color: '#ddaa44', borderLeft: '2px solid #aa8822' }}>
+              Longitud no documentada en el catálogo — inserción pendiente de datos.
+            </div>
+          )}
 
           {error && (
             <div style={{ color: '#ff7755', marginBottom: 8, fontSize: 11 }}>{error}</div>

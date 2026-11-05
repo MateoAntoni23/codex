@@ -111,7 +111,7 @@ export interface DirectCompatResult {
  * regardless of a→b or b→a order, and regardless of P1/P2 direction.
  * Only considers 'directa' tipo_conexion.
  */
-function findCompatEntry(
+function findCompatEntryByProducts(
   compatibilidades: CatalogCompatibility[],
   productAId: string,
   productBId: string,
@@ -122,6 +122,35 @@ function findCompatEntry(
     if (
       (c.producto_a_id === productAId && c.producto_b_id === productBId) ||
       (c.producto_a_id === productBId && c.producto_b_id === productAId)
+    ) {
+      return c;
+    }
+  }
+  return null;
+}
+
+/** Port-level lookup: requires the specific port IDs to match when the catalog documents them. */
+function findCompatEntryPortLevel(
+  compatibilidades: CatalogCompatibility[],
+  productAId: string,
+  portAName: string,
+  productBId: string,
+  portBName: string,
+): CatalogCompatibility | null {
+  const portAId = `${productAId}-${portAName}`;
+  const portBId = `${productBId}-${portBName}`;
+  for (const c of compatibilidades) {
+    if (c.tipo_conexion !== 'directa') continue;
+    if (c.estado_compatibilidad === 'no compatible') continue;
+    const pairFwd = c.producto_a_id === productAId && c.producto_b_id === productBId;
+    const pairRev = c.producto_a_id === productBId && c.producto_b_id === productAId;
+    if (!pairFwd && !pairRev) continue;
+    // No port data in catalog → accept on product match alone
+    if (c.puerto_a_id == null && c.puerto_b_id == null) return c;
+    // Port-level match (both orientations)
+    if (
+      (c.puerto_a_id === portAId && c.puerto_b_id === portBId) ||
+      (c.puerto_a_id === portBId && c.puerto_b_id === portAId)
     ) {
       return c;
     }
@@ -146,7 +175,9 @@ function getUnionComponents(
 export function checkDirectCompatibility(
   context: Pick<Context, 'compatibilidades' | 'componentesUnion'>,
   existingProduct: Product,
+  existingPortName: string,
   newProduct: Product,
+  newPortName: string,
 ): DirectCompatResult {
   const { compatibilidades, componentesUnion } = context;
 
@@ -162,7 +193,7 @@ export function checkDirectCompatibility(
     };
   }
 
-  const entry = findCompatEntry(compatibilidades, existingProduct.producto_id, newProduct.producto_id);
+  const entry = findCompatEntryPortLevel(compatibilidades, existingProduct.producto_id, existingPortName, newProduct.producto_id, newPortName);
 
   if (!entry) {
     // No direct entry found — check if there's a 'no compatible' entry
@@ -247,6 +278,8 @@ export interface ReductionCandidate {
   compatWithNew: CatalogCompatibility;
   unionForExistingConn: UnionRequirement[];
   unionForNewConn: UnionRequirement[];
+  /** False when longitud_comercial_mm is null — insertion must be blocked. */
+  geometryDocumented: boolean;
 }
 
 /**
@@ -271,7 +304,7 @@ export function findReductionCandidates(
 
   for (const red of reductions) {
     // Step 1: find compatibility entry for existingProduct ↔ reduction
-    const compatExisting = findCompatEntry(compatibilidades, existingProduct.producto_id, red.producto_id);
+    const compatExisting = findCompatEntryByProducts(compatibilidades, existingProduct.producto_id, red.producto_id);
     if (!compatExisting) continue;
 
     // Step 2: determine which port of the reduction connects to existingProduct
@@ -297,7 +330,7 @@ export function findReductionCandidates(
 
     // Step 4: check there's a compatibility entry for reduction's other port ↔ newProduct
     // We search by product pair (not specific port), which is sufficient to confirm catalog support
-    const compatNew = findCompatEntry(compatibilidades, red.producto_id, newProduct.producto_id);
+    const compatNew = findCompatEntryByProducts(compatibilidades, red.producto_id, newProduct.producto_id);
     if (!compatNew) continue;
 
     // Verify the compatNew entry uses the correct port of the reduction
@@ -316,6 +349,7 @@ export function findReductionCandidates(
       compatWithNew: compatNew,
       unionForExistingConn: getUnionComponents(componentesUnion, compatExisting.compatibilidad_id),
       unionForNewConn: getUnionComponents(componentesUnion, compatNew.compatibilidad_id),
+      geometryDocumented: (red as Record<string, unknown>).longitud_comercial_mm != null,
     });
   }
 
@@ -340,6 +374,7 @@ export function verifyStartPortValid(
   conexiones: Connection[],
   startPort: StartPort,
   posTolerance = 0.01, // mm
+  dirToleranceDeg = 1, // degrees
 ): { valid: boolean; reason: string } {
   const piece = pieces.find((p) => p.instancia_id === startPort.pieceId);
   if (!piece) {
@@ -360,6 +395,12 @@ export function verifyStartPortValid(
   const dist = Math.hypot(pos[0] - startPort.pos[0], pos[1] - startPort.pos[1], pos[2] - startPort.pos[2]);
   if (dist > posTolerance) {
     return { valid: false, reason: `La posición del puerto cambió desde que se seleccionó (desviación ${dist.toFixed(2)} mm).` };
+  }
+
+  const currentDir = port.direccion as Point3;
+  const dirAngle = angleBetweenDirs(currentDir, startPort.dir);
+  if (dirAngle > dirToleranceDeg) {
+    return { valid: false, reason: `La dirección del puerto cambió desde que se seleccionó (${dirAngle.toFixed(1)}°).` };
   }
 
   return { valid: true, reason: '' };

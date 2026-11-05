@@ -183,20 +183,20 @@ describe('checkDirectCompatibility (empty catalog — heuristic fallback)', () =
   const p150famB = makeProduct('D', 150, 'FAM-2');
 
   it('returns compatibilidadId: undefined when catalog is empty', () => {
-    const r = checkDirectCompatibility(emptyCtx, p150famA, p150famA2);
+    const r = checkDirectCompatibility(emptyCtx, p150famA, 'P2', p150famA2, 'P1');
     expect(r.ok).toBe(false);
     expect(r.compatibilidadId).toBeUndefined();
     expect(r.reason).toMatch(/no disponibles/i);
   });
 
   it('reports needsReduction=false and ok=false when different family (empty catalog)', () => {
-    const r = checkDirectCompatibility(emptyCtx, p150famA, p150famB);
+    const r = checkDirectCompatibility(emptyCtx, p150famA, 'P2', p150famB, 'P1');
     expect(r.ok).toBe(false);
     expect(r.compatibilidadId).toBeUndefined();
   });
 
   it('reports ok=false for different width (empty catalog)', () => {
-    const r = checkDirectCompatibility(emptyCtx, p150famA, p300famA);
+    const r = checkDirectCompatibility(emptyCtx, p150famA, 'P2', p300famA, 'P1');
     expect(r.ok).toBe(false);
     expect(r.compatibilidadId).toBeUndefined();
   });
@@ -210,35 +210,52 @@ describe('checkDirectCompatibility with catalog data', () => {
   const prodC = makeProduct('TRES-200', 200, 'FAM-1', 'recta');
   const prodD = makeProduct('OTRO', 300, 'FAM-2', 'recta');
 
+  // CMP-001 documents the specific P1↔P1 connection
   const compatDirecta = makeCompat('CMP-001', 'TRES-300', 'TRES-300-P1', 'TRES-150', 'TRES-150-P1');
   const compatNoComp = makeCompat('CMP-002', 'TRES-300', null, 'OTRO', null, 'directa', 'no compatible');
   const unionEntry: CatalogUnionComponent = { compatibilidad_id: 'CMP-001', producto_requerido_id: 'UNION-KIT', cantidad: 2 };
 
-  it('compatible when COMPATIBILIDADES has a directa entry for the pair', () => {
+  it('compatible when COMPATIBILIDADES has a directa entry matching the specific ports', () => {
     const ctx = { compatibilidades: [compatDirecta], componentesUnion: [] };
-    const r = checkDirectCompatibility(ctx, prodA, prodB);
+    const r = checkDirectCompatibility(ctx, prodA, 'P1', prodB, 'P1');
     expect(r.ok).toBe(true);
     expect(r.needsReduction).toBe(false);
     expect(r.compatibilidadId).toBe('CMP-001');
   });
 
+  it('blocks when port names do not match catalog entry (port-level validation)', () => {
+    // CMP-001 documents P1↔P1; asking for P2↔P1 should NOT match
+    const ctx = { compatibilidades: [compatDirecta], componentesUnion: [] };
+    const r = checkDirectCompatibility(ctx, prodA, 'P2', prodB, 'P1');
+    expect(r.ok).toBe(false);
+    expect(r.compatibilidadId).toBeNull();
+  });
+
+  it('accepts when catalog entry has null ports (product-level match sufficient)', () => {
+    const nullPortCompat = makeCompat('CMP-NULL', 'TRES-300', null, 'TRES-150', null);
+    const ctx = { compatibilidades: [nullPortCompat], componentesUnion: [] };
+    const r = checkDirectCompatibility(ctx, prodA, 'P2', prodB, 'P1');
+    expect(r.ok).toBe(true);
+    expect(r.compatibilidadId).toBe('CMP-NULL');
+  });
+
   it('blocks when no entry found', () => {
     const ctx = { compatibilidades: [compatDirecta], componentesUnion: [] };
-    const r = checkDirectCompatibility(ctx, prodA, prodC);
+    const r = checkDirectCompatibility(ctx, prodA, 'P1', prodC, 'P1');
     expect(r.ok).toBe(false);
     expect(r.compatibilidadId).toBeNull();
   });
 
   it('blocks when entry exists but is "no compatible"', () => {
     const ctx = { compatibilidades: [compatNoComp], componentesUnion: [] };
-    const r = checkDirectCompatibility(ctx, prodA, prodD);
+    const r = checkDirectCompatibility(ctx, prodA, 'P2', prodD, 'P1');
     expect(r.ok).toBe(false);
     expect(r.compatibilidadId).toBe('CMP-002');
   });
 
   it('reports requiredUnion when componentesUnion has entries', () => {
     const ctx = { compatibilidades: [compatDirecta], componentesUnion: [unionEntry] };
-    const r = checkDirectCompatibility(ctx, prodA, prodB);
+    const r = checkDirectCompatibility(ctx, prodA, 'P1', prodB, 'P1');
     expect(r.ok).toBe(true);
     expect(r.requiredUnion).toHaveLength(1);
     expect(r.requiredUnion[0].productId).toBe('UNION-KIT');
@@ -247,7 +264,7 @@ describe('checkDirectCompatibility with catalog data', () => {
 
   it('works bidirectionally (B→A same as A→B)', () => {
     const ctx = { compatibilidades: [compatDirecta], componentesUnion: [] };
-    const r = checkDirectCompatibility(ctx, prodB, prodA);
+    const r = checkDirectCompatibility(ctx, prodB, 'P1', prodA, 'P1');
     expect(r.ok).toBe(true);
     expect(r.compatibilidadId).toBe('CMP-001');
   });
@@ -353,6 +370,30 @@ describe('findReductionCandidates with catalog data', () => {
     expect(candidates[0].unionForNewConn).toHaveLength(1);
     expect(candidates[0].unionForNewConn[0].productId).toBe('KIT-B');
   });
+
+  it('geometryDocumented is false when longitud_comercial_mm is null (no catalog data)', () => {
+    // makeProduct does not set longitud_comercial_mm → access returns undefined → treated as null
+    const ctx = {
+      productos: [existing, newProd, redValid],
+      compatibilidades: [compatExisting, compatNew],
+      componentesUnion: [],
+      puertos: [portP1, portP2],
+    };
+    const candidates = findReductionCandidates(ctx, existing, newProd);
+    expect(candidates[0].geometryDocumented).toBe(false);
+  });
+
+  it('geometryDocumented is true when longitud_comercial_mm is set', () => {
+    const redWithLength = { ...redValid, longitud_comercial_mm: 150 } as Product;
+    const ctx = {
+      productos: [existing, newProd, redWithLength],
+      compatibilidades: [compatExisting, compatNew],
+      componentesUnion: [],
+      puertos: [portP1, portP2],
+    };
+    const candidates = findReductionCandidates(ctx, existing, newProd);
+    expect(candidates[0].geometryDocumented).toBe(true);
+  });
 });
 
 // ─── verifyStartPortValid ─────────────────────────────────────────────────────
@@ -395,6 +436,23 @@ describe('verifyStartPortValid', () => {
   it('returns valid when position is within tolerance (0.001 mm)', () => {
     const nearPort = { pieceId: 'PIECE-1', portName: 'P1', pos: [100.001, 200, 300] as Point3, dir };
     const result = verifyStartPortValid([piece], [], nearPort);
+    expect(result.valid).toBe(true);
+  });
+
+  it('returns invalid when direction changed beyond 1 degree', () => {
+    // Piece has dir [1,0,0] but stored startPort had dir [0,1,0] — 90° mismatch
+    const wrongDirPort = { pieceId: 'PIECE-1', portName: 'P1', pos, dir: [0, 1, 0] as Point3 };
+    const result = verifyStartPortValid([piece], [], wrongDirPort);
+    expect(result.valid).toBe(false);
+    expect(result.reason).toMatch(/dirección/i);
+  });
+
+  it('returns valid when stored direction is within 1 degree of actual', () => {
+    // 0.5° off from [1,0,0] — within tolerance
+    const angleRad = (0.5 * Math.PI) / 180;
+    const slightDir: Point3 = [Math.cos(angleRad), Math.sin(angleRad), 0];
+    const nearDirPort = { pieceId: 'PIECE-1', portName: 'P1', pos, dir: slightDir };
+    const result = verifyStartPortValid([piece], [], nearDirPort);
     expect(result.valid).toBe(true);
   });
 });
