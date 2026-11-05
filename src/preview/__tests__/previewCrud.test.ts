@@ -13,6 +13,7 @@ import {
 import { resolveGlobalTransform } from '../../scene/v2-adapter';
 import { PREVIEW_EVIDENCE } from '../previewData';
 import { PreviewElementList } from '../PreviewElementList';
+import { validateProjectDataV2 } from '../../persistence/validate-v2';
 import type { EquipmentElement, FieldEvidence } from '../../types/domain-v2';
 
 beforeEach(() => {
@@ -126,33 +127,33 @@ describe('createNewElement — IDs únicos para creaciones consecutivas', () => 
 describe('duplicateElement', () => {
   it('nuevo ID distinto al original', () => {
     const original = PREVIEW_ELEMENTS.find((e) => e.id === 'panel-1')!;
-    const { duplicate } = duplicateElement(original, PREVIEW_ELEMENTS);
+    const { duplicate } = duplicateElement(original, PREVIEW_ELEMENTS, PREVIEW_EVIDENCE);
     expect(duplicate.id).not.toBe(original.id);
   });
 
   it('nombre identificable como copia', () => {
     const original = PREVIEW_ELEMENTS.find((e) => e.id === 'motor-1')!;
-    const { duplicate } = duplicateElement(original, PREVIEW_ELEMENTS);
+    const { duplicate } = duplicateElement(original, PREVIEW_ELEMENTS, PREVIEW_EVIDENCE);
     expect(duplicate.name).toContain('Copia');
     expect(duplicate.name).toContain(original.name);
   });
 
   it('tag es null en la copia', () => {
     const original = PREVIEW_ELEMENTS.find((e) => e.id === 'sensor-flow-1')!;
-    const { duplicate } = duplicateElement(original, PREVIEW_ELEMENTS);
+    const { duplicate } = duplicateElement(original, PREVIEW_ELEMENTS, PREVIEW_EVIDENCE);
     expect(duplicate.tag).toBeNull();
   });
 
   it('parentId es null — no hereda jerarquía', () => {
     const child = PREVIEW_ELEMENTS.find((e) => e.id === 'child-motor-1')!;
     expect(child.parentId).not.toBeNull(); // precondición
-    const { duplicate } = duplicateElement(child, PREVIEW_ELEMENTS);
+    const { duplicate } = duplicateElement(child, PREVIEW_ELEMENTS, PREVIEW_EVIDENCE);
     expect(duplicate.parentId).toBeNull();
   });
 
   it('versión es 1', () => {
     const original = PREVIEW_ELEMENTS.find((e) => e.id === 'panel-1')!;
-    const { duplicate } = duplicateElement(original, PREVIEW_ELEMENTS);
+    const { duplicate } = duplicateElement(original, PREVIEW_ELEMENTS, PREVIEW_EVIDENCE);
     expect(duplicate.version).toBe(1);
   });
 
@@ -160,7 +161,7 @@ describe('duplicateElement', () => {
     const original = PREVIEW_ELEMENTS.find((e) => e.id === 'sensor-flow-1')!;
     if (original.category !== 'sensor') return;
     expect(original.technical.measuredVariable.status).toBe('provided'); // precondición
-    const { duplicate } = duplicateElement(original, PREVIEW_ELEMENTS);
+    const { duplicate } = duplicateElement(original, PREVIEW_ELEMENTS, PREVIEW_EVIDENCE);
     if (duplicate.category !== 'sensor') return;
     expect(duplicate.technical.measuredVariable.status).toBe('provided');
   });
@@ -169,7 +170,7 @@ describe('duplicateElement', () => {
     const original = PREVIEW_ELEMENTS.find((e) => e.id === 'sensor-flow-1')!;
     if (original.category !== 'sensor') return;
     expect(original.technical.range.status).toBe('estimated'); // precondición
-    const { duplicate } = duplicateElement(original, PREVIEW_ELEMENTS);
+    const { duplicate } = duplicateElement(original, PREVIEW_ELEMENTS, PREVIEW_EVIDENCE);
     if (duplicate.category !== 'sensor') return;
     expect(duplicate.technical.range.status).toBe('estimated');
   });
@@ -184,29 +185,46 @@ describe('duplicateElement', () => {
         signal: { value: '4_20mA' as const, status: 'verified', evidenceIds: [] },
       },
     } as EquipmentElement;
-    const { duplicate } = duplicateElement(withVerified, []);
+    const { duplicate } = duplicateElement(withVerified, [], []);
     if (duplicate.category !== 'sensor') return;
     expect(duplicate.technical.signal.status).toBe('provided');
   });
 
-  it('evidenceIds originales se conservan', () => {
+  it('evidenceIds se remapean: la copia recibe nuevos registros propios', () => {
     const base = PREVIEW_ELEMENTS.find((e) => e.id === 'sensor-flow-1')!;
     if (base.category !== 'sensor') return;
     const original: EquipmentElement = {
       ...base,
+      id: 'sensor-orig',
       technical: {
         ...base.technical,
-        measuredVariable: { value: 'Presión', status: 'provided', evidenceIds: ['ev-001', 'ev-002'] },
+        measuredVariable: { value: 'Presión', status: 'provided', evidenceIds: ['ev-001'] },
       },
     } as EquipmentElement;
-    const { duplicate } = duplicateElement(original, []);
+    const srcEvidence: FieldEvidence = {
+      id: 'ev-001', elementOrConnectionId: 'sensor-orig', fieldPath: 'technical.measuredVariable',
+      source: 'manual', rawValue: 'Presión',
+      fileChecksum: null, sheet: null, row: null, cell: null, formula: null,
+      author: null, recordedAt: '2026-01-01T00:00:00Z',
+    };
+    const { duplicate, remappedEvidence } = duplicateElement(original, [], [srcEvidence]);
     if (duplicate.category !== 'sensor') return;
-    expect(duplicate.technical.measuredVariable.evidenceIds).toEqual(['ev-001', 'ev-002']);
+
+    // La copia NO tiene el ID original
+    expect(duplicate.technical.measuredVariable.evidenceIds).not.toContain('ev-001');
+    // Tiene exactamente un evidenceId remapeado
+    expect(duplicate.technical.measuredVariable.evidenceIds).toHaveLength(1);
+    // remappedEvidence tiene el registro copiado con propiedad de la copia
+    expect(remappedEvidence).toHaveLength(1);
+    const [mapped] = remappedEvidence;
+    expect(mapped.id).toBe(duplicate.technical.measuredVariable.evidenceIds[0]);
+    expect(mapped.elementOrConnectionId).toBe(duplicate.id);
+    expect(mapped.rawValue).toBe('Presión');
   });
 
   it('provenance registra la procedencia', () => {
     const original = PREVIEW_ELEMENTS.find((e) => e.id === 'motor-1')!;
-    const { provenance } = duplicateElement(original, PREVIEW_ELEMENTS);
+    const { provenance } = duplicateElement(original, PREVIEW_ELEMENTS, PREVIEW_EVIDENCE);
     expect(provenance.source).toBe('manual');
     expect(provenance.fieldPath).toBe('_provenance');
     const raw = provenance.rawValue as Record<string, unknown>;
@@ -216,14 +234,14 @@ describe('duplicateElement', () => {
 
   it('dos duplicaciones del mismo elemento generan IDs distintos', () => {
     const original = PREVIEW_ELEMENTS.find((e) => e.id === 'panel-1')!;
-    const { duplicate: d1 } = duplicateElement(original, PREVIEW_ELEMENTS);
-    const { duplicate: d2 } = duplicateElement(original, PREVIEW_ELEMENTS);
+    const { duplicate: d1 } = duplicateElement(original, PREVIEW_ELEMENTS, PREVIEW_EVIDENCE);
+    const { duplicate: d2 } = duplicateElement(original, PREVIEW_ELEMENTS, PREVIEW_EVIDENCE);
     expect(d1.id).not.toBe(d2.id);
   });
 
   it('hijo de padre rotado: posición global difiere de la local', () => {
     const child = PREVIEW_ELEMENTS.find((e) => e.id === 'child-motor-1')!;
-    const { duplicate } = duplicateElement(child, PREVIEW_ELEMENTS);
+    const { duplicate } = duplicateElement(child, PREVIEW_ELEMENTS, PREVIEW_EVIDENCE);
     const globalTransform = resolveGlobalTransform('child-motor-1', PREVIEW_ELEMENTS)!;
 
     expect(duplicate.placementStatus).toBe('placed');
@@ -247,7 +265,7 @@ describe('duplicateElement', () => {
       transform: { positionMm: { x: 0, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: 0, w: 1 } },
     } as EquipmentElement;
     const allWithChild = [...PREVIEW_ELEMENTS, fakeChild];
-    const { duplicate } = duplicateElement(fakeChild, allWithChild);
+    const { duplicate } = duplicateElement(fakeChild, allWithChild, []);
     expect(duplicate.placementStatus).toBe('unplaced');
     expect(duplicate.transform).toBeNull();
   });
@@ -516,7 +534,7 @@ describe('usePreviewStore — reset tras operaciones CRUD', () => {
       category: 'motor', name: 'Extra', placement: { placementStatus: 'unplaced' }, geometry: null,
     }));
     // Duplicar uno existente
-    const { duplicate, provenance } = duplicateElement(PREVIEW_ELEMENTS[0], PREVIEW_ELEMENTS);
+    const { duplicate, provenance } = duplicateElement(PREVIEW_ELEMENTS[0], PREVIEW_ELEMENTS, PREVIEW_EVIDENCE);
     gs().addElement(duplicate);
     gs().addEvidence(provenance);
 
@@ -614,13 +632,14 @@ describe('validatePreviewData', () => {
     expect(result.valid).toBe(true);
   });
 
-  it('duplicar → eliminar original → evidencia compartida se preserva, estado válido', () => {
-    // panel-1 no tiene evidenceIds en sus datums técnicos (solo migración sin referencia)
+  it('duplicar → eliminar original → copia y su evidencia persisten, estado válido', () => {
     const original = PREVIEW_ELEMENTS.find((e) => e.id === 'panel-1')!;
-    const { duplicate, provenance } = duplicateElement(original, PREVIEW_ELEMENTS);
+    const { duplicate, provenance, remappedEvidence } = duplicateElement(
+      original, PREVIEW_ELEMENTS, PREVIEW_EVIDENCE,
+    );
 
     const elements = [...PREVIEW_ELEMENTS, duplicate];
-    const evidence = [...PREVIEW_EVIDENCE, provenance];
+    const evidence = [...PREVIEW_EVIDENCE, ...remappedEvidence, provenance];
 
     const toRemove = new Set(evidenceToRemoveOnDelete('panel-1', elements, evidence));
     const elementsAfter = elements.filter((e) => e.id !== 'panel-1');
@@ -628,8 +647,90 @@ describe('validatePreviewData', () => {
 
     const result = validatePreviewData(elementsAfter, evidenceAfter);
     expect(result.valid).toBe(true);
-    // El duplicado y su provenance persisten
     expect(elementsAfter.find((e) => e.id === duplicate.id)).toBeDefined();
     expect(evidenceAfter.find((e) => e.id === provenance.id)).toBeDefined();
+  });
+});
+
+// ─── Flujo completo con validateProjectDataV2 ─────────────────────────────────
+
+describe('validateProjectDataV2 — editar → duplicar → eliminar original', () => {
+  it('snapshot final pasa el validador real tras editar evidencia, duplicar y eliminar', () => {
+    // Elemento sintético con evidencia manual propia (simula edición aplicada)
+    const motorEl: EquipmentElement = {
+      id: 'mtr-test',
+      name: 'Motor Test',
+      tag: null,
+      aliases: [],
+      physicalLocation: { kind: 'unassigned', factoryId: null, subareaId: null, description: null },
+      condition: 'new',
+      lifecycle: 'active',
+      parentId: null,
+      geometry: null,
+      mounting: 'floor',
+      manufacturer: { value: 'Siemens', status: 'provided', evidenceIds: ['ev-mfr-orig'] },
+      model: { value: null, status: 'unknown', evidenceIds: [] },
+      version: 1,
+      placementStatus: 'unplaced',
+      transform: null,
+      category: 'motor',
+      technical: {
+        power: { value: null, status: 'unknown', evidenceIds: [] },
+        voltage: { value: null, status: 'unknown', evidenceIds: [] },
+        phases: { value: null, status: 'unknown', evidenceIds: [] },
+        plateCurrent: { value: null, status: 'unknown', evidenceIds: [] },
+        efficiency: { value: null, status: 'unknown', evidenceIds: [] },
+        powerFactor: { value: null, status: 'unknown', evidenceIds: [] },
+        start: { value: null, status: 'unknown', evidenceIds: [] },
+      },
+    } as EquipmentElement;
+
+    const mfrEvidence: FieldEvidence = {
+      id: 'ev-mfr-orig',
+      elementOrConnectionId: 'mtr-test',
+      fieldPath: 'manufacturer',
+      source: 'manual',
+      rawValue: 'Siemens',
+      fileChecksum: null, sheet: null, row: null, cell: null, formula: null,
+      author: null, recordedAt: '2026-01-01T00:00:00Z',
+    };
+
+    // Duplicar — la copia recibe evidencias propias remapeadas
+    const { duplicate, provenance, remappedEvidence } = duplicateElement(
+      motorEl, [motorEl], [mfrEvidence],
+    );
+
+    expect(remappedEvidence).toHaveLength(1);
+    expect(remappedEvidence[0].elementOrConnectionId).toBe(duplicate.id);
+
+    // Eliminar original — solo se remueve la evidencia exclusiva del original
+    const elementsWithBoth = [motorEl, duplicate];
+    const evidenceWithBoth = [mfrEvidence, ...remappedEvidence, provenance];
+    const toRemove = new Set(evidenceToRemoveOnDelete('mtr-test', elementsWithBoth, evidenceWithBoth));
+
+    expect(toRemove.has('ev-mfr-orig')).toBe(true); // la original se elimina
+    expect(toRemove.has(remappedEvidence[0].id)).toBe(false); // la copia se preserva
+
+    const finalElements = elementsWithBoth.filter((e) => e.id !== 'mtr-test');
+    const finalEvidence = evidenceWithBoth.filter((e) => !toRemove.has(e.id));
+
+    // Snapshot completo pasa el validador real
+    expect(() =>
+      validateProjectDataV2({
+        schemaVersion: 2,
+        projectOrigin: { x: 0, y: 0, z: 0 },
+        elements: finalElements,
+        ports: [],
+        connections: [],
+        cableCores: [],
+        internalLinks: [],
+        functionalRelations: [],
+        factories: [],
+        subareas: [],
+        elementServices: [],
+        evidence: finalEvidence,
+        migrationIncidents: [],
+      }),
+    ).not.toThrow();
   });
 });

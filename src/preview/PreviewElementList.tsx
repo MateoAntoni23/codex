@@ -22,6 +22,7 @@ const CATEGORY_LABEL: Record<Category, string> = {
 
 export function PreviewElementList() {
   const elements       = usePreviewStore((s) => s.elements);
+  const evidence       = usePreviewStore((s) => s.evidence);
   const selectedId     = usePreviewStore((s) => s.selectedId);
   const select         = usePreviewStore((s) => s.select);
   const clearSelection = usePreviewStore((s) => s.clearSelection);
@@ -52,9 +53,12 @@ export function PreviewElementList() {
   function handleDuplicate(el: EquipmentElement) {
     setConfirmDeleteId(null);
     setDeleteBlocker(null);
-    const { duplicate, provenance } = duplicateElement(el, elements);
+    const { duplicate, provenance, remappedEvidence } = duplicateElement(el, elements, evidence);
     addElement(duplicate);
     addEvidence(provenance);
+    for (const ev of remappedEvidence) {
+      addEvidence(ev);
+    }
     // Auto-expand the category group of the duplicate
     setExpanded((prev) => new Set([...prev, duplicate.category]));
   }

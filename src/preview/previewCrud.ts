@@ -124,33 +124,66 @@ function downgradeVerified<T>(datum: Datum<T>): Datum<T> {
   return datum.status === 'verified' ? { ...datum, status: 'provided' } : datum;
 }
 
-function downgradeTechnicalVerified(el: EquipmentElement): EquipmentElement['technical'] {
-  // All technical fields are Datum<T>; downgrade any 'verified' → 'provided'.
+/**
+ * Remapea los evidenceIds de un datum para que apunten a nuevos registros
+ * propiedad de la copia. Popula `idMap` (old→new) y agrega a `out` los
+ * registros copiados con `elementOrConnectionId` del nuevo dueño.
+ */
+function remapDatumEvidence<T>(
+  datum: Datum<T>,
+  newOwnerId: string,
+  allEvidence: FieldEvidence[],
+  idMap: Map<string, string>,
+  out: FieldEvidence[],
+): Datum<T> {
+  if (datum.evidenceIds.length === 0) return datum;
+  const newIds = datum.evidenceIds.map((eid) => {
+    if (!idMap.has(eid)) {
+      const newEid = generateId('ev-dup');
+      idMap.set(eid, newEid);
+      const src = allEvidence.find((ev) => ev.id === eid);
+      if (src) {
+        out.push({ ...src, id: newEid, elementOrConnectionId: newOwnerId });
+      }
+    }
+    return idMap.get(eid)!;
+  });
+  return { ...datum, evidenceIds: newIds };
+}
+
+function downgradeAndRemapTechnical(
+  el: EquipmentElement,
+  newOwnerId: string,
+  allEvidence: FieldEvidence[],
+  idMap: Map<string, string>,
+  out: FieldEvidence[],
+): EquipmentElement['technical'] {
   const tech = el.technical as Record<string, Datum<unknown>>;
   const result: Record<string, Datum<unknown>> = {};
   for (const [k, v] of Object.entries(tech)) {
-    result[k] = downgradeVerified(v);
+    result[k] = remapDatumEvidence(downgradeVerified(v), newOwnerId, allEvidence, idMap, out);
   }
   return result as EquipmentElement['technical'];
 }
 
 /**
  * Duplica un elemento con ID único y sin herencia de jerarquía.
- * Si el original es hijo de otro elemento, resuelve su posición y orientación
- * globales para que la copia mantenga la misma transformación en el mundo.
- * Si algún ancestro está sin ubicar, la copia también queda sin ubicar.
+ * - Si el original es hijo, resuelve su transformación global.
+ * - Si algún ancestro está sin ubicar, la copia también queda sin ubicar.
+ * - Los evidenceIds de cada datum se remapean a nuevos registros propios de la
+ *   copia; así al eliminar el original sus evidencias no dejan referencias
+ *   colgantes en la copia. Los registros originales no se modifican.
  */
 export function duplicateElement(
   original: EquipmentElement,
   allElements: EquipmentElement[],
-): { duplicate: EquipmentElement; provenance: FieldEvidence } {
+  allEvidence: FieldEvidence[],
+): { duplicate: EquipmentElement; provenance: FieldEvidence; remappedEvidence: FieldEvidence[] } {
   const newId = generateId(`dup-${original.category}`);
 
   // Determinar placement global para la copia
   let resolvedPlacement: Placement;
   if (original.parentId !== null) {
-    // Elemento hijo: convertir transform local → global.
-    // Si el ancestro está sin ubicar, la copia también queda sin ubicar.
     const globalTransform = resolveGlobalTransform(original.id, allElements);
     resolvedPlacement = globalTransform !== null
       ? { placementStatus: 'placed', transform: globalTransform }
@@ -167,6 +200,18 @@ export function duplicateElement(
     resolvedPlacement = { placementStatus: 'unplaced', transform: null };
   }
 
+  // Remap evidence: build a stable old→new ID map shared across all datums
+  const idMap = new Map<string, string>();
+  const remappedEvidence: FieldEvidence[] = [];
+
+  const manufacturer = remapDatumEvidence(
+    downgradeVerified(original.manufacturer), newId, allEvidence, idMap, remappedEvidence,
+  );
+  const model = remapDatumEvidence(
+    downgradeVerified(original.model), newId, allEvidence, idMap, remappedEvidence,
+  );
+  const technical = downgradeAndRemapTechnical(original, newId, allEvidence, idMap, remappedEvidence);
+
   const provenance = createManualEvidence(newId, '_provenance', {
     action:     'duplicated_from',
     sourceId:   original.id,
@@ -176,18 +221,18 @@ export function duplicateElement(
   const duplicate: EquipmentElement = {
     ...original,
     ...resolvedPlacement,
-    id:           newId,
-    tag:          null,
-    aliases:      [],
-    name:         `Copia de ${original.name}`,
-    parentId:     null,
-    version:      1,
-    manufacturer: downgradeVerified(original.manufacturer),
-    model:        downgradeVerified(original.model),
-    technical:    downgradeTechnicalVerified(original),
+    id:        newId,
+    tag:       null,
+    aliases:   [],
+    name:      `Copia de ${original.name}`,
+    parentId:  null,
+    version:   1,
+    manufacturer,
+    model,
+    technical,
   } as EquipmentElement;
 
-  return { duplicate, provenance };
+  return { duplicate, provenance, remappedEvidence };
 }
 
 // ─── Dependencias de eliminación ──────────────────────────────────────────────
