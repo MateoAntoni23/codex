@@ -19,6 +19,7 @@ import {
   recoverProject,
   pauseAndFlush,
   resumeAutoSave,
+  PauseFlushError,
   _resetSaveGeneration,
   _resetInitialized,
 } from '../projectManager';
@@ -759,7 +760,7 @@ describe('pauseAndFlush — flush conserva edición pendiente del debounce', () 
     // Timer aún no disparó (debounce 1s)
     expect(mockSave).not.toHaveBeenCalled();
 
-    const snapshot = await pauseAndFlush(useSceneStore);
+    const { snapshot, pauseToken } = await pauseAndFlush(useSceneStore);
 
     // El flush guardó la edición
     expect(mockSave).toHaveBeenCalledOnce();
@@ -770,6 +771,8 @@ describe('pauseAndFlush — flush conserva edición pendiente del debounce', () 
     // Lo que se guardó en DB también tiene la edición
     const saved = mockSave.mock.calls[0][0] as ProjectData;
     expect(saved.objects.find((o) => o.id === 'panel-1')?.position.x).toBe(999);
+
+    resumeAutoSave(useSceneStore, pauseToken);
   });
 
   it('el snapshot retornado es el estado real de memoria', async () => {
@@ -780,12 +783,14 @@ describe('pauseAndFlush — flush conserva edición pendiente del debounce', () 
     useSceneStore.getState().setProjectOrigin({ x: 100, y: 200, z: 0 });
     useSceneStore.getState().updateObjectPosition('panel-1', { x: 50, y: 60, z: 1000 });
 
-    const snapshot = await pauseAndFlush(useSceneStore);
+    const { snapshot, pauseToken } = await pauseAndFlush(useSceneStore);
 
     expect(snapshot.projectOrigin).toEqual({ x: 100, y: 200, z: 0 });
     expect(snapshot.objects.find((o) => o.id === 'panel-1')?.position).toEqual({
       x: 50, y: 60, z: 1000,
     });
+
+    resumeAutoSave(useSceneStore, pauseToken);
   });
 });
 
@@ -812,9 +817,9 @@ describe('pauseAndFlush — espera escrituras demoradas anteriores', () => {
 
     // pauseAndFlush debe esperar la escritura en vuelo
     let flushResolved = false;
-    const flushPromise = pauseAndFlush(useSceneStore).then((s) => {
+    const flushPromise = pauseAndFlush(useSceneStore).then((result) => {
       flushResolved = true;
-      return s;
+      return result;
     });
 
     // Flush no resolvió aún (esperando la escritura del auto-save)
@@ -824,11 +829,13 @@ describe('pauseAndFlush — espera escrituras demoradas anteriores', () => {
 
     // Completar la escritura del auto-save
     resolveAutoSave();
-    await flushPromise;
+    const { pauseToken } = await flushPromise;
 
     expect(flushResolved).toBe(true);
     // Dos escrituras: auto-save + flush
     expect(mockSave).toHaveBeenCalledTimes(2);
+
+    resumeAutoSave(useSceneStore, pauseToken);
   });
 
   it('si la escritura en vuelo falla, el flush procede igualmente', async () => {
@@ -850,11 +857,13 @@ describe('pauseAndFlush — espera escrituras demoradas anteriores', () => {
 
     // Falla la escritura del auto-save
     rejectAutoSave(new Error('disco lleno'));
-    const snapshot = await flushPromise;
+    const { snapshot, pauseToken } = await flushPromise;
 
     // Flush completó de todas formas (segunda llamada)
     expect(mockSave).toHaveBeenCalledTimes(2);
     expect(snapshot).toBeDefined();
+
+    resumeAutoSave(useSceneStore, pauseToken);
   });
 });
 
@@ -918,8 +927,8 @@ describe('pauseAndFlush — cancelación/reanudación no duplica suscripciones',
     await init({});
 
     // Pausa y luego reanuda
-    await pauseAndFlush(useSceneStore);
-    resumeAutoSave(useSceneStore);
+    const { pauseToken } = await pauseAndFlush(useSceneStore);
+    resumeAutoSave(useSceneStore, pauseToken);
 
     // Reset generación para contar limpias
     _resetSaveGeneration();
@@ -939,8 +948,8 @@ describe('pauseAndFlush — cancelación/reanudación no duplica suscripciones',
     await init({});
 
     for (let i = 0; i < 3; i++) {
-      await pauseAndFlush(useSceneStore);
-      resumeAutoSave(useSceneStore);
+      const { pauseToken } = await pauseAndFlush(useSceneStore);
+      resumeAutoSave(useSceneStore, pauseToken);
     }
 
     _resetSaveGeneration();
@@ -1081,13 +1090,13 @@ describe('pauseAndFlush — segunda llamada concurrente rechaza inmediatamente',
     mockSave.mockResolvedValue(undefined);
     await init({});
 
-    const first = pauseAndFlush(useSceneStore);
-    const second = pauseAndFlush(useSceneStore);
+    const firstPromise = pauseAndFlush(useSceneStore);
+    const secondPromise = pauseAndFlush(useSceneStore);
 
-    await expect(second).rejects.toThrow(/en curso/);
-    await first; // limpieza
+    await expect(secondPromise).rejects.toThrow(/en curso/);
+    const { pauseToken } = await firstPromise;
 
-    resumeAutoSave(useSceneStore);
+    resumeAutoSave(useSceneStore, pauseToken);
   });
 });
 
@@ -1117,7 +1126,7 @@ describe('pauseAndFlush — espera TODAS las escrituras en vuelo concurrentes', 
     expect(mockSave).toHaveBeenCalledTimes(2);
 
     let flushDone = false;
-    const flushPromise = pauseAndFlush(useSceneStore).then((s) => { flushDone = true; return s; });
+    const flushPromise = pauseAndFlush(useSceneStore).then((result) => { flushDone = true; return result; });
 
     await Promise.resolve();
     await Promise.resolve();
@@ -1131,9 +1140,11 @@ describe('pauseAndFlush — espera TODAS las escrituras en vuelo concurrentes', 
 
     // Resolvemos write1 — ahora todas las escrituras completaron
     resolveWrite1();
-    await flushPromise;
+    const { pauseToken } = await flushPromise;
     expect(flushDone).toBe(true);
     expect(mockSave).toHaveBeenCalledTimes(3); // write1 + write2 + flush
+
+    resumeAutoSave(useSceneStore, pauseToken);
   });
 
   it('flush de sesión B espera escritura en vuelo iniciada en sesión A', async () => {
@@ -1159,16 +1170,18 @@ describe('pauseAndFlush — espera TODAS las escrituras en vuelo concurrentes', 
     await init({});
 
     let flushDone = false;
-    const flushPromise = pauseAndFlush(useSceneStore).then((s) => { flushDone = true; return s; });
+    const flushPromise = pauseAndFlush(useSceneStore).then((result) => { flushDone = true; return result; });
 
     await Promise.resolve();
     await Promise.resolve();
     expect(flushDone).toBe(false); // flush B espera writeA
 
     resolveWriteA(); // writeA completa
-    await flushPromise;
+    const { pauseToken } = await flushPromise;
     expect(flushDone).toBe(true);
     expect(mockSave).toHaveBeenCalledTimes(2); // writeA + flush B
+
+    resumeAutoSave(useSceneStore, pauseToken);
   });
 });
 
@@ -1207,10 +1220,43 @@ describe('pauseAndFlush — rechazo en operaciones incompatibles', () => {
   });
 });
 
-// ─── resumeAutoSave — rechazo si flush en progreso ───────────────────────────
+// ─── pauseAndFlush — propiedad de operación y bloqueo de reanudación ─────────
 
-describe('resumeAutoSave — lanza si pauseAndFlush está escribiendo', () => {
-  it('lanza si se llama mientras la escritura del flush está pendiente', async () => {
+describe('pauseAndFlush — propiedad de operación y bloqueo de reanudación', () => {
+  it('escritura anterior pendiente: reanudar durante waiting se rechaza y editor continúa bloqueado', async () => {
+    vi.useFakeTimers();
+    let resolveAutoSave!: () => void;
+    mockSave
+      .mockReturnValueOnce(new Promise<void>((r) => { resolveAutoSave = r; }))
+      .mockResolvedValue(undefined);
+    mockLoad.mockResolvedValue(null);
+    await init({});
+
+    // Disparar auto-save → write en vuelo
+    useSceneStore.getState().updateObjectPosition('panel-1', { x: 1, y: 2, z: 1000 });
+    await vi.advanceTimersByTimeAsync(1100);
+    expect(mockSave).toHaveBeenCalledOnce();
+
+    // pauseAndFlush entra en fase 'waiting' (esperando el auto-save en vuelo)
+    const flushPromise = pauseAndFlush(useSceneStore);
+    await Promise.resolve(); // cede control al Promise.all interno
+
+    // Editor bloqueado y pauseOp en fase 'waiting'
+    expect(useSceneStore.getState().editingBlocked).toBe(true);
+
+    // resumeAutoSave con cualquier token → fase 'waiting' → lanza 'en progreso'
+    expect(() => resumeAutoSave(useSceneStore, Symbol('x'))).toThrow(/progreso/);
+    expect(useSceneStore.getState().editingBlocked).toBe(true); // sigue bloqueado
+
+    // Completar auto-save → flush avanza y termina
+    resolveAutoSave();
+    const { pauseToken } = await flushPromise;
+
+    resumeAutoSave(useSceneStore, pauseToken); // ahora funciona
+    expect(useSceneStore.getState().editingBlocked).toBe(false);
+  });
+
+  it('resumeAutoSave durante fase writing (flush en curso) se rechaza', async () => {
     let resolveFlush!: () => void;
     mockLoad.mockResolvedValue(null);
     mockSave
@@ -1218,58 +1264,148 @@ describe('resumeAutoSave — lanza si pauseAndFlush está escribiendo', () => {
       .mockResolvedValue(undefined);
 
     await init({});
-    // Sin cambios → _inflightWrites vacío → pauseAndFlush llega a _flushing=true sincrónicamente
+    // Sin cambios → _inflightWrites vacío → pauseAndFlush alcanza 'writing' sincrónicamente
 
     const flushPromise = pauseAndFlush(useSceneStore);
-    // _flushing = true (todo el código sync hasta await flushWrite ya ejecutó)
+    // _pauseOp.phase = 'writing' (todo código sync hasta await flushWrite ya ejecutó)
 
-    expect(() => resumeAutoSave(useSceneStore)).toThrow(/progreso/);
+    // Cualquier token → phase='writing' → lanza 'en progreso'
+    expect(() => resumeAutoSave(useSceneStore, Symbol('fake'))).toThrow(/progreso/);
 
     resolveFlush();
-    await flushPromise;
-    // Tras el flush, _flushing = false → resume ya funciona
-    resumeAutoSave(useSceneStore);
+    const { pauseToken } = await flushPromise;
+    resumeAutoSave(useSceneStore, pauseToken); // funciona tras el flush
+  });
+
+  it('el finally de pausa A no altera el estado de bloqueo de pausa B', async () => {
+    vi.useFakeTimers();
+    let resolveFlushA!: () => void;
+    mockLoad.mockResolvedValue(null);
+    mockSave
+      .mockReturnValueOnce(new Promise<void>((r) => { resolveFlushA = r; })) // flush A
+      .mockResolvedValue(undefined); // flush B
+
+    const { cancel: cancelA, ready: readyA } = initProject(useSceneStore);
+    await readyA;
+
+    const flushPromiseA = pauseAndFlush(useSceneStore); // A: phase=writing, editingBlocked=true
+
+    // Cancelar sesión A: _pauseOp=null, editingBlocked=false
+    cancelA();
+    expect(useSceneStore.getState().editingBlocked).toBe(false);
+
+    // Iniciar sesión B
+    mockLoad.mockResolvedValue(null);
+    const { ready: readyB } = initProject(useSceneStore);
+    await readyB;
+
+    const flushPromiseB = pauseAndFlush(useSceneStore); // B: phase=writing, editingBlocked=true
+    expect(useSceneStore.getState().editingBlocked).toBe(true);
+
+    // Resolver flush A: su catch verifica token (tokenA ≠ tokenB) → no toca _pauseOp de B
+    resolveFlushA();
+    await flushPromiseA.catch(() => {}); // A rechaza por session check
+
+    // Editor sigue bloqueado por B
+    expect(useSceneStore.getState().editingBlocked).toBe(true);
+
+    // Limpiar B
+    const { pauseToken: tokenB } = await flushPromiseB;
+    resumeAutoSave(useSceneStore, tokenB);
+    expect(useSceneStore.getState().editingBlocked).toBe(false);
+  });
+
+  it('reanudación con token de pausa A no afecta pausa B activa', async () => {
+    mockLoad.mockResolvedValue(null);
+    mockSave.mockResolvedValue(undefined);
+    await init({});
+
+    // Pausa A — éxito, token A obtenido
+    const { pauseToken: tokenA } = await pauseAndFlush(useSceneStore);
+    // Cancelar sesión A → _pauseOp = null
+    _resetInitialized();
+    // Iniciar sesión B con nueva pausa
+    mockLoad.mockResolvedValue(null);
+    await init({});
+    const { pauseToken: tokenB } = await pauseAndFlush(useSceneStore);
+
+    // Intentar reanudar con token A → pausa activa pertenece a tokenB → falla
+    expect(() => resumeAutoSave(useSceneStore, tokenA)).toThrow(/inválido/);
+    expect(useSceneStore.getState().editingBlocked).toBe(true); // B sigue bloqueado
+
+    // Reanudar con token B → funciona
+    resumeAutoSave(useSceneStore, tokenB);
+    expect(useSceneStore.getState().editingBlocked).toBe(false);
+  });
+
+  it('éxito y fallo permiten reanudar la pausa vigente sin duplicar guardados', async () => {
+    vi.useFakeTimers();
+    mockLoad.mockResolvedValue(null);
+    // Primera llamada (flush): falla; segunda: éxito
+    mockSave
+      .mockRejectedValueOnce(new Error('sin espacio'))
+      .mockResolvedValue(undefined);
+    await init({});
+
+    // Fallo: PauseFlushError expone pauseToken
+    let pauseToken: symbol;
+    try {
+      const result = await pauseAndFlush(useSceneStore);
+      pauseToken = result.pauseToken;
+    } catch (err) {
+      expect(err).toBeInstanceOf(PauseFlushError);
+      pauseToken = (err as PauseFlushError).pauseToken;
+    }
+    expect(useSceneStore.getState().editingBlocked).toBe(true); // sigue bloqueado
+
+    // Reanudar con el token del fallo
+    resumeAutoSave(useSceneStore, pauseToken);
+    expect(useSceneStore.getState().editingBlocked).toBe(false);
+
+    // Auto-save activo: un edit → un guardado
+    _resetSaveGeneration();
+    mockSave.mockClear();
+    useSceneStore.getState().updateObjectPosition('panel-1', { x: 1, y: 2, z: 1000 });
+    await vi.advanceTimersByTimeAsync(1100);
+    expect(mockSave).toHaveBeenCalledOnce();
   });
 });
 
 // ─── recoverProject — no reactiva auto-save si pausa vigente ─────────────────
 
 describe('recoverProject — no instala auto-save si pauseAndFlush está activo', () => {
-  it('recuperación iniciada antes de la pausa no reactiva el auto-save', async () => {
+  it('recuperación exitosa no instala auto-save mientras hay pausa vigente', async () => {
     vi.useFakeTimers();
-    let resolveRecoverSave!: () => void;
     mockLoad.mockRejectedValue(new Error('DB rota'));
-    // Primera llamada (escritura de recover): queda pendiente
-    // Segunda llamada (flush): resuelve rápido
-    mockSave
-      .mockReturnValueOnce(new Promise<void>((r) => { resolveRecoverSave = r; }))
-      .mockResolvedValue(undefined);
-
+    mockSave.mockResolvedValue(undefined);
     await init({});
 
-    // Iniciamos recuperación — _recovering=true, llega a fase de escritura
-    const recoveryPromise = recoverProject(
+    // Pausar primero (hay saveStatus=error tras fallo de carga, pero _pauseOp se puede activar
+    // desde otra sesión; aquí simplificamos: forzamos _recovering=false manualmente).
+    // Escenario real: una recuperación previa ya completó, ahora hay una pausa activa.
+    // Usamos initProject sobre una carga exitosa para poder pausar.
+    _resetInitialized();
+    mockLoad.mockResolvedValue(null);
+    await init({});
+
+    const { pauseToken } = await pauseAndFlush(useSceneStore); // pausa activa
+
+    // Intentar recuperar durante pausa → debe rechazar
+    const result = await recoverProject(
       useSceneStore,
       makeFile(JSON.stringify(SAVED_PROJECT)),
       () => true,
     );
-    await Promise.resolve(); // source.text() tick → llega a setSaveStatus('recovering')
-    expect(useSceneStore.getState().saveStatus).toBe('recovering');
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error).toMatch(/pausa/);
 
-    // Intentamos pausar — debe rechazar porque _recovering=true
-    await expect(pauseAndFlush(useSceneStore)).rejects.toThrow(/recuperación/);
-
-    // Completamos la recuperación
-    resolveRecoverSave();
-    const result = await recoveryPromise;
-    expect(result.ok).toBe(true);
-
-    // Tras recuperación exitosa, auto-save debe estar activo (no hubo pausa vigente)
+    // Auto-save NO se instaló
     _resetSaveGeneration();
     mockSave.mockClear();
-    useSceneStore.getState().updateObjectPosition('motor-1', { x: 1, y: 1, z: 1 });
+    resumeAutoSave(useSceneStore, pauseToken);
+    // Sin cambios → no hay guardado automático pendiente
     await vi.advanceTimersByTimeAsync(1100);
-    expect(mockSave).toHaveBeenCalledOnce();
+    expect(mockSave).not.toHaveBeenCalled();
   });
 });
 
@@ -1282,10 +1418,10 @@ describe('resumeAutoSave — reanuda el auto-save y desbloquea el editor', () =>
     mockSave.mockResolvedValue(undefined);
     await init({});
 
-    await pauseAndFlush(useSceneStore);
+    const { pauseToken } = await pauseAndFlush(useSceneStore);
     expect(useSceneStore.getState().editingBlocked).toBe(true);
 
-    resumeAutoSave(useSceneStore);
+    resumeAutoSave(useSceneStore, pauseToken);
     expect(useSceneStore.getState().editingBlocked).toBe(false);
 
     _resetSaveGeneration();

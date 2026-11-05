@@ -35,9 +35,6 @@ let _cancelAutoSave: (() => void) | null = null;
  *  Impide recuperaciones simultáneas e indica al UI que está en proceso. */
 let _recovering = false;
 
-/** true mientras pauseAndFlush está activo. Impide nuevas pausas simultáneas. */
-let _paused = false;
-
 /**
  * Conjunto de todas las escrituras en vuelo (auto-save, flush, recuperación).
  * pauseAndFlush espera TODAS antes del flush final.
@@ -45,8 +42,21 @@ let _paused = false;
  */
 const _inflightWrites = new Set<Promise<void>>();
 
-/** true mientras pauseAndFlush está esperando que oncomplete de la escritura final confirme. */
-let _flushing = false;
+/**
+ * Estado de la operación de pausa activa. null = no hay pausa.
+ * Solo la operación propietaria (identificada por token) puede cambiar o liberar este estado.
+ *
+ * Fases:
+ *   waiting — esperando a que las escrituras en vuelo terminen
+ *   writing  — escribiendo el snapshot final a IndexedDB
+ *   paused   — escritura confirmada (o fallida); el caller debe llamar resumeAutoSave
+ */
+interface PauseOp {
+  readonly token: symbol;
+  readonly session: number;
+  phase: 'waiting' | 'writing' | 'paused';
+}
+let _pauseOp: PauseOp | null = null;
 
 /** Incrementado por initProject (nueva sesión) y por cancel() (fin de sesión).
  *  Cada llamada a recoverProject y pauseAndFlush captura myVersion = _sessionVersion;
@@ -56,6 +66,19 @@ let _sessionVersion = 0;
 /** Incrementado por cada llamada a recoverProject; identifica qué recuperación
  *  es propietaria del flag _recovering para no liberarlo desde otra. */
 let _recoveryToken = 0;
+
+/**
+ * Error lanzado por pauseAndFlush cuando la escritura del flush falla.
+ * Incluye pauseToken para que el caller pueda llamar resumeAutoSave y desbloquear el editor.
+ */
+export class PauseFlushError extends Error {
+  readonly pauseToken: symbol;
+  constructor(message: string, pauseToken: symbol) {
+    super(message);
+    this.name = 'PauseFlushError';
+    this.pauseToken = pauseToken;
+  }
+}
 
 // ─── Helpers de test ─────────────────────────────────────────────────────────
 
@@ -69,8 +92,7 @@ export function _resetInitialized(): void {
   _cancelAutoSave?.();
   _cancelAutoSave = null;
   _recovering = false;
-  _paused = false;
-  _flushing = false;
+  _pauseOp = null;
   _inflightWrites.clear();
   _sessionVersion = 0;
   _recoveryToken = 0;
@@ -158,8 +180,7 @@ export function initProject(store: Store): { cancel: () => void; ready: Promise<
     cancelled = true;
     ++_sessionVersion;        // invalida operaciones en vuelo de esta sesión
     _recovering = false;      // permite nuevo recover tras remount
-    _paused = false;          // permite nueva pausa tras remount
-    _flushing = false;        // libera el guard de resumeAutoSave para la próxima sesión
+    _pauseOp = null;          // libera pausa activa; resumeAutoSave con tokens de esta sesión rechazará
     store.getState().setEditingBlocked(false); // desbloquea editor para próxima sesión
     _cancelAutoSave?.();
     _initialized = false;
@@ -197,28 +218,39 @@ export function initProject(store: Store): { cancel: () => void; ready: Promise<
 }
 
 /**
- * Pausa el guardado automático, espera escrituras en vuelo, captura el estado
- * de memoria actual y lo persiste en IndexedDB. Bloquea toda modificación del
- * editor durante la pausa. Resuelve con el snapshot confirmado (oncomplete).
+ * Pausa el guardado automático, espera TODAS las escrituras en vuelo, captura
+ * el estado de memoria actual y lo persiste en IndexedDB. Bloquea toda
+ * modificación del editor durante la pausa.
+ *
+ * Retorna { snapshot, pauseToken }. pauseToken es el identificador de esta pausa;
+ * debe pasarse a resumeAutoSave. En caso de fallo en la escritura lanza
+ * PauseFlushError (que también expone pauseToken) para que el caller pueda
+ * desbloquear el editor llamando resumeAutoSave con ese token.
  *
  * Garantías:
- * - _paused se establece ANTES de cualquier await; una segunda llamada concurrente
- *   recibe un rechazo inmediato.
- * - Cancela el temporizador de debounce sin descartar la memoria.
- * - Espera la escritura en vuelo antes del flush final (si hubiera una).
- * - Si falla: conserva la memoria en el store y permite exportar; el editor
- *   queda bloqueado hasta que el caller llame a resumeAutoSave.
- * - Verifica identidad de sesión antes del flush para no modificar una sesión
- *   posterior iniciada desde otro contexto.
+ * - _pauseOp se establece ANTES de cualquier await (fase 'waiting'); segunda
+ *   llamada concurrente rechaza inmediatamente.
+ * - Rechaza si una recuperación está en curso o si la carga inicial no terminó.
+ * - Espera TODAS las escrituras en vuelo (_inflightWrites) antes del flush final,
+ *   incluidas escrituras de sesiones previas. resumeAutoSave bloquea durante
+ *   las fases 'waiting' y 'writing'.
+ * - Solo la operación propietaria (token) puede cambiar o liberar _pauseOp;
+ *   el finally de una pausa antigua no altera el estado de una pausa posterior.
+ * - Verifica identidad de sesión antes Y después de la escritura del flush.
+ * - cancel() limpia _pauseOp; resumeAutoSave con tokens de esta sesión rechazará.
  */
-export async function pauseAndFlush(store: Store): Promise<ProjectData> {
-  if (_paused) return Promise.reject(new Error('pauseAndFlush ya está en curso'));
+export async function pauseAndFlush(
+  store: Store,
+): Promise<{ snapshot: ProjectData; pauseToken: symbol }> {
+  if (_pauseOp != null) return Promise.reject(new Error('pauseAndFlush ya está en curso'));
   if (_recovering) return Promise.reject(new Error('No se puede pausar durante una recuperación'));
   if (store.getState().saveStatus === 'loading') {
     return Promise.reject(new Error('No se puede pausar durante la carga inicial'));
   }
-  _paused = true;
-  const myVersion = _sessionVersion;
+
+  const myToken = Symbol('pause');
+  const mySession = _sessionVersion;
+  _pauseOp = { token: myToken, session: mySession, phase: 'waiting' };
 
   // Bloquea toda modificación del editor
   store.getState().setEditingBlocked(true);
@@ -226,47 +258,63 @@ export async function pauseAndFlush(store: Store): Promise<ProjectData> {
   // Cancela suscripción y temporizador pendiente sin descartar la memoria
   _cancelAutoSave?.();
 
-  // Espera TODAS las escrituras en vuelo (incluye escrituras de sesiones anteriores aún pendientes)
+  // Fase waiting: espera TODAS las escrituras en vuelo
   if (_inflightWrites.size > 0) {
     await Promise.all([..._inflightWrites].map(p => p.catch(() => {})));
   }
 
-  // Verifica que la sesión siga vigente (cancel() pudo haberse llamado mientras esperábamos)
-  if (_sessionVersion !== myVersion) {
+  // Verifica que la sesión siga vigente y que somos los dueños de la pausa
+  if (_sessionVersion !== mySession || _pauseOp?.token !== myToken) {
     return Promise.reject(new Error('Sesión cancelada durante pauseAndFlush'));
   }
 
-  // Captura el estado de memoria actual (incluye edits pendientes del debounce)
+  // Transición a fase writing
+  _pauseOp = { token: myToken, session: mySession, phase: 'writing' };
   const snapshot = snapshotData(store);
 
-  // Persiste y espera oncomplete; _flushing previene resumeAutoSave prematuro
-  _flushing = true;
   const flushWrite = saveProjectToDb(snapshot);
   _trackWrite(flushWrite);
   try {
     await flushWrite;
-    // Verifica sesión también tras la escritura (cancel() pudo llamarse durante el await)
-    if (_sessionVersion !== myVersion) {
+
+    // Verifica sesión también tras la escritura
+    if (_sessionVersion !== mySession || _pauseOp?.token !== myToken) {
       throw new Error('Sesión cancelada durante pauseAndFlush');
     }
-    return snapshot;
+
+    // Transición a fase paused (éxito): el caller llama resumeAutoSave cuando corresponda
+    _pauseOp = { token: myToken, session: mySession, phase: 'paused' };
+    return { snapshot, pauseToken: myToken };
   } catch (err) {
-    // Fallo: conservar memoria (no modificamos el store), permitir exportar.
-    // El editor queda bloqueado hasta que el caller llame a resumeAutoSave.
+    if (_pauseOp?.token === myToken) {
+      // La operación sigue siendo nuestra: mantener estado 'paused' para permitir resumeAutoSave
+      _pauseOp = { token: myToken, session: mySession, phase: 'paused' };
+      throw new PauseFlushError(err instanceof Error ? err.message : String(err), myToken);
+    }
+    // Sesión cancelada: _pauseOp ya fue limpiado por cancel(); propagar error original
     throw err;
-  } finally {
-    _flushing = false;
   }
 }
 
 /**
  * Reanuda el guardado automático después de pauseAndFlush.
  * Desbloquea el editor e instala una nueva suscripción de auto-save.
- * Idempotente: seguro llamar aunque no haya pausa activa.
+ * pauseToken debe ser el identificador retornado por pauseAndFlush (o el
+ * expuesto en PauseFlushError si la escritura falló).
+ * Lanza si no hay pausa activa con ese token o si aún está en fase waiting/writing.
  */
-export function resumeAutoSave(store: Store): void {
-  if (_flushing) throw new Error('No se puede reanudar: pauseAndFlush está en progreso');
-  _paused = false;
+export function resumeAutoSave(store: Store, pauseToken: symbol): void {
+  const op = _pauseOp;
+  if (op == null) {
+    throw new Error('No hay pausa activa para reanudar');
+  }
+  if (op.phase !== 'paused') {
+    throw new Error('No se puede reanudar: pauseAndFlush está en progreso');
+  }
+  if (op.token !== pauseToken) {
+    throw new Error('Identificador de pausa inválido');
+  }
+  _pauseOp = null;
   store.getState().setEditingBlocked(false);
   _startAutoSaveSession(store);
 }
@@ -283,14 +331,14 @@ export function resumeAutoSave(store: Store): void {
  * - Se escribe en IndexedDB ANTES de modificar el store; si la transacción
  *   falla, el store conserva su estado anterior.
  * - Si falla, _recovering vuelve a false y el usuario puede reintentar.
- * - Rechaza inmediatamente si el editor está bloqueado por pauseAndFlush.
+ * - Rechaza inmediatamente si hay una pausa activa (pauseAndFlush en curso).
  */
 export async function recoverProject(
   store: Store,
   source: 'reset' | File,
   confirm: (msg: string) => boolean,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  if (_paused) return { ok: false, error: 'El editor está en pausa' };
+  if (_pauseOp != null) return { ok: false, error: 'El editor está en pausa' };
   if (_recovering) return { ok: false, error: 'Recuperación ya en curso' };
   _recovering = true; // bloqueo sincrónico antes de cualquier await
   const myToken = ++_recoveryToken;
@@ -386,7 +434,7 @@ export async function recoverProject(
 
   store.getState().hydrateProject(objects, projectOrigin);
   store.getState().setSaveStatus('saved', null);
-  if (!_paused) { _startAutoSaveSession(store); }
+  if (_pauseOp == null) { _startAutoSaveSession(store); }
 
   return { ok: true };
 }
@@ -420,7 +468,7 @@ export async function importProject(
   file: File,
   confirm: (msg: string) => boolean,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  if (_paused) return { ok: false, error: 'El editor está en pausa' };
+  if (_pauseOp != null) return { ok: false, error: 'El editor está en pausa' };
 
   let raw: unknown;
   try {
@@ -452,7 +500,7 @@ export async function importProject(
  * No hace nada si el editor está bloqueado por pauseAndFlush.
  */
 export function resetProject(store: Store, confirm: (msg: string) => boolean): void {
-  if (_paused) return;
+  if (_pauseOp != null) return;
   const proceed = confirm(
     '¿Restablecer la escena de ejemplo?\nSe perderán todos los cambios del proyecto actual.',
   );

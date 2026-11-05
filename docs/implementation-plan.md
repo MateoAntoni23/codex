@@ -250,8 +250,9 @@ permita a los componentes existentes leer v2 sin regresiones.
 
 | Función | Descripción |
 |---|---|
-| `pauseAndFlush(store)` | Bloquea edición, cancela timer, espera writes en vuelo, persiste snapshot, resuelve con snapshot confirmado. |
-| `resumeAutoSave(store)` | Desbloquea edición, reinstala suscripción de auto-save. |
+| `pauseAndFlush(store)` | Bloquea edición, cancela timer, espera writes en vuelo, persiste snapshot. Retorna `{ snapshot, pauseToken }`. Si la escritura falla lanza `PauseFlushError` (expone `pauseToken`). |
+| `resumeAutoSave(store, pauseToken)` | Desbloquea edición, reinstala suscripción de auto-save. Requiere el token de la pausa activa; lanza si la fase no es `paused` o el token no coincide. |
+| `PauseFlushError` | Error lanzado por `pauseAndFlush` al fallar la escritura. Expone `pauseToken` para permitir `resumeAutoSave`. |
 
 #### API pública nueva (`src/store/sceneStore.ts`)
 
@@ -263,14 +264,14 @@ permita a los componentes existentes leer v2 sin regresiones.
 
 #### Garantías de pauseAndFlush
 
-1. `_paused` se establece antes de cualquier await; segunda llamada concurrente rechaza inmediatamente.
+1. `_pauseOp` (con `token: symbol` único) se establece ANTES de cualquier await (fase `waiting`); segunda llamada concurrente rechaza inmediatamente.
 2. Cancela el temporizador de debounce sin descartar la memoria.
-3. Espera TODAS las escrituras en vuelo (`_inflightWrites: Set`) antes del flush final, incluidas escrituras de sesiones previas aún pendientes. El debounce no garantiza exclusividad de escrituras: dos timers independientes pueden producir dos writes simultáneos; el Set rastrea todos.
-4. Rechaza si una recuperación está en curso (`_recovering`) o si la carga inicial no terminó (`saveStatus === 'loading'`).
-5. Si falla: conserva memoria en el store; editor queda bloqueado hasta `resumeAutoSave`.
-6. `resumeAutoSave` lanza si se llama mientras la escritura del flush está en progreso (`_flushing`), evitando desbloqueo prematuro del editor.
-7. `cancel()` del ciclo de initProject resetea `_paused`, `_flushing` y desbloquea el editor para la próxima sesión.
-8. Verifica identidad de sesión (`_sessionVersion`) antes Y después de la escritura del flush; una sesión cancelada durante el flush no modifica el estado de la sesión posterior.
+3. Espera TODAS las escrituras en vuelo (`_inflightWrites: Set`) antes del flush final, incluidas escrituras de sesiones previas. El debounce no garantiza exclusividad; el Set rastrea todas.
+4. Rechaza si hay recuperación en curso (`_recovering`) o carga inicial sin terminar (`saveStatus === 'loading'`).
+5. `resumeAutoSave` lanza si `_pauseOp.phase` es `waiting` o `writing`; solo permite la reanudación en fase `paused` (éxito o fallo). Si la escritura falló, `PauseFlushError` expone el token.
+6. Solo la operación propietaria (verificada por `token`) puede cambiar `_pauseOp`; el `catch` de una pausa antigua no altera el estado de una pausa posterior.
+7. `cancel()` limpia `_pauseOp` y desbloquea el editor; tokens de esa sesión quedan inválidos.
+8. Verifica `_sessionVersion` antes Y después de la escritura del flush; una sesión cancelada no modifica el estado de la siguiente.
 
 #### Limitaciones conocidas de I1
 
