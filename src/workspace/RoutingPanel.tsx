@@ -18,6 +18,9 @@ import {
   findReductionCandidates,
   computeEndpoint,
   snapDirectionToAxis,
+  snapChangesDirection,
+  angleBetweenDirs,
+  verifyStartPortValid,
   generateConnectionId,
 } from './routingRules';
 import { buildSegmentPiece, generateSegmentId } from './addTraySegment';
@@ -88,18 +91,34 @@ function StepConfiguringSegment({ onConfirmDirect, onNeedsReduction, onCancel }:
   );
 
   const compat = useMemo(() => {
-    if (!existingProduct || !selectedProduct) return null;
-    return checkDirectCompatibility(existingProduct, selectedProduct);
-  }, [existingProduct, selectedProduct]);
+    if (!existingProduct || !selectedProduct || !context) return null;
+    return checkDirectCompatibility(
+      { compatibilidades: context.compatibilidades ?? [], componentesUnion: context.componentesUnion ?? [] },
+      existingProduct,
+      selectedProduct,
+    );
+  }, [context, existingProduct, selectedProduct]);
 
   const effectiveDir = useMemo(() => {
     if (!startPort) return null;
     return snapToAxis ? snapDirectionToAxis(startPort.dir) : startPort.dir;
   }, [startPort, snapToAxis]);
 
+  // Snap warning: check if snapping changes direction by more than 1 degree
+  const snapWarnAngle = useMemo(() => {
+    if (!startPort) return null;
+    if (!snapChangesDirection(startPort.dir)) return null;
+    const snapped = snapDirectionToAxis(startPort.dir);
+    return angleBetweenDirs(startPort.dir, snapped).toFixed(1);
+  }, [startPort]);
+
   const handleConfirm = () => {
     setError(null);
     if (!compat) { setError('Seleccioná un producto.'); return; }
+    if (snapToAxis && snapWarnAngle !== null) {
+      setError('La dirección del puerto no coincide con el eje más cercano — desactivá el ajuste al eje para continuar.');
+      return;
+    }
     if (!compat.ok && !compat.needsReduction) { setError(compat.reason); return; }
     if (compat.needsReduction) { onNeedsReduction(); return; }
     onConfirmDirect();
@@ -162,6 +181,11 @@ function StepConfiguringSegment({ onConfirmDirect, onNeedsReduction, onCancel }:
           borderLeft: `2px solid ${compat.ok ? '#44aa44' : compat.needsReduction ? '#aaaa44' : '#aa4444'}`,
         }}>
           {compat.reason}
+          {compat.ok && compat.requiredUnion.length > 0 && (
+            <div style={{ marginTop: 4, color: '#aaaacc' }}>
+              Accesorios requeridos: {compat.requiredUnion.map((u) => `${u.quantity}× ${u.productId}`).join(', ')}
+            </div>
+          )}
         </div>
       )}
 
@@ -182,7 +206,7 @@ function StepConfiguringSegment({ onConfirmDirect, onNeedsReduction, onCancel }:
       </div>
 
       {/* Axis snap */}
-      <label style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10, cursor: 'pointer', fontSize: 11, color: '#8888aa' }}>
+      <label style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: snapWarnAngle ? 4 : 10, cursor: 'pointer', fontSize: 11, color: '#8888aa' }}>
         <input type="checkbox" checked={snapToAxis} onChange={toggleSnap} />
         Ajustar al eje dominante
         {effectiveDir && snapToAxis && (
@@ -191,6 +215,13 @@ function StepConfiguringSegment({ onConfirmDirect, onNeedsReduction, onCancel }:
           </span>
         )}
       </label>
+
+      {/* Snap warning */}
+      {snapWarnAngle !== null && (
+        <div style={{ marginBottom: 10, padding: '5px 8px', borderRadius: 3, fontSize: 10, background: '#2a2211', color: '#ddaa44', borderLeft: '2px solid #aa8822' }}>
+          La dirección del puerto ({snapWarnAngle}°) no coincide con el eje más cercano — ajustar a eje crearía una unión angular que requiere una curva, aún no soportada en este flujo.
+        </div>
+      )}
 
       {error && (
         <div style={{ color: '#ff7755', marginBottom: 8, fontSize: 11 }}>{error}</div>
@@ -204,9 +235,10 @@ function StepConfiguringSegment({ onConfirmDirect, onNeedsReduction, onCancel }:
             color: 'white',
             border: `1px solid ${compat?.needsReduction ? '#aa8833' : '#336644'}`,
             borderRadius: 3, cursor: 'pointer',
+            opacity: (snapToAxis && snapWarnAngle !== null) ? 0.5 : 1,
           }}
           onClick={handleConfirm}
-          disabled={!selectedProduct}
+          disabled={!selectedProduct || (snapToAxis && snapWarnAngle !== null)}
         >
           {compat?.needsReduction ? 'Elegir reducción →' : 'Confirmar continuación'}
         </button>
@@ -235,6 +267,7 @@ function StepConfirmingReduction({ onConfirm, onBack }: {
   const reductionLengthMm = useRoutingStore((s) => s.reductionLengthMm);
   const setReductionProduct = useRoutingStore((s) => s.setReductionProduct);
   const setReductionLength  = useRoutingStore((s) => s.setReductionLength);
+  const setReductionPortToExisting = useRoutingStore((s) => s.setReductionPortToExisting);
 
   const [error, setError] = useState<string | null>(null);
 
@@ -243,21 +276,46 @@ function StepConfirmingReduction({ onConfirm, onBack }: {
     return context?.productos.find((p) => p.producto_id === piece?.producto_id);
   }, [context?.productos, entrada?.piezas, startPort?.pieceId]);
 
-  const candidates = useMemo(
-    () => existingProduct ? findReductionCandidates(existingProduct, context?.productos ?? []) : [],
-    [existingProduct, context?.productos],
-  );
-
-  const effectiveReductionId = reductionProductId || candidates[0]?.producto_id || '';
-
   const newProduct = useMemo(
     () => context?.productos.find((p) => p.producto_id === selectedProductId),
     [context?.productos, selectedProductId],
   );
 
+  const candidates = useMemo(() => {
+    if (!existingProduct || !newProduct || !context) return [];
+    return findReductionCandidates(
+      {
+        productos: context.productos,
+        compatibilidades: context.compatibilidades ?? [],
+        componentesUnion: context.componentesUnion ?? [],
+        puertos: context.puertos ?? [],
+      },
+      existingProduct,
+      newProduct,
+    );
+  }, [context, existingProduct, newProduct]);
+
+  // No fallback: only use explicitly set reductionProductId
+  const effectiveReductionId = reductionProductId || '';
+
+  const selectedCandidate = useMemo(
+    () => candidates.find((c) => c.reductionProduct.producto_id === effectiveReductionId),
+    [candidates, effectiveReductionId],
+  );
+
+  const handleSelectCandidate = (productId: string) => {
+    setError(null);
+    setReductionProduct(productId);
+    const candidate = candidates.find((c) => c.reductionProduct.producto_id === productId);
+    if (candidate) {
+      setReductionPortToExisting(candidate.reductionPortToExisting);
+    }
+  };
+
   const handleConfirm = () => {
     setError(null);
     if (!effectiveReductionId) { setError('Seleccioná una reducción.'); return; }
+    if (!selectedCandidate) { setError('La reducción seleccionada ya no es válida. Elegí otra.'); return; }
     if (reductionLengthMm <= 0) { setError('La longitud de la reducción debe ser mayor que 0.'); return; }
     onConfirm();
   };
@@ -272,7 +330,7 @@ function StepConfirmingReduction({ onConfirm, onBack }: {
 
       {candidates.length === 0 ? (
         <div style={{ padding: '8px', background: '#2a1a1a', borderRadius: 3, color: '#ff7755', fontSize: 10 }}>
-          No se encontraron reducciones compatibles en el catálogo para este tramo. Verificá que el catálogo incluya reducciones de la familia y ancho correspondientes.
+          No se encontraron reducciones compatibles en el catálogo para este par de productos. Verificá que el catálogo incluya entradas de COMPATIBILIDADES para ambos lados de la reducción.
         </div>
       ) : (
         <>
@@ -284,18 +342,39 @@ function StepConfirmingReduction({ onConfirm, onBack }: {
               className="inspector-input"
               style={{ width: '100%' }}
               value={effectiveReductionId}
-              onChange={(e) => { setReductionProduct(e.target.value); setError(null); }}
+              onChange={(e) => handleSelectCandidate(e.target.value)}
             >
-              {candidates.map((p) => (
-                <option key={p.producto_id} value={p.producto_id}>
-                  {p.sku}
+              <option value="">— Elegí una reducción —</option>
+              {candidates.map((c) => (
+                <option key={c.reductionProduct.producto_id} value={c.reductionProduct.producto_id}>
+                  {c.reductionProduct.sku} (P{c.reductionPortToExisting}→exist. / P{c.reductionPortToNew}→nuevo)
                 </option>
               ))}
             </select>
-            <div style={{ fontSize: 10, color: '#445566', marginTop: 3 }}>
-              {candidates.find(p => p.producto_id === effectiveReductionId)?.descripcion_original}
-            </div>
+            {selectedCandidate && (
+              <div style={{ fontSize: 10, color: '#445566', marginTop: 3 }}>
+                {selectedCandidate.reductionProduct.descripcion_original}
+              </div>
+            )}
           </div>
+
+          {/* Port orientation info */}
+          {selectedCandidate && (
+            <div style={{ marginBottom: 8, padding: '5px 8px', borderRadius: 3, fontSize: 10, background: '#1a2235', color: '#8899bb', lineHeight: 1.5 }}>
+              Puerto {selectedCandidate.reductionPortToExisting} conecta al tramo existente ·
+              Puerto {selectedCandidate.reductionPortToNew} conecta al nuevo tramo
+              {selectedCandidate.unionForExistingConn.length > 0 && (
+                <div style={{ marginTop: 2, color: '#aaaacc' }}>
+                  Accesorios lado existente: {selectedCandidate.unionForExistingConn.map((u) => `${u.quantity}× ${u.productId}`).join(', ')}
+                </div>
+              )}
+              {selectedCandidate.unionForNewConn.length > 0 && (
+                <div style={{ marginTop: 2, color: '#aaaacc' }}>
+                  Accesorios lado nuevo: {selectedCandidate.unionForNewConn.map((u) => `${u.quantity}× ${u.productId}`).join(', ')}
+                </div>
+              )}
+            </div>
+          )}
 
           <div style={{ marginBottom: 10 }}>
             <label style={{ color: '#8888aa', display: 'block', marginBottom: 3 }}>
@@ -366,6 +445,7 @@ export function RoutingPanel() {
   const snapToAxis        = useRoutingStore((s) => s.snapToAxis);
   const reductionProductId = useRoutingStore((s) => s.reductionProductId);
   const reductionLengthMm = useRoutingStore((s) => s.reductionLengthMm);
+  const reductionPortToExisting = useRoutingStore((s) => s.reductionPortToExisting);
   const deactivate        = useRoutingStore((s) => s.deactivate);
   const proceedToReduction = useRoutingStore((s) => s.proceedToReduction);
   const back              = useRoutingStore((s) => s.back);
@@ -390,6 +470,13 @@ export function RoutingPanel() {
   const commitDirect = () => {
     setCommitError(null);
     if (!entrada || !startPort) return;
+
+    // Pre-commit validation
+    const portCheck = verifyStartPortValid(entrada.piezas, entrada.conexiones, startPort);
+    if (!portCheck.valid) {
+      setCommitError(portCheck.reason);
+      return;
+    }
 
     const effDir = getEffectiveDir();
     if (!effDir) return;
@@ -431,13 +518,26 @@ export function RoutingPanel() {
     setCommitError(null);
     if (!entrada || !startPort) return;
 
+    // Pre-commit validation
+    const portCheck = verifyStartPortValid(entrada.piezas, entrada.conexiones, startPort);
+    if (!portCheck.valid) {
+      setCommitError(portCheck.reason);
+      return;
+    }
+
     const effDir = getEffectiveDir();
     if (!effDir) return;
 
     const effProductId = getEffectiveProductId();
-    const effReductionId = reductionProductId || context?.productos.find((p) => p.tipo_pieza === 'reducción')?.producto_id || '';
 
-    if (!effProductId || !effReductionId) {
+    // Strict: no fallback to first reduction in catalog
+    if (!reductionProductId) {
+      setCommitError('Seleccioná una reducción antes de confirmar.');
+      return;
+    }
+    const effReductionId = reductionProductId;
+
+    if (!effProductId) {
       setCommitError('Seleccioná producto y reducción.');
       return;
     }
@@ -451,31 +551,45 @@ export function RoutingPanel() {
       const pieceIds = new Set(next.piezas.map((p) => p.instancia_id));
       const connIds = new Set(next.conexiones.map((c) => c.conexion_id));
 
-      // Reduction piece
       const redId = getNewPieceId(pieceIds);
       pieceIds.add(redId);
-      const redStart = startPort.pos;
-      const redEnd = computeEndpoint(redStart, effDir, reductionLengthMm);
-      const redPiece = buildSegmentPiece(redId, effReductionId, redStart, redEnd);
 
-      // Continuation piece
+      const existingPortPos = startPort.pos;
+      const redEnd = computeEndpoint(existingPortPos, effDir, reductionLengthMm);
+
+      let redPiece;
+      let conn1b: [string, string];
+
+      if (reductionPortToExisting === 'P2') {
+        // P2 connects to existing, P1 is at redEnd
+        redPiece = buildSegmentPiece(redId, effReductionId, redEnd, existingPortPos);
+        conn1b = [redId, 'P2'];
+      } else {
+        // Default: P1 connects to existing, P2 is at redEnd
+        redPiece = buildSegmentPiece(redId, effReductionId, existingPortPos, redEnd);
+        conn1b = [redId, 'P1'];
+      }
+
+      // Continuation piece starts at redEnd (which is P2 of reduction when P1→existing)
       const newId = getNewPieceId(pieceIds);
       const contEnd = computeEndpoint(redEnd, effDir, previewLengthMm);
       const newPiece = buildSegmentPiece(newId, effProductId, redEnd, contEnd);
 
-      // Two connections
+      // Connection 1: existing piece → reduction
       const conn1Id = generateConnectionId(connIds);
       connIds.add(conn1Id);
       const conn1 = {
         conexion_id: conn1Id,
         a: [startPort.pieceId, startPort.portName] as [string, string],
-        b: [redId, 'P1'] as [string, string],
+        b: conn1b,
       };
 
+      // Connection 2: reduction → new piece
       const conn2Id = generateConnectionId(connIds);
+      const redPortToNew = reductionPortToExisting === 'P2' ? 'P1' : 'P2';
       const conn2 = {
         conexion_id: conn2Id,
-        a: [redId, 'P2'] as [string, string],
+        a: [redId, redPortToNew] as [string, string],
         b: [newId, 'P1'] as [string, string],
       };
 

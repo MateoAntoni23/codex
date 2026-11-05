@@ -11,7 +11,42 @@ export interface TrayInput extends Record<string, unknown> {
  pe: { seccion_requerida_mm2:number; cable_id:string; origen_requisito:string; conductores:Record<string,unknown>[] };
 }
 export interface Product extends Record<string,unknown> {producto_id:string; descripcion_original:string; tipo_pieza:string; ancho_nominal_mm:number|null; sku:string}
-export interface Context { productos:Product[]; cables:string[]; ejemplos:Record<string,Record<string,unknown>>; versions:string }
+
+export interface CatalogPort {
+  puerto_id: string;
+  producto_id: string;
+  nombre_puerto: string;
+  ancho_nominal_mm: number | null;
+  ala_nominal_mm: number | null;
+  interfaz_conexion: string | null;
+}
+
+export interface CatalogCompatibility {
+  compatibilidad_id: string;
+  producto_a_id: string;
+  puerto_a_id: string | null;
+  puerto_b_id: string | null;
+  producto_b_id: string;
+  tipo_conexion: string;
+  estado_compatibilidad: string;
+  estado_evidencia?: string;
+}
+
+export interface CatalogUnionComponent {
+  compatibilidad_id: string;
+  producto_requerido_id: string;
+  cantidad: number;
+}
+
+export interface Context {
+  productos: Product[];
+  cables: string[];
+  puertos: CatalogPort[];
+  compatibilidades: CatalogCompatibility[];
+  componentesUnion: CatalogUnionComponent[];
+  ejemplos: Record<string, Record<string, unknown>>;
+  versions: string;
+}
 export const object = (x:unknown): x is Record<string,unknown> => !!x && typeof x==='object' && !Array.isArray(x);
 export function assertInput(raw:unknown): asserts raw is TrayInput {
  if(!object(raw)||raw.version_contrato!=='trazado/1'||!Array.isArray(raw.piezas)||!Array.isArray(raw.conexiones)||!Array.isArray(raw.circuitos)||!Array.isArray(raw.soportes)||!object(raw.pe)) throw Error('ENTRADA_INVALIDA: se requiere trazado/1 con piezas, conexiones, circuitos, soportes y PE');

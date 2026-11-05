@@ -87,6 +87,8 @@ function Toolbar() {
       useWorkspaceStore.getState().loadFile(elements, evidence, extractMeta(ws.projectV2), file.name);
       // Load tray input; useTrayStore.edit discards previous result
       useTrayStore.getState().edit(ws.trayInput);
+      // Cancel any active routing session since the tray was replaced
+      useRoutingStore.getState().deactivate();
       e.target.value = '';
     };
     reader.onerror = () => {

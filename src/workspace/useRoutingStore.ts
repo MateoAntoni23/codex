@@ -24,6 +24,8 @@ export interface RoutingState {
   /** producto_id of the chosen reduction (only used in confirmingReduction step) */
   reductionProductId: string | null;
   reductionLengthMm: number;
+  /** Which port of the chosen reduction connects to the existing piece ('P1' or 'P2') */
+  reductionPortToExisting: string;
 
   activate(): void;
   deactivate(): void;
@@ -35,6 +37,7 @@ export interface RoutingState {
   proceedToReduction(): void;
   setReductionProduct(id: string): void;
   setReductionLength(mm: number): void;
+  setReductionPortToExisting(port: string): void;
   back(): void;
 }
 
@@ -48,6 +51,7 @@ export const useRoutingStore = create<RoutingState>((set) => ({
   snapToAxis: false,
   reductionProductId: null,
   reductionLengthMm: 300,
+  reductionPortToExisting: '',
 
   activate: () =>
     set({ active: true, step: 'selectingPort', startPort: null, hoveredPieceId: null }),
@@ -59,6 +63,7 @@ export const useRoutingStore = create<RoutingState>((set) => ({
       startPort: null,
       hoveredPieceId: null,
       reductionProductId: null,
+      reductionPortToExisting: '',
     }),
 
   hoverPiece: (id) => set({ hoveredPieceId: id }),
@@ -76,6 +81,8 @@ export const useRoutingStore = create<RoutingState>((set) => ({
   setReductionProduct: (id) => set({ reductionProductId: id }),
 
   setReductionLength: (mm) => set({ reductionLengthMm: mm }),
+
+  setReductionPortToExisting: (port) => set({ reductionPortToExisting: port }),
 
   back: () =>
     set((s) => {
