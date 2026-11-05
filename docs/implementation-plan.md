@@ -26,7 +26,14 @@
 
 | Entrega | Commit | Tests | Descripción |
 |---|---|---|---|
-| I1 | pendiente | 339 | Persistencia v3 (CONFIG_STORE), pauseAndFlush, bloqueo de edición, versionchange |
+| I1-base | `527c2c8` | 346 | Persistencia v3 (CONFIG_STORE), pauseAndFlush, bloqueo de edición, versionchange |
+| I1-audit | `d3b7620` | 350 | Propiedad de operación con token+fase, PauseFlushError, resumeAutoSave requiere token ✅ auditado |
+
+## Entregas completadas en la rama `feat/v2-viewer-adapter`
+
+| Entrega | Commit | Tests | Descripción |
+|---|---|---|---|
+| I2 | pendiente | 374 | Adaptador v2→visor: resolución de transform global, conversión mm/Z-up→m/Y-up, geometrías, ciclos |
 
 ### M1b — Respaldo transaccional y recuperación para migración v1→v2
 
@@ -280,6 +287,43 @@ permita a los componentes existentes leer v2 sin regresiones.
 - `saveV2ProjectToDb` requiere que v2 esté activo (I_act); en I1 siempre rechazará con `FORMAT_NOT_ACTIVE`.
 - Downgrade (v2→v1 activo) está fuera de alcance.
 - Clientes antiguos sin controles de generación: requieren cierre/recarga. `BroadcastChannel` es solo notificación.
+
+---
+
+### I2 — Adaptador del modelo v2 al visor
+
+**Rama:** `feat/v2-viewer-adapter`  
+**Archivo:** `src/scene/v2-adapter.ts`  
+**Tests:** `src/scene/__tests__/v2-adapter.test.ts` (24 casos)
+
+**Objetivo:** convertir `EquipmentElement` (v2) a propiedades de renderizado Three.js sin modificar el store, la persistencia ni activar v2.
+
+#### API pública
+
+| Función / Tipo | Descripción |
+|---|---|
+| `resolveGlobalTransform(id, elements, visited?)` | Recorre jerarquía `parentId`, compone posición y rotación. Retorna `null` si algún ancestro está sin posicionar, falta, o hay ciclo. |
+| `ElementRenderProps` | Interface: `id, name, category, placed, positionViewer, rotationViewer, sizeViewer, geometryKind, isFloor` |
+| `elementToRenderProps(element, allElements)` | Convierte un equipo a props de renderizado. `placed:false` cubre elemento no ubicado y ancestro faltante/ciclo. |
+
+#### Conversiones
+
+- **Posición:** `[x/1000, z/1000, -y/1000]` (mm Z-arriba → metros Y-arriba)
+- **Rotación:** `Q_viewer = Q_base × Q_domain_global` donde `Q_base = {x:-√2/2, y:0, z:0, w:√2/2}` (rotación -90° alrededor de X)
+- **Jerarquía:** `pos_global = pos_padre + rotate(rot_padre, pos_local)`, `rot_global = rot_padre × rot_local`
+- **Geometrías:**
+  - `box` → `[w/1000, h/1000, d/1000]`
+  - `cylinder` → `[diam/1000, len/1000, diam/1000]`
+  - `plane` → `[w/1000, 0, d/1000]`
+  - `asset` → `[bounds.x/1000, bounds.z/1000, bounds.y/1000]`
+  - `null` → `geometryKind:'unknown'`, `sizeViewer:null`
+- `isFloor`: `geometry.kind === 'plane' && mounting === 'floor'`
+
+#### Limitaciones conocidas de I2
+
+- No conectado al visor actual; el visor sigue usando objetos v1.
+- El adaptador no valida que los quaternions sean unitarios.
+- Ciclos se detectan correctamente, pero sin mensaje de diagnóstico en consola (solo retorna `null`).
 
 ---
 
