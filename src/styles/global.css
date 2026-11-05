@@ -546,6 +546,11 @@ html, body, #root {
   backdrop-filter: blur(2px);
 }
 
+/* Colores de estado de datum */
+.datum-status--estimated { color: #cc9922; }
+.datum-status--verified  { color: #44bb66; }
+.datum-status--conflict  { color: #cc4444; }
+
 /* Inspector: aviso de dimensiones pendientes */
 .preview-inspector-pending {
   margin: 8px 12px;

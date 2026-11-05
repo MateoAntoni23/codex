@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
@@ -569,5 +569,125 @@ describe('PreviewInspector — Cancel revierte datos técnicos', () => {
     const el = usePreviewStore.getState().elements.find((e) => e.id === 'panel-1')!;
     if (el.category !== 'electrical_panel') return;
     expect(el.technical.ipRating.value).toBeNull();
+  });
+});
+
+// ─── Auditoría: preservación de Datum por referencia ─────────────────────────
+
+describe('buildDatum — preservación de referencia', () => {
+  it('sin cambios → Datum original preservado por referencia', () => {
+    const sensor = PREVIEW_ELEMENTS.find((e) => e.id === 'sensor-flow-1')!;
+    if (sensor.category !== 'sensor') return;
+    const common: CommonTechnicalDraft = {
+      manufacturer: sensor.manufacturer.value ?? '',
+      model: sensor.model.value ?? '',
+    };
+    const draft: SensorTechnicalDraft = {
+      measuredVariable: sensor.technical.measuredVariable.value ?? '',
+      rangeMin: '0', rangeMax: '100', rangeUnit: 'm3/h',
+      supplyVoltage: '24', supplyCurrentType: 'DC', signal: '4_20mA',
+    };
+    const result = applySensorTechnicalDraft(sensor, draft, common);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    if (result.element.category !== 'sensor') return;
+    // Mismo valor → debe devolver el objeto Datum original
+    expect(result.element.technical.measuredVariable).toBe(sensor.technical.measuredVariable);
+    expect(result.element.technical.range).toBe(sensor.technical.range);
+    expect(result.element.technical.supply).toBe(sensor.technical.supply);
+    expect(result.element.technical.signal).toBe(sensor.technical.signal);
+  });
+
+  it('campo verificado con nuevo valor → status pasa a "provided"', () => {
+    const baseMotor = PREVIEW_ELEMENTS.find((e) => e.id === 'child-motor-1')!;
+    if (baseMotor.category !== 'motor') return;
+    const verifiedMotor = {
+      ...baseMotor,
+      technical: {
+        ...baseMotor.technical,
+        power: { value: { value: 5.5, unit: 'kW' as const }, status: 'verified' as const, evidenceIds: [] as string[] },
+      },
+    } as typeof baseMotor;
+    const common: CommonTechnicalDraft = { manufacturer: '', model: '' };
+    const draft: MotorTechnicalDraft = {
+      power: '7.5', powerUnit: 'kW', voltage: '', phases: '',
+      plateCurrent: '', efficiency: '', powerFactor: '', start: '',
+    };
+    const result = applyMotorTechnicalDraft(verifiedMotor, draft, common);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    if (result.element.category !== 'motor') return;
+    expect(result.element.technical.power.value?.value).toBeCloseTo(7.5);
+    expect(result.element.technical.power.status).toBe('provided');
+  });
+});
+
+// ─── Auditoría: IDs únicos con reloj fijo ─────────────────────────────────────
+
+describe('createManualEvidence — unicidad de IDs', () => {
+  afterEach(() => vi.useRealTimers());
+
+  it('dos llamadas con reloj fijo generan IDs distintos', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(0);
+    const ev1 = createManualEvidence('motor-1', 'technical.power', '5.5 kW');
+    const ev2 = createManualEvidence('motor-1', 'technical.power', '7.5 kW');
+    expect(ev1.id).not.toBe(ev2.id);
+  });
+});
+
+// ─── Auditoría: rawValue incluye unidad ───────────────────────────────────────
+
+describe('applyMotorTechnicalDraft — rawValue', () => {
+  it('rawValue de potencia incluye número y unidad', () => {
+    const motor = PREVIEW_ELEMENTS.find((e) => e.id === 'child-motor-1')!;
+    const common: CommonTechnicalDraft = { manufacturer: '', model: '' };
+    const draft: MotorTechnicalDraft = {
+      power: '5.5', powerUnit: 'kW', voltage: '', phases: '',
+      plateCurrent: '', efficiency: '', powerFactor: '', start: '',
+    };
+    const result = applyMotorTechnicalDraft(motor, draft, common);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const powerEv = result.newEvidence.find((e) => e.fieldPath === 'technical.power');
+    expect(powerEv).toBeDefined();
+    expect(powerEv?.rawValue).toBe('5.5 kW');
+  });
+});
+
+// ─── Auditoría: campo en conflicto no muestra input ──────────────────────────
+
+describe('PreviewInspector — campo conflict solo lectura', () => {
+  it('IP Rating en conflicto: sin textbox, muestra nota de conflicto', async () => {
+    const basePanel = usePreviewStore.getState().elements.find((e) => e.id === 'panel-1')!;
+    if (basePanel.category !== 'electrical_panel') return;
+    const conflictPanel = {
+      ...basePanel,
+      technical: {
+        ...basePanel.technical,
+        ipRating: { value: 'IP65', status: 'conflict' as const, evidenceIds: [] as string[] },
+      },
+    } as typeof basePanel;
+    usePreviewStore.getState().updateElement(conflictPanel);
+    usePreviewStore.getState().select('panel-1');
+    render(React.createElement(PreviewInspector));
+
+    expect(screen.queryByRole('textbox', { name: /IP Rating/i })).toBeNull();
+    expect(screen.getByText(/Conflicto/i)).toBeTruthy();
+  });
+});
+
+// ─── Auditoría: Apply sin cambios no incrementa versión ──────────────────────
+
+describe('PreviewInspector — Apply sin cambios', () => {
+  it('Apply sin editar no cambia la versión del elemento', async () => {
+    const origVersion = usePreviewStore.getState().elements.find((e) => e.id === 'panel-1')!.version;
+    usePreviewStore.getState().select('panel-1');
+    render(React.createElement(PreviewInspector));
+
+    await userEvent.click(screen.getByRole('button', { name: 'Aplicar' }));
+
+    const updated = usePreviewStore.getState().elements.find((e) => e.id === 'panel-1')!;
+    expect(updated.version).toBe(origVersion);
   });
 });
