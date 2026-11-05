@@ -1,7 +1,7 @@
 /**
  * usePreviewStore — estado mutable de la vista de prueba v2.
  *
- * Gestiona los elementos editables en memoria y la selección.
+ * Gestiona los elementos editables en memoria, la selección y la evidencia manual.
  * No tiene saveStatus, editingBlocked ni ninguna operación de IndexedDB.
  * El aislamiento de persistencia es estructural: este módulo no importa
  * projectManager ni db.
@@ -9,7 +9,7 @@
 
 import { create } from 'zustand';
 import { PREVIEW_ELEMENTS } from './previewData';
-import type { EquipmentElement } from '../types/domain-v2';
+import type { EquipmentElement, FieldEvidence } from '../types/domain-v2';
 
 function copyElements(elements: EquipmentElement[]): EquipmentElement[] {
   // Copia superficial de cada objeto — suficiente porque todas las mutaciones
@@ -19,15 +19,18 @@ function copyElements(elements: EquipmentElement[]): EquipmentElement[] {
 
 interface PreviewState {
   elements: EquipmentElement[];
+  evidence: FieldEvidence[];
   selectedId: string | null;
   select: (id: string) => void;
   clearSelection: () => void;
   updateElement: (updated: EquipmentElement) => void;
+  addEvidence: (ev: FieldEvidence) => void;
   resetElements: () => void;
 }
 
 export const usePreviewStore = create<PreviewState>((set) => ({
   elements: copyElements(PREVIEW_ELEMENTS),
+  evidence: [],
   selectedId: null,
   select: (id) => set({ selectedId: id }),
   clearSelection: () => set({ selectedId: null }),
@@ -35,6 +38,8 @@ export const usePreviewStore = create<PreviewState>((set) => ({
     set((s) => ({
       elements: s.elements.map((e) => (e.id === updated.id ? updated : e)),
     })),
+  addEvidence: (ev) =>
+    set((s) => ({ evidence: [...s.evidence, ev] })),
   resetElements: () =>
-    set({ elements: copyElements(PREVIEW_ELEMENTS), selectedId: null }),
+    set({ elements: copyElements(PREVIEW_ELEMENTS), evidence: [], selectedId: null }),
 }));

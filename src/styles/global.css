@@ -322,6 +322,20 @@ html, body, #root {
   background: #254530;
 }
 
+.btn-snap:disabled {
+  cursor: not-allowed;
+}
+
+/* ── Sección técnica ── */
+.inspector-edit-row--wide .inspector-label {
+  width: 80px;
+}
+
+.inspector-tech-section {
+  border-top: 1px solid #22223a;
+  padding-top: 2px;
+}
+
 /* ── Panel de origen del proyecto ── */
 .origin-panel {
   flex-shrink: 0;

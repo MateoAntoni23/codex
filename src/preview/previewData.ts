@@ -160,6 +160,37 @@ const unplacedSensor: EquipmentElement = {
   },
 } as EquipmentElement;
 
+// ─── Sensor de caudal con datos técnicos ficticios ────────────────────────────
+// Para probar la edición y visualización de datos técnicos en el inspector.
+
+const testSensorFlow: EquipmentElement = {
+  id: 'sensor-flow-1',
+  name: '[DEMO] Sensor de caudal',
+  tag: 'FT-101',
+  aliases: [],
+  physicalLocation: DEFAULT_LOCATION,
+  condition: 'new',
+  lifecycle: 'active',
+  parentId: null,
+  geometry: { kind: 'box', widthMm: 80, depthMm: 60, heightMm: 120 },
+  mounting: 'wall',
+  manufacturer: { value: '[demo] Endress+Hauser', status: 'provided', evidenceIds: [] },
+  model: { value: '[demo] Promag 300', status: 'provided', evidenceIds: [] },
+  version: 1,
+  placementStatus: 'placed',
+  transform: {
+    positionMm: { x: -2000, y: 3000, z: 1200 } as Vec3,
+    rotation: { ...IDENTITY_QUATERNION },
+  },
+  category: 'sensor',
+  technical: {
+    measuredVariable: { value: '[demo] Caudal volumétrico de agua', status: 'provided', evidenceIds: [] },
+    range: { value: { min: 0, max: 100, unit: 'm3/h' }, status: 'estimated', evidenceIds: [] },
+    supply: { value: { voltageV: 24, currentType: 'DC' as const }, status: 'provided', evidenceIds: [] },
+    signal: { value: '4_20mA' as const, status: 'provided', evidenceIds: [] },
+  },
+} as EquipmentElement;
+
 // ─── Exportaciones ────────────────────────────────────────────────────────────
 
 export const PREVIEW_ELEMENTS: EquipmentElement[] = [
@@ -168,6 +199,7 @@ export const PREVIEW_ELEMENTS: EquipmentElement[] = [
   childMotor,
   fieldSensorNoDims,
   unplacedSensor,
+  testSensorFlow,
 ];
 
 export const PREVIEW_PROJECT_ORIGIN = migratedData.projectOrigin;
