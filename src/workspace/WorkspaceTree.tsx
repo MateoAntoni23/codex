@@ -1,7 +1,9 @@
+import { useState } from 'react';
 import { useWorkspaceStore, type LayerKey } from './useWorkspaceStore';
 import { useTrayStore } from '../tray/store';
 import { WorkspaceLegend } from './WorkspaceLegend';
 import { computeGuideSteps } from './workspaceGuide';
+import { AddTraySegmentForm } from './AddTraySegmentForm';
 import type { Category } from '../types/domain-v2';
 
 const LAYER_LABELS: Record<LayerKey, string> = {
@@ -173,6 +175,8 @@ export function WorkspaceTree() {
   const selectTray     = useWorkspaceStore((s) => s.selectTray);
   const trayEdit       = useTrayStore((s) => s.edit);
 
+  const [addingSegment, setAddingSegment] = useState(false);
+
   const categories = [...new Set(elements.map((e) => e.category as Category))].sort();
 
   const editTray = (fn: (inp: typeof entrada) => void) => {
@@ -225,9 +229,24 @@ export function WorkspaceTree() {
         {elements.length === 0 && <p className="workspace-empty">Sin equipos</p>}
       </section>
 
-      {/* Tray pieces list */}
+      {/* Tray pieces list + add segment */}
       <section className="workspace-tree-section">
         <h4>Trazado — piezas</h4>
+
+        {addingSegment ? (
+          <AddTraySegmentForm onClose={() => setAddingSegment(false)} />
+        ) : (
+          <button
+            className="workspace-tree-item"
+            style={{ marginBottom: 4, background: '#1f3322', border: '1px solid #336644', width: '100%', textAlign: 'left' }}
+            onClick={() => setAddingSegment(true)}
+            disabled={!context}
+            title={!context ? 'Motor no conectado' : undefined}
+          >
+            + Agregar tramo recto
+          </button>
+        )}
+
         {entrada?.piezas.map((p) => (
           <button
             key={p.instancia_id}
