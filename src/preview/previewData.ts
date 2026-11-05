@@ -4,8 +4,14 @@
  * Contenido:
  *   - 4 elementos migrados desde los INITIAL_OBJECTS de v1 (piso, nave, tablero, motor)
  *   - Par padre-hijo: soporte giratorio + motor en soporte (verifica orientación por jerarquía)
- *   - Elemento ubicado sin geometría (Variador de Frecuencia) — marcador "Dimensiones pendientes"
+ *   - Sensor de campo sin geometría conocida — marcador "Dimensiones pendientes"
  *   - Elemento sin ubicar (Sensor de temperatura) — aparece solo en la lista
+ *
+ * Requisito pendiente — Variadores de frecuencia (VFD):
+ *   Los variadores son componentes internos de tableros eléctricos, no equipos de campo
+ *   independientes. Deben asociarse al tablero contenedor (parentId), consultarse en
+ *   la ficha o vista interna del tablero, y omitirse en la vista general de equipos.
+ *   No se agrega categoría de variadores ni vista interna hasta que se diseñe ese flujo.
  *
  * No toca IndexedDB, no llama a projectManager.
  */
@@ -95,19 +101,21 @@ const childMotor: EquipmentElement = {
   },
 } as EquipmentElement;
 
-// ─── Elemento ubicado sin geometría ──────────────────────────────────────────
+// ─── Sensor de campo sin geometría conocida ───────────────────────────────────
+// Demuestra el marcador "Dimensiones pendientes" para elementos ubicados cuya
+// geometría aún no fue relevada.
 
-const vfd: EquipmentElement = {
-  id: 'vfd-1',
-  name: 'Variador de Frecuencia',
+const fieldSensorNoDims: EquipmentElement = {
+  id: 'sensor-nogeo-1',
+  name: 'Sensor de presión (sin dimensiones)',
   tag: null,
   aliases: [],
   physicalLocation: DEFAULT_LOCATION,
-  condition: 'new',
+  condition: 'unknown',
   lifecycle: 'active',
   parentId: null,
   geometry: null,
-  mounting: 'din_rail',
+  mounting: 'unknown',
   manufacturer: UNKNOWN_DATUM,
   model: UNKNOWN_DATUM,
   version: 1,
@@ -116,8 +124,13 @@ const vfd: EquipmentElement = {
     positionMm: { x: -4000, y: -3000, z: 1000 } as Vec3,
     rotation: { ...IDENTITY_QUATERNION },
   },
-  category: 'electrical_panel',
-  technical: { ipRating: UNKNOWN_DATUM, ratedCurrent: UNKNOWN_DATUM },
+  category: 'sensor',
+  technical: {
+    measuredVariable: UNKNOWN_DATUM,
+    range: UNKNOWN_DATUM,
+    supply: UNKNOWN_DATUM,
+    signal: UNKNOWN_DATUM,
+  },
 } as EquipmentElement;
 
 // ─── Elemento sin ubicar ──────────────────────────────────────────────────────
@@ -153,7 +166,7 @@ export const PREVIEW_ELEMENTS: EquipmentElement[] = [
   ...migratedData.elements,
   supportPanel,
   childMotor,
-  vfd,
+  fieldSensorNoDims,
   unplacedSensor,
 ];
 

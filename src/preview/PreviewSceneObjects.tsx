@@ -3,9 +3,11 @@
  *
  * Convención de rotación (ver v2-adapter.ts):
  *   - Box / Cylinder / Asset: usar rotationViewer directamente como cuaternión.
- *   - Plane (piso): pre-componer Q_PLANE_BASE = {x:−√2/2, y:0, z:0, w:√2/2}
- *     antes de rotationViewer, ya que PlaneGeometry queda en XY por defecto
- *     (normal = +Z) mientras el dominio tiene normal +Z que mapea a +Y visor.
+ *   - Plane (piso): componer rotationViewer × Q_PLANE_BASE.
+ *     Q_PLANE_BASE orienta PlaneGeometry al horizonte (normal +Z → +Y visor).
+ *     La multiplicación a la derecha preserva ese eje y aplica la rotación del
+ *     elemento encima: Q_PLANE_BASE primero (orientar la geometría), luego
+ *     rotationViewer (rotar el elemento en el espacio mundial).
  */
 
 import { useMemo } from 'react';
@@ -87,7 +89,9 @@ function PreviewElement({ renderProps: p, isSelected, onSelect }: ElementProps) 
     const q = rotationViewer
       ? new Quaternion(rotationViewer[0], rotationViewer[1], rotationViewer[2], rotationViewer[3])
       : new Quaternion();
-    return toQ4(Q_PLANE_BASE.clone().multiply(q));
+    // rotationViewer × Q_PLANE_BASE: orienta primero la geometría al horizonte,
+    // luego aplica la rotación del elemento en espacio mundial.
+    return toQ4(q.multiply(Q_PLANE_BASE));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rotationViewer?.[0], rotationViewer?.[1], rotationViewer?.[2], rotationViewer?.[3]]);
 
@@ -106,8 +110,9 @@ function PreviewElement({ renderProps: p, isSelected, onSelect }: ElementProps) 
   if (geometryKind === 'plane' && isFloor) {
     const [w, , d] = sizeViewer ?? [30, 0, 30];
     return (
-      <>
-        <mesh position={positionViewer} quaternion={planeQuat} receiveShadow onClick={handleClick}>
+      // El grupo aplica posición y orientación; mesh y Grid heredan ambos.
+      <group position={positionViewer} quaternion={planeQuat}>
+        <mesh receiveShadow onClick={handleClick}>
           <planeGeometry args={[w, d]} />
           <meshStandardMaterial
             color="#2a2a3a"
@@ -116,7 +121,6 @@ function PreviewElement({ renderProps: p, isSelected, onSelect }: ElementProps) 
           />
         </mesh>
         <Grid
-          position={positionViewer}
           args={[w, d]}
           cellSize={1}
           cellThickness={0.4}
@@ -129,7 +133,7 @@ function PreviewElement({ renderProps: p, isSelected, onSelect }: ElementProps) 
           followCamera={false}
           infiniteGrid={false}
         />
-      </>
+      </group>
     );
   }
 

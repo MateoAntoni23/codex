@@ -93,11 +93,12 @@ describe('PREVIEW_ELEMENTS — elementos de ejemplo', () => {
     }
   });
 
-  it('contiene el variador de frecuencia sin geometría', () => {
-    const vfd = PREVIEW_ELEMENTS.find((e) => e.id === 'vfd-1');
-    expect(vfd).toBeDefined();
-    expect(vfd?.geometry).toBeNull();
-    expect(vfd?.placementStatus).toBe('placed');
+  it('contiene el sensor de campo sin geometría', () => {
+    const sensor = PREVIEW_ELEMENTS.find((e) => e.id === 'sensor-nogeo-1');
+    expect(sensor).toBeDefined();
+    expect(sensor?.geometry).toBeNull();
+    expect(sensor?.placementStatus).toBe('placed');
+    expect(sensor?.category).toBe('sensor');
   });
 
   it('contiene al menos un elemento sin ubicar', () => {
@@ -153,9 +154,9 @@ describe('elementToRenderProps — elementos migrados', () => {
 });
 
 describe('elementToRenderProps — elementos adicionales', () => {
-  it('variador de frecuencia: placed=true, geometryKind=unknown, sizeViewer=null', () => {
-    const vfd = PREVIEW_ELEMENTS.find((e) => e.id === 'vfd-1')!;
-    const props = elementToRenderProps(vfd, PREVIEW_ELEMENTS);
+  it('sensor de campo sin geometría: placed=true, geometryKind=unknown, sizeViewer=null', () => {
+    const sensor = PREVIEW_ELEMENTS.find((e) => e.id === 'sensor-nogeo-1')!;
+    const props = elementToRenderProps(sensor, PREVIEW_ELEMENTS);
     expect(props.placed).toBe(true);
     expect(props.geometryKind).toBe('unknown');
     expect(props.sizeViewer).toBeNull();
@@ -198,5 +199,69 @@ describe('elementToRenderProps — elementos adicionales', () => {
     // Si la rotación fuera identidad en visor, W sería 1 y XYZ serían 0.
     // El padre tiene rotación 45°Z → el hijo hereda → W < 1.
     expect(props.rotationViewer![3]).toBeLessThan(1);
+  });
+});
+
+// ─── Orden de composición del cuaternión de plano ─────────────────────────────
+
+describe('planeQuat — orden rotationViewer × Q_PLANE_BASE', () => {
+  // Multiplicación de cuaterniones: (a)(b) = a × b
+  function qmul(
+    a: { x: number; y: number; z: number; w: number },
+    b: { x: number; y: number; z: number; w: number },
+  ) {
+    return {
+      x: a.w * b.x + a.x * b.w + a.y * b.z - a.z * b.y,
+      y: a.w * b.y - a.x * b.z + a.y * b.w + a.z * b.x,
+      z: a.w * b.z + a.x * b.y - a.y * b.x + a.z * b.w,
+      w: a.w * b.w - a.x * b.x - a.y * b.y - a.z * b.z,
+    };
+  }
+
+  const Q_PLANE_BASE = { x: -Math.SQRT2 / 2, y: 0, z: 0, w: Math.SQRT2 / 2 };
+
+  it('con rotación identidad ambos órdenes son equivalentes', () => {
+    const qId = { x: 0, y: 0, z: 0, w: 1 };
+    const r1 = qmul(qId, Q_PLANE_BASE);        // correcto: rotationViewer × Q_PLANE_BASE
+    const r2 = qmul(Q_PLANE_BASE, qId);        // incorrecto si qId ≠ identidad
+    expect(r1.x).toBeCloseTo(r2.x, 5);
+    expect(r1.z).toBeCloseTo(r2.z, 5);
+    expect(r1.w).toBeCloseTo(r2.w, 5);
+  });
+
+  it('piso con 90°Z dominio: rotationViewer × Q_PLANE_BASE difiere de Q_PLANE_BASE × rotationViewer', () => {
+    // 90°Z dominio → rotationViewer = {x:0, y:√2/2, z:0, w:√2/2} (90°Y visor)
+    const qViewer = { x: 0, y: Math.SQRT2 / 2, z: 0, w: Math.SQRT2 / 2 };
+
+    const correct = qmul(qViewer, Q_PLANE_BASE);  // rotationViewer × Q_PLANE_BASE
+    const wrong   = qmul(Q_PLANE_BASE, qViewer);  // orden incorrecto
+
+    // Los dos órdenes producen resultados distintos en el componente Z
+    expect(correct.z).not.toBeCloseTo(wrong.z, 5);
+
+    // Orden correcto: z = +0.5 (el eje base se preserva bajo la rotación mundial)
+    expect(correct.z).toBeCloseTo(0.5, 5);
+    // Orden incorrecto: z = −0.5
+    expect(wrong.z).toBeCloseTo(-0.5, 5);
+  });
+
+  it('piso rectangular rotado: rotationViewer × Q_PLANE_BASE preserva normal horizontal', () => {
+    // Verificar que el vector normal del plano (0,0,1 en espacio local)
+    // apunta a +Y visor (0,1,0) después de aplicar el cuaternión correcto.
+    // Rotación de un vector v por cuaternión q: v' = q * (0,v) * q^-1
+    // Para q = identidad (sin rotación del elemento):
+    const qId = { x: 0, y: 0, z: 0, w: 1 };
+    const planeQuat = qmul(qId, Q_PLANE_BASE); // = Q_PLANE_BASE = {x:-√2/2,y:0,z:0,w:√2/2}
+
+    // Rotar (0,0,1) por planeQuat:
+    // q * p * q^-1 donde p = (0, 0, 1) como cuaternión puro {x:0,y:0,z:1,w:0}
+    const p = { x: 0, y: 0, z: 1, w: 0 };
+    const qInv = { x: -planeQuat.x, y: -planeQuat.y, z: -planeQuat.z, w: planeQuat.w };
+    const rotated = qmul(qmul(planeQuat, p), qInv);
+
+    // El normal del plano debe apuntar hacia arriba (+Y visor)
+    expect(rotated.x).toBeCloseTo(0, 5);
+    expect(rotated.y).toBeCloseTo(1, 5);
+    expect(rotated.z).toBeCloseTo(0, 5);
   });
 });
