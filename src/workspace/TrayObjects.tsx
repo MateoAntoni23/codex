@@ -61,7 +61,6 @@ function RectoPiece({
   const color = selected ? '#ffcf33' : '#50b8de';
 
   if (widthMm == null || alaMm == null) {
-    // Catalog dimensions missing — render as schematic line with label
     return (
       <group>
         <Line points={[p1v, p2v]} color={selected ? '#ffcf33' : '#8899bb'} lineWidth={selected ? 10 : 5}
@@ -102,13 +101,57 @@ function SchematicPiece({
   );
 }
 
+/** Port marker — shown when connection tool is active */
+function PortMarker({
+  posViewer, label, isSelected, onClick,
+}: {
+  posViewer: V3; label: string; isSelected: boolean; onClick: () => void;
+}) {
+  return (
+    <group position={posViewer}>
+      <mesh onClick={(e) => { e.stopPropagation(); onClick(); }}>
+        <sphereGeometry args={[0.08, 12, 12]} />
+        <meshStandardMaterial color={isSelected ? '#ff6600' : '#00ffcc'} emissive={isSelected ? '#ff4400' : '#009988'} emissiveIntensity={1.5} />
+      </mesh>
+      <Html center distanceFactor={6} style={{ pointerEvents: 'none' }} position={[0, 0.14, 0]}>
+        <span style={{ background: 'rgba(0,0,0,0.75)', color: isSelected ? '#ff9933' : '#00ffcc', fontSize: 10, padding: '1px 4px', borderRadius: 3, whiteSpace: 'nowrap' }}>
+          {label}
+        </span>
+      </Html>
+    </group>
+  );
+}
+
+/** P1 position marker — shown on selected support's piece */
+function P1Marker({ posViewer }: { posViewer: V3 }) {
+  return (
+    <group position={posViewer}>
+      <mesh>
+        <sphereGeometry args={[0.07, 10, 10]} />
+        <meshBasicMaterial color="#ff4444" />
+      </mesh>
+      <Html center distanceFactor={6} style={{ pointerEvents: 'none' }} position={[0, 0.14, 0]}>
+        <span style={{ background: 'rgba(0,0,0,0.8)', color: '#ff6666', fontSize: 10, padding: '1px 4px', borderRadius: 3 }}>P1</span>
+      </Html>
+    </group>
+  );
+}
+
 export function TrayObjects() {
   // All hooks BEFORE any conditional return
-  const entrada      = useTrayStore((s) => s.entrada);
-  const traySelected = useWorkspaceStore((s) => s.selectedTrayId);
-  const selectTray   = useWorkspaceStore((s) => s.selectTray);
-  const layers       = useWorkspaceStore((s) => s.layers);
-  const context      = useTrayStore((s) => s.context);
+  const entrada              = useTrayStore((s) => s.entrada);
+  const traySelected         = useWorkspaceStore((s) => s.selectedTrayId);
+  const selectedSupportId    = useWorkspaceStore((s) => s.selectedSupportId);
+  const selectTray           = useWorkspaceStore((s) => s.selectTray);
+  const selectSupport        = useWorkspaceStore((s) => s.selectSupport);
+  const layers               = useWorkspaceStore((s) => s.layers);
+  const context              = useTrayStore((s) => s.context);
+  const connectionToolActive = useWorkspaceStore((s) => s.connectionToolActive);
+  const connectionPortA      = useWorkspaceStore((s) => s.connectionPortA);
+  const setConnectionPortA   = useWorkspaceStore((s) => s.setConnectionPortA);
+  const deactivateConnectionTool = useWorkspaceStore((s) => s.deactivateConnectionTool);
+  const trayEdit             = useTrayStore((s) => s.edit);
+  const markDirty            = useWorkspaceStore((s) => s.markDirty);
 
   const productMap = useMemo(() => {
     const m = new Map<string, Product>();
@@ -117,6 +160,32 @@ export function TrayObjects() {
   }, [context?.productos]);
 
   if (!entrada || !layers.trays) return null;
+
+  const handlePortClick = (instanciaId: string, puertoId: string) => {
+    const port: [string, string] = [instanciaId, puertoId];
+    if (!connectionPortA) {
+      setConnectionPortA(port);
+    } else {
+      // Port B selected — confirm and create connection
+      const [aInst, aPort] = connectionPortA;
+      if (aInst === instanciaId && aPort === puertoId) {
+        setConnectionPortA(null);
+        return;
+      }
+      const conexion_id = `CON-${Date.now().toString(36).toUpperCase()}`;
+      if (confirm(`Conectar ${aInst}.${aPort} ↔ ${instanciaId}.${puertoId}?\nID: ${conexion_id}`)) {
+        const next = structuredClone(entrada);
+        next.conexiones.push({ conexion_id, a: [aInst, aPort], b: [instanciaId, puertoId] });
+        trayEdit(next);
+        markDirty();
+      }
+      deactivateConnectionTool();
+    }
+  };
+
+  // Piece whose P1 we highlight (selected support)
+  const selectedSupport = selectedSupportId ? entrada.soportes.find((s) => s.soporte_id === selectedSupportId) : null;
+  const supportPieceForP1 = selectedSupport ? entrada.piezas.find((p) => p.instancia_id === selectedSupport.instancia_id) : null;
 
   return (
     <group>
@@ -129,28 +198,54 @@ export function TrayObjects() {
         const product   = productMap.get(piece.producto_id);
         const tipo      = product?.tipo_pieza ?? 'recta';
         const isSelected = traySelected === piece.instancia_id;
-        const onClick   = () => selectTray(piece.instancia_id);
+        const onClick   = () => {
+          if (connectionToolActive) return;
+          selectTray(piece.instancia_id);
+        };
 
-        if (tipo === 'recta') {
-          return (
-            <RectoPiece
-              key={piece.instancia_id}
-              p1mm={p1}
-              p2mm={p2}
-              widthMm={product?.ancho_nominal_mm ?? null}
-              alaMm={alaFromProduct(product)}
-              selected={isSelected}
-              onClick={onClick}
-              label={piece.instancia_id}
-            />
-          );
-        }
-
-        const allPorts: V3[] = ports.map((p) => toViewer(p.posicion_mm as V3));
         return (
-          <SchematicPiece key={piece.instancia_id} ports={allPorts} selected={isSelected} onClick={onClick} label={piece.instancia_id} />
+          <group key={piece.instancia_id}>
+            {tipo === 'recta' ? (
+              <RectoPiece
+                p1mm={p1}
+                p2mm={p2}
+                widthMm={product?.ancho_nominal_mm ?? null}
+                alaMm={alaFromProduct(product)}
+                selected={isSelected}
+                onClick={onClick}
+                label={piece.instancia_id}
+              />
+            ) : (
+              <SchematicPiece
+                ports={ports.map((p) => toViewer(p.posicion_mm as V3))}
+                selected={isSelected}
+                onClick={onClick}
+                label={piece.instancia_id}
+              />
+            )}
+
+            {/* Port markers when connection tool is active */}
+            {connectionToolActive && Object.entries(piece.puertos).map(([portId, port]) => {
+              const isPortA = connectionPortA?.[0] === piece.instancia_id && connectionPortA?.[1] === portId;
+              return (
+                <PortMarker
+                  key={`${piece.instancia_id}-${portId}`}
+                  posViewer={toViewer(port.posicion_mm as V3)}
+                  label={`${piece.instancia_id}.${portId}`}
+                  isSelected={isPortA}
+                  onClick={() => handlePortClick(piece.instancia_id, portId)}
+                />
+              );
+            })}
+          </group>
         );
       })}
+
+      {/* P1 marker on the piece of the selected support */}
+      {supportPieceForP1 && (() => {
+        const p1mm = Object.values(supportPieceForP1.puertos)[0]?.posicion_mm as V3 | undefined;
+        return p1mm ? <P1Marker posViewer={toViewer(p1mm)} /> : null;
+      })()}
 
       {layers.supports && entrada.soportes.map((s) => {
         const piece = entrada.piezas.find((p) => p.instancia_id === s.instancia_id);
@@ -162,10 +257,15 @@ export function TrayObjects() {
         if (!len) return null;
         const t = s.distancia_desde_P1_mm / len;
         const q: V3 = [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+        const isSelectedSupport = selectedSupportId === s.soporte_id;
         return (
-          <mesh key={s.soporte_id} position={toViewer(q)}>
+          <mesh
+            key={s.soporte_id}
+            position={toViewer(q)}
+            onClick={(e) => { e.stopPropagation(); selectSupport(s.soporte_id); }}
+          >
             <boxGeometry args={[0.5, 0.12, 0.12]} />
-            <meshBasicMaterial color="#bb77bb" />
+            <meshBasicMaterial color={isSelectedSupport ? '#ffcf33' : '#bb77bb'} />
           </mesh>
         );
       })}

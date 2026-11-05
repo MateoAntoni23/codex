@@ -17,6 +17,7 @@ export interface WorkspaceState {
   // Selection
   selectedEquipId: string | null;
   selectedTrayId: string | null;
+  selectedSupportId: string | null;
 
   // Layer visibility
   layers: Record<LayerKey, boolean>;
@@ -24,6 +25,10 @@ export interface WorkspaceState {
   // File state
   fileName: string | null;
   dirty: boolean;
+
+  // Connection tool state
+  connectionToolActive: boolean;
+  connectionPortA: [string, string] | null; // [instancia_id, puerto_id]
 
   // Equipment actions
   selectEquip: (id: string | null) => void;
@@ -33,11 +38,17 @@ export interface WorkspaceState {
   addEvidence: (ev: FieldEvidence) => void;
   duplicateEquip: (id: string) => void;
 
-  // Tray selection
+  // Tray / support selection
   selectTray: (id: string | null) => void;
+  selectSupport: (id: string | null) => void;
 
   // Layer actions
   toggleLayer: (key: LayerKey) => void;
+
+  // Connection tool
+  activateConnectionTool: () => void;
+  deactivateConnectionTool: () => void;
+  setConnectionPortA: (port: [string, string] | null) => void;
 
   // Import/reset
   loadFile: (elements: EquipmentElement[], evidence: FieldEvidence[], meta: ProjectMeta, fileName: string) => void;
@@ -64,12 +75,16 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   projectMeta: { ...DEFAULT_PROJECT_META },
   selectedEquipId: null,
   selectedTrayId: null,
+  selectedSupportId: null,
   layers: { ...DEFAULT_LAYERS },
   fileName: null,
   dirty: false,
+  connectionToolActive: false,
+  connectionPortA: null,
 
-  selectEquip: (id) => set({ selectedEquipId: id, selectedTrayId: null }),
-  selectTray: (id) => set({ selectedTrayId: id, selectedEquipId: null }),
+  selectEquip: (id) => set({ selectedEquipId: id, selectedTrayId: null, selectedSupportId: null }),
+  selectTray: (id) => set({ selectedTrayId: id, selectedEquipId: null, selectedSupportId: null }),
+  selectSupport: (id) => set({ selectedSupportId: id, selectedEquipId: null, selectedTrayId: null }),
 
   updateElement: (el) =>
     set((s) => ({
@@ -113,6 +128,10 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   toggleLayer: (key) =>
     set((s) => ({ layers: { ...s.layers, [key]: !s.layers[key] } })),
 
+  activateConnectionTool: () => set({ connectionToolActive: true, connectionPortA: null, selectedEquipId: null, selectedTrayId: null, selectedSupportId: null }),
+  deactivateConnectionTool: () => set({ connectionToolActive: false, connectionPortA: null }),
+  setConnectionPortA: (port) => set({ connectionPortA: port }),
+
   loadFile: (elements, evidence, meta, fileName) =>
     set({
       elements:        copyElements(elements),
@@ -122,6 +141,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       dirty:           false,
       selectedEquipId: null,
       selectedTrayId:  null,
+      selectedSupportId: null,
     }),
 
   markDirty: () => set({ dirty: true }),
@@ -134,8 +154,11 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       projectMeta:     { ...DEFAULT_PROJECT_META },
       selectedEquipId: null,
       selectedTrayId:  null,
+      selectedSupportId: null,
       layers:          { ...DEFAULT_LAYERS },
       fileName:        null,
       dirty:           false,
+      connectionToolActive: false,
+      connectionPortA: null,
     }),
 }));

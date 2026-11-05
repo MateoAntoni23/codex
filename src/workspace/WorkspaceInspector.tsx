@@ -3,14 +3,16 @@
  *
  * Equipment selected → EquipmentEditorPanel (full editing with previewEditor/technicalEditor)
  * Tray piece selected → PieceCard (product, dimensions, ports) + TrayResults
- * Nothing selected → placeholder
+ * Support selected → SupportCard (ID, piece, product, system, distance from P1)
+ * Nothing selected → CalcPanel (pre-calc summary + structured results)
  */
 import { useWorkspaceStore } from './useWorkspaceStore';
 import { useTrayStore } from '../tray/store';
 import { EquipmentEditorPanel } from '../preview/EquipmentEditorPanel';
 import { TrayResults } from './TrayResults';
 import { checkDeleteDependencies, duplicateElement } from '../preview/previewCrud';
-import type { Piece } from '../tray/model';
+import type { Piece, Support } from '../tray/model';
+import { object } from '../tray/model';
 
 // ─── Tray piece card ──────────────────────────────────────────────────────────
 
@@ -127,6 +129,103 @@ function PieceCard({ piece }: { piece: Piece }) {
   );
 }
 
+// ─── Support card ─────────────────────────────────────────────────────────────
+
+function SupportCard({ support }: { support: Support }) {
+  const context   = useTrayStore((s) => s.context);
+  const edit      = useTrayStore((s) => s.edit);
+  const entrada   = useTrayStore((s) => s.entrada);
+  const result    = useTrayStore((s) => s.result);
+  const markDirty = useWorkspaceStore((s) => s.markDirty);
+
+  if (!entrada) return null;
+
+  const piece   = entrada.piezas.find((p) => p.instancia_id === support.instancia_id);
+  const product = context?.productos.find((p) => p.producto_id === support.producto_id);
+
+  // Try to find calculated span data in result
+  const soporteResult = result && object(result.soportes)
+    ? (result.soportes as Record<string, unknown>)[support.soporte_id]
+    : Array.isArray(result?.soportes)
+      ? (result.soportes as Record<string, unknown>[]).find((s) => s.soporte_id === support.soporte_id)
+      : null;
+
+  const updateDistancia = (val: number) => {
+    const next = structuredClone(entrada);
+    const idx = next.soportes.findIndex((s) => s.soporte_id === support.soporte_id);
+    if (idx < 0) return;
+    next.soportes[idx].distancia_desde_P1_mm = val;
+    edit(next);
+    markDirty();
+  };
+
+  const handleDelete = () => {
+    if (!confirm(`Eliminar soporte "${support.soporte_id}"?`)) return;
+    const next = structuredClone(entrada);
+    next.soportes = next.soportes.filter((s) => s.soporte_id !== support.soporte_id);
+    edit(next);
+    markDirty();
+  };
+
+  return (
+    <div className="inspector-panel">
+      <div className="inspector-header">
+        <span className="inspector-category">Soporte</span>
+        <span className="inspector-title">{support.soporte_id}</span>
+      </div>
+
+      <div style={{ padding: '4px 12px', fontSize: 11, color: '#8888aa', lineHeight: 1.5 }}>
+        <p style={{ margin: '0 0 6px', color: '#bb99cc' }}>
+          La caja púrpura en el visor marca la <strong>ubicación calculada</strong> del soporte — no es la geometría real del herraje.
+        </p>
+        <div>Pieza: <strong style={{ color: '#c0c0e0' }}>{support.instancia_id}</strong></div>
+        {piece && (
+          <div>Producto pieza: <span style={{ color: '#99aacc' }}>{piece.producto_id}</span></div>
+        )}
+        <div>Producto soporte: <strong style={{ color: '#c0c0e0' }}>{support.producto_id}</strong></div>
+        {product && (
+          <div style={{ color: '#7788aa' }}>{product.descripcion_original}</div>
+        )}
+        <div>Sistema: <span style={{ color: '#99aacc' }}>{support.sistema_soporte_id}</span></div>
+      </div>
+
+      <div className="inspector-field" style={{ padding: '4px 12px' }}>
+        <span className="inspector-label">Distancia desde P1 (mm)</span>
+        <div style={{ fontSize: 10, color: '#666688', marginBottom: 4 }}>
+          P1 es el extremo de referencia de la pieza (marcado en rojo en el visor cuando este soporte está seleccionado).
+        </div>
+        <input
+          type="number"
+          className="inspector-input"
+          style={{ width: 120 }}
+          value={support.distancia_desde_P1_mm}
+          onChange={(e) => updateDistancia(Number(e.target.value))}
+        />
+      </div>
+
+      {object(soporteResult) && (
+        <div style={{ padding: '4px 12px 8px', fontSize: 11 }}>
+          <div style={{ fontWeight: 600, color: '#99ccff', marginBottom: 4 }}>Resultado del cálculo</div>
+          {Object.entries(soporteResult).map(([k, v]) => (
+            <div key={k} style={{ color: '#c0c0e0' }}>
+              {k.replace(/_/g, ' ')}: <span style={{ color: '#aaccff' }}>{String(v)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div style={{ padding: '4px 12px 8px' }}>
+        <button
+          style={{ fontSize: 12, padding: '4px 8px', background: '#8b2222', color: 'white', border: '1px solid #cc3333', borderRadius: 3, cursor: 'pointer' }}
+          onClick={handleDelete}
+        >
+          Eliminar soporte
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ─── Equipment card wrapper (actions + editor) ────────────────────────────────
 
 function EquipmentCard() {
@@ -153,7 +252,6 @@ function EquipmentCard() {
   const handleDuplicate = () => {
     if (!element) return;
     const { duplicate, provenance } = duplicateElement(element, elements);
-    // Add with evidence (provenance)
     useWorkspaceStore.setState((s) => ({
       elements: [...s.elements, duplicate],
       evidence: [...s.evidence, provenance],
@@ -185,14 +283,64 @@ function EquipmentCard() {
   );
 }
 
+// ─── Calc panel (shown when nothing is selected) ──────────────────────────────
+
+function CalcPanel() {
+  const entrada  = useTrayStore((s) => s.entrada);
+  const result   = useTrayStore((s) => s.result);
+  const status   = useTrayStore((s) => s.status);
+  const calculate = useTrayStore((s) => s.calculate);
+
+  const nPiezas     = entrada?.piezas.length ?? 0;
+  const nConexiones = entrada?.conexiones.length ?? 0;
+  const nCircuitos  = entrada?.circuitos.length ?? 0;
+  const nSoportes   = entrada?.soportes.length ?? 0;
+  const cableId     = entrada?.pe.cable_id ?? '—';
+
+  return (
+    <div style={{ padding: '0 0 8px' }}>
+      <div style={{ padding: '8px 12px 4px', borderBottom: '1px solid #2a2e44' }}>
+        <div style={{ fontSize: 12, fontWeight: 600, color: '#99aadd', marginBottom: 6 }}>Resumen del trazado</div>
+        <table style={{ fontSize: 11, color: '#c0c0d8', width: '100%', borderCollapse: 'collapse' }}>
+          <tbody>
+            <tr><td style={{ color: '#8888aa', paddingBottom: 2 }}>Piezas</td><td style={{ textAlign: 'right' }}>{nPiezas}</td></tr>
+            <tr><td style={{ color: '#8888aa', paddingBottom: 2 }}>Conexiones</td><td style={{ textAlign: 'right' }}>{nConexiones}</td></tr>
+            <tr><td style={{ color: '#8888aa', paddingBottom: 2 }}>Circuitos</td><td style={{ textAlign: 'right' }}>{nCircuitos}</td></tr>
+            <tr><td style={{ color: '#8888aa', paddingBottom: 2 }}>Soportes</td><td style={{ textAlign: 'right' }}>{nSoportes}</td></tr>
+            <tr><td style={{ color: '#8888aa', paddingBottom: 2 }}>Cable PE</td><td style={{ textAlign: 'right', fontSize: 10 }}>{cableId}</td></tr>
+          </tbody>
+        </table>
+        <p style={{ fontSize: 10, color: '#555577', marginTop: 6, lineHeight: 1.4 }}>
+          El motor verifica: ocupación por boca, selección de PE equipotencial, cómputo de materiales y vanos entre soportes.<br />
+          No verifica: eléctricamente circuitos, resistencia mecánica, ni normativa de instalación.
+        </p>
+        <button
+          style={{ marginTop: 6, padding: '5px 12px', fontSize: 12, background: '#3c6633', color: 'white', border: '1px solid #55aa44', borderRadius: 3, cursor: 'pointer', width: '100%' }}
+          onClick={() => void calculate()}
+          disabled={status === 'calculando'}
+        >
+          {status === 'calculando' ? 'Calculando…' : 'Calcular trazado'}
+        </button>
+        {result && status !== 'vigente' && (
+          <p style={{ fontSize: 10, color: '#ff9955', marginTop: 4 }}>Resultado no vigente — recalcular tras los últimos cambios.</p>
+        )}
+      </div>
+
+      <TrayResults />
+    </div>
+  );
+}
+
 // ─── Main inspector ───────────────────────────────────────────────────────────
 
 export function WorkspaceInspector() {
-  const selectedEquipId = useWorkspaceStore((s) => s.selectedEquipId);
-  const selectedTrayId  = useWorkspaceStore((s) => s.selectedTrayId);
-  const entrada         = useTrayStore((s) => s.entrada);
+  const selectedEquipId   = useWorkspaceStore((s) => s.selectedEquipId);
+  const selectedTrayId    = useWorkspaceStore((s) => s.selectedTrayId);
+  const selectedSupportId = useWorkspaceStore((s) => s.selectedSupportId);
+  const entrada           = useTrayStore((s) => s.entrada);
 
-  const piece = selectedTrayId ? entrada?.piezas.find((p) => p.instancia_id === selectedTrayId) : null;
+  const piece   = selectedTrayId    ? entrada?.piezas.find((p) => p.instancia_id === selectedTrayId)        : null;
+  const support = selectedSupportId ? entrada?.soportes.find((s) => s.soporte_id === selectedSupportId)    : null;
 
   return (
     <div className="panel panel-right" style={{ overflow: 'auto' }}>
@@ -202,18 +350,10 @@ export function WorkspaceInspector() {
         <EquipmentCard />
       ) : piece ? (
         <PieceCard piece={piece} />
+      ) : support ? (
+        <SupportCard support={support} />
       ) : (
-        <>
-          <p style={{ padding: 12, color: '#666688', fontSize: 12 }}>
-            Seleccioná un equipo o una pieza de bandeja.
-          </p>
-          <details style={{ margin: '4px 0' }}>
-            <summary style={{ padding: '4px 12px', fontSize: 12, cursor: 'pointer', fontWeight: 600, background: '#1f2235' }}>
-              Resultados del trazado
-            </summary>
-            <TrayResults />
-          </details>
-        </>
+        <CalcPanel />
       )}
     </div>
   );

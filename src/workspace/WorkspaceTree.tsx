@@ -1,5 +1,6 @@
 import { useWorkspaceStore, type LayerKey } from './useWorkspaceStore';
 import { useTrayStore } from '../tray/store';
+import { WorkspaceLegend } from './WorkspaceLegend';
 import type { Category } from '../types/domain-v2';
 
 const LAYER_LABELS: Record<LayerKey, string> = {
@@ -25,6 +26,139 @@ const CATEGORY_LABEL: Record<Category, string> = {
   manifold:         'Manifolds',
   infrastructure:   'Infraestructura',
 };
+
+// ─── Guide / checklist ────────────────────────────────────────────────────────
+
+function GuideStep({ done, label, hint }: { done: boolean; label: string; hint?: string }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, padding: '3px 0', fontSize: 11 }}>
+      <span style={{ color: done ? '#55cc66' : '#886644', fontSize: 14, lineHeight: '14px', flexShrink: 0 }}>
+        {done ? '✓' : '○'}
+      </span>
+      <div>
+        <span style={{ color: done ? '#99ddaa' : '#ccaa88' }}>{label}</span>
+        {hint && <div style={{ fontSize: 10, color: '#666688', marginTop: 1 }}>{hint}</div>}
+      </div>
+    </div>
+  );
+}
+
+function WorkspaceGuide() {
+  const entrada = useTrayStore((s) => s.entrada);
+  const status  = useTrayStore((s) => s.status);
+  const result  = useTrayStore((s) => s.result);
+
+  const piezas     = entrada?.piezas ?? [];
+  const conexiones = entrada?.conexiones ?? [];
+  const circuitos  = entrada?.circuitos ?? [];
+  const soportes   = entrada?.soportes ?? [];
+  const cableId    = entrada?.pe.cable_id ?? '';
+
+  const pasoTrazado    = piezas.length > 0;
+  const pasoConexiones = conexiones.length > 0;
+  const pasoCables     = circuitos.some((c) => c.recorrido.length > 0 && c.cable_id);
+  const pasoSoportes   = soportes.length > 0 && cableId !== '';
+  const pasoCalcular   = status === 'vigente' && result != null;
+  const pasoPendientes = pasoCalcular && (() => {
+    if (!result) return false;
+    const r = result as Record<string, unknown>;
+    const resumen = r.resumen as Record<string, unknown> | undefined;
+    if (!resumen) return false;
+    const estado = String(resumen.estado_trazado ?? '');
+    return estado === 'LISTO' || estado === 'ADVERTENCIAS';
+  })();
+
+  return (
+    <details style={{ margin: '0 0 4px' }} open>
+      <summary style={{ padding: '4px 12px', fontSize: 12, cursor: 'pointer', fontWeight: 600, background: '#1f2235', userSelect: 'none' }}>
+        Guía de trabajo
+      </summary>
+      <div style={{ padding: '6px 12px 8px', borderBottom: '1px solid #2a2e44' }}>
+        <GuideStep done={pasoTrazado} label="1. Trazado — definir piezas" hint={pasoTrazado ? `${piezas.length} piezas` : 'Importá un trazado o cargá el motor'} />
+        <GuideStep done={pasoConexiones} label="2. Conexiones entre piezas" hint={pasoConexiones ? `${conexiones.length} conexiones` : 'Usá "Conectar piezas" en la sección Conexiones'} />
+        <GuideStep done={pasoCables} label="3. Cables por circuito" hint={!pasoCables ? 'Asigná cable y recorrido en cada circuito' : undefined} />
+        <GuideStep done={pasoSoportes} label="4. Soportes y cable PE" hint={!pasoSoportes ? 'Definí soportes y seleccioná cable PE' : `${soportes.length} soportes · PE: ${cableId}`} />
+        <GuideStep done={pasoCalcular} label="5. Calcular trazado" hint={!pasoCalcular ? 'Presioná "Calcular trazado" en el inspector' : 'Resultado vigente'} />
+        <GuideStep done={pasoPendientes} label="6. Revisar pendientes" hint={!pasoPendientes ? 'Revisá el resultado en el inspector' : 'Sin pendientes críticos'} />
+      </div>
+    </details>
+  );
+}
+
+// ─── Connections section ──────────────────────────────────────────────────────
+
+function ConnectionsSection() {
+  const connectionToolActive = useWorkspaceStore((s) => s.connectionToolActive);
+  const connectionPortA      = useWorkspaceStore((s) => s.connectionPortA);
+  const activateConnectionTool   = useWorkspaceStore((s) => s.activateConnectionTool);
+  const deactivateConnectionTool = useWorkspaceStore((s) => s.deactivateConnectionTool);
+  const markDirty = useWorkspaceStore((s) => s.markDirty);
+
+  const entrada  = useTrayStore((s) => s.entrada);
+  const trayEdit = useTrayStore((s) => s.edit);
+
+  const conexiones = entrada?.conexiones ?? [];
+
+  const removeConexion = (id: string) => {
+    if (!entrada) return;
+    if (!confirm(`Eliminar conexión "${id}"?`)) return;
+    const next = structuredClone(entrada);
+    next.conexiones = next.conexiones.filter((c) => c.conexion_id !== id);
+    trayEdit(next);
+    markDirty();
+  };
+
+  return (
+    <section className="workspace-tree-section">
+      <h4>Conexiones</h4>
+
+      {connectionToolActive ? (
+        <div style={{ padding: '4px 0', fontSize: 11 }}>
+          <div style={{ color: '#99ddff', marginBottom: 4 }}>
+            {!connectionPortA
+              ? 'Hacé clic en un puerto (esferas) para seleccionar el primer extremo.'
+              : `Puerto A: ${connectionPortA[0]}.${connectionPortA[1]} — Hacé clic en otro puerto.`}
+          </div>
+          <button
+            style={{ fontSize: 11, padding: '3px 8px', background: '#6b4422', color: 'white', border: '1px solid #aa6633', borderRadius: 3, cursor: 'pointer' }}
+            onClick={() => deactivateConnectionTool()}
+          >
+            Cancelar
+          </button>
+        </div>
+      ) : (
+        <button
+          className="workspace-tree-item"
+          style={{ marginBottom: 4, background: '#2a3a55', border: '1px solid #4455aa', width: '100%', textAlign: 'left' }}
+          onClick={() => activateConnectionTool()}
+        >
+          + Conectar piezas
+        </button>
+      )}
+
+      {conexiones.length === 0 && !connectionToolActive && (
+        <p className="workspace-empty">Sin conexiones definidas</p>
+      )}
+
+      {conexiones.map((c) => (
+        <div key={c.conexion_id} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '2px 0', fontSize: 11 }}>
+          <span style={{ flex: 1, color: '#c0c0d8' }}>
+            {c.a[0]}.{c.a[1]} ↔ {c.b[0]}.{c.b[1]}
+          </span>
+          <span style={{ color: '#666688', fontSize: 10 }}>{c.conexion_id}</span>
+          <button
+            style={{ fontSize: 10, padding: '1px 5px', background: '#6b2222', color: 'white', border: '1px solid #aa3333', borderRadius: 2, cursor: 'pointer' }}
+            onClick={() => removeConexion(c.conexion_id)}
+          >
+            ×
+          </button>
+        </div>
+      ))}
+    </section>
+  );
+}
+
+// ─── Main tree ────────────────────────────────────────────────────────────────
 
 export function WorkspaceTree() {
   const elements        = useWorkspaceStore((s) => s.elements);
@@ -52,6 +186,12 @@ export function WorkspaceTree() {
 
   return (
     <nav className="workspace-tree">
+      {/* Legend */}
+      <WorkspaceLegend />
+
+      {/* Guide checklist */}
+      <WorkspaceGuide />
+
       {/* Layer toggles */}
       <section className="workspace-tree-section">
         <h4>Capas</h4>
@@ -100,6 +240,9 @@ export function WorkspaceTree() {
         ))}
         {!entrada && <p className="workspace-empty">Motor no conectado</p>}
       </section>
+
+      {/* Connections tool */}
+      <ConnectionsSection />
 
       {/* Circuits */}
       {entrada && (

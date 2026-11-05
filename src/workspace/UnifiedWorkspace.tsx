@@ -9,16 +9,23 @@ import { WorkspaceInspector } from './WorkspaceInspector';
 import { exportWorkspace, importWorkspace, extractMeta } from './workspaceFile';
 
 function StatusBar() {
-  const status   = useTrayStore((s) => s.status);
-  const revision = useTrayStore((s) => s.revision);
-  const error    = useTrayStore((s) => s.error);
-  const dirty    = useWorkspaceStore((s) => s.dirty);
-  const fileName = useWorkspaceStore((s) => s.fileName);
+  const status               = useTrayStore((s) => s.status);
+  const revision             = useTrayStore((s) => s.revision);
+  const error                = useTrayStore((s) => s.error);
+  const dirty                = useWorkspaceStore((s) => s.dirty);
+  const fileName             = useWorkspaceStore((s) => s.fileName);
+  const connectionToolActive = useWorkspaceStore((s) => s.connectionToolActive);
+  const connectionPortA      = useWorkspaceStore((s) => s.connectionPortA);
 
   return (
     <div className="workspace-status" role="status">
       <span>Motor: <strong>{status}</strong> · rev {revision}</span>
       {fileName && <span> · {fileName}</span>}
+      {connectionToolActive && (
+        <span style={{ color: '#00ffcc', fontWeight: 600 }}>
+          {' '}● Herramienta de conexión activa — {connectionPortA ? `A: ${connectionPortA[0]}.${connectionPortA[1]} → hacé clic en puerto B` : 'Hacé clic en un puerto (esferas)'}
+        </span>
+      )}
       {dirty && <span className="workspace-dirty"> ● cambios sin guardar</span>}
       {error && <span className="workspace-error"> ⚠ {error}</span>}
     </div>
@@ -120,8 +127,15 @@ export function UnifiedWorkspace() {
     markDirty();
   }, [trayRevision, markDirty]);
 
+  const connectionToolActive     = useWorkspaceStore((s) => s.connectionToolActive);
+  const deactivateConnectionTool = useWorkspaceStore((s) => s.deactivateConnectionTool);
+  const selectSupport            = useWorkspaceStore((s) => s.selectSupport);
+  const selectedSupportId        = useWorkspaceStore((s) => s.selectedSupportId);
+
   const clearAll = () => {
+    if (connectionToolActive) { deactivateConnectionTool(); return; }
     if (selectedEquipId) selectEquip(null);
+    else if (selectedSupportId) selectSupport(null);
     else selectTray(null);
   };
 
