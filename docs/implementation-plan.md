@@ -1,7 +1,7 @@
 # Plan de implementación — Diseñador de Bandejas Portacables 3D
 
 > **Estado del documento:** activo  
-> **Última actualización:** 2026-11-04  
+> **Última actualización:** 2026-11-05  
 > **Referencia:** `docs/product-requirements.md`
 
 ---
@@ -21,6 +21,12 @@
 | M1b-base | `13b232e` | 298 | API transaccional de respaldo para migración v1→v2 (no activada) |
 | M1b-audit-1 | `e661160` | 310 | Auditoría: restauraciones únicas, recoverabilidad de desplazados, atomicidad, coordinación |
 | M1b-audit-2 | `4e43abc` | 310 | Atomicidad precisa: aborto desde onsuccess real del primer write ✅ auditado |
+
+## Entregas completadas en la rama `feat/v2-persistence-foundation`
+
+| Entrega | Commit | Tests | Descripción |
+|---|---|---|---|
+| I1 | pendiente | 339 | Persistencia v3 (CONFIG_STORE), pauseAndFlush, bloqueo de edición, versionchange |
 
 ### M1b — Respaldo transaccional y recuperación para migración v1→v2
 
@@ -123,11 +129,12 @@ Base: `feat/project-save-load` @ `fd9872b`
 | A  | Árbol de escena por categorías contraíbles con contadores | `57cf161` |
 
 ### Cobertura de pruebas actual
-- **310 pruebas** distribuidas en 13 archivos de test.
+- **339 pruebas** distribuidas en 13 archivos de test.
 - Unitarias: conversión de coordenadas, validación v1/v2, migración v1→v2, IndexedDB (fake-indexeddb).
-- Integración: store Zustand, auto-save con timers simulados, identidad de sesión.
+- Integración: store Zustand, auto-save con timers simulados, identidad de sesión, pauseAndFlush.
 - Interacción (jsdom): Inspector, OriginPanel, ProjectActions, SceneTree.
 - v2 test breakdown: 72 casos en `validate-v2.test.ts`; 21 casos en `migrate-v1-to-v2.test.ts`; 40 casos en `migration-backup.test.ts`.
+- I1 test breakdown: 15 casos en `db.test.ts` (upgrade v3, readActiveFormat, saveV2ProjectToDb, versionchange); 29 casos en `projectManager.test.ts` (pauseAndFlush, resumeAutoSave, bloqueo de edición).
 
 ---
 
@@ -209,6 +216,67 @@ ruta de recuperación si la migración falla.
 **Activación de v2:** solo cuando visor, inspector y persistencia puedan
 trabajar conjuntamente con v2, o cuando exista un adaptador validado que
 permita a los componentes existentes leer v2 sin regresiones.
+
+---
+
+---
+
+### I1 — Persistencia v3 y pausa segura del guardado
+
+**Rama:** `feat/v2-persistence-foundation`  
+**Objetivo:** preparar la capa de persistencia y el mecanismo de pausa necesarios para la activación posterior de v2. La aplicación sigue leyendo y escribiendo `schemaVersion=1`; v2 no se activa.
+
+#### Distinción crítica: DB_VERSION=3 ≠ activación de v2
+
+| Concepto | Valor | Significado |
+|---|---|---|
+| `DB_VERSION` en `db.ts` | `3` | Upgrade estructural: agrega `CONFIG_STORE`. No activa v2. |
+| `config/active-format` ausente | `null` | Formato activo = v1 (sin entrada = v1). |
+| `config/active-format.version = 2` | solo escritura por I_act | Activación real de v2 (fuera de alcance de I1). |
+
+#### API pública nueva (`src/persistence/db.ts`)
+
+| Función / Tipo | Descripción |
+|---|---|
+| `CONFIG_STORE = 'config'` | Store de metadatos de formato activo (nuevo en v3). |
+| `ActiveFormatMetadata` | `{ version: 2; generation: number }` — ausencia = v1. |
+| `V2WriteError` | Error tipado con `code: V2WriteErrorCode`. |
+| `readActiveFormat()` | Lee metadatos; `null` = v1 activo. |
+| `readV2ProjectFromDb()` | Lee el proyecto v2 preparado (store `project-v2`). |
+| `saveV2ProjectToDb(data, gen)` | Escribe v2 con check de formato+generación en la misma tx. |
+| `registerVersionChangeListener(cb)` | Registra callback para evento `versionchange`; retorna unsub. |
+
+#### API pública nueva (`src/persistence/projectManager.ts`)
+
+| Función | Descripción |
+|---|---|
+| `pauseAndFlush(store)` | Bloquea edición, cancela timer, espera writes en vuelo, persiste snapshot, resuelve con snapshot confirmado. |
+| `resumeAutoSave(store)` | Desbloquea edición, reinstala suscripción de auto-save. |
+
+#### API pública nueva (`src/store/sceneStore.ts`)
+
+| Campo / Acción | Descripción |
+|---|---|
+| `editingBlocked: boolean` | true mientras pauseAndFlush está activo. |
+| `setEditingBlocked(blocked)` | Bloquea/desbloquea; usado por projectManager. |
+| `updateObjectPosition`, `setProjectOrigin`, `hydrateProject` | No-op cuando `editingBlocked = true`. |
+
+#### Garantías de pauseAndFlush
+
+1. `_paused` se establece antes de cualquier await; segunda llamada concurrente rechaza inmediatamente.
+2. Cancela el temporizador de debounce sin descartar la memoria.
+3. Espera la escritura de auto-save en vuelo (`_inflightWritePromise`) antes del flush final.
+4. Si falla: conserva memoria en el store; editor queda bloqueado hasta `resumeAutoSave`.
+5. `cancel()` del ciclo de initProject resetea `_paused` y desbloquea el editor para la próxima sesión.
+6. Una sesión cancelada no modifica el estado de la sesión posterior.
+
+#### Limitaciones conocidas de I1
+
+- `pauseAndFlush` no está conectado a ningún botón ni al inicio de la aplicación.
+- `registerVersionChangeListener` está disponible pero no conectado al store; projectManager no lo llama todavía.
+- `saveV2ProjectToDb` requiere que v2 esté activo (I_act); en I1 siempre rechazará con `FORMAT_NOT_ACTIVE`.
+- Downgrade (v2→v1 activo) está fuera de alcance.
+- Clientes antiguos sin controles de generación: requieren cierre/recarga. `BroadcastChannel` es solo notificación.
 
 ---
 

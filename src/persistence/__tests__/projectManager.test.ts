@@ -17,6 +17,8 @@ import {
   importProject,
   resetProject,
   recoverProject,
+  pauseAndFlush,
+  resumeAutoSave,
   _resetSaveGeneration,
   _resetInitialized,
 } from '../projectManager';
@@ -45,6 +47,7 @@ function resetStore() {
     projectOrigin: { x: 0, y: 0, z: 0 },
     saveStatus: 'loading',
     saveError: null,
+    editingBlocked: false,
   });
 }
 
@@ -741,5 +744,375 @@ describe('recoverProject — identidad de sesión', () => {
 
     const resultA = await recoveryA;
     expect(resultA.ok).toBe(false);
+  });
+});
+
+// ─── pauseAndFlush — flush de edición pendiente en debounce ──────────────────
+
+describe('pauseAndFlush — flush conserva edición pendiente del debounce', () => {
+  it('captura y guarda una edición cuyo timer todavía no disparó', async () => {
+    vi.useFakeTimers();
+    mockLoad.mockResolvedValue(null);
+    await init({});
+
+    useSceneStore.getState().updateObjectPosition('panel-1', { x: 999, y: 888, z: 1000 });
+    // Timer aún no disparó (debounce 1s)
+    expect(mockSave).not.toHaveBeenCalled();
+
+    const snapshot = await pauseAndFlush(useSceneStore);
+
+    // El flush guardó la edición
+    expect(mockSave).toHaveBeenCalledOnce();
+    expect(snapshot.objects.find((o) => o.id === 'panel-1')?.position).toEqual({
+      x: 999, y: 888, z: 1000,
+    });
+
+    // Lo que se guardó en DB también tiene la edición
+    const saved = mockSave.mock.calls[0][0] as ProjectData;
+    expect(saved.objects.find((o) => o.id === 'panel-1')?.position.x).toBe(999);
+  });
+
+  it('el snapshot retornado es el estado real de memoria', async () => {
+    vi.useFakeTimers();
+    mockLoad.mockResolvedValue(null);
+    await init({});
+
+    useSceneStore.getState().setProjectOrigin({ x: 100, y: 200, z: 0 });
+    useSceneStore.getState().updateObjectPosition('panel-1', { x: 50, y: 60, z: 1000 });
+
+    const snapshot = await pauseAndFlush(useSceneStore);
+
+    expect(snapshot.projectOrigin).toEqual({ x: 100, y: 200, z: 0 });
+    expect(snapshot.objects.find((o) => o.id === 'panel-1')?.position).toEqual({
+      x: 50, y: 60, z: 1000,
+    });
+  });
+});
+
+// ─── pauseAndFlush — espera escrituras en vuelo ───────────────────────────────
+
+describe('pauseAndFlush — espera escrituras demoradas anteriores', () => {
+  it('aguarda la escritura de auto-save ya iniciada antes de hacer el flush', async () => {
+    vi.useFakeTimers();
+
+    let resolveAutoSave!: () => void;
+    // Primera llamada a saveProjectToDb (auto-save): queda pendiente
+    mockSave
+      .mockReturnValueOnce(new Promise<void>((r) => { resolveAutoSave = r; }))
+      .mockResolvedValue(undefined);
+
+    mockLoad.mockResolvedValue(null);
+    await init({});
+
+    // Disparar auto-save y avanzar el timer para que comience la escritura
+    useSceneStore.getState().updateObjectPosition('panel-1', { x: 1, y: 2, z: 1000 });
+    await vi.advanceTimersByTimeAsync(1100); // timer dispara, write en vuelo
+
+    expect(mockSave).toHaveBeenCalledOnce(); // escritura 1 iniciada pero pendiente
+
+    // pauseAndFlush debe esperar la escritura en vuelo
+    let flushResolved = false;
+    const flushPromise = pauseAndFlush(useSceneStore).then((s) => {
+      flushResolved = true;
+      return s;
+    });
+
+    // Flush no resolvió aún (esperando la escritura del auto-save)
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(flushResolved).toBe(false);
+
+    // Completar la escritura del auto-save
+    resolveAutoSave();
+    await flushPromise;
+
+    expect(flushResolved).toBe(true);
+    // Dos escrituras: auto-save + flush
+    expect(mockSave).toHaveBeenCalledTimes(2);
+  });
+
+  it('si la escritura en vuelo falla, el flush procede igualmente', async () => {
+    vi.useFakeTimers();
+
+    let rejectAutoSave!: (e: Error) => void;
+    mockSave
+      .mockReturnValueOnce(new Promise<void>((_, r) => { rejectAutoSave = r; }))
+      .mockResolvedValue(undefined);
+
+    mockLoad.mockResolvedValue(null);
+    await init({});
+
+    useSceneStore.getState().updateObjectPosition('panel-1', { x: 5, y: 6, z: 1000 });
+    await vi.advanceTimersByTimeAsync(1100);
+    expect(mockSave).toHaveBeenCalledOnce();
+
+    const flushPromise = pauseAndFlush(useSceneStore);
+
+    // Falla la escritura del auto-save
+    rejectAutoSave(new Error('disco lleno'));
+    const snapshot = await flushPromise;
+
+    // Flush completó de todas formas (segunda llamada)
+    expect(mockSave).toHaveBeenCalledTimes(2);
+    expect(snapshot).toBeDefined();
+  });
+});
+
+// ─── pauseAndFlush — fallo conserva memoria ──────────────────────────────────
+
+describe('pauseAndFlush — fallo conserva memoria y permite recuperación', () => {
+  it('si el flush falla, el store no cambia y editingBlocked sigue true', async () => {
+    vi.useFakeTimers();
+    mockLoad.mockResolvedValue(null);
+    await init({});
+
+    useSceneStore.getState().updateObjectPosition('panel-1', { x: 77, y: 88, z: 1000 });
+    const stateBefore = useSceneStore.getState().objects.find((o) => o.id === 'panel-1')?.position;
+
+    mockSave.mockRejectedValue(new Error('sin espacio'));
+
+    await expect(pauseAndFlush(useSceneStore)).rejects.toThrow('sin espacio');
+
+    // Memoria intacta
+    const stateAfter = useSceneStore.getState().objects.find((o) => o.id === 'panel-1')?.position;
+    expect(stateAfter).toEqual(stateBefore);
+
+    // Editor queda bloqueado (caller debe llamar resumeAutoSave)
+    expect(useSceneStore.getState().editingBlocked).toBe(true);
+  });
+
+  it('exportProject puede exportar el estado en memoria tras un fallo de flush', () => {
+    useSceneStore.getState().updateObjectPosition('panel-1', { x: 42, y: 0, z: 1000 });
+
+    // Simulamos que editingBlocked es true (pausa activa)
+    useSceneStore.getState().setEditingBlocked(true);
+
+    const clicks: string[] = [];
+    const originalCreate = document.createElement.bind(document);
+    vi.spyOn(document, 'createElement').mockImplementation((tag: string) => {
+      const el = originalCreate(tag);
+      if (tag === 'a') vi.spyOn(el as HTMLAnchorElement, 'click').mockImplementation(() => { clicks.push('clicked'); });
+      return el;
+    });
+    vi.stubGlobal('URL', {
+      createObjectURL: vi.fn().mockReturnValue('blob:fake'),
+      revokeObjectURL: vi.fn(),
+    });
+
+    exportProject(useSceneStore);
+    expect(clicks).toHaveLength(1); // exportación completó a pesar del bloqueo
+
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+    useSceneStore.getState().setEditingBlocked(false);
+  });
+});
+
+// ─── pauseAndFlush — cancelación/reanudación sin duplicar suscripciones ──────
+
+describe('pauseAndFlush — cancelación/reanudación no duplica suscripciones', () => {
+  it('después de resumeAutoSave hay exactamente una suscripción activa', async () => {
+    vi.useFakeTimers();
+    mockLoad.mockResolvedValue(null);
+    mockSave.mockResolvedValue(undefined);
+    await init({});
+
+    // Pausa y luego reanuda
+    await pauseAndFlush(useSceneStore);
+    resumeAutoSave(useSceneStore);
+
+    // Reset generación para contar limpias
+    _resetSaveGeneration();
+    mockSave.mockClear();
+
+    useSceneStore.getState().updateObjectPosition('panel-1', { x: 10, y: 10, z: 1000 });
+    await vi.advanceTimersByTimeAsync(1100);
+
+    // Solo un save (no duplicado)
+    expect(mockSave).toHaveBeenCalledOnce();
+  });
+
+  it('múltiples ciclos pause/resume no acumulan suscripciones', async () => {
+    vi.useFakeTimers();
+    mockLoad.mockResolvedValue(null);
+    mockSave.mockResolvedValue(undefined);
+    await init({});
+
+    for (let i = 0; i < 3; i++) {
+      await pauseAndFlush(useSceneStore);
+      resumeAutoSave(useSceneStore);
+    }
+
+    _resetSaveGeneration();
+    mockSave.mockClear();
+
+    useSceneStore.getState().updateObjectPosition('panel-1', { x: 20, y: 20, z: 1000 });
+    await vi.advanceTimersByTimeAsync(1100);
+
+    expect(mockSave).toHaveBeenCalledOnce();
+  });
+});
+
+// ─── pauseAndFlush — bloqueo de modificaciones ───────────────────────────────
+
+describe('pauseAndFlush — bloquea modificaciones durante la pausa', () => {
+  it('updateObjectPosition es no-op cuando editingBlocked=true', async () => {
+    vi.useFakeTimers();
+    mockLoad.mockResolvedValue(null);
+    mockSave.mockResolvedValue(undefined);
+    await init({});
+
+    const before = useSceneStore.getState().objects.find((o) => o.id === 'panel-1')?.position.x;
+
+    await pauseAndFlush(useSceneStore);
+    // Editor bloqueado
+    useSceneStore.getState().updateObjectPosition('panel-1', { x: 9999, y: 0, z: 1000 });
+
+    const after = useSceneStore.getState().objects.find((o) => o.id === 'panel-1')?.position.x;
+    expect(after).toBe(before); // no cambió
+  });
+
+  it('setProjectOrigin es no-op cuando editingBlocked=true', async () => {
+    vi.useFakeTimers();
+    mockLoad.mockResolvedValue(null);
+    mockSave.mockResolvedValue(undefined);
+    await init({});
+
+    await pauseAndFlush(useSceneStore);
+    useSceneStore.getState().setProjectOrigin({ x: 5000, y: 5000, z: 0 });
+
+    expect(useSceneStore.getState().projectOrigin).toEqual({ x: 0, y: 0, z: 0 });
+  });
+
+  it('importProject rechaza con error cuando el editor está en pausa', async () => {
+    vi.useFakeTimers();
+    mockLoad.mockResolvedValue(null);
+    mockSave.mockResolvedValue(undefined);
+    await init({});
+
+    await pauseAndFlush(useSceneStore);
+
+    const result = await importProject(
+      useSceneStore,
+      makeFile(JSON.stringify(SAVED_PROJECT)),
+      () => true,
+    );
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error).toMatch(/pausa/);
+  });
+
+  it('resetProject es no-op cuando el editor está en pausa', async () => {
+    vi.useFakeTimers();
+    mockLoad.mockResolvedValue(null);
+    mockSave.mockResolvedValue(undefined);
+    await init({});
+
+    const originalIds = useSceneStore.getState().objects.map((o) => o.id);
+    useSceneStore.getState().updateObjectPosition('panel-1', { x: 1234, y: 0, z: 1000 });
+
+    await pauseAndFlush(useSceneStore);
+
+    resetProject(useSceneStore, () => true);
+
+    // Objetos no fueron restablecidos
+    expect(useSceneStore.getState().objects.map((o) => o.id)).toEqual(originalIds);
+  });
+
+  it('recoverProject rechaza con error cuando el editor está en pausa', async () => {
+    mockLoad.mockResolvedValue(null);
+    mockSave.mockResolvedValue(undefined);
+    await init({});
+
+    await pauseAndFlush(useSceneStore); // activa _paused = true
+
+    const result = await recoverProject(
+      useSceneStore,
+      makeFile(JSON.stringify(SAVED_PROJECT)),
+      () => true,
+    );
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error).toMatch(/pausa/);
+  });
+});
+
+// ─── pauseAndFlush — sesión cancelada no afecta sesión posterior ──────────────
+
+describe('pauseAndFlush — sesión cancelada no modifica sesión posterior', () => {
+  it('cancel durante flush no deja al editor bloqueado en la nueva sesión', async () => {
+    vi.useFakeTimers();
+    let resolveFlushSave!: () => void;
+    mockLoad.mockResolvedValue(null);
+    // Primera llamada (flush): queda pendiente; segunda (auto-save): resuelve rápido
+    mockSave
+      .mockReturnValueOnce(new Promise<void>((r) => { resolveFlushSave = r; }))
+      .mockResolvedValue(undefined);
+
+    const { cancel, ready } = initProject(useSceneStore);
+    await ready;
+
+    const flushPromise = pauseAndFlush(useSceneStore);
+
+    // Cancel durante el flush (sesión A termina)
+    cancel();
+
+    // Nueva sesión B comienza
+    mockLoad.mockResolvedValue(null);
+    const { ready: readyB } = initProject(useSceneStore);
+    await readyB;
+
+    // Sesión B: editor NO bloqueado
+    expect(useSceneStore.getState().editingBlocked).toBe(false);
+
+    // Completar el flush de sesión A (write ya enviado a IDB, no se puede cancelar)
+    resolveFlushSave();
+    await flushPromise.catch(() => {}); // sesión A rechaza por session check o resuelve
+
+    // Sesión B sigue sin bloqueo
+    expect(useSceneStore.getState().editingBlocked).toBe(false);
+  });
+});
+
+// ─── pauseAndFlush — segunda llamada concurrente rechaza ─────────────────────
+
+describe('pauseAndFlush — segunda llamada concurrente rechaza inmediatamente', () => {
+  it('segunda llamada sin resume previo recibe rechazo', async () => {
+    vi.useFakeTimers();
+    mockLoad.mockResolvedValue(null);
+    mockSave.mockResolvedValue(undefined);
+    await init({});
+
+    const first = pauseAndFlush(useSceneStore);
+    const second = pauseAndFlush(useSceneStore);
+
+    await expect(second).rejects.toThrow(/en curso/);
+    await first; // limpieza
+
+    resumeAutoSave(useSceneStore);
+  });
+});
+
+// ─── resumeAutoSave — reanuda auto-save normalmente ──────────────────────────
+
+describe('resumeAutoSave — reanuda el auto-save y desbloquea el editor', () => {
+  it('después del resume, una edición activa el auto-save', async () => {
+    vi.useFakeTimers();
+    mockLoad.mockResolvedValue(null);
+    mockSave.mockResolvedValue(undefined);
+    await init({});
+
+    await pauseAndFlush(useSceneStore);
+    expect(useSceneStore.getState().editingBlocked).toBe(true);
+
+    resumeAutoSave(useSceneStore);
+    expect(useSceneStore.getState().editingBlocked).toBe(false);
+
+    _resetSaveGeneration();
+    mockSave.mockClear();
+
+    useSceneStore.getState().updateObjectPosition('panel-1', { x: 500, y: 500, z: 1000 });
+    await vi.advanceTimersByTimeAsync(1100);
+
+    expect(mockSave).toHaveBeenCalledOnce();
+    expect(useSceneStore.getState().saveStatus).toBe('saved');
   });
 });
