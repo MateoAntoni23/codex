@@ -62,7 +62,7 @@ describe('usePreviewStore — aislamiento de persistencia', () => {
     const actions = Object.keys(state).filter(
       (k) => typeof (state as unknown as Record<string, unknown>)[k] === 'function',
     );
-    expect(actions.sort()).toEqual(['addEvidence', 'clearSelection', 'resetElements', 'select', 'updateElement']);
+    expect(actions.sort()).toEqual(['addElement', 'addEvidence', 'clearSelection', 'removeElement', 'resetElements', 'select', 'updateElement']);
   });
 });
 

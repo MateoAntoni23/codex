@@ -24,6 +24,8 @@ interface PreviewState {
   select: (id: string) => void;
   clearSelection: () => void;
   updateElement: (updated: EquipmentElement) => void;
+  addElement: (el: EquipmentElement) => void;
+  removeElement: (id: string) => void;
   addEvidence: (ev: FieldEvidence) => void;
   resetElements: () => void;
 }
@@ -37,6 +39,13 @@ export const usePreviewStore = create<PreviewState>((set) => ({
   updateElement: (updated) =>
     set((s) => ({
       elements: s.elements.map((e) => (e.id === updated.id ? updated : e)),
+    })),
+  addElement: (el) =>
+    set((s) => ({ elements: [...s.elements, el], selectedId: el.id })),
+  removeElement: (id) =>
+    set((s) => ({
+      elements:   s.elements.filter((e) => e.id !== id),
+      selectedId: s.selectedId === id ? null : s.selectedId,
     })),
   addEvidence: (ev) =>
     set((s) => ({ evidence: [...s.evidence, ev] })),
