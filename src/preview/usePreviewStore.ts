@@ -1,21 +1,40 @@
 /**
- * usePreviewStore — estado mínimo de la vista de prueba v2.
+ * usePreviewStore — estado mutable de la vista de prueba v2.
  *
- * Solo gestiona la selección; no tiene saveStatus, editingBlocked
- * ni ninguna operación de IndexedDB. El aislamiento de persistencia
- * es estructural: este módulo no importa projectManager ni db.
+ * Gestiona los elementos editables en memoria y la selección.
+ * No tiene saveStatus, editingBlocked ni ninguna operación de IndexedDB.
+ * El aislamiento de persistencia es estructural: este módulo no importa
+ * projectManager ni db.
  */
 
 import { create } from 'zustand';
+import { PREVIEW_ELEMENTS } from './previewData';
+import type { EquipmentElement } from '../types/domain-v2';
+
+function copyElements(elements: EquipmentElement[]): EquipmentElement[] {
+  // Copia superficial de cada objeto — suficiente porque todas las mutaciones
+  // crean nuevos objetos via spread; nunca se muta en lugar.
+  return elements.map((e) => ({ ...e }));
+}
 
 interface PreviewState {
+  elements: EquipmentElement[];
   selectedId: string | null;
   select: (id: string) => void;
   clearSelection: () => void;
+  updateElement: (updated: EquipmentElement) => void;
+  resetElements: () => void;
 }
 
 export const usePreviewStore = create<PreviewState>((set) => ({
+  elements: copyElements(PREVIEW_ELEMENTS),
   selectedId: null,
   select: (id) => set({ selectedId: id }),
   clearSelection: () => set({ selectedId: null }),
+  updateElement: (updated) =>
+    set((s) => ({
+      elements: s.elements.map((e) => (e.id === updated.id ? updated : e)),
+    })),
+  resetElements: () =>
+    set({ elements: copyElements(PREVIEW_ELEMENTS), selectedId: null }),
 }));

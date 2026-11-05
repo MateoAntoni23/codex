@@ -3,9 +3,9 @@ import { usePreviewStore } from '../usePreviewStore';
 import { PREVIEW_ELEMENTS } from '../previewData';
 import { elementToRenderProps } from '../../scene/v2-adapter';
 
-// Reinicia la selección antes de cada test para garantizar aislamiento
+// Reinicia el store completo antes de cada test para garantizar aislamiento
 beforeEach(() => {
-  usePreviewStore.setState({ selectedId: null });
+  usePreviewStore.getState().resetElements();
 });
 
 // ─── Selección ────────────────────────────────────────────────────────────────
@@ -57,12 +57,12 @@ describe('usePreviewStore — aislamiento de persistencia', () => {
     expect(usePreviewStore.getState().clearSelection()).toBeUndefined();
   });
 
-  it('el store solo expone select y clearSelection como acciones', () => {
+  it('el store expone select, clearSelection, updateElement y resetElements como acciones', () => {
     const state = usePreviewStore.getState();
     const actions = Object.keys(state).filter(
       (k) => typeof (state as unknown as Record<string, unknown>)[k] === 'function',
     );
-    expect(actions.sort()).toEqual(['clearSelection', 'select']);
+    expect(actions.sort()).toEqual(['clearSelection', 'resetElements', 'select', 'updateElement']);
   });
 });
 

@@ -1,6 +1,5 @@
 import { useState, useCallback } from 'react';
 import { usePreviewStore } from './usePreviewStore';
-import { PREVIEW_ELEMENTS } from './previewData';
 import type { Category } from '../types/domain-v2';
 
 const CATEGORY_LABEL: Record<Category, string> = {
@@ -19,18 +18,19 @@ const CATEGORY_LABEL: Record<Category, string> = {
   infrastructure:   'Infraestructura',
 };
 
-const placed   = PREVIEW_ELEMENTS.filter((e) => e.placementStatus === 'placed');
-const unplaced = PREVIEW_ELEMENTS.filter((e) => e.placementStatus === 'unplaced');
-
-const placedCategories = [...new Set(placed.map((e) => e.category as Category))];
-
 export function PreviewElementList() {
-  const selectedId = usePreviewStore((s) => s.selectedId);
-  const select = usePreviewStore((s) => s.select);
+  const elements    = usePreviewStore((s) => s.elements);
+  const selectedId  = usePreviewStore((s) => s.selectedId);
+  const select      = usePreviewStore((s) => s.select);
   const clearSelection = usePreviewStore((s) => s.clearSelection);
 
-  const initialExpanded = new Set(placedCategories as string[]);
-  const [expanded, setExpanded] = useState<Set<string>>(initialExpanded);
+  const placed   = elements.filter((e) => e.placementStatus === 'placed');
+  const unplaced = elements.filter((e) => e.placementStatus === 'unplaced');
+  const placedCategories = [...new Set(placed.map((e) => e.category as Category))];
+
+  const [expanded, setExpanded] = useState<Set<string>>(
+    () => new Set(placedCategories as string[]),
+  );
 
   const toggle = useCallback((key: string) => {
     setExpanded((prev) => {

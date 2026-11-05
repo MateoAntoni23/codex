@@ -17,7 +17,7 @@ import { Html, Grid, Line } from '@react-three/drei';
 import type { ThreeEvent } from '@react-three/fiber';
 import { elementToRenderProps } from '../scene/v2-adapter';
 import { usePreviewStore } from './usePreviewStore';
-import { PREVIEW_ELEMENTS, PREVIEW_PROJECT_ORIGIN } from './previewData';
+import { PREVIEW_PROJECT_ORIGIN } from './previewData';
 import type { ElementRenderProps } from '../scene/v2-adapter';
 
 type Q4 = [number, number, number, number];
@@ -191,11 +191,12 @@ function PreviewElement({ renderProps: p, isSelected, onSelect }: ElementProps) 
 
 export function PreviewSceneObjects() {
   const selectedId = usePreviewStore((s) => s.selectedId);
-  const select = usePreviewStore((s) => s.select);
+  const select     = usePreviewStore((s) => s.select);
+  const elements   = usePreviewStore((s) => s.elements);
 
   const allRenderProps = useMemo(
-    () => PREVIEW_ELEMENTS.map((el) => elementToRenderProps(el, PREVIEW_ELEMENTS)),
-    [],
+    () => elements.map((el) => elementToRenderProps(el, elements)),
+    [elements],
   );
 
   return (

@@ -7,13 +7,21 @@ import { usePreviewStore } from './usePreviewStore';
 
 export function PreviewLayout() {
   const clearSelection = usePreviewStore((s) => s.clearSelection);
+  const resetElements  = usePreviewStore((s) => s.resetElements);
 
   return (
     <div className="preview-layout">
 
-      {/* Banner de advertencia */}
+      {/* Banner de advertencia + botón Restablecer */}
       <div className="preview-banner" role="status">
-        Vista de prueba v2 — no guarda cambios · los datos son de ejemplo
+        <span>Vista de prueba v2 — no guarda cambios · los datos son de ejemplo</span>
+        <button
+          type="button"
+          className="btn-secondary preview-reset-btn"
+          onClick={resetElements}
+        >
+          Restablecer vista de prueba
+        </button>
       </div>
 
       {/* Panel izquierdo: lista de elementos */}
@@ -40,7 +48,7 @@ export function PreviewLayout() {
         </Canvas>
       </div>
 
-      {/* Panel derecho: inspector de solo lectura */}
+      {/* Panel derecho: inspector con edición */}
       <PreviewInspector />
     </div>
   );
