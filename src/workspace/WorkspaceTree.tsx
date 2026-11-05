@@ -4,6 +4,7 @@ import { useTrayStore } from '../tray/store';
 import { WorkspaceLegend } from './WorkspaceLegend';
 import { computeGuideSteps } from './workspaceGuide';
 import { AddTraySegmentForm } from './AddTraySegmentForm';
+import { AddSupportForm } from './AddSupportForm';
 import type { Category } from '../types/domain-v2';
 
 const LAYER_LABELS: Record<LayerKey, string> = {
@@ -176,6 +177,7 @@ export function WorkspaceTree() {
   const trayEdit       = useTrayStore((s) => s.edit);
 
   const [addingSegment, setAddingSegment] = useState(false);
+  const [addingSupport, setAddingSupport] = useState(false);
 
   const categories = [...new Set(elements.map((e) => e.category as Category))].sort();
 
@@ -302,9 +304,24 @@ export function WorkspaceTree() {
       )}
 
       {/* Supports */}
-      {entrada && entrada.soportes.length > 0 && (
+      {entrada && (
         <section className="workspace-tree-section">
           <h4>Soportes</h4>
+
+          {addingSupport ? (
+            <AddSupportForm onClose={() => setAddingSupport(false)} />
+          ) : (
+            <button
+              className="workspace-tree-item"
+              style={{ marginBottom: 4, background: '#2a2a1a', border: '1px solid #666633', width: '100%', textAlign: 'left' }}
+              onClick={() => setAddingSupport(true)}
+              disabled={!context || entrada.piezas.length === 0}
+              title={!context ? 'Motor no conectado' : entrada.piezas.length === 0 ? 'Agregá piezas primero' : undefined}
+            >
+              + Agregar soporte
+            </button>
+          )}
+
           {entrada.soportes.map((s, i) => (
             <label key={s.soporte_id} style={{ display: 'block', fontSize: 11, padding: '2px 0' }}>
               {s.soporte_id} sobre {s.instancia_id} · dist. P1 (mm)
@@ -314,6 +331,10 @@ export function WorkspaceTree() {
               />
             </label>
           ))}
+
+          {entrada.soportes.length === 0 && !addingSupport && (
+            <p className="workspace-empty">Sin soportes definidos</p>
+          )}
         </section>
       )}
 
