@@ -170,13 +170,20 @@ export function applyBoxSizeEdit(
     return { element: el, childDeltaZ: 0 };
   }
   const childDeltaZ = (heightMm - el.geometry.heightMm) / 2;
+  // Displace along the element's LOCAL Z axis (not necessarily world Z for rotated elements).
+  const localZ = rotateVec3(el.transform.rotation, { x: 0, y: 0, z: 1 });
+  const oldPos = el.transform.positionMm;
   return {
     element: {
       ...el,
       geometry: { kind: 'box', widthMm, depthMm, heightMm },
       transform: {
         ...el.transform,
-        positionMm: { ...el.transform.positionMm, z: el.transform.positionMm.z + childDeltaZ },
+        positionMm: {
+          x: oldPos.x + childDeltaZ * localZ.x,
+          y: oldPos.y + childDeltaZ * localZ.y,
+          z: oldPos.z + childDeltaZ * localZ.z,
+        },
       },
     } as EquipmentElement,
     childDeltaZ,
@@ -195,13 +202,19 @@ export function applyCylinderSizeEdit(
     return { element: el, childDeltaZ: 0 };
   }
   const childDeltaZ = (lengthMm - el.geometry.lengthMm) / 2;
+  const localZ = rotateVec3(el.transform.rotation, { x: 0, y: 0, z: 1 });
+  const oldPos = el.transform.positionMm;
   return {
     element: {
       ...el,
       geometry: { kind: 'cylinder', diameterMm, lengthMm },
       transform: {
         ...el.transform,
-        positionMm: { ...el.transform.positionMm, z: el.transform.positionMm.z + childDeltaZ },
+        positionMm: {
+          x: oldPos.x + childDeltaZ * localZ.x,
+          y: oldPos.y + childDeltaZ * localZ.y,
+          z: oldPos.z + childDeltaZ * localZ.z,
+        },
       },
     } as EquipmentElement,
     childDeltaZ,
@@ -214,9 +227,10 @@ export function applyCylinderSizeEdit(
  * global del hijo se resta ese mismo delta de su coordenada Z local.
  */
 export function adjustChildLocalZ(child: EquipmentElement, childDeltaZ: number): EquipmentElement {
-  if (child.placementStatus !== 'placed') return child;
+  if (child.placementStatus !== 'placed' || childDeltaZ === 0) return child;
   return {
     ...child,
+    version: child.version + 1,
     transform: {
       ...child.transform,
       positionMm: {

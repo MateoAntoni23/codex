@@ -16,6 +16,7 @@ import {
   adjustChildLocalZ,
   applyPositionEdit,
   applyNameEdit,
+  rotateVec3,
 } from '../previewEditor';
 import { PreviewInspector } from '../PreviewInspector';
 import type { Vec3 } from '../../types/domain-v2';
@@ -449,6 +450,193 @@ describe('PreviewInspector — redimensionar con hijo', () => {
     expect(childGlobalAfter!.positionMm.x).toBeCloseTo(childGlobalBefore!.positionMm.x, 3);
     expect(childGlobalAfter!.positionMm.y).toBeCloseTo(childGlobalBefore!.positionMm.y, 3);
     expect(childGlobalAfter!.positionMm.z).toBeCloseTo(childGlobalBefore!.positionMm.z, 3);
+  });
+});
+
+// ─── applyBoxSizeEdit con rotación (Bug 2) ───────────────────────────────────
+
+describe('applyBoxSizeEdit — elemento con rotación no trivial', () => {
+  it('90°Y: el centro se desplaza a lo largo del eje Z local (mundo X), no Z global', () => {
+    // Rot. 90°Y → eje Z local = (1, 0, 0) en mundo.
+    const qRot90Y = { x: 0, y: Math.SQRT2 / 2, z: 0, w: Math.SQRT2 / 2 };
+    const verifyLocalZ = rotateVec3(qRot90Y, { x: 0, y: 0, z: 1 });
+    expect(verifyLocalZ.x).toBeCloseTo(1, 5);
+    expect(verifyLocalZ.z).toBeCloseTo(0, 5);
+
+    const basePanel = PREVIEW_ELEMENTS.find((e) => e.id === 'panel-1')!;
+    if (basePanel.placementStatus !== 'placed' || basePanel.geometry?.kind !== 'box') return;
+
+    const tiltedEl = {
+      ...basePanel,
+      transform: {
+        ...basePanel.transform,
+        positionMm: { x: 0, y: 0, z: 0 },
+        rotation: qRot90Y,
+      },
+    } as typeof basePanel;
+
+    const oldH = basePanel.geometry.heightMm;
+    const newH = oldH + 400;
+    const { element: updated, childDeltaZ } = applyBoxSizeEdit(
+      tiltedEl, basePanel.geometry.widthMm, basePanel.geometry.depthMm, newH,
+    );
+
+    expect(childDeltaZ).toBeCloseTo(200, 5);
+    expect(updated.placementStatus).toBe('placed');
+    if (updated.placementStatus !== 'placed') return;
+
+    // Desplazamiento debe ser en X (eje Z local), no en Z global
+    expect(updated.transform.positionMm.x).toBeCloseTo(200, 5);
+    expect(updated.transform.positionMm.y).toBeCloseTo(0, 5);
+    expect(updated.transform.positionMm.z).toBeCloseTo(0, 5);
+  });
+
+  it('45°Z: eje Z local sigue siendo (0,0,1) → comportamiento idéntico al caso sin rotación', () => {
+    const SIN_PI8 = Math.sin(Math.PI / 8);
+    const COS_PI8 = Math.cos(Math.PI / 8);
+    const qRot45Z = { x: 0, y: 0, z: SIN_PI8, w: COS_PI8 };
+
+    const basePanel = PREVIEW_ELEMENTS.find((e) => e.id === 'panel-1')!;
+    if (basePanel.placementStatus !== 'placed' || basePanel.geometry?.kind !== 'box') return;
+
+    const rotatedEl = {
+      ...basePanel,
+      transform: {
+        ...basePanel.transform,
+        positionMm: { x: 0, y: 0, z: 1000 },
+        rotation: qRot45Z,
+      },
+    } as typeof basePanel;
+
+    const oldH = basePanel.geometry.heightMm;
+    const newH = oldH + 400;
+    const { element: updated } = applyBoxSizeEdit(
+      rotatedEl, basePanel.geometry.widthMm, basePanel.geometry.depthMm, newH,
+    );
+    expect(updated.placementStatus).toBe('placed');
+    if (updated.placementStatus !== 'placed') return;
+
+    // La rotación Z no afecta el eje Z → el ajuste debe ser solo en Z
+    expect(updated.transform.positionMm.x).toBeCloseTo(0, 5);
+    expect(updated.transform.positionMm.y).toBeCloseTo(0, 5);
+    expect(updated.transform.positionMm.z).toBeCloseTo(1200, 5); // 1000 + 200
+  });
+});
+
+// ─── Padre inclinado (90°Y) + hijo — invariante geométrico ───────────────────
+
+describe('resize padre inclinado (90°Y) con hijo', () => {
+  it('la posición global del hijo se conserva tras resize y ajuste local', () => {
+    const qRot90Y = { x: 0, y: Math.SQRT2 / 2, z: 0, w: Math.SQRT2 / 2 };
+
+    const basePanel = PREVIEW_ELEMENTS.find((e) => e.id === 'panel-1')!;
+    const baseMotor = PREVIEW_ELEMENTS.find((e) => e.id === 'motor-1')!;
+    if (basePanel.placementStatus !== 'placed' || basePanel.geometry?.kind !== 'box') return;
+    if (baseMotor.placementStatus !== 'placed') return;
+
+    const parentEl = {
+      ...basePanel,
+      id: 'synth-parent',
+      parentId: null,
+      transform: {
+        ...basePanel.transform,
+        positionMm: { x: 0, y: 0, z: 0 },
+        rotation: qRot90Y,
+      },
+    } as typeof basePanel;
+
+    const childLocalPos = { x: 0, y: 0, z: 500 };
+    const childEl = {
+      ...baseMotor,
+      id: 'synth-child',
+      parentId: 'synth-parent',
+      transform: {
+        ...baseMotor.transform,
+        positionMm: childLocalPos,
+        rotation: { x: 0, y: 0, z: 0, w: 1 },
+      },
+    } as typeof baseMotor;
+
+    // Global del hijo antes: parentPos + rotate(rot, childLocal)
+    const pp = parentEl.transform.positionMm;
+    const rotatedLocal = rotateVec3(qRot90Y, childLocalPos);
+    const globalBefore = {
+      x: pp.x + rotatedLocal.x,
+      y: pp.y + rotatedLocal.y,
+      z: pp.z + rotatedLocal.z,
+    };
+
+    const oldH = basePanel.geometry.heightMm;
+    const newH = oldH + 400;
+    const { element: parentUpdated, childDeltaZ } = applyBoxSizeEdit(
+      parentEl, basePanel.geometry.widthMm, basePanel.geometry.depthMm, newH,
+    );
+    expect(childDeltaZ).toBeCloseTo(200, 5);
+
+    const childUpdated = adjustChildLocalZ(childEl, childDeltaZ);
+    expect(childUpdated.placementStatus).toBe('placed');
+    if (childUpdated.placementStatus !== 'placed' || parentUpdated.placementStatus !== 'placed') return;
+
+    // Global del hijo después
+    const npPos = parentUpdated.transform.positionMm;
+    const nChildLocal = childUpdated.transform.positionMm;
+    const rotatedNewLocal = rotateVec3(qRot90Y, nChildLocal);
+    const globalAfter = {
+      x: npPos.x + rotatedNewLocal.x,
+      y: npPos.y + rotatedNewLocal.y,
+      z: npPos.z + rotatedNewLocal.z,
+    };
+
+    expect(globalAfter.x).toBeCloseTo(globalBefore.x, 4);
+    expect(globalAfter.y).toBeCloseTo(globalBefore.y, 4);
+    expect(globalAfter.z).toBeCloseTo(globalBefore.z, 4);
+  });
+});
+
+// ─── adjustChildLocalZ — versión ─────────────────────────────────────────────
+
+describe('adjustChildLocalZ — versión', () => {
+  it('incrementa version cuando childDeltaZ ≠ 0', () => {
+    const child = PREVIEW_ELEMENTS.find((e) => e.id === 'child-motor-1')!;
+    const adjusted = adjustChildLocalZ(child, 100);
+    expect(adjusted.version).toBe(child.version + 1);
+  });
+
+  it('no modifica el elemento (misma referencia) cuando childDeltaZ = 0', () => {
+    const child = PREVIEW_ELEMENTS.find((e) => e.id === 'child-motor-1')!;
+    const result = adjustChildLocalZ(child, 0);
+    expect(result).toBe(child);
+    expect(result.version).toBe(child.version);
+  });
+});
+
+// ─── Snap to floor sin doble ajuste (Bug 1) ──────────────────────────────────
+
+describe('PreviewInspector — snap sin doble ajuste', () => {
+  it('altura nueva + snap + aplicar → base en Z=0 (centro = newHeight/2)', async () => {
+    usePreviewStore.getState().select('panel-1');
+    render(React.createElement(PreviewInspector));
+
+    const heightInput = screen.getByRole<HTMLInputElement>('textbox', { name: /Alto/i });
+    const origHeight = parseFloat(heightInput.value);
+    const newHeight = origHeight + 1000;
+
+    await userEvent.clear(heightInput);
+    await userEvent.type(heightInput, String(newHeight));
+    await userEvent.click(screen.getByRole('button', { name: /Apoyar en piso/i }));
+    await userEvent.click(screen.getByRole('button', { name: 'Aplicar' }));
+
+    const updated = usePreviewStore.getState().elements.find((e) => e.id === 'panel-1')!;
+    expect(updated.placementStatus).toBe('placed');
+    if (updated.placementStatus !== 'placed') return;
+
+    // La base debe quedar en Z=0: center = newHeight/2
+    expect(updated.transform.positionMm.z).toBeCloseTo(newHeight / 2, 3);
+    // La geometría refleja la nueva altura
+    expect(updated.geometry?.kind).toBe('box');
+    if (updated.geometry?.kind === 'box') {
+      expect(updated.geometry.heightMm).toBeCloseTo(newHeight, 3);
+    }
   });
 });
 

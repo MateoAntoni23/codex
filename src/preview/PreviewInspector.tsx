@@ -158,15 +158,15 @@ export function PreviewInspector() {
 
   const handleSnapToFloor = () => {
     if (element == null || !canEdit(element) || element.parentId != null) return;
-    let heightMm = 0;
+    // Use the STORED height (not draft) so that Apply's base-preservation delta
+    // lands at the correct final Z = newDraftHeight/2 without double-counting.
+    let storedHeightMm = 0;
     if (element.geometry?.kind === 'box') {
-      const r = parseBoxSizeDraft(boxDraft);
-      heightMm = r.ok ? r.value.height : element.geometry.heightMm;
+      storedHeightMm = element.geometry.heightMm;
     } else if (element.geometry?.kind === 'cylinder') {
-      const r = parseCylinderSizeDraft(cylDraft);
-      heightMm = r.ok ? r.value.length : element.geometry.lengthMm;
+      storedHeightMm = element.geometry.lengthMm;
     }
-    setPosDraft((d) => ({ ...d, z: String(heightMm / 2) }));
+    setPosDraft((d) => ({ ...d, z: String(storedHeightMm / 2) }));
     setPosErrors((e) => ({ ...e, z: undefined }));
   };
 
