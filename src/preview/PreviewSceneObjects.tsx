@@ -1,32 +1,29 @@
 /**
  * PreviewSceneObjects — renderizado 3D de elementos v2 para la vista de prueba.
  *
- * Convención de rotación (ver v2-adapter.ts):
+ * Convención de rotación para el piso (PlaneGeometry + Grid):
+ *   - El <group> recibe la posición y rotationViewer del elemento (orientación
+ *     en espacio mundial). Mesh y Grid heredan esa transformación.
+ *   - El <mesh> de PlaneGeometry aplica Q_PLANE_BASE localmente: orienta la
+ *     geometría de XY (normal +Z nativo) a XZ (normal +Y visor).
+ *   - <Grid> NO recibe Q_PLANE_BASE. Drei ya transforma su geometría a XZ en
+ *     su shader (position.xzy), por lo que añadir la rotación la duplicaría
+ *     y levantaría la grilla fuera del piso.
  *   - Box / Cylinder / Asset: usar rotationViewer directamente como cuaternión.
- *   - Plane (piso): componer rotationViewer × Q_PLANE_BASE.
- *     Q_PLANE_BASE orienta PlaneGeometry al horizonte (normal +Z → +Y visor).
- *     La multiplicación a la derecha preserva ese eje y aplica la rotación del
- *     elemento encima: Q_PLANE_BASE primero (orientar la geometría), luego
- *     rotationViewer (rotar el elemento en el espacio mundial).
  */
 
 import { useMemo } from 'react';
 import { Html, Grid, Line } from '@react-three/drei';
-import { Quaternion } from 'three';
 import type { ThreeEvent } from '@react-three/fiber';
 import { elementToRenderProps } from '../scene/v2-adapter';
 import { usePreviewStore } from './usePreviewStore';
 import { PREVIEW_ELEMENTS, PREVIEW_PROJECT_ORIGIN } from './previewData';
 import type { ElementRenderProps } from '../scene/v2-adapter';
 
-// Rotación base para PlaneGeometry: lleva el plano del dominio (normal +Z) al visor (normal +Y)
-const Q_PLANE_BASE = new Quaternion(-Math.SQRT2 / 2, 0, 0, Math.SQRT2 / 2);
-
 type Q4 = [number, number, number, number];
 
-function toQ4(q: Quaternion): Q4 {
-  return [q.x, q.y, q.z, q.w];
-}
+// Cuaternión local del mesh de piso: lleva PlaneGeometry de XY (normal +Z) a XZ (normal +Y visor)
+const Q_PLANE_BASE_Q4: Q4 = [-Math.SQRT2 / 2, 0, 0, Math.SQRT2 / 2];
 
 const CATEGORY_COLOR: Record<string, string> = {
   electrical_panel: '#5577aa',
@@ -78,22 +75,11 @@ interface ElementProps {
 function PreviewElement({ renderProps: p, isSelected, onSelect }: ElementProps) {
   const { positionViewer, rotationViewer, sizeViewer, geometryKind, category, isFloor, name } = p;
 
-  // Siempre calculamos ambos cuaterniones (reglas de hooks: sin llamadas condicionales)
   const meshQuat = useMemo<Q4>(
     () => (rotationViewer ? (rotationViewer as Q4) : [0, 0, 0, 1]),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [rotationViewer?.[0], rotationViewer?.[1], rotationViewer?.[2], rotationViewer?.[3]],
   );
-
-  const planeQuat = useMemo<Q4>(() => {
-    const q = rotationViewer
-      ? new Quaternion(rotationViewer[0], rotationViewer[1], rotationViewer[2], rotationViewer[3])
-      : new Quaternion();
-    // rotationViewer × Q_PLANE_BASE: orienta primero la geometría al horizonte,
-    // luego aplica la rotación del elemento en espacio mundial.
-    return toQ4(q.multiply(Q_PLANE_BASE));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rotationViewer?.[0], rotationViewer?.[1], rotationViewer?.[2], rotationViewer?.[3]]);
 
   if (!positionViewer) return null;
 
@@ -110,9 +96,10 @@ function PreviewElement({ renderProps: p, isSelected, onSelect }: ElementProps) 
   if (geometryKind === 'plane' && isFloor) {
     const [w, , d] = sizeViewer ?? [30, 0, 30];
     return (
-      // El grupo aplica posición y orientación; mesh y Grid heredan ambos.
-      <group position={positionViewer} quaternion={planeQuat}>
-        <mesh receiveShadow onClick={handleClick}>
+      // Grupo: aplica posición y rotationViewer del elemento al conjunto.
+      <group position={positionViewer} quaternion={meshQuat}>
+        {/* Mesh: Q_PLANE_BASE_Q4 localmente para girar PlaneGeometry a XZ. */}
+        <mesh quaternion={Q_PLANE_BASE_Q4} receiveShadow onClick={handleClick}>
           <planeGeometry args={[w, d]} />
           <meshStandardMaterial
             color="#2a2a3a"
@@ -120,6 +107,7 @@ function PreviewElement({ renderProps: p, isSelected, onSelect }: ElementProps) 
             emissiveIntensity={isSelected ? 1 : 0}
           />
         </mesh>
+        {/* Grid: sin rotación adicional — drei ya lo renderiza en XZ nativamente. */}
         <Grid
           args={[w, d]}
           cellSize={1}

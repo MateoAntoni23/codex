@@ -222,6 +222,39 @@ Fábrica
 4. El árbol mostrará la jerarquía fábrica → categoría → equipo cuando
    se implemente esta fase.
 
+### 9. Variadores de frecuencia (VFD) — componentes internos de tablero 📋
+
+> **Decisión confirmada (2026-11-05):**
+
+Los variadores de frecuencia son **componentes internos** del tablero eléctrico
+que los contiene. No son equipos de campo independientes y **no aparecen en la
+vista general de equipos de la instalación**.
+
+#### Modelo de datos
+
+- Un VFD se asocia al tablero mediante `parentId`.
+- Su posición es local dentro del tablero (no coordenadas globales de la planta).
+- La categoría definitiva (`vfd` u otra) se define cuando se diseñe la vista
+  interna; hasta entonces no se agrega una nueva categoría.
+
+#### Flujo de consulta previsto
+
+| Contexto | Visibilidad del VFD |
+|---|---|
+| Vista general de la instalación (3D + árbol) | Oculto |
+| Ficha del tablero contenedor | Listado como componente interno |
+| Vista interna del tablero (etapa posterior) | Con posición local y datos técnicos |
+
+#### Restricciones actuales
+
+- No se implementa la vista interna de tableros hasta que se defina su diseño.
+- En la vista de prueba v2 (`?preview=v2`) el marcador "Dimensiones pendientes"
+  se demuestra con un sensor de campo (`sensor-nogeo-1`), no con un VFD.
+- El campo `mounting: 'din_rail'` puede usarse para identificar componentes en
+  riel DIN, pero no reemplaza el modelo de contenedor explícito.
+
+---
+
 ### 6. Neumática 📋
 
 Las mangueras son entidades propias, distintas de los cables eléctricos:
