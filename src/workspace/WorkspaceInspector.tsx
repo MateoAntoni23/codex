@@ -14,6 +14,24 @@ import { checkDeleteDependencies, duplicateElement } from '../preview/previewCru
 import type { Piece, Support } from '../tray/model';
 import { object } from '../tray/model';
 
+/** Renders a Python result value as readable text, handling nested objects and arrays. */
+function formatResultValue(v: unknown, depth = 0): string {
+  if (v === null || v === undefined) return '—';
+  if (typeof v === 'boolean') return v ? 'sí' : 'no';
+  if (typeof v === 'number') return String(v);
+  if (typeof v === 'string') return v.replace(/_/g, ' ');
+  if (Array.isArray(v)) {
+    if (v.length === 0) return '(vacío)';
+    return v.map((x) => formatResultValue(x, depth + 1)).join(', ');
+  }
+  if (typeof v === 'object' && depth < 2) {
+    return Object.entries(v as Record<string, unknown>)
+      .map(([k, val]) => `${k.replace(/_/g, ' ')}: ${formatResultValue(val, depth + 1)}`)
+      .join(' · ');
+  }
+  return JSON.stringify(v);
+}
+
 // ─── Tray piece card ──────────────────────────────────────────────────────────
 
 function PieceCard({ piece }: { piece: Piece }) {
@@ -143,6 +161,8 @@ function SupportCard({ support }: { support: Support }) {
   const piece   = entrada.piezas.find((p) => p.instancia_id === support.instancia_id);
   const product = context?.productos.find((p) => p.producto_id === support.producto_id);
 
+  const trayStatus = useTrayStore((s) => s.status);
+
   // Try to find calculated span data in result
   const soporteResult = result && object(result.soportes)
     ? (result.soportes as Record<string, unknown>)[support.soporte_id]
@@ -205,10 +225,16 @@ function SupportCard({ support }: { support: Support }) {
 
       {object(soporteResult) && (
         <div style={{ padding: '4px 12px 8px', fontSize: 11 }}>
-          <div style={{ fontWeight: 600, color: '#99ccff', marginBottom: 4 }}>Resultado del cálculo</div>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 4 }}>
+            <span style={{ fontWeight: 600, color: '#99ccff' }}>Resultado del cálculo</span>
+            {trayStatus !== 'vigente' && (
+              <span style={{ color: '#ff9955', fontSize: 10 }}>NO VIGENTE — recalcular</span>
+            )}
+          </div>
           {Object.entries(soporteResult).map(([k, v]) => (
-            <div key={k} style={{ color: '#c0c0e0' }}>
-              {k.replace(/_/g, ' ')}: <span style={{ color: '#aaccff' }}>{String(v)}</span>
+            <div key={k} style={{ color: '#c0c0e0', marginBottom: 2 }}>
+              <span style={{ color: '#8888aa' }}>{k.replace(/_/g, ' ')}: </span>
+              <span style={{ color: '#aaccff' }}>{formatResultValue(v)}</span>
             </div>
           ))}
         </div>

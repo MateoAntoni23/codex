@@ -134,14 +134,16 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
 
   loadFile: (elements, evidence, meta, fileName) =>
     set({
-      elements:        copyElements(elements),
-      evidence:        [...evidence],
-      projectMeta:     { ...meta },
+      elements:            copyElements(elements),
+      evidence:            [...evidence],
+      projectMeta:         { ...meta },
       fileName,
-      dirty:           false,
-      selectedEquipId: null,
-      selectedTrayId:  null,
-      selectedSupportId: null,
+      dirty:               false,
+      selectedEquipId:     null,
+      selectedTrayId:      null,
+      selectedSupportId:   null,
+      connectionToolActive: false,
+      connectionPortA:     null,
     }),
 
   markDirty: () => set({ dirty: true }),

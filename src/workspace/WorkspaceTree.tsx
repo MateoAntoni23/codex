@@ -1,6 +1,7 @@
 import { useWorkspaceStore, type LayerKey } from './useWorkspaceStore';
 import { useTrayStore } from '../tray/store';
 import { WorkspaceLegend } from './WorkspaceLegend';
+import { computeGuideSteps } from './workspaceGuide';
 import type { Category } from '../types/domain-v2';
 
 const LAYER_LABELS: Record<LayerKey, string> = {
@@ -54,19 +55,20 @@ function WorkspaceGuide() {
   const soportes   = entrada?.soportes ?? [];
   const cableId    = entrada?.pe.cable_id ?? '';
 
-  const pasoTrazado    = piezas.length > 0;
-  const pasoConexiones = conexiones.length > 0;
-  const pasoCables     = circuitos.some((c) => c.recorrido.length > 0 && c.cable_id);
-  const pasoSoportes   = soportes.length > 0 && cableId !== '';
-  const pasoCalcular   = status === 'vigente' && result != null;
-  const pasoPendientes = pasoCalcular && (() => {
-    if (!result) return false;
-    const r = result as Record<string, unknown>;
-    const resumen = r.resumen as Record<string, unknown> | undefined;
-    if (!resumen) return false;
-    const estado = String(resumen.estado_trazado ?? '');
-    return estado === 'LISTO' || estado === 'ADVERTENCIAS';
-  })();
+  const resumen       = result && typeof result === 'object' && !Array.isArray(result) ? result.resumen : undefined;
+  const estadoTrazado = resumen && typeof resumen === 'object' && !Array.isArray(resumen)
+    ? String((resumen as Record<string, unknown>).estado_trazado ?? '')
+    : undefined;
+
+  const steps = computeGuideSteps({
+    nPiezas:    piezas.length,
+    nConexiones: conexiones.length,
+    circuitos,
+    nSoportes:  soportes.length,
+    cableId,
+    status,
+    estadoTrazado: estadoTrazado || undefined,
+  });
 
   return (
     <details style={{ margin: '0 0 4px' }} open>
@@ -74,12 +76,9 @@ function WorkspaceGuide() {
         Guía de trabajo
       </summary>
       <div style={{ padding: '6px 12px 8px', borderBottom: '1px solid #2a2e44' }}>
-        <GuideStep done={pasoTrazado} label="1. Trazado — definir piezas" hint={pasoTrazado ? `${piezas.length} piezas` : 'Importá un trazado o cargá el motor'} />
-        <GuideStep done={pasoConexiones} label="2. Conexiones entre piezas" hint={pasoConexiones ? `${conexiones.length} conexiones` : 'Usá "Conectar piezas" en la sección Conexiones'} />
-        <GuideStep done={pasoCables} label="3. Cables por circuito" hint={!pasoCables ? 'Asigná cable y recorrido en cada circuito' : undefined} />
-        <GuideStep done={pasoSoportes} label="4. Soportes y cable PE" hint={!pasoSoportes ? 'Definí soportes y seleccioná cable PE' : `${soportes.length} soportes · PE: ${cableId}`} />
-        <GuideStep done={pasoCalcular} label="5. Calcular trazado" hint={!pasoCalcular ? 'Presioná "Calcular trazado" en el inspector' : 'Resultado vigente'} />
-        <GuideStep done={pasoPendientes} label="6. Revisar pendientes" hint={!pasoPendientes ? 'Revisá el resultado en el inspector' : 'Sin pendientes críticos'} />
+        {steps.map((step) => (
+          <GuideStep key={step.id} done={step.done} label={step.label} hint={step.hint || undefined} />
+        ))}
       </div>
     </details>
   );
