@@ -26,24 +26,22 @@ function StatusBar() {
 }
 
 function Toolbar() {
-  const trayState     = useTrayStore.getState;
-  const workStore     = useWorkspaceStore;
-  const fileInputRef  = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleExport = () => {
-    const ws    = workStore.getState();
-    const tray  = trayState();
+    const ws   = useWorkspaceStore.getState();
+    const tray = useTrayStore.getState();
     if (!tray.entrada) {
-      alert('No hay trazado cargado para exportar');
+      alert('No hay trazado cargado para exportar.');
       return;
     }
-    const json     = exportWorkspace(ws.elements, ws.evidence, tray.entrada);
-    const blob     = new Blob([json], { type: 'application/json' });
-    const url      = URL.createObjectURL(blob);
-    const a        = document.createElement('a');
-    const name     = `workspace-${new Date().toISOString().slice(0, 10)}.json`;
-    a.href         = url;
-    a.download     = name;
+    const json = exportWorkspace(ws.elements, ws.evidence, tray.entrada);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    const name = `workspace-${new Date().toISOString().slice(0, 10)}.json`;
+    a.href     = url;
+    a.download = name;
     a.click();
     URL.revokeObjectURL(url);
     ws.markSaved(name);
@@ -52,46 +50,51 @@ function Toolbar() {
   const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    // Confirm before replacing current work
+    if (useWorkspaceStore.getState().dirty) {
+      if (!confirm(`Hay cambios sin guardar. ¿Reemplazar con "${file.name}"?`)) {
+        e.target.value = '';
+        return;
+      }
+    } else if (!confirm(`¿Importar "${file.name}"? Se reemplazará el trabajo actual.`)) {
+      e.target.value = '';
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = () => {
+      let ws;
       try {
-        const ws = importWorkspace(reader.result as string);
-        workStore.getState().loadFile(ws.equipment, ws.evidence, file.name);
-        // Load tray input, discard any previous result
-        useTrayStore.getState().edit(ws.trayInput);
-        alert(`Importado: ${file.name}`);
+        ws = importWorkspace(reader.result as string);
       } catch (err) {
         alert(`Error al importar: ${String(err)}`);
+        e.target.value = '';
+        return;
       }
-      // Reset the input so the same file can be re-imported
+      // All validation passed — now update both stores atomically
+      const { elements, evidence } = ws.projectV2;
+      useWorkspaceStore.getState().loadFile(elements, evidence, file.name);
+      // Load tray input; useTrayStore.edit discards previous result
+      useTrayStore.getState().edit(ws.trayInput);
+      e.target.value = '';
+    };
+    reader.onerror = () => {
+      alert('Error al leer el archivo.');
       e.target.value = '';
     };
     reader.readAsText(file);
-  };
-
-  const handleCalculate = () => {
-    void useTrayStore.getState().calculate();
-  };
-
-  const handleReconnect = () => {
-    void useTrayStore.getState().initialize();
   };
 
   return (
     <div className="workspace-toolbar">
       <a href="?">← Editor guardado</a>
       <span className="workspace-toolbar-title">Espacio de trabajo unificado</span>
-      <button onClick={handleReconnect}>Reconectar motor</button>
-      <button onClick={handleCalculate}>Calcular trazado</button>
+      <button onClick={() => void useTrayStore.getState().initialize()}>Reconectar motor</button>
+      <button onClick={() => void useTrayStore.getState().calculate()}>Calcular trazado</button>
       <button onClick={handleExport}>Exportar JSON</button>
       <button onClick={() => fileInputRef.current?.click()}>Importar JSON</button>
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept=".json"
-        style={{ display: 'none' }}
-        onChange={handleImport}
-      />
+      <input ref={fileInputRef} type="file" accept=".json" style={{ display: 'none' }} onChange={handleImport} />
     </div>
   );
 }
@@ -100,12 +103,22 @@ export function UnifiedWorkspace() {
   const selectEquip    = useWorkspaceStore((s) => s.selectEquip);
   const selectTray     = useWorkspaceStore((s) => s.selectTray);
   const selectedEquipId = useWorkspaceStore((s) => s.selectedEquipId);
+  const markDirty      = useWorkspaceStore((s) => s.markDirty);
 
+  // Initialize motor connection on mount
   useEffect(() => {
     void useTrayStore.getState().initialize();
     const tick = setInterval(() => void useTrayStore.getState().initialize(), 30000);
     return () => clearInterval(tick);
   }, []);
+
+  // Track tray changes as dirty (skip initial render)
+  const trayRevision = useTrayStore((s) => s.revision);
+  const isFirst = useRef(true);
+  useEffect(() => {
+    if (isFirst.current) { isFirst.current = false; return; }
+    markDirty();
+  }, [trayRevision, markDirty]);
 
   const clearAll = () => {
     if (selectedEquipId) selectEquip(null);
@@ -118,24 +131,17 @@ export function UnifiedWorkspace() {
       <StatusBar />
 
       <div className="unified-workspace-body">
-        {/* Left panel: tree */}
         <aside className="unified-workspace-tree">
           <WorkspaceTree />
         </aside>
 
-        {/* Canvas */}
         <main className="unified-workspace-canvas">
-          <Canvas
-            shadows
-            camera={{ position: [15, 12, 15], fov: 45 }}
-            onPointerMissed={clearAll}
-          >
+          <Canvas shadows camera={{ position: [15, 12, 15], fov: 45 }} onPointerMissed={clearAll}>
             <WorkspaceScene />
             <OrbitControls makeDefault />
           </Canvas>
         </main>
 
-        {/* Right panel: inspector */}
         <aside className="unified-workspace-inspector">
           <WorkspaceInspector />
         </aside>

@@ -1,108 +1,16 @@
 /**
- * WorkspaceInspector — shows equipment inspector or tray piece editor
- * depending on which type of element is selected.
+ * WorkspaceInspector — contextual inspector for the unified workspace.
  *
- * Equipment editing delegates to PreviewInspector logic via usePreviewStore,
- * but we need to bridge it to useWorkspaceStore. We do this by temporarily
- * syncing selected element to usePreviewStore when needed.
- *
- * Simpler approach: render an inline piece editor for tray pieces,
- * and a minimal equipment editor for equipment (wrapping PreviewInspector).
+ * Equipment selected → EquipmentEditorPanel (full editing with previewEditor/technicalEditor)
+ * Tray piece selected → PieceCard (product, dimensions, ports) + TrayResults
+ * Nothing selected → placeholder
  */
 import { useWorkspaceStore } from './useWorkspaceStore';
 import { useTrayStore } from '../tray/store';
-import type { EquipmentElement } from '../types/domain-v2';
+import { EquipmentEditorPanel } from '../preview/EquipmentEditorPanel';
+import { TrayResults } from './TrayResults';
+import { checkDeleteDependencies, duplicateElement } from '../preview/previewCrud';
 import type { Piece } from '../tray/model';
-
-// ─── Equipment card ───────────────────────────────────────────────────────────
-
-function ReadField({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="inspector-field">
-      <span className="inspector-label">{label}</span>
-      <span className="inspector-value">{value}</span>
-    </div>
-  );
-}
-
-function EquipmentCard({ el }: { el: EquipmentElement }) {
-  const updateElement  = useWorkspaceStore((s) => s.updateElement);
-  const removeElement  = useWorkspaceStore((s) => s.removeElement);
-  const duplicateEquip = useWorkspaceStore((s) => s.duplicateEquip);
-
-  return (
-    <div className="inspector-panel">
-      <div className="inspector-header">
-        <span className="inspector-category">{el.category}</span>
-        <span className="inspector-title">{el.name}</span>
-      </div>
-
-      <ReadField label="ID"         value={el.id} />
-      <ReadField label="Tag"        value={el.tag ?? '—'} />
-      <ReadField label="Condición"  value={el.condition} />
-      <ReadField label="Ubicación"  value={el.placementStatus} />
-      {el.placementStatus === 'placed' && (
-        <>
-          <ReadField label="X mm" value={String(el.transform.positionMm.x)} />
-          <ReadField label="Y mm" value={String(el.transform.positionMm.y)} />
-          <ReadField label="Z mm" value={String(el.transform.positionMm.z)} />
-        </>
-      )}
-
-      <div className="inspector-actions" style={{ padding: '8px 12px', display: 'flex', gap: 6 }}>
-        <button onClick={() => duplicateEquip(el.id)}>Duplicar</button>
-        <button onClick={() => { if (confirm(`Eliminar "${el.name}"?`)) removeElement(el.id); }}>
-          Eliminar
-        </button>
-      </div>
-
-      {/* Inline position editor */}
-      {el.placementStatus === 'placed' && (
-        <section style={{ padding: '0 12px 8px' }}>
-          <label style={{ display: 'block', marginBottom: 4, fontSize: 11, color: '#8888aa' }}>
-            Posición (mm)
-          </label>
-          <div style={{ display: 'flex', gap: 4 }}>
-            {(['x', 'y', 'z'] as const).map((axis) => (
-              <label key={axis} style={{ flex: 1, fontSize: 11 }}>
-                {axis.toUpperCase()}
-                <input
-                  type="number"
-                  className="inspector-input"
-                  value={el.transform.positionMm[axis]}
-                  onChange={(e) => {
-                    const val = Number(e.target.value);
-                    if (!Number.isFinite(val)) return;
-                    updateElement({
-                      ...el,
-                      transform: {
-                        ...el.transform,
-                        positionMm: { ...el.transform.positionMm, [axis]: val },
-                      },
-                    } as EquipmentElement);
-                  }}
-                />
-              </label>
-            ))}
-          </div>
-        </section>
-      )}
-
-      <section style={{ padding: '0 12px 8px' }}>
-        <label style={{ display: 'block', marginBottom: 4, fontSize: 11, color: '#8888aa' }}>
-          Nombre
-        </label>
-        <input
-          type="text"
-          className="inspector-input"
-          value={el.name}
-          onChange={(e) => updateElement({ ...el, name: e.target.value } as EquipmentElement)}
-          style={{ width: '100%' }}
-        />
-      </section>
-    </div>
-  );
-}
 
 // ─── Tray piece card ──────────────────────────────────────────────────────────
 
@@ -110,6 +18,7 @@ function PieceCard({ piece }: { piece: Piece }) {
   const context = useTrayStore((s) => s.context);
   const edit    = useTrayStore((s) => s.edit);
   const entrada = useTrayStore((s) => s.entrada);
+  const markDirty = useWorkspaceStore((s) => s.markDirty);
 
   if (!entrada) return null;
 
@@ -119,9 +28,11 @@ function PieceCard({ piece }: { piece: Piece }) {
     if (idx < 0) return;
     fn(next.piezas[idx]);
     edit(next);
+    markDirty();
   };
 
   const ports = Object.entries(piece.puertos);
+  const product = context?.productos.find((p) => p.producto_id === piece.producto_id);
 
   return (
     <div className="inspector-panel">
@@ -132,11 +43,13 @@ function PieceCard({ piece }: { piece: Piece }) {
 
       <div className="inspector-field">
         <span className="inspector-label">Producto</span>
+      </div>
+      <div style={{ padding: '0 12px 6px' }}>
         <select
           className="inspector-input"
+          style={{ width: '100%' }}
           value={piece.producto_id}
           onChange={(e) => updatePiece((p) => { p.producto_id = e.target.value; })}
-          style={{ maxWidth: 180 }}
         >
           {context?.productos.map((p) => (
             <option key={p.producto_id} value={p.producto_id}>
@@ -144,6 +57,13 @@ function PieceCard({ piece }: { piece: Piece }) {
             </option>
           ))}
         </select>
+        {product && (
+          <span style={{ fontSize: 10, color: '#8888aa' }}>
+            {product.descripcion_original}
+            {product.ancho_nominal_mm != null && ` · ancho ${product.ancho_nominal_mm} mm`}
+            {(product as Record<string,unknown>).ala_nominal_mm != null && ` · ala ${(product as Record<string,unknown>).ala_nominal_mm} mm`}
+          </span>
+        )}
       </div>
 
       <div className="inspector-field">
@@ -151,7 +71,7 @@ function PieceCard({ piece }: { piece: Piece }) {
         <input
           type="number"
           className="inspector-input"
-          style={{ width: 80 }}
+          style={{ width: 90 }}
           value={piece.longitud_mm ?? piece.longitud_eje_mm ?? 0}
           onChange={(e) => updatePiece((p) => {
             const v = Number(e.target.value);
@@ -162,11 +82,11 @@ function PieceCard({ piece }: { piece: Piece }) {
       </div>
 
       {ports.map(([portId, port]) => (
-        <fieldset key={portId} style={{ margin: '4px 12px', border: '1px solid #333', padding: '4px 8px' }}>
+        <fieldset key={portId} style={{ margin: '4px 12px', border: '1px solid #333', padding: '4px 8px', borderRadius: 3 }}>
           <legend style={{ fontSize: 11, color: '#8888aa' }}>{portId} · mm global</legend>
           <div style={{ display: 'flex', gap: 4 }}>
             {port.posicion_mm.map((v, i) => (
-              <label key={i} style={{ flex: 1, fontSize: 11 }}>
+              <label key={i} style={{ flex: 1, fontSize: 11, display: 'block' }}>
                 {['X', 'Y', 'Z'][i]}
                 <input
                   type="number"
@@ -182,17 +102,83 @@ function PieceCard({ piece }: { piece: Piece }) {
         </fieldset>
       ))}
 
-      <div style={{ padding: '4px 12px' }}>
+      <div style={{ padding: '4px 12px 8px' }}>
         <button
+          style={{ fontSize: 12, padding: '4px 8px', background: '#8b2222', color: 'white', border: '1px solid #cc3333', borderRadius: 3, cursor: 'pointer' }}
           onClick={() => {
+            if (!confirm(`Eliminar pieza "${piece.instancia_id}"?`)) return;
             const next = structuredClone(entrada);
             next.piezas = next.piezas.filter((p) => p.instancia_id !== piece.instancia_id);
             edit(next);
+            markDirty();
           }}
         >
           Eliminar pieza
         </button>
       </div>
+
+      <details style={{ margin: '4px 0' }}>
+        <summary style={{ padding: '4px 12px', fontSize: 12, cursor: 'pointer', fontWeight: 600, background: '#1f2235' }}>
+          Resultados del motor
+        </summary>
+        <TrayResults />
+      </details>
+    </div>
+  );
+}
+
+// ─── Equipment card wrapper (actions + editor) ────────────────────────────────
+
+function EquipmentCard() {
+  const selectedEquipId = useWorkspaceStore((s) => s.selectedEquipId);
+  const elements        = useWorkspaceStore((s) => s.elements);
+  const updateElement   = useWorkspaceStore((s) => s.updateElement);
+  const addEvidence     = useWorkspaceStore((s) => s.addEvidence);
+  const removeElement   = useWorkspaceStore((s) => s.removeElement);
+
+  const element = selectedEquipId ? elements.find((e) => e.id === selectedEquipId) ?? null : null;
+
+  const handleDelete = () => {
+    if (!element) return;
+    const { canDelete, blockers } = checkDeleteDependencies(element, elements);
+    if (!canDelete) {
+      alert(`No se puede eliminar:\n${blockers.join('\n')}`);
+      return;
+    }
+    if (!confirm(`Eliminar "${element.name}"?`)) return;
+    removeElement(element.id);
+  };
+
+  const handleDuplicate = () => {
+    if (!element) return;
+    const { duplicate, provenance } = duplicateElement(element, elements);
+    // Add with evidence (provenance)
+    useWorkspaceStore.setState((s) => ({
+      elements: [...s.elements, duplicate],
+      evidence: [...s.evidence, provenance],
+      selectedEquipId: duplicate.id,
+      dirty: true,
+    }));
+  };
+
+  return (
+    <div className="inspector-panel">
+      {element && (
+        <div style={{ padding: '4px 12px 4px', display: 'flex', gap: 6 }}>
+          <button onClick={handleDuplicate} style={{ fontSize: 11, padding: '3px 8px', background: '#3c4967', color: 'white', border: '1px solid #5566aa', borderRadius: 3, cursor: 'pointer' }}>
+            Duplicar
+          </button>
+          <button onClick={handleDelete} style={{ fontSize: 11, padding: '3px 8px', background: '#6b2222', color: 'white', border: '1px solid #aa3333', borderRadius: 3, cursor: 'pointer' }}>
+            Eliminar
+          </button>
+        </div>
+      )}
+      <EquipmentEditorPanel
+        element={element}
+        elements={elements}
+        updateElement={updateElement}
+        addEvidence={addEvidence}
+      />
     </div>
   );
 }
@@ -202,20 +188,31 @@ function PieceCard({ piece }: { piece: Piece }) {
 export function WorkspaceInspector() {
   const selectedEquipId = useWorkspaceStore((s) => s.selectedEquipId);
   const selectedTrayId  = useWorkspaceStore((s) => s.selectedTrayId);
-  const elements        = useWorkspaceStore((s) => s.elements);
   const entrada         = useTrayStore((s) => s.entrada);
 
-  const equip = selectedEquipId ? elements.find((e) => e.id === selectedEquipId) : null;
-  const piece = selectedTrayId  ? entrada?.piezas.find((p) => p.instancia_id === selectedTrayId) : null;
-
-  if (equip) return <EquipmentCard el={equip} />;
-  if (piece) return <PieceCard piece={piece} />;
+  const piece = selectedTrayId ? entrada?.piezas.find((p) => p.instancia_id === selectedTrayId) : null;
 
   return (
-    <div className="inspector-panel">
-      <p style={{ padding: 12, color: '#666688', fontSize: 12 }}>
-        Seleccioná un equipo o una pieza de bandeja para inspeccionar.
-      </p>
+    <div className="panel panel-right" style={{ overflow: 'auto' }}>
+      <div className="panel-title">Inspector</div>
+
+      {selectedEquipId ? (
+        <EquipmentCard />
+      ) : piece ? (
+        <PieceCard piece={piece} />
+      ) : (
+        <>
+          <p style={{ padding: 12, color: '#666688', fontSize: 12 }}>
+            Seleccioná un equipo o una pieza de bandeja.
+          </p>
+          <details style={{ margin: '4px 0' }}>
+            <summary style={{ padding: '4px 12px', fontSize: 12, cursor: 'pointer', fontWeight: 600, background: '#1f2235' }}>
+              Resultados del trazado
+            </summary>
+            <TrayResults />
+          </details>
+        </>
+      )}
     </div>
   );
 }
