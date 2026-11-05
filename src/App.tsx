@@ -1,4 +1,5 @@
 import { TrayWorkspace } from './tray/TrayWorkspace';
+import { UnifiedWorkspace } from './workspace/UnifiedWorkspace';
 import { useEffect } from 'react';
 import './styles/global.css';
 import { Layout } from './ui/Layout';
@@ -22,7 +23,9 @@ function PreviewApp() {
 }
 
 export function App() {
-  if (new URLSearchParams(window.location.search).get("workspace") === "bandejas") return <TrayWorkspace />;
+  const ws = new URLSearchParams(window.location.search).get("workspace");
+  if (ws === "bandejas") return <UnifiedWorkspace />;
+  if (ws === "bandejas-legacy") return <TrayWorkspace />;
   const isPreview =
     typeof window !== 'undefined' &&
     new URLSearchParams(window.location.search).get('preview') === 'v2';
