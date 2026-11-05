@@ -420,3 +420,112 @@ html, body, #root {
   color: #cc9944;
   max-width: 280px;
 }
+
+/* ── Vista de prueba v2 ── */
+
+.preview-layout {
+  display: grid;
+  grid-template-columns: 240px 1fr 280px;
+  grid-template-rows: 36px 1fr;
+  grid-template-areas:
+    "banner banner banner"
+    "left   center right";
+  width: 100%;
+  height: 100%;
+  gap: 2px;
+  background: #111120;
+}
+
+.preview-banner {
+  grid-area: banner;
+  background: #2a1800;
+  border-bottom: 1px solid #664400;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: #cc8833;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.preview-layout .panel-left  { grid-area: left;   }
+.preview-layout .canvas-wrapper { grid-area: center; }
+.preview-layout .panel-right { grid-area: right;  }
+
+/* Sección de elementos sin ubicar */
+.preview-unplaced-section {
+  flex-shrink: 0;
+  border-top: 2px solid #2a2a44;
+  background: #181828;
+  padding-bottom: 6px;
+}
+
+.preview-unplaced-title {
+  padding: 8px 12px 4px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #666688;
+}
+
+.preview-unplaced-list {
+  list-style: none;
+}
+
+.preview-unplaced-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 4px 12px 4px 20px;
+  color: #666688;
+  font-size: 11px;
+  font-style: italic;
+}
+
+.preview-unplaced-badge {
+  font-size: 9px;
+  color: #444466;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+}
+
+/* Indicador de geometría pendiente en la lista */
+.preview-pending-badge {
+  font-size: 10px;
+  color: #cc8833;
+  font-weight: 700;
+  margin-left: 4px;
+  flex-shrink: 0;
+}
+
+/* Etiqueta flotante en 3D para geometría desconocida */
+.preview-pending-label {
+  background: #332200cc;
+  color: #ffcc44;
+  padding: 2px 7px;
+  font-size: 11px;
+  font-family: monospace;
+  border-radius: 3px;
+  white-space: nowrap;
+  border: 1px solid #664400;
+  backdrop-filter: blur(2px);
+}
+
+/* Inspector: aviso de dimensiones pendientes */
+.preview-inspector-pending {
+  margin: 8px 12px;
+  padding: 8px 10px;
+  background: #2a1800;
+  border: 1px solid #664400;
+  border-radius: 3px;
+  font-size: 11px;
+  color: #cc8833;
+  line-height: 1.5;
+}

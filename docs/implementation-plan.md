@@ -34,7 +34,74 @@
 | Entrega | Commit | Tests | Descripción |
 |---|---|---|---|
 | I2-base | `fefb59e` | 374 | Adaptador v2→visor: resolución de transform global, conversión mm/Z-up→m/Y-up, geometrías, ciclos |
-| I2-audit | pendiente | 380 | Rotación por conjugación (Q_BASE×Q×Q_BASE_INV), isFloor migrado, 5 pruebas de geometría combinada |
+| I2-audit | `bbef944` | 380 | Rotación por conjugación (Q_BASE×Q×Q_BASE_INV), isFloor migrado, 5 pruebas de geometría combinada ✅ auditado |
+
+## Entregas completadas en la rama `feat/v2-visual-preview`
+
+| Entrega | Commit | Tests | Descripción |
+|---|---|---|---|
+| I3 | pendiente | 402 | Vista de prueba v2 (?preview=v2): migración, padre-hijo, geometría pendiente, sin ubicar, selección sincronizada |
+
+### I3 — Vista de prueba v2 (?preview=v2)
+
+**Rama:** `feat/v2-visual-preview`
+
+**Acceso:** `http://localhost:5173/?preview=v2`
+
+**Objetivo:** verificar el adaptador I2 en un contexto visual sin activar v2 ni modificar datos del editor normal.
+
+#### Qué muestra
+
+| Elemento | Origen | Notas |
+|---|---|---|
+| Piso 30×30m | Migrado de floor-1 | Plano horizontal con grilla. isFloor=true. |
+| Nave industrial 20×15×8m | Migrado de building-1 | Wireframe azul. infrastructure/box. |
+| Tablero eléctrico 800×400×2000mm | Migrado de panel-1 | Sólido azul. |
+| Motor eléctrico 600mm diam. 800mm long. | Migrado de motor-1 | Cilindro verde. |
+| Soporte giratorio (padre) | Extra | 45° alrededor de Z. electrical_panel. |
+| Motor en soporte (hijo) | Extra | parentId=support-panel-1; posición rotada por padre. |
+| Variador de Frecuencia | Extra | geometry=null → marcador naranja + etiqueta "Dimensiones pendientes". |
+| Sensor de temperatura | Extra | placementStatus=unplaced → aparece solo en lista "Sin ubicar". |
+
+#### Arquitectura
+
+- **Sin persistencia:** `PreviewApp` no llama a `initProject` ni accede a IndexedDB.
+- **Store independiente** (`usePreviewStore`): solo `selectedId`, `select`, `clearSelection`. Sin `saveStatus`, `editingBlocked`, ni `hydrateProject`.
+- **Datos estáticos** (`previewData.ts`): genera elementos vía `migrateV1ToV2(INITIAL_OBJECTS)` + extras manuales.
+- **Selección sincronizada:** lista de elementos (izquierda) + visor 3D (centro) + inspector (derecha) leen del mismo `usePreviewStore`.
+- **Editor intacto:** `App.tsx` detecta `?preview=v2`; sin ese parámetro arranca el editor normal con `initProject`.
+
+#### Cómo abrir y probar
+
+```
+# Iniciar servidor de desarrollo
+npm run dev
+
+# Editor normal (v1, con persistencia)
+http://localhost:5173/
+
+# Vista de prueba v2 (en memoria, sin guardar)
+http://localhost:5173/?preview=v2
+```
+
+**Verificaciones manuales:**
+1. Abrir `?preview=v2` → banner naranja "Vista de prueba v2 — no guarda cambios".
+2. Lista izquierda: categorías expandibles, insignia `?` en Variador de Frecuencia.
+3. Sección "Sin ubicar" al fondo de la lista: Sensor de temperatura.
+4. Clic en Tablero Eléctrico (lista o visor) → se ilumina en ambos + inspector muestra propiedades.
+5. Clic en Soporte giratorio → ver rotación no-identidad en inspector.
+6. Clic en Motor en soporte → posición global diferente a la local (efecto de la rotación del padre).
+7. Clic en Variador de Frecuencia → marcador naranja, inspector muestra "Dimensiones pendientes".
+8. Abrir `http://localhost:5173/` (sin `?preview=v2`) → editor normal sin cambios.
+
+#### Limitaciones conocidas de I3
+
+- No hay botón para volver al editor desde la vista de prueba (cambiar la URL manualmente).
+- La vista de prueba no recarga datos desde IndexedDB; los elementos son siempre los de ejemplo.
+- El grid del piso es independiente de selección (no se resalta al seleccionar el piso).
+- Assets 3D (`geometryKind='asset'`) se renderizan como wireframe placeholder.
+
+---
 
 ### M1b — Respaldo transaccional y recuperación para migración v1→v2
 
