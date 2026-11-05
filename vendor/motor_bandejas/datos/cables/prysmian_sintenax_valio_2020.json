@@ -1,0 +1,830 @@
+{
+ "dataset_id": "PRY-SINTENAX-VALIO-ED2020",
+ "version_dataset": "2",
+ "fabricante": "Prysmian Energía Cables y Sistemas de Argentina S.A.",
+ "linea": "Sintenax Valio 0,6/1 kV (VV-K / VV-R), IRAM 2178-1",
+ "documento": {
+  "titulo": "Cable Sintenax® Valio – Instalaciones Fijas",
+  "archivo": "PRY2020_Sintenax_Valio.pdf",
+  "sha256_archivo": "92a1f2a874e90461a9922e3d71b97a2b9a56637472d432579b422e47b361c238",
+  "edicion": "Edición 2020 (impresa en el margen de cada página)",
+  "url_publicada": "https://ar.prysmian.com/sites/ar.prysmian.com/files/media/documents/PRY2020_Sintenax_Valio.pdf",
+  "nota_otras_ediciones": "Existe 'PRY2026_Sintenax Valio_v2.pdf' (Edición 2026). Leída por extracción web el 2026-11-05: Cu unipolar 4/6/10/16 mm² con iguales D y masa que 2020. No se transcribió completa."
+ },
+ "transcripcion": {
+  "metodo": "Transcripción manual desde la imagen de las páginas 3, 4, 5, 8 y 9. Solo se transcriben diámetro exterior aproximado y masa aproximada, que son los únicos datos que usa el motor.",
+  "fecha": "2026-11-05",
+  "estado": "transcrito – requiere segunda lectura humana antes de uso en producción"
+ },
+ "unidades": {
+  "diametro_exterior": "mm",
+  "masa": "kg/km"
+ },
+ "magnitudes": {
+  "diametro_exterior": "Diámetro exterior aproximado del cable completo (incluye aislación y envoltura).",
+  "masa": "Masa aproximada del cable completo por unidad de longitud."
+ },
+ "tablas": [
+  {
+   "material": "cobre",
+   "n_conductores": 1,
+   "tipo": "unipolar",
+   "pagina": "3",
+   "titulo_tabla": "Características técnicas (IRAM) - Cables con conductores de cobre – UNIPOLARES (alma de color marrón)",
+   "columnas": [
+    "formacion",
+    "diametro_exterior_mm",
+    "masa_kg_km"
+   ],
+   "filas": [
+    [
+     "4",
+     7.6,
+     91
+    ],
+    [
+     "6",
+     8.1,
+     114
+    ],
+    [
+     "10",
+     9.1,
+     160
+    ],
+    [
+     "16",
+     10.0,
+     227
+    ],
+    [
+     "25",
+     12.7,
+     346
+    ],
+    [
+     "35",
+     13.8,
+     447
+    ],
+    [
+     "50",
+     15.9,
+     612
+    ],
+    [
+     "70",
+     17.6,
+     811
+    ],
+    [
+     "95",
+     20.0,
+     1037
+    ],
+    [
+     "120",
+     22.9,
+     1334
+    ],
+    [
+     "150",
+     24.0,
+     1634
+    ],
+    [
+     "185",
+     27.1,
+     1985
+    ],
+    [
+     "240",
+     32.0,
+     2611
+    ],
+    [
+     "300",
+     29.8,
+     3186
+    ],
+    [
+     "400",
+     32.7,
+     4008
+    ],
+    [
+     "500",
+     37.0,
+     5213
+    ],
+    [
+     "630",
+     40.6,
+     6581
+    ]
+   ],
+   "anomalias_fuente": {
+    "240": "Diámetro exterior (32,0 mm) y del conductor (24,0 mm) mayores que los de 300 mm² (29,8 / 20,7 mm): serie no monótona. Se conserva el valor publicado; consultar al fabricante.",
+    "300": "Diámetro exterior (29,8 mm) menor que el de 240 mm². Ver nota de 240."
+   },
+   "condiciones_empleo": [
+    "en bandejas",
+    "directamente enterrado",
+    "enterrado en canaletas",
+    "enterrado en cañerías"
+   ],
+   "fuente_condiciones_empleo": "p. 02, 'Condiciones de empleo'",
+   "radio_minimo": {
+    "estado": "no publicado",
+    "nota": "La ficha (ed. 2020) no publica radio mínimo de curvatura."
+   },
+   "colores": [
+    "marrón (alma)"
+   ],
+   "fuente_colores": "p. 02, 'Colores de aislación: Unipolares: Marrón'. Color de la envoltura no declarado en texto."
+  },
+  {
+   "material": "cobre",
+   "n_conductores": 2,
+   "tipo": "bipolar",
+   "pagina": "3",
+   "titulo_tabla": "Cobre – BIPOLARES (almas de color marrón y negro)",
+   "columnas": [
+    "formacion",
+    "diametro_exterior_mm",
+    "masa_kg_km"
+   ],
+   "filas": [
+    [
+     "1,5",
+     9.9,
+     132
+    ],
+    [
+     "2,5",
+     10.8,
+     165
+    ],
+    [
+     "4",
+     12.7,
+     234
+    ],
+    [
+     "6",
+     13.7,
+     293
+    ],
+    [
+     "10",
+     15.6,
+     410
+    ],
+    [
+     "16",
+     18.5,
+     632
+    ],
+    [
+     "25",
+     24.0,
+     1030
+    ],
+    [
+     "35",
+     26.5,
+     1310
+    ]
+   ],
+   "condiciones_empleo": [
+    "en bandejas",
+    "directamente enterrado",
+    "enterrado en canaletas",
+    "enterrado en cañerías"
+   ],
+   "fuente_condiciones_empleo": "p. 02, 'Condiciones de empleo'",
+   "radio_minimo": {
+    "estado": "no publicado",
+    "nota": "La ficha (ed. 2020) no publica radio mínimo de curvatura."
+   }
+  },
+  {
+   "material": "cobre",
+   "n_conductores": 3,
+   "tipo": "tripolar",
+   "pagina": "4",
+   "titulo_tabla": "Cobre – TRIPOLARES (alma de color marrón, negro y rojo)",
+   "columnas": [
+    "formacion",
+    "diametro_exterior_mm",
+    "masa_kg_km"
+   ],
+   "filas": [
+    [
+     "1,5",
+     10,
+     152
+    ],
+    [
+     "2,5",
+     11,
+     195
+    ],
+    [
+     "4",
+     13,
+     280
+    ],
+    [
+     "6",
+     15,
+     356
+    ],
+    [
+     "10",
+     17,
+     509
+    ],
+    [
+     "16",
+     20,
+     786
+    ],
+    [
+     "25",
+     26,
+     1270
+    ],
+    [
+     "35",
+     28.5,
+     1630
+    ],
+    [
+     "50",
+     30,
+     2075
+    ],
+    [
+     "70",
+     30,
+     2365
+    ],
+    [
+     "95",
+     33,
+     3208
+    ],
+    [
+     "120",
+     36,
+     3910
+    ],
+    [
+     "150",
+     40,
+     4806
+    ],
+    [
+     "185",
+     44,
+     5956
+    ],
+    [
+     "240",
+     49,
+     7729
+    ],
+    [
+     "300",
+     54,
+     9636
+    ]
+   ],
+   "anomalias_fuente": {
+    "50": "Mismo diámetro exterior publicado que 70 mm² (30 mm).",
+    "70": "Mismo diámetro exterior publicado que 50 mm² (30 mm)."
+   },
+   "condiciones_empleo": [
+    "en bandejas",
+    "directamente enterrado",
+    "enterrado en canaletas",
+    "enterrado en cañerías"
+   ],
+   "fuente_condiciones_empleo": "p. 02, 'Condiciones de empleo'",
+   "radio_minimo": {
+    "estado": "no publicado",
+    "nota": "La ficha (ed. 2020) no publica radio mínimo de curvatura."
+   }
+  },
+  {
+   "material": "cobre",
+   "n_conductores": 4,
+   "tipo": "tetrapolar",
+   "pagina": "4",
+   "titulo_tabla": "Cobre – TETRAPOLARES (almas de color marrón, negro, rojo y azul)",
+   "columnas": [
+    "formacion",
+    "diametro_exterior_mm",
+    "masa_kg_km"
+   ],
+   "filas": [
+    [
+     "1,5",
+     11,
+     180
+    ],
+    [
+     "2,5",
+     12,
+     233
+    ],
+    [
+     "4",
+     15,
+     337
+    ],
+    [
+     "6",
+     16,
+     433
+    ],
+    [
+     "10",
+     18,
+     627
+    ],
+    [
+     "16",
+     22,
+     992
+    ],
+    [
+     "25/16",
+     27,
+     1430
+    ],
+    [
+     "35/16",
+     29,
+     1780
+    ],
+    [
+     "50/25",
+     31,
+     2355
+    ],
+    [
+     "70/35",
+     31,
+     2742
+    ],
+    [
+     "95/50",
+     35,
+     3736
+    ],
+    [
+     "120/70",
+     39,
+     4643
+    ],
+    [
+     "150/70",
+     42,
+     5546
+    ],
+    [
+     "185/95",
+     47,
+     6969
+    ],
+    [
+     "240/120",
+     53,
+     8973
+    ],
+    [
+     "300/150",
+     59,
+     11154
+    ]
+   ],
+   "anomalias_fuente": {
+    "50/25": "Mismo diámetro exterior publicado que 70/35 (31 mm).",
+    "70/35": "Mismo diámetro exterior publicado que 50/25 (31 mm)."
+   },
+   "condiciones_empleo": [
+    "en bandejas",
+    "directamente enterrado",
+    "enterrado en canaletas",
+    "enterrado en cañerías"
+   ],
+   "fuente_condiciones_empleo": "p. 02, 'Condiciones de empleo'",
+   "radio_minimo": {
+    "estado": "no publicado",
+    "nota": "La ficha (ed. 2020) no publica radio mínimo de curvatura."
+   }
+  },
+  {
+   "material": "cobre",
+   "n_conductores": 4,
+   "tipo": "tetrapolar_neutro_igual",
+   "pagina": "5",
+   "titulo_tabla": "Cobre – TETRAPOLARES con neutro de sección igual a las fases",
+   "columnas": [
+    "formacion",
+    "diametro_exterior_mm",
+    "masa_kg_km"
+   ],
+   "filas": [
+    [
+     "25",
+     28,
+     1560
+    ],
+    [
+     "35",
+     32,
+     2100
+    ],
+    [
+     "50",
+     33,
+     2639
+    ],
+    [
+     "70",
+     37,
+     3541
+    ],
+    [
+     "95",
+     43,
+     4823
+    ],
+    [
+     "120",
+     47,
+     5921
+    ],
+    [
+     "150",
+     52,
+     7325
+    ],
+    [
+     "185",
+     58,
+     9120
+    ],
+    [
+     "240",
+     65,
+     11840
+    ]
+   ],
+   "condiciones_empleo": [
+    "en bandejas",
+    "directamente enterrado",
+    "enterrado en canaletas",
+    "enterrado en cañerías"
+   ],
+   "fuente_condiciones_empleo": "p. 02, 'Condiciones de empleo'",
+   "radio_minimo": {
+    "estado": "no publicado",
+    "nota": "La ficha (ed. 2020) no publica radio mínimo de curvatura."
+   }
+  },
+  {
+   "material": "aluminio",
+   "n_conductores": 1,
+   "tipo": "unipolar",
+   "pagina": "8",
+   "titulo_tabla": "Características técnicas (IRAM) - Cables con conductores de aluminio – UNIPOLARES",
+   "columnas": [
+    "formacion",
+    "diametro_exterior_mm",
+    "masa_kg_km"
+   ],
+   "filas": [
+    [
+     "35",
+     12.7,
+     220
+    ],
+    [
+     "50",
+     14.1,
+     280
+    ],
+    [
+     "70",
+     16,
+     360
+    ],
+    [
+     "95",
+     18,
+     480
+    ],
+    [
+     "120",
+     20,
+     570
+    ],
+    [
+     "150",
+     22,
+     690
+    ],
+    [
+     "185",
+     24,
+     860
+    ],
+    [
+     "240",
+     27,
+     1090
+    ],
+    [
+     "300",
+     30,
+     1340
+    ],
+    [
+     "400",
+     33,
+     1700
+    ],
+    [
+     "500",
+     37,
+     2080
+    ],
+    [
+     "630",
+     41,
+     2580
+    ]
+   ],
+   "condiciones_empleo": [
+    "en bandejas",
+    "directamente enterrado",
+    "enterrado en canaletas",
+    "enterrado en cañerías"
+   ],
+   "fuente_condiciones_empleo": "p. 02, 'Condiciones de empleo'",
+   "radio_minimo": {
+    "estado": "no publicado",
+    "nota": "La ficha (ed. 2020) no publica radio mínimo de curvatura."
+   },
+   "colores": [
+    "marrón (alma)"
+   ],
+   "fuente_colores": "p. 02, 'Colores de aislación: Unipolares: Marrón'. Color de la envoltura no declarado en texto."
+  },
+  {
+   "material": "aluminio",
+   "n_conductores": 2,
+   "tipo": "bipolar",
+   "pagina": "8",
+   "titulo_tabla": "Aluminio – BIPOLARES",
+   "columnas": [
+    "formacion",
+    "diametro_exterior_mm",
+    "masa_kg_km"
+   ],
+   "filas": [
+    [
+     "4",
+     12.5,
+     190
+    ],
+    [
+     "6",
+     13.5,
+     230
+    ],
+    [
+     "10",
+     15.8,
+     310
+    ],
+    [
+     "16",
+     19,
+     440
+    ],
+    [
+     "25",
+     22,
+     640
+    ],
+    [
+     "35",
+     24,
+     780
+    ]
+   ],
+   "condiciones_empleo": [
+    "en bandejas",
+    "directamente enterrado",
+    "enterrado en canaletas",
+    "enterrado en cañerías"
+   ],
+   "fuente_condiciones_empleo": "p. 02, 'Condiciones de empleo'",
+   "radio_minimo": {
+    "estado": "no publicado",
+    "nota": "La ficha (ed. 2020) no publica radio mínimo de curvatura."
+   }
+  },
+  {
+   "material": "aluminio",
+   "n_conductores": 3,
+   "tipo": "tripolar",
+   "pagina": "9",
+   "titulo_tabla": "Aluminio – TRIPOLARES",
+   "columnas": [
+    "formacion",
+    "diametro_exterior_mm",
+    "masa_kg_km"
+   ],
+   "filas": [
+    [
+     "4",
+     13.5,
+     220
+    ],
+    [
+     "6",
+     15,
+     270
+    ],
+    [
+     "10",
+     17,
+     360
+    ],
+    [
+     "16",
+     20,
+     500
+    ],
+    [
+     "25",
+     24,
+     730
+    ],
+    [
+     "35",
+     26,
+     890
+    ],
+    [
+     "50",
+     30,
+     1230
+    ],
+    [
+     "70",
+     30,
+     1110
+    ],
+    [
+     "95",
+     34,
+     1470
+    ],
+    [
+     "120",
+     37,
+     1740
+    ],
+    [
+     "150",
+     40,
+     2110
+    ],
+    [
+     "185",
+     44,
+     2630
+    ],
+    [
+     "240",
+     49,
+     3320
+    ]
+   ],
+   "anomalias_fuente": {
+    "70": "Masa publicada (1110 kg/km) menor que la de 50 mm² (1230 kg/km) con igual diámetro: posible errata del fabricante."
+   },
+   "condiciones_empleo": [
+    "en bandejas",
+    "directamente enterrado",
+    "enterrado en canaletas",
+    "enterrado en cañerías"
+   ],
+   "fuente_condiciones_empleo": "p. 02, 'Condiciones de empleo'",
+   "radio_minimo": {
+    "estado": "no publicado",
+    "nota": "La ficha (ed. 2020) no publica radio mínimo de curvatura."
+   }
+  },
+  {
+   "material": "aluminio",
+   "n_conductores": 4,
+   "tipo": "tetrapolar",
+   "pagina": "9",
+   "titulo_tabla": "Aluminio – TETRAPOLARES",
+   "columnas": [
+    "formacion",
+    "diametro_exterior_mm",
+    "masa_kg_km"
+   ],
+   "filas": [
+    [
+     "4",
+     15,
+     250
+    ],
+    [
+     "6",
+     16,
+     310
+    ],
+    [
+     "10",
+     19,
+     420
+    ],
+    [
+     "16",
+     22,
+     610
+    ],
+    [
+     "25/16",
+     25,
+     800
+    ],
+    [
+     "35/16",
+     27,
+     960
+    ],
+    [
+     "50/25",
+     32,
+     1360
+    ],
+    [
+     "70/35",
+     31,
+     1260
+    ],
+    [
+     "95/50",
+     36,
+     1700
+    ],
+    [
+     "120/70",
+     39,
+     2050
+    ],
+    [
+     "150/70",
+     43,
+     2440
+    ],
+    [
+     "185/95",
+     47,
+     3040
+    ],
+    [
+     "240/120",
+     53,
+     3840
+    ]
+   ],
+   "anomalias_fuente": {
+    "70/35": "Diámetro (31 mm) y masa (1260 kg/km) menores que 50/25 (32 mm; 1360 kg/km): posible errata del fabricante."
+   },
+   "condiciones_empleo": [
+    "en bandejas",
+    "directamente enterrado",
+    "enterrado en canaletas",
+    "enterrado en cañerías"
+   ],
+   "fuente_condiciones_empleo": "p. 02, 'Condiciones de empleo'",
+   "radio_minimo": {
+    "estado": "no publicado",
+    "nota": "La ficha (ed. 2020) no publica radio mínimo de curvatura."
+   }
+  }
+ ]
+}

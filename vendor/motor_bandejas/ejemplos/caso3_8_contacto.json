@@ -1,0 +1,8 @@
+{
+  "tipo_circuito": "potencia",
+  "vano_mm": 1500,
+  "reserva_solicitada_pct": 20,
+  "usos_cable": [
+    {"cable_id": "PRY-SVALIO-CU-1x6", "cantidad": 8, "separado": false, "apilado": false}
+  ]
+}

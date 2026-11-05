@@ -3,3 +3,8 @@ dist/
 .DS_Store
 *.local
 .claude/
+
+# Local Python and smoke-test outputs
+**/__pycache__/
+*.py[cod]
+artifacts/

@@ -1,0 +1,5701 @@
+{
+ "descripcion": "Vector trazado_ejemplo (generado por herramientas/generar_vectores.py)",
+ "respuesta": {
+  "clave": "TRAZADO-1",
+  "estado": "ok",
+  "huella": "f6838c558c1f05fb0553f4614384364b8e652ae2b7a603ccb50e5e0772891007",
+  "resultado": {
+   "accesorios": {},
+   "cargas_por_pieza": {
+    "CS1": {
+     "cables_potencia_kg_m": 1.341,
+     "conductores_pe": 1,
+     "escenario_kg_m": 0.0,
+     "masa_tapa": null,
+     "pe_kg_m": 0.167,
+     "q_kg_m": 1.508,
+     "tapas": []
+    },
+    "R1": {
+     "cables_potencia_kg_m": 2.682,
+     "conductores_pe": 1,
+     "escenario_kg_m": 0.0,
+     "masa_tapa": null,
+     "pe_kg_m": 0.167,
+     "q_kg_m": 2.849,
+     "tapas": []
+    },
+    "R2": {
+     "cables_potencia_kg_m": 2.682,
+     "conductores_pe": 1,
+     "escenario_kg_m": 0.0,
+     "masa_tapa": null,
+     "pe_kg_m": 0.167,
+     "q_kg_m": 2.849,
+     "tapas": []
+    },
+    "R3": {
+     "cables_potencia_kg_m": 1.341,
+     "conductores_pe": 1,
+     "escenario_kg_m": 0.0,
+     "masa_tapa": "NO_PUBLICADA",
+     "pe_kg_m": 0.167,
+     "q_kg_m": 1.508,
+     "tapas": [
+      "TP1"
+     ]
+    },
+    "R4": {
+     "cables_potencia_kg_m": 1.341,
+     "conductores_pe": 1,
+     "escenario_kg_m": 0.0,
+     "masa_tapa": null,
+     "pe_kg_m": 0.167,
+     "q_kg_m": 1.508,
+     "tapas": []
+    },
+    "R5": {
+     "cables_potencia_kg_m": 1.341,
+     "conductores_pe": 1,
+     "escenario_kg_m": 0.0,
+     "masa_tapa": null,
+     "pe_kg_m": 0.167,
+     "q_kg_m": 1.508,
+     "tapas": []
+    },
+    "T1": {
+     "cables_potencia_kg_m": 2.682,
+     "conductores_pe": 2,
+     "escenario_kg_m": 0.0,
+     "masa_tapa": null,
+     "pe_kg_m": 0.334,
+     "q_kg_m": 3.016,
+     "tapas": []
+    }
+   },
+   "circuitos": {
+    "K1": {
+     "cable_id": "PRY-SVALIO-CU-1x35",
+     "cantidad": 3,
+     "curvatura": [
+      {
+       "detalle": "Atraviesa la pieza de boca a boca opuesta.",
+       "estado": "SIN_CURVATURA",
+       "instancia": "T1",
+       "pieza_tipo": "T",
+       "radio_publicado_mm": 300.0,
+       "referencia_radio": "interior"
+      }
+     ],
+     "recorrido": {
+      "conexiones_cruzadas": [
+       "C1",
+       "C2",
+       "C3"
+      ],
+      "estado": "CONTINUO",
+      "pasos": [
+       {
+        "instancia": "R1",
+        "puerto_entrada": null,
+        "puerto_salida": "P2"
+       },
+       {
+        "instancia": "R2",
+        "puerto_entrada": "P1",
+        "puerto_salida": "P2"
+       },
+       {
+        "instancia": "T1",
+        "puerto_entrada": "P1",
+        "puerto_salida": "P2"
+       },
+       {
+        "instancia": "R3",
+        "puerto_entrada": "P1",
+        "puerto_salida": null
+       }
+      ],
+      "saltos_sin_conexion": []
+     },
+     "separado": true
+    },
+    "K2": {
+     "cable_id": "PRY-SVALIO-CU-1x35",
+     "cantidad": 3,
+     "curvatura": [
+      {
+       "detalle": "La ficha de PRY-SVALIO-CU-1x35 no publica radio mínimo de curvatura.",
+       "estado": "NO_VERIFICABLE_RADIO_CABLE_NO_PUBLICADO",
+       "instancia": "T1",
+       "pieza_tipo": "T",
+       "radio_borde_interior_mm": 300.0,
+       "radio_publicado_mm": 300.0,
+       "referencia_radio": "interior",
+       "supuesto": "Peor caso: cable contra el ala interior (no se supone que siga el eje) — D-16."
+      },
+      {
+       "detalle": "La ficha de PRY-SVALIO-CU-1x35 no publica radio mínimo de curvatura.",
+       "estado": "NO_VERIFICABLE_RADIO_CABLE_NO_PUBLICADO",
+       "instancia": "CS1",
+       "pieza_tipo": "curva horizontal",
+       "radio_borde_interior_mm": 300.0,
+       "radio_publicado_mm": 300.0,
+       "referencia_radio": "interior",
+       "supuesto": "Peor caso: cable contra el ala interior (no se supone que siga el eje) — D-16."
+      }
+     ],
+     "recorrido": {
+      "conexiones_cruzadas": [
+       "C1",
+       "C2",
+       "C4",
+       "C5",
+       "C6"
+      ],
+      "estado": "CONTINUO",
+      "pasos": [
+       {
+        "instancia": "R1",
+        "puerto_entrada": null,
+        "puerto_salida": "P2"
+       },
+       {
+        "instancia": "R2",
+        "puerto_entrada": "P1",
+        "puerto_salida": "P2"
+       },
+       {
+        "instancia": "T1",
+        "puerto_entrada": "P1",
+        "puerto_salida": "P3"
+       },
+       {
+        "instancia": "R4",
+        "puerto_entrada": "P1",
+        "puerto_salida": "P2"
+       },
+       {
+        "instancia": "CS1",
+        "puerto_entrada": "P1",
+        "puerto_salida": "P2"
+       },
+       {
+        "instancia": "R5",
+        "puerto_entrada": "P1",
+        "puerto_salida": null
+       }
+      ],
+      "saltos_sin_conexion": []
+     },
+     "separado": true
+    }
+   },
+   "computo": {
+    "advertencia": "Las líneas 'propuesta', 'regla_producto' y 'declarada_en_trazado' no son cantidades documentadas por el fabricante.",
+    "lineas": [
+     {
+      "cantidad": 1,
+      "descripcion": "TRAMO RECTO SMARTTRAY (Cable Tray) – Ancho 300 – Espesor 1.24 – ALA 65",
+      "estado_cantidad": "regla_producto",
+      "evidencia": null,
+      "incluye_declarado": null,
+      "nota": null,
+      "origen": {
+       "pieza": "R1"
+      },
+      "producto_id": "SAM_TRES-300-065-18-Z",
+      "regla": "D-18: 1 pieza comercial por instancia",
+      "sku": "TRES-300-065-18-Z",
+      "suministro": "no_declarado",
+      "unidad": "pieza"
+     },
+     {
+      "cantidad": 1,
+      "descripcion": "TRAMO RECTO SMARTTRAY (Cable Tray) – Ancho 300 – Espesor 1.24 – ALA 65",
+      "estado_cantidad": "regla_producto",
+      "evidencia": null,
+      "incluye_declarado": null,
+      "nota": null,
+      "origen": {
+       "pieza": "R2"
+      },
+      "producto_id": "SAM_TRES-300-065-18-Z",
+      "regla": "D-18: 1 pieza comercial por instancia",
+      "sku": "TRES-300-065-18-Z",
+      "suministro": "no_declarado",
+      "unidad": "pieza"
+     },
+     {
+      "cantidad": 1,
+      "descripcion": "UNIÓN T (Horizontal Tee) – Ancho 300 – Espesor 1.24 – ALA 65",
+      "estado_cantidad": "regla_producto",
+      "evidencia": null,
+      "incluye_declarado": null,
+      "nota": null,
+      "origen": {
+       "pieza": "T1"
+      },
+      "producto_id": "SAM_TS-300-065-18-Z",
+      "regla": "D-18: 1 pieza comercial por instancia",
+      "sku": "TS-300-065-18-Z",
+      "suministro": "no_declarado",
+      "unidad": "pieza"
+     },
+     {
+      "cantidad": 1,
+      "descripcion": "TRAMO RECTO SMARTTRAY (Cable Tray) – Ancho 300 – Espesor 1.24 – ALA 65",
+      "estado_cantidad": "regla_producto",
+      "evidencia": null,
+      "incluye_declarado": null,
+      "nota": null,
+      "origen": {
+       "pieza": "R3"
+      },
+      "producto_id": "SAM_TRES-300-065-18-Z",
+      "regla": "D-18: 1 pieza comercial por instancia",
+      "sku": "TRES-300-065-18-Z",
+      "suministro": "no_declarado",
+      "unidad": "pieza"
+     },
+     {
+      "cantidad": 1,
+      "descripcion": "TRAMO RECTO SMARTTRAY (Cable Tray) – Ancho 300 – Espesor 1.24 – ALA 65",
+      "estado_cantidad": "regla_producto",
+      "evidencia": null,
+      "incluye_declarado": null,
+      "nota": null,
+      "origen": {
+       "pieza": "R4"
+      },
+      "producto_id": "SAM_TRES-300-065-18-Z",
+      "regla": "D-18: 1 pieza comercial por instancia",
+      "sku": "TRES-300-065-18-Z",
+      "suministro": "no_declarado",
+      "unidad": "pieza"
+     },
+     {
+      "cantidad": 1,
+      "descripcion": "CURVA PLANA A 90º (Horizontal 90º Elbow) – Ancho 300 – Espesor 1.24 – ALA 65",
+      "estado_cantidad": "regla_producto",
+      "evidencia": null,
+      "incluye_declarado": null,
+      "nota": null,
+      "origen": {
+       "pieza": "CS1"
+      },
+      "producto_id": "SAM_CS-300-90-065-18-Z",
+      "regla": "D-18: 1 pieza comercial por instancia",
+      "sku": "CS-300-90-065-18-Z",
+      "suministro": "no_declarado",
+      "unidad": "pieza"
+     },
+     {
+      "cantidad": 1,
+      "descripcion": "TRAMO RECTO SMARTTRAY (Cable Tray) – Ancho 300 – Espesor 1.24 – ALA 65",
+      "estado_cantidad": "regla_producto",
+      "evidencia": null,
+      "incluye_declarado": null,
+      "nota": "Corte: 1500.0 mm de 3000.0 mm; recorte 1500.0 mm no reaprovechado.",
+      "origen": {
+       "pieza": "R5"
+      },
+      "producto_id": "SAM_TRES-300-065-18-Z",
+      "regla": "D-18: 1 pieza comercial por instancia",
+      "sku": "TRES-300-065-18-Z",
+      "suministro": "no_declarado",
+      "unidad": "pieza"
+     },
+     {
+      "cantidad": 4.0,
+      "descripcion": "JUEGO DE BULONERÍA 3/8\" (3/8\" Carriage Bolt with Nut)",
+      "estado_cantidad": "documentada",
+      "evidencia": {
+       "estado_evidencia": "documentada",
+       "fila": 1265,
+       "fuente_id": "F-001",
+       "pagina_fuente": "PDF 3 / impr. 4"
+      },
+      "incluye_declarado": null,
+      "nota": null,
+      "origen": {
+       "compatibilidad": "CMP-01535",
+       "conexion": "C1"
+      },
+      "producto_id": "SAM_JB-CC-3_8",
+      "regla": "D-24: COMPONENTES_UNION por conexión (no por extremo)",
+      "sku": "JB-CC-3/8",
+      "suministro": "no_declarado",
+      "unidad": "juego"
+     },
+     {
+      "cantidad": 4.0,
+      "descripcion": "JUEGO DE BULONERÍA 3/8\" (3/8\" Carriage Bolt with Nut)",
+      "estado_cantidad": "documentada",
+      "evidencia": {
+       "estado_evidencia": "documentada",
+       "fila": 1379,
+       "fuente_id": "F-001",
+       "pagina_fuente": "PDF 3 / impr. 4"
+      },
+      "incluye_declarado": null,
+      "nota": null,
+      "origen": {
+       "compatibilidad": "CMP-01649",
+       "conexion": "C2"
+      },
+      "producto_id": "SAM_JB-CC-3_8",
+      "regla": "D-24: COMPONENTES_UNION por conexión (no por extremo)",
+      "sku": "JB-CC-3/8",
+      "suministro": "no_declarado",
+      "unidad": "juego"
+     },
+     {
+      "cantidad": 4.0,
+      "descripcion": "JUEGO DE BULONERÍA 3/8\" (3/8\" Carriage Bolt with Nut)",
+      "estado_cantidad": "documentada",
+      "evidencia": {
+       "estado_evidencia": "documentada",
+       "fila": 1380,
+       "fuente_id": "F-001",
+       "pagina_fuente": "PDF 3 / impr. 4"
+      },
+      "incluye_declarado": null,
+      "nota": null,
+      "origen": {
+       "compatibilidad": "CMP-01650",
+       "conexion": "C3"
+      },
+      "producto_id": "SAM_JB-CC-3_8",
+      "regla": "D-24: COMPONENTES_UNION por conexión (no por extremo)",
+      "sku": "JB-CC-3/8",
+      "suministro": "no_declarado",
+      "unidad": "juego"
+     },
+     {
+      "cantidad": 4.0,
+      "descripcion": "JUEGO DE BULONERÍA 3/8\" (3/8\" Carriage Bolt with Nut)",
+      "estado_cantidad": "documentada",
+      "evidencia": {
+       "estado_evidencia": "documentada",
+       "fila": 1381,
+       "fuente_id": "F-001",
+       "pagina_fuente": "PDF 3 / impr. 4"
+      },
+      "incluye_declarado": null,
+      "nota": null,
+      "origen": {
+       "compatibilidad": "CMP-01651",
+       "conexion": "C4"
+      },
+      "producto_id": "SAM_JB-CC-3_8",
+      "regla": "D-24: COMPONENTES_UNION por conexión (no por extremo)",
+      "sku": "JB-CC-3/8",
+      "suministro": "no_declarado",
+      "unidad": "juego"
+     },
+     {
+      "cantidad": 4.0,
+      "descripcion": "JUEGO DE BULONERÍA 3/8\" (3/8\" Carriage Bolt with Nut)",
+      "estado_cantidad": "documentada",
+      "evidencia": {
+       "estado_evidencia": "documentada",
+       "fila": 1304,
+       "fuente_id": "F-001",
+       "pagina_fuente": "PDF 3 / impr. 4"
+      },
+      "incluye_declarado": null,
+      "nota": null,
+      "origen": {
+       "compatibilidad": "CMP-01574",
+       "conexion": "C5"
+      },
+      "producto_id": "SAM_JB-CC-3_8",
+      "regla": "D-24: COMPONENTES_UNION por conexión (no por extremo)",
+      "sku": "JB-CC-3/8",
+      "suministro": "no_declarado",
+      "unidad": "juego"
+     },
+     {
+      "cantidad": 4.0,
+      "descripcion": "JUEGO DE BULONERÍA 3/8\" (3/8\" Carriage Bolt with Nut)",
+      "estado_cantidad": "documentada",
+      "evidencia": {
+       "estado_evidencia": "documentada",
+       "fila": 1305,
+       "fuente_id": "F-001",
+       "pagina_fuente": "PDF 3 / impr. 4"
+      },
+      "incluye_declarado": null,
+      "nota": null,
+      "origen": {
+       "compatibilidad": "CMP-01575",
+       "conexion": "C6"
+      },
+      "producto_id": "SAM_JB-CC-3_8",
+      "regla": "D-24: COMPONENTES_UNION por conexión (no por extremo)",
+      "sku": "JB-CC-3/8",
+      "suministro": "no_declarado",
+      "unidad": "juego"
+     },
+     {
+      "cantidad": 1,
+      "descripcion": "TAPA CIEGA PARA TRAMO RECTO (CableTray-Cover) – Ancho 300 – Espesor 0.71",
+      "estado_cantidad": "declarada_en_trazado",
+      "evidencia": {
+       "compatibilidad": "COMPATIBLE_DOCUMENTADA"
+      },
+      "incluye_declarado": null,
+      "nota": null,
+      "origen": {
+       "sobre": "R3",
+       "tapa": "TP1"
+      },
+      "producto_id": "SAM_TTRS-300-22-Z",
+      "regla": "1 por tapa declarada por el CAD",
+      "sku": "TTRS-300-22-Z",
+      "suministro": "no_declarado",
+      "unidad": "pieza"
+     },
+     {
+      "cantidad": null,
+      "descripcion": null,
+      "estado_cantidad": "no_documentada",
+      "evidencia": null,
+      "incluye_declarado": null,
+      "nota": "Cantidad y artículo de fijación de tapas no estructurados en el catálogo (las observaciones citan JB-TRUTS-M6 sin cantidad).",
+      "origen": {
+       "tapa": "TP1"
+      },
+      "producto_id": null,
+      "regla": "fijación de tapa",
+      "sku": null,
+      "suministro": "no_declarado",
+      "unidad": null
+     },
+     {
+      "cantidad": 1,
+      "descripcion": "SOPORTE TRAPECIO (Trapeze Hanger) – ANCHO 350",
+      "estado_cantidad": "declarada_en_trazado",
+      "evidencia": null,
+      "incluye_declarado": null,
+      "nota": null,
+      "origen": {
+       "soporte": "S1"
+      },
+      "producto_id": "SAM_STS-300-Z",
+      "regla": "1 soporte principal por punto de apoyo declarado por el CAD",
+      "sku": "STS-300-Z",
+      "suministro": "no_declarado",
+      "unidad": "pieza"
+     },
+     {
+      "cantidad": 2.0,
+      "descripcion": "Varilla roscada rosca Whitworth cincada SAE 1010 – 3/8\" – 16 hilos por pulgada",
+      "estado_cantidad": "validada_usuario",
+      "evidencia": {
+       "estado_evidencia": "validada por usuario",
+       "fuente_id": "F-005",
+       "pagina_fuente": "Ronda 3, punto 2"
+      },
+      "incluye_declarado": null,
+      "nota": null,
+      "origen": {
+       "sistema": "SIS-001",
+       "soporte": "S1"
+      },
+      "producto_id": "IGH_VRW101-3.8Z",
+      "regla": "COMPONENTES_SOPORTE: Una varilla por extremo del trapecio",
+      "sku": "VRW101-3.8Z",
+      "suministro": "no_declarado",
+      "unidad": "pieza"
+     },
+     {
+      "cantidad": 4.0,
+      "descripcion": "Tuerca hexagonal 3/8\" Whitworth para varilla roscada (no provista por SAMET)",
+      "estado_cantidad": "propuesta",
+      "evidencia": {
+       "estado_evidencia": "propuesta",
+       "fuente_id": "F-005",
+       "pagina_fuente": "REV-014"
+      },
+      "incluye_declarado": null,
+      "nota": null,
+      "origen": {
+       "sistema": "SIS-001",
+       "soporte": "S1"
+      },
+      "producto_id": "GEN_TUERCA-3_8-W__PENDIENTE",
+      "regla": "COMPONENTES_SOPORTE: Dos tuercas por varilla (arriba y abajo del trapecio)",
+      "sku": null,
+      "suministro": "no_declarado",
+      "unidad": "pieza"
+     },
+     {
+      "cantidad": 4.0,
+      "descripcion": "Arandela plana 3/8\" para varilla roscada (no provista por SAMET)",
+      "estado_cantidad": "propuesta",
+      "evidencia": {
+       "estado_evidencia": "propuesta",
+       "fuente_id": "F-005",
+       "pagina_fuente": "REV-014"
+      },
+      "incluye_declarado": null,
+      "nota": null,
+      "origen": {
+       "sistema": "SIS-001",
+       "soporte": "S1"
+      },
+      "producto_id": "GEN_ARANDELA-3_8__PENDIENTE",
+      "regla": "COMPONENTES_SOPORTE: Dos arandelas por varilla",
+      "sku": null,
+      "suministro": "no_declarado",
+      "unidad": "pieza"
+     },
+     {
+      "cantidad": 2.0,
+      "descripcion": "Tornillo 3/8\" Whitworth con tuerca, para grampa GFS-02 (no provisto por SAMET)",
+      "estado_cantidad": "validada_usuario",
+      "evidencia": {
+       "estado_evidencia": "validada por usuario",
+       "fuente_id": "F-005",
+       "pagina_fuente": null
+      },
+      "incluye_declarado": null,
+      "nota": null,
+      "origen": {
+       "sistema": "SIS-001",
+       "soporte": "S1"
+      },
+      "producto_id": "GEN_TORNILLO-3_8-W__LARGO-PENDIENTE",
+      "regla": "COMPONENTES_SOPORTE: Un tornillo 3/8\" W con tuerca por cada grampa GFS-02",
+      "sku": null,
+      "suministro": "no_declarado",
+      "unidad": "juego"
+     },
+     {
+      "cantidad": 2.0,
+      "descripcion": "GRAMPA DE FIJACIÓN (Fixing Clamp)",
+      "estado_cantidad": "propuesta",
+      "evidencia": {
+       "estado_evidencia": "propuesta",
+       "fuente_id": "F-001",
+       "pagina_fuente": "PDF 14 / impr. 26-27"
+      },
+      "incluye_declarado": null,
+      "nota": null,
+      "origen": {
+       "sistema": "SIS-001",
+       "soporte": "S1"
+      },
+      "producto_id": "SAM_GFS-02-Z",
+      "regla": "COMPONENTES_SOPORTE: Una grampa por larguero en cada trapecio",
+      "sku": "GFS-02-Z",
+      "suministro": "no_declarado",
+      "unidad": "pieza"
+     },
+     {
+      "cantidad": 1,
+      "descripcion": "SOPORTE TRAPECIO (Trapeze Hanger) – ANCHO 350",
+      "estado_cantidad": "declarada_en_trazado",
+      "evidencia": null,
+      "incluye_declarado": null,
+      "nota": null,
+      "origen": {
+       "soporte": "S2"
+      },
+      "producto_id": "SAM_STS-300-Z",
+      "regla": "1 soporte principal por punto de apoyo declarado por el CAD",
+      "sku": "STS-300-Z",
+      "suministro": "no_declarado",
+      "unidad": "pieza"
+     },
+     {
+      "cantidad": 2.0,
+      "descripcion": "Varilla roscada rosca Whitworth cincada SAE 1010 – 3/8\" – 16 hilos por pulgada",
+      "estado_cantidad": "validada_usuario",
+      "evidencia": {
+       "estado_evidencia": "validada por usuario",
+       "fuente_id": "F-005",
+       "pagina_fuente": "Ronda 3, punto 2"
+      },
+      "incluye_declarado": null,
+      "nota": null,
+      "origen": {
+       "sistema": "SIS-001",
+       "soporte": "S2"
+      },
+      "producto_id": "IGH_VRW101-3.8Z",
+      "regla": "COMPONENTES_SOPORTE: Una varilla por extremo del trapecio",
+      "sku": "VRW101-3.8Z",
+      "suministro": "no_declarado",
+      "unidad": "pieza"
+     },
+     {
+      "cantidad": 4.0,
+      "descripcion": "Tuerca hexagonal 3/8\" Whitworth para varilla roscada (no provista por SAMET)",
+      "estado_cantidad": "propuesta",
+      "evidencia": {
+       "estado_evidencia": "propuesta",
+       "fuente_id": "F-005",
+       "pagina_fuente": "REV-014"
+      },
+      "incluye_declarado": null,
+      "nota": null,
+      "origen": {
+       "sistema": "SIS-001",
+       "soporte": "S2"
+      },
+      "producto_id": "GEN_TUERCA-3_8-W__PENDIENTE",
+      "regla": "COMPONENTES_SOPORTE: Dos tuercas por varilla (arriba y abajo del trapecio)",
+      "sku": null,
+      "suministro": "no_declarado",
+      "unidad": "pieza"
+     },
+     {
+      "cantidad": 4.0,
+      "descripcion": "Arandela plana 3/8\" para varilla roscada (no provista por SAMET)",
+      "estado_cantidad": "propuesta",
+      "evidencia": {
+       "estado_evidencia": "propuesta",
+       "fuente_id": "F-005",
+       "pagina_fuente": "REV-014"
+      },
+      "incluye_declarado": null,
+      "nota": null,
+      "origen": {
+       "sistema": "SIS-001",
+       "soporte": "S2"
+      },
+      "producto_id": "GEN_ARANDELA-3_8__PENDIENTE",
+      "regla": "COMPONENTES_SOPORTE: Dos arandelas por varilla",
+      "sku": null,
+      "suministro": "no_declarado",
+      "unidad": "pieza"
+     },
+     {
+      "cantidad": 2.0,
+      "descripcion": "Tornillo 3/8\" Whitworth con tuerca, para grampa GFS-02 (no provisto por SAMET)",
+      "estado_cantidad": "validada_usuario",
+      "evidencia": {
+       "estado_evidencia": "validada por usuario",
+       "fuente_id": "F-005",
+       "pagina_fuente": null
+      },
+      "incluye_declarado": null,
+      "nota": null,
+      "origen": {
+       "sistema": "SIS-001",
+       "soporte": "S2"
+      },
+      "producto_id": "GEN_TORNILLO-3_8-W__LARGO-PENDIENTE",
+      "regla": "COMPONENTES_SOPORTE: Un tornillo 3/8\" W con tuerca por cada grampa GFS-02",
+      "sku": null,
+      "suministro": "no_declarado",
+      "unidad": "juego"
+     },
+     {
+      "cantidad": 2.0,
+      "descripcion": "GRAMPA DE FIJACIÓN (Fixing Clamp)",
+      "estado_cantidad": "propuesta",
+      "evidencia": {
+       "estado_evidencia": "propuesta",
+       "fuente_id": "F-001",
+       "pagina_fuente": "PDF 14 / impr. 26-27"
+      },
+      "incluye_declarado": null,
+      "nota": null,
+      "origen": {
+       "sistema": "SIS-001",
+       "soporte": "S2"
+      },
+      "producto_id": "SAM_GFS-02-Z",
+      "regla": "COMPONENTES_SOPORTE: Una grampa por larguero en cada trapecio",
+      "sku": "GFS-02-Z",
+      "suministro": "no_declarado",
+      "unidad": "pieza"
+     },
+     {
+      "cantidad": 1,
+      "descripcion": "SOPORTE TRAPECIO (Trapeze Hanger) – ANCHO 350",
+      "estado_cantidad": "declarada_en_trazado",
+      "evidencia": null,
+      "incluye_declarado": null,
+      "nota": null,
+      "origen": {
+       "soporte": "S3"
+      },
+      "producto_id": "SAM_STS-300-Z",
+      "regla": "1 soporte principal por punto de apoyo declarado por el CAD",
+      "sku": "STS-300-Z",
+      "suministro": "no_declarado",
+      "unidad": "pieza"
+     },
+     {
+      "cantidad": 2.0,
+      "descripcion": "Varilla roscada rosca Whitworth cincada SAE 1010 – 3/8\" – 16 hilos por pulgada",
+      "estado_cantidad": "validada_usuario",
+      "evidencia": {
+       "estado_evidencia": "validada por usuario",
+       "fuente_id": "F-005",
+       "pagina_fuente": "Ronda 3, punto 2"
+      },
+      "incluye_declarado": null,
+      "nota": null,
+      "origen": {
+       "sistema": "SIS-001",
+       "soporte": "S3"
+      },
+      "producto_id": "IGH_VRW101-3.8Z",
+      "regla": "COMPONENTES_SOPORTE: Una varilla por extremo del trapecio",
+      "sku": "VRW101-3.8Z",
+      "suministro": "no_declarado",
+      "unidad": "pieza"
+     },
+     {
+      "cantidad": 4.0,
+      "descripcion": "Tuerca hexagonal 3/8\" Whitworth para varilla roscada (no provista por SAMET)",
+      "estado_cantidad": "propuesta",
+      "evidencia": {
+       "estado_evidencia": "propuesta",
+       "fuente_id": "F-005",
+       "pagina_fuente": "REV-014"
+      },
+      "incluye_declarado": null,
+      "nota": null,
+      "origen": {
+       "sistema": "SIS-001",
+       "soporte": "S3"
+      },
+      "producto_id": "GEN_TUERCA-3_8-W__PENDIENTE",
+      "regla": "COMPONENTES_SOPORTE: Dos tuercas por varilla (arriba y abajo del trapecio)",
+      "sku": null,
+      "suministro": "no_declarado",
+      "unidad": "pieza"
+     },
+     {
+      "cantidad": 4.0,
+      "descripcion": "Arandela plana 3/8\" para varilla roscada (no provista por SAMET)",
+      "estado_cantidad": "propuesta",
+      "evidencia": {
+       "estado_evidencia": "propuesta",
+       "fuente_id": "F-005",
+       "pagina_fuente": "REV-014"
+      },
+      "incluye_declarado": null,
+      "nota": null,
+      "origen": {
+       "sistema": "SIS-001",
+       "soporte": "S3"
+      },
+      "producto_id": "GEN_ARANDELA-3_8__PENDIENTE",
+      "regla": "COMPONENTES_SOPORTE: Dos arandelas por varilla",
+      "sku": null,
+      "suministro": "no_declarado",
+      "unidad": "pieza"
+     },
+     {
+      "cantidad": 2.0,
+      "descripcion": "Tornillo 3/8\" Whitworth con tuerca, para grampa GFS-02 (no provisto por SAMET)",
+      "estado_cantidad": "validada_usuario",
+      "evidencia": {
+       "estado_evidencia": "validada por usuario",
+       "fuente_id": "F-005",
+       "pagina_fuente": null
+      },
+      "incluye_declarado": null,
+      "nota": null,
+      "origen": {
+       "sistema": "SIS-001",
+       "soporte": "S3"
+      },
+      "producto_id": "GEN_TORNILLO-3_8-W__LARGO-PENDIENTE",
+      "regla": "COMPONENTES_SOPORTE: Un tornillo 3/8\" W con tuerca por cada grampa GFS-02",
+      "sku": null,
+      "suministro": "no_declarado",
+      "unidad": "juego"
+     },
+     {
+      "cantidad": 2.0,
+      "descripcion": "GRAMPA DE FIJACIÓN (Fixing Clamp)",
+      "estado_cantidad": "propuesta",
+      "evidencia": {
+       "estado_evidencia": "propuesta",
+       "fuente_id": "F-001",
+       "pagina_fuente": "PDF 14 / impr. 26-27"
+      },
+      "incluye_declarado": null,
+      "nota": null,
+      "origen": {
+       "sistema": "SIS-001",
+       "soporte": "S3"
+      },
+      "producto_id": "SAM_GFS-02-Z",
+      "regla": "COMPONENTES_SOPORTE: Una grampa por larguero en cada trapecio",
+      "sku": "GFS-02-Z",
+      "suministro": "no_declarado",
+      "unidad": "pieza"
+     },
+     {
+      "cantidad": 1,
+      "descripcion": "SOPORTE TRAPECIO (Trapeze Hanger) – ANCHO 350",
+      "estado_cantidad": "declarada_en_trazado",
+      "evidencia": null,
+      "incluye_declarado": null,
+      "nota": null,
+      "origen": {
+       "soporte": "S4"
+      },
+      "producto_id": "SAM_STS-300-Z",
+      "regla": "1 soporte principal por punto de apoyo declarado por el CAD",
+      "sku": "STS-300-Z",
+      "suministro": "no_declarado",
+      "unidad": "pieza"
+     },
+     {
+      "cantidad": 2.0,
+      "descripcion": "Varilla roscada rosca Whitworth cincada SAE 1010 – 3/8\" – 16 hilos por pulgada",
+      "estado_cantidad": "validada_usuario",
+      "evidencia": {
+       "estado_evidencia": "validada por usuario",
+       "fuente_id": "F-005",
+       "pagina_fuente": "Ronda 3, punto 2"
+      },
+      "incluye_declarado": null,
+      "nota": null,
+      "origen": {
+       "sistema": "SIS-001",
+       "soporte": "S4"
+      },
+      "producto_id": "IGH_VRW101-3.8Z",
+      "regla": "COMPONENTES_SOPORTE: Una varilla por extremo del trapecio",
+      "sku": "VRW101-3.8Z",
+      "suministro": "no_declarado",
+      "unidad": "pieza"
+     },
+     {
+      "cantidad": 4.0,
+      "descripcion": "Tuerca hexagonal 3/8\" Whitworth para varilla roscada (no provista por SAMET)",
+      "estado_cantidad": "propuesta",
+      "evidencia": {
+       "estado_evidencia": "propuesta",
+       "fuente_id": "F-005",
+       "pagina_fuente": "REV-014"
+      },
+      "incluye_declarado": null,
+      "nota": null,
+      "origen": {
+       "sistema": "SIS-001",
+       "soporte": "S4"
+      },
+      "producto_id": "GEN_TUERCA-3_8-W__PENDIENTE",
+      "regla": "COMPONENTES_SOPORTE: Dos tuercas por varilla (arriba y abajo del trapecio)",
+      "sku": null,
+      "suministro": "no_declarado",
+      "unidad": "pieza"
+     },
+     {
+      "cantidad": 4.0,
+      "descripcion": "Arandela plana 3/8\" para varilla roscada (no provista por SAMET)",
+      "estado_cantidad": "propuesta",
+      "evidencia": {
+       "estado_evidencia": "propuesta",
+       "fuente_id": "F-005",
+       "pagina_fuente": "REV-014"
+      },
+      "incluye_declarado": null,
+      "nota": null,
+      "origen": {
+       "sistema": "SIS-001",
+       "soporte": "S4"
+      },
+      "producto_id": "GEN_ARANDELA-3_8__PENDIENTE",
+      "regla": "COMPONENTES_SOPORTE: Dos arandelas por varilla",
+      "sku": null,
+      "suministro": "no_declarado",
+      "unidad": "pieza"
+     },
+     {
+      "cantidad": 2.0,
+      "descripcion": "Tornillo 3/8\" Whitworth con tuerca, para grampa GFS-02 (no provisto por SAMET)",
+      "estado_cantidad": "validada_usuario",
+      "evidencia": {
+       "estado_evidencia": "validada por usuario",
+       "fuente_id": "F-005",
+       "pagina_fuente": null
+      },
+      "incluye_declarado": null,
+      "nota": null,
+      "origen": {
+       "sistema": "SIS-001",
+       "soporte": "S4"
+      },
+      "producto_id": "GEN_TORNILLO-3_8-W__LARGO-PENDIENTE",
+      "regla": "COMPONENTES_SOPORTE: Un tornillo 3/8\" W con tuerca por cada grampa GFS-02",
+      "sku": null,
+      "suministro": "no_declarado",
+      "unidad": "juego"
+     },
+     {
+      "cantidad": 2.0,
+      "descripcion": "GRAMPA DE FIJACIÓN (Fixing Clamp)",
+      "estado_cantidad": "propuesta",
+      "evidencia": {
+       "estado_evidencia": "propuesta",
+       "fuente_id": "F-001",
+       "pagina_fuente": "PDF 14 / impr. 26-27"
+      },
+      "incluye_declarado": null,
+      "nota": null,
+      "origen": {
+       "sistema": "SIS-001",
+       "soporte": "S4"
+      },
+      "producto_id": "SAM_GFS-02-Z",
+      "regla": "COMPONENTES_SOPORTE: Una grampa por larguero en cada trapecio",
+      "sku": "GFS-02-Z",
+      "suministro": "no_declarado",
+      "unidad": "pieza"
+     },
+     {
+      "cantidad": 1,
+      "descripcion": "SOPORTE TRAPECIO (Trapeze Hanger) – ANCHO 350",
+      "estado_cantidad": "declarada_en_trazado",
+      "evidencia": null,
+      "incluye_declarado": null,
+      "nota": null,
+      "origen": {
+       "soporte": "S5"
+      },
+      "producto_id": "SAM_STS-300-Z",
+      "regla": "1 soporte principal por punto de apoyo declarado por el CAD",
+      "sku": "STS-300-Z",
+      "suministro": "no_declarado",
+      "unidad": "pieza"
+     },
+     {
+      "cantidad": 2.0,
+      "descripcion": "Varilla roscada rosca Whitworth cincada SAE 1010 – 3/8\" – 16 hilos por pulgada",
+      "estado_cantidad": "validada_usuario",
+      "evidencia": {
+       "estado_evidencia": "validada por usuario",
+       "fuente_id": "F-005",
+       "pagina_fuente": "Ronda 3, punto 2"
+      },
+      "incluye_declarado": null,
+      "nota": null,
+      "origen": {
+       "sistema": "SIS-001",
+       "soporte": "S5"
+      },
+      "producto_id": "IGH_VRW101-3.8Z",
+      "regla": "COMPONENTES_SOPORTE: Una varilla por extremo del trapecio",
+      "sku": "VRW101-3.8Z",
+      "suministro": "no_declarado",
+      "unidad": "pieza"
+     },
+     {
+      "cantidad": 4.0,
+      "descripcion": "Tuerca hexagonal 3/8\" Whitworth para varilla roscada (no provista por SAMET)",
+      "estado_cantidad": "propuesta",
+      "evidencia": {
+       "estado_evidencia": "propuesta",
+       "fuente_id": "F-005",
+       "pagina_fuente": "REV-014"
+      },
+      "incluye_declarado": null,
+      "nota": null,
+      "origen": {
+       "sistema": "SIS-001",
+       "soporte": "S5"
+      },
+      "producto_id": "GEN_TUERCA-3_8-W__PENDIENTE",
+      "regla": "COMPONENTES_SOPORTE: Dos tuercas por varilla (arriba y abajo del trapecio)",
+      "sku": null,
+      "suministro": "no_declarado",
+      "unidad": "pieza"
+     },
+     {
+      "cantidad": 4.0,
+      "descripcion": "Arandela plana 3/8\" para varilla roscada (no provista por SAMET)",
+      "estado_cantidad": "propuesta",
+      "evidencia": {
+       "estado_evidencia": "propuesta",
+       "fuente_id": "F-005",
+       "pagina_fuente": "REV-014"
+      },
+      "incluye_declarado": null,
+      "nota": null,
+      "origen": {
+       "sistema": "SIS-001",
+       "soporte": "S5"
+      },
+      "producto_id": "GEN_ARANDELA-3_8__PENDIENTE",
+      "regla": "COMPONENTES_SOPORTE: Dos arandelas por varilla",
+      "sku": null,
+      "suministro": "no_declarado",
+      "unidad": "pieza"
+     },
+     {
+      "cantidad": 2.0,
+      "descripcion": "Tornillo 3/8\" Whitworth con tuerca, para grampa GFS-02 (no provisto por SAMET)",
+      "estado_cantidad": "validada_usuario",
+      "evidencia": {
+       "estado_evidencia": "validada por usuario",
+       "fuente_id": "F-005",
+       "pagina_fuente": null
+      },
+      "incluye_declarado": null,
+      "nota": null,
+      "origen": {
+       "sistema": "SIS-001",
+       "soporte": "S5"
+      },
+      "producto_id": "GEN_TORNILLO-3_8-W__LARGO-PENDIENTE",
+      "regla": "COMPONENTES_SOPORTE: Un tornillo 3/8\" W con tuerca por cada grampa GFS-02",
+      "sku": null,
+      "suministro": "no_declarado",
+      "unidad": "juego"
+     },
+     {
+      "cantidad": 2.0,
+      "descripcion": "GRAMPA DE FIJACIÓN (Fixing Clamp)",
+      "estado_cantidad": "propuesta",
+      "evidencia": {
+       "estado_evidencia": "propuesta",
+       "fuente_id": "F-001",
+       "pagina_fuente": "PDF 14 / impr. 26-27"
+      },
+      "incluye_declarado": null,
+      "nota": null,
+      "origen": {
+       "sistema": "SIS-001",
+       "soporte": "S5"
+      },
+      "producto_id": "SAM_GFS-02-Z",
+      "regla": "COMPONENTES_SOPORTE: Una grampa por larguero en cada trapecio",
+      "sku": "GFS-02-Z",
+      "suministro": "no_declarado",
+      "unidad": "pieza"
+     },
+     {
+      "cantidad": 1,
+      "descripcion": "SOPORTE TRAPECIO (Trapeze Hanger) – ANCHO 350",
+      "estado_cantidad": "declarada_en_trazado",
+      "evidencia": null,
+      "incluye_declarado": null,
+      "nota": null,
+      "origen": {
+       "soporte": "S6"
+      },
+      "producto_id": "SAM_STS-300-Z",
+      "regla": "1 soporte principal por punto de apoyo declarado por el CAD",
+      "sku": "STS-300-Z",
+      "suministro": "no_declarado",
+      "unidad": "pieza"
+     },
+     {
+      "cantidad": 2.0,
+      "descripcion": "Varilla roscada rosca Whitworth cincada SAE 1010 – 3/8\" – 16 hilos por pulgada",
+      "estado_cantidad": "validada_usuario",
+      "evidencia": {
+       "estado_evidencia": "validada por usuario",
+       "fuente_id": "F-005",
+       "pagina_fuente": "Ronda 3, punto 2"
+      },
+      "incluye_declarado": null,
+      "nota": null,
+      "origen": {
+       "sistema": "SIS-001",
+       "soporte": "S6"
+      },
+      "producto_id": "IGH_VRW101-3.8Z",
+      "regla": "COMPONENTES_SOPORTE: Una varilla por extremo del trapecio",
+      "sku": "VRW101-3.8Z",
+      "suministro": "no_declarado",
+      "unidad": "pieza"
+     },
+     {
+      "cantidad": 4.0,
+      "descripcion": "Tuerca hexagonal 3/8\" Whitworth para varilla roscada (no provista por SAMET)",
+      "estado_cantidad": "propuesta",
+      "evidencia": {
+       "estado_evidencia": "propuesta",
+       "fuente_id": "F-005",
+       "pagina_fuente": "REV-014"
+      },
+      "incluye_declarado": null,
+      "nota": null,
+      "origen": {
+       "sistema": "SIS-001",
+       "soporte": "S6"
+      },
+      "producto_id": "GEN_TUERCA-3_8-W__PENDIENTE",
+      "regla": "COMPONENTES_SOPORTE: Dos tuercas por varilla (arriba y abajo del trapecio)",
+      "sku": null,
+      "suministro": "no_declarado",
+      "unidad": "pieza"
+     },
+     {
+      "cantidad": 4.0,
+      "descripcion": "Arandela plana 3/8\" para varilla roscada (no provista por SAMET)",
+      "estado_cantidad": "propuesta",
+      "evidencia": {
+       "estado_evidencia": "propuesta",
+       "fuente_id": "F-005",
+       "pagina_fuente": "REV-014"
+      },
+      "incluye_declarado": null,
+      "nota": null,
+      "origen": {
+       "sistema": "SIS-001",
+       "soporte": "S6"
+      },
+      "producto_id": "GEN_ARANDELA-3_8__PENDIENTE",
+      "regla": "COMPONENTES_SOPORTE: Dos arandelas por varilla",
+      "sku": null,
+      "suministro": "no_declarado",
+      "unidad": "pieza"
+     },
+     {
+      "cantidad": 2.0,
+      "descripcion": "Tornillo 3/8\" Whitworth con tuerca, para grampa GFS-02 (no provisto por SAMET)",
+      "estado_cantidad": "validada_usuario",
+      "evidencia": {
+       "estado_evidencia": "validada por usuario",
+       "fuente_id": "F-005",
+       "pagina_fuente": null
+      },
+      "incluye_declarado": null,
+      "nota": null,
+      "origen": {
+       "sistema": "SIS-001",
+       "soporte": "S6"
+      },
+      "producto_id": "GEN_TORNILLO-3_8-W__LARGO-PENDIENTE",
+      "regla": "COMPONENTES_SOPORTE: Un tornillo 3/8\" W con tuerca por cada grampa GFS-02",
+      "sku": null,
+      "suministro": "no_declarado",
+      "unidad": "juego"
+     },
+     {
+      "cantidad": 2.0,
+      "descripcion": "GRAMPA DE FIJACIÓN (Fixing Clamp)",
+      "estado_cantidad": "propuesta",
+      "evidencia": {
+       "estado_evidencia": "propuesta",
+       "fuente_id": "F-001",
+       "pagina_fuente": "PDF 14 / impr. 26-27"
+      },
+      "incluye_declarado": null,
+      "nota": null,
+      "origen": {
+       "sistema": "SIS-001",
+       "soporte": "S6"
+      },
+      "producto_id": "SAM_GFS-02-Z",
+      "regla": "COMPONENTES_SOPORTE: Una grampa por larguero en cada trapecio",
+      "sku": "GFS-02-Z",
+      "suministro": "no_declarado",
+      "unidad": "pieza"
+     },
+     {
+      "cantidad": 1,
+      "descripcion": "SOPORTE TRAPECIO (Trapeze Hanger) – ANCHO 350",
+      "estado_cantidad": "declarada_en_trazado",
+      "evidencia": null,
+      "incluye_declarado": null,
+      "nota": null,
+      "origen": {
+       "soporte": "S7"
+      },
+      "producto_id": "SAM_STS-300-Z",
+      "regla": "1 soporte principal por punto de apoyo declarado por el CAD",
+      "sku": "STS-300-Z",
+      "suministro": "no_declarado",
+      "unidad": "pieza"
+     },
+     {
+      "cantidad": 2.0,
+      "descripcion": "Varilla roscada rosca Whitworth cincada SAE 1010 – 3/8\" – 16 hilos por pulgada",
+      "estado_cantidad": "validada_usuario",
+      "evidencia": {
+       "estado_evidencia": "validada por usuario",
+       "fuente_id": "F-005",
+       "pagina_fuente": "Ronda 3, punto 2"
+      },
+      "incluye_declarado": null,
+      "nota": null,
+      "origen": {
+       "sistema": "SIS-001",
+       "soporte": "S7"
+      },
+      "producto_id": "IGH_VRW101-3.8Z",
+      "regla": "COMPONENTES_SOPORTE: Una varilla por extremo del trapecio",
+      "sku": "VRW101-3.8Z",
+      "suministro": "no_declarado",
+      "unidad": "pieza"
+     },
+     {
+      "cantidad": 4.0,
+      "descripcion": "Tuerca hexagonal 3/8\" Whitworth para varilla roscada (no provista por SAMET)",
+      "estado_cantidad": "propuesta",
+      "evidencia": {
+       "estado_evidencia": "propuesta",
+       "fuente_id": "F-005",
+       "pagina_fuente": "REV-014"
+      },
+      "incluye_declarado": null,
+      "nota": null,
+      "origen": {
+       "sistema": "SIS-001",
+       "soporte": "S7"
+      },
+      "producto_id": "GEN_TUERCA-3_8-W__PENDIENTE",
+      "regla": "COMPONENTES_SOPORTE: Dos tuercas por varilla (arriba y abajo del trapecio)",
+      "sku": null,
+      "suministro": "no_declarado",
+      "unidad": "pieza"
+     },
+     {
+      "cantidad": 4.0,
+      "descripcion": "Arandela plana 3/8\" para varilla roscada (no provista por SAMET)",
+      "estado_cantidad": "propuesta",
+      "evidencia": {
+       "estado_evidencia": "propuesta",
+       "fuente_id": "F-005",
+       "pagina_fuente": "REV-014"
+      },
+      "incluye_declarado": null,
+      "nota": null,
+      "origen": {
+       "sistema": "SIS-001",
+       "soporte": "S7"
+      },
+      "producto_id": "GEN_ARANDELA-3_8__PENDIENTE",
+      "regla": "COMPONENTES_SOPORTE: Dos arandelas por varilla",
+      "sku": null,
+      "suministro": "no_declarado",
+      "unidad": "pieza"
+     },
+     {
+      "cantidad": 2.0,
+      "descripcion": "Tornillo 3/8\" Whitworth con tuerca, para grampa GFS-02 (no provisto por SAMET)",
+      "estado_cantidad": "validada_usuario",
+      "evidencia": {
+       "estado_evidencia": "validada por usuario",
+       "fuente_id": "F-005",
+       "pagina_fuente": null
+      },
+      "incluye_declarado": null,
+      "nota": null,
+      "origen": {
+       "sistema": "SIS-001",
+       "soporte": "S7"
+      },
+      "producto_id": "GEN_TORNILLO-3_8-W__LARGO-PENDIENTE",
+      "regla": "COMPONENTES_SOPORTE: Un tornillo 3/8\" W con tuerca por cada grampa GFS-02",
+      "sku": null,
+      "suministro": "no_declarado",
+      "unidad": "juego"
+     },
+     {
+      "cantidad": 2.0,
+      "descripcion": "GRAMPA DE FIJACIÓN (Fixing Clamp)",
+      "estado_cantidad": "propuesta",
+      "evidencia": {
+       "estado_evidencia": "propuesta",
+       "fuente_id": "F-001",
+       "pagina_fuente": "PDF 14 / impr. 26-27"
+      },
+      "incluye_declarado": null,
+      "nota": null,
+      "origen": {
+       "sistema": "SIS-001",
+       "soporte": "S7"
+      },
+      "producto_id": "SAM_GFS-02-Z",
+      "regla": "COMPONENTES_SOPORTE: Una grampa por larguero en cada trapecio",
+      "sku": "GFS-02-Z",
+      "suministro": "no_declarado",
+      "unidad": "pieza"
+     },
+     {
+      "cantidad": 1,
+      "descripcion": "SOPORTE TRAPECIO (Trapeze Hanger) – ANCHO 350",
+      "estado_cantidad": "declarada_en_trazado",
+      "evidencia": null,
+      "incluye_declarado": null,
+      "nota": null,
+      "origen": {
+       "soporte": "S8"
+      },
+      "producto_id": "SAM_STS-300-Z",
+      "regla": "1 soporte principal por punto de apoyo declarado por el CAD",
+      "sku": "STS-300-Z",
+      "suministro": "no_declarado",
+      "unidad": "pieza"
+     },
+     {
+      "cantidad": 2.0,
+      "descripcion": "Varilla roscada rosca Whitworth cincada SAE 1010 – 3/8\" – 16 hilos por pulgada",
+      "estado_cantidad": "validada_usuario",
+      "evidencia": {
+       "estado_evidencia": "validada por usuario",
+       "fuente_id": "F-005",
+       "pagina_fuente": "Ronda 3, punto 2"
+      },
+      "incluye_declarado": null,
+      "nota": null,
+      "origen": {
+       "sistema": "SIS-001",
+       "soporte": "S8"
+      },
+      "producto_id": "IGH_VRW101-3.8Z",
+      "regla": "COMPONENTES_SOPORTE: Una varilla por extremo del trapecio",
+      "sku": "VRW101-3.8Z",
+      "suministro": "no_declarado",
+      "unidad": "pieza"
+     },
+     {
+      "cantidad": 4.0,
+      "descripcion": "Tuerca hexagonal 3/8\" Whitworth para varilla roscada (no provista por SAMET)",
+      "estado_cantidad": "propuesta",
+      "evidencia": {
+       "estado_evidencia": "propuesta",
+       "fuente_id": "F-005",
+       "pagina_fuente": "REV-014"
+      },
+      "incluye_declarado": null,
+      "nota": null,
+      "origen": {
+       "sistema": "SIS-001",
+       "soporte": "S8"
+      },
+      "producto_id": "GEN_TUERCA-3_8-W__PENDIENTE",
+      "regla": "COMPONENTES_SOPORTE: Dos tuercas por varilla (arriba y abajo del trapecio)",
+      "sku": null,
+      "suministro": "no_declarado",
+      "unidad": "pieza"
+     },
+     {
+      "cantidad": 4.0,
+      "descripcion": "Arandela plana 3/8\" para varilla roscada (no provista por SAMET)",
+      "estado_cantidad": "propuesta",
+      "evidencia": {
+       "estado_evidencia": "propuesta",
+       "fuente_id": "F-005",
+       "pagina_fuente": "REV-014"
+      },
+      "incluye_declarado": null,
+      "nota": null,
+      "origen": {
+       "sistema": "SIS-001",
+       "soporte": "S8"
+      },
+      "producto_id": "GEN_ARANDELA-3_8__PENDIENTE",
+      "regla": "COMPONENTES_SOPORTE: Dos arandelas por varilla",
+      "sku": null,
+      "suministro": "no_declarado",
+      "unidad": "pieza"
+     },
+     {
+      "cantidad": 2.0,
+      "descripcion": "Tornillo 3/8\" Whitworth con tuerca, para grampa GFS-02 (no provisto por SAMET)",
+      "estado_cantidad": "validada_usuario",
+      "evidencia": {
+       "estado_evidencia": "validada por usuario",
+       "fuente_id": "F-005",
+       "pagina_fuente": null
+      },
+      "incluye_declarado": null,
+      "nota": null,
+      "origen": {
+       "sistema": "SIS-001",
+       "soporte": "S8"
+      },
+      "producto_id": "GEN_TORNILLO-3_8-W__LARGO-PENDIENTE",
+      "regla": "COMPONENTES_SOPORTE: Un tornillo 3/8\" W con tuerca por cada grampa GFS-02",
+      "sku": null,
+      "suministro": "no_declarado",
+      "unidad": "juego"
+     },
+     {
+      "cantidad": 2.0,
+      "descripcion": "GRAMPA DE FIJACIÓN (Fixing Clamp)",
+      "estado_cantidad": "propuesta",
+      "evidencia": {
+       "estado_evidencia": "propuesta",
+       "fuente_id": "F-001",
+       "pagina_fuente": "PDF 14 / impr. 26-27"
+      },
+      "incluye_declarado": null,
+      "nota": null,
+      "origen": {
+       "sistema": "SIS-001",
+       "soporte": "S8"
+      },
+      "producto_id": "SAM_GFS-02-Z",
+      "regla": "COMPONENTES_SOPORTE: Una grampa por larguero en cada trapecio",
+      "sku": "GFS-02-Z",
+      "suministro": "no_declarado",
+      "unidad": "pieza"
+     },
+     {
+      "cantidad": 1,
+      "descripcion": "SOPORTE TRAPECIO (Trapeze Hanger) – ANCHO 350",
+      "estado_cantidad": "declarada_en_trazado",
+      "evidencia": null,
+      "incluye_declarado": null,
+      "nota": null,
+      "origen": {
+       "soporte": "S9"
+      },
+      "producto_id": "SAM_STS-300-Z",
+      "regla": "1 soporte principal por punto de apoyo declarado por el CAD",
+      "sku": "STS-300-Z",
+      "suministro": "no_declarado",
+      "unidad": "pieza"
+     },
+     {
+      "cantidad": 2.0,
+      "descripcion": "Varilla roscada rosca Whitworth cincada SAE 1010 – 3/8\" – 16 hilos por pulgada",
+      "estado_cantidad": "validada_usuario",
+      "evidencia": {
+       "estado_evidencia": "validada por usuario",
+       "fuente_id": "F-005",
+       "pagina_fuente": "Ronda 3, punto 2"
+      },
+      "incluye_declarado": null,
+      "nota": null,
+      "origen": {
+       "sistema": "SIS-001",
+       "soporte": "S9"
+      },
+      "producto_id": "IGH_VRW101-3.8Z",
+      "regla": "COMPONENTES_SOPORTE: Una varilla por extremo del trapecio",
+      "sku": "VRW101-3.8Z",
+      "suministro": "no_declarado",
+      "unidad": "pieza"
+     },
+     {
+      "cantidad": 4.0,
+      "descripcion": "Tuerca hexagonal 3/8\" Whitworth para varilla roscada (no provista por SAMET)",
+      "estado_cantidad": "propuesta",
+      "evidencia": {
+       "estado_evidencia": "propuesta",
+       "fuente_id": "F-005",
+       "pagina_fuente": "REV-014"
+      },
+      "incluye_declarado": null,
+      "nota": null,
+      "origen": {
+       "sistema": "SIS-001",
+       "soporte": "S9"
+      },
+      "producto_id": "GEN_TUERCA-3_8-W__PENDIENTE",
+      "regla": "COMPONENTES_SOPORTE: Dos tuercas por varilla (arriba y abajo del trapecio)",
+      "sku": null,
+      "suministro": "no_declarado",
+      "unidad": "pieza"
+     },
+     {
+      "cantidad": 4.0,
+      "descripcion": "Arandela plana 3/8\" para varilla roscada (no provista por SAMET)",
+      "estado_cantidad": "propuesta",
+      "evidencia": {
+       "estado_evidencia": "propuesta",
+       "fuente_id": "F-005",
+       "pagina_fuente": "REV-014"
+      },
+      "incluye_declarado": null,
+      "nota": null,
+      "origen": {
+       "sistema": "SIS-001",
+       "soporte": "S9"
+      },
+      "producto_id": "GEN_ARANDELA-3_8__PENDIENTE",
+      "regla": "COMPONENTES_SOPORTE: Dos arandelas por varilla",
+      "sku": null,
+      "suministro": "no_declarado",
+      "unidad": "pieza"
+     },
+     {
+      "cantidad": 2.0,
+      "descripcion": "Tornillo 3/8\" Whitworth con tuerca, para grampa GFS-02 (no provisto por SAMET)",
+      "estado_cantidad": "validada_usuario",
+      "evidencia": {
+       "estado_evidencia": "validada por usuario",
+       "fuente_id": "F-005",
+       "pagina_fuente": null
+      },
+      "incluye_declarado": null,
+      "nota": null,
+      "origen": {
+       "sistema": "SIS-001",
+       "soporte": "S9"
+      },
+      "producto_id": "GEN_TORNILLO-3_8-W__LARGO-PENDIENTE",
+      "regla": "COMPONENTES_SOPORTE: Un tornillo 3/8\" W con tuerca por cada grampa GFS-02",
+      "sku": null,
+      "suministro": "no_declarado",
+      "unidad": "juego"
+     },
+     {
+      "cantidad": 2.0,
+      "descripcion": "GRAMPA DE FIJACIÓN (Fixing Clamp)",
+      "estado_cantidad": "propuesta",
+      "evidencia": {
+       "estado_evidencia": "propuesta",
+       "fuente_id": "F-001",
+       "pagina_fuente": "PDF 14 / impr. 26-27"
+      },
+      "incluye_declarado": null,
+      "nota": null,
+      "origen": {
+       "sistema": "SIS-001",
+       "soporte": "S9"
+      },
+      "producto_id": "SAM_GFS-02-Z",
+      "regla": "COMPONENTES_SOPORTE: Una grampa por larguero en cada trapecio",
+      "sku": "GFS-02-Z",
+      "suministro": "no_declarado",
+      "unidad": "pieza"
+     },
+     {
+      "cantidad": 9600.0,
+      "descripcion": null,
+      "estado_cantidad": "geometrica",
+      "evidencia": null,
+      "incluye_declarado": null,
+      "nota": "Cable PRY-SASTFLEX-CU-1x16",
+      "origen": {
+       "conductor_pe": "PE1"
+      },
+      "producto_id": null,
+      "regla": "D-27: suma de longitudes de eje informadas por el CAD; sin holgura (sin regla)",
+      "sku": null,
+      "suministro": "no_declarado",
+      "unidad": "mm"
+     },
+     {
+      "cantidad": 5507.0,
+      "descripcion": null,
+      "estado_cantidad": "geometrica",
+      "evidencia": null,
+      "incluye_declarado": null,
+      "nota": "Cable PRY-SASTFLEX-CU-1x16",
+      "origen": {
+       "conductor_pe": "PE2"
+      },
+      "producto_id": null,
+      "regla": "D-27: suma de longitudes de eje informadas por el CAD; sin holgura (sin regla)",
+      "sku": null,
+      "suministro": "no_declarado",
+      "unidad": "mm"
+     },
+     {
+      "cantidad": null,
+      "descripcion": null,
+      "estado_cantidad": "pendiente",
+      "evidencia": null,
+      "incluye_declarado": null,
+      "nota": "Conector/terminal no definido: sin cantidad técnica.",
+      "origen": {
+       "punto_equipotencial": "SP1"
+      },
+      "producto_id": null,
+      "regla": "1 conector por punto 'sistema_proteccion' modelado",
+      "sku": null,
+      "suministro": "no_declarado",
+      "unidad": null
+     },
+     {
+      "cantidad": null,
+      "descripcion": null,
+      "estado_cantidad": "pendiente",
+      "evidencia": null,
+      "incluye_declarado": null,
+      "nota": "Conector/terminal no definido: sin cantidad técnica.",
+      "origen": {
+       "punto_equipotencial": "D1"
+      },
+      "producto_id": null,
+      "regla": "1 conector por punto 'derivacion_pe' modelado",
+      "sku": null,
+      "suministro": "no_declarado",
+      "unidad": null
+     },
+     {
+      "cantidad": 1,
+      "descripcion": "GRAMPA DE FIJACIÓN EQUIPOTENCIAL (Grounding Clamp)",
+      "estado_cantidad": "declarada_en_trazado",
+      "evidencia": null,
+      "incluye_declarado": "bulonería (declarado en el catálogo)",
+      "nota": null,
+      "origen": {
+       "punto_equipotencial": "B1"
+      },
+      "producto_id": "SAM_GFCE-B",
+      "regla": "1 conector por punto 'conexion_bandeja' modelado",
+      "sku": "GFCE-B",
+      "suministro": "no_declarado",
+      "unidad": "pieza"
+     },
+     {
+      "cantidad": 1,
+      "descripcion": "GRAMPA DE FIJACIÓN EQUIPOTENCIAL (Grounding Clamp)",
+      "estado_cantidad": "declarada_en_trazado",
+      "evidencia": null,
+      "incluye_declarado": "bulonería (declarado en el catálogo)",
+      "nota": null,
+      "origen": {
+       "punto_equipotencial": "B2"
+      },
+      "producto_id": "SAM_GFCE-B",
+      "regla": "1 conector por punto 'conexion_bandeja' modelado",
+      "sku": "GFCE-B",
+      "suministro": "no_declarado",
+      "unidad": "pieza"
+     },
+     {
+      "cantidad": null,
+      "descripcion": null,
+      "estado_cantidad": "pendiente",
+      "evidencia": null,
+      "incluye_declarado": null,
+      "nota": "Conector/terminal no definido: sin cantidad técnica.",
+      "origen": {
+       "punto_equipotencial": "J1"
+      },
+      "producto_id": null,
+      "regla": "1 conector por punto 'puente' modelado",
+      "sku": null,
+      "suministro": "no_declarado",
+      "unidad": null
+     },
+     {
+      "cantidad": 400,
+      "descripcion": null,
+      "estado_cantidad": "declarada_en_trazado",
+      "evidencia": null,
+      "incluye_declarado": null,
+      "nota": "Cable PRY-SASTFLEX-CU-1x16",
+      "origen": {
+       "puente": "J1"
+      },
+      "producto_id": null,
+      "regla": "conductor del puente declarado por el CAD",
+      "sku": null,
+      "suministro": "no_declarado",
+      "unidad": "mm"
+     },
+     {
+      "cantidad": null,
+      "descripcion": null,
+      "estado_cantidad": "pendiente",
+      "evidencia": null,
+      "incluye_declarado": null,
+      "nota": "Terminales no documentados: sin cantidad técnica.",
+      "origen": {
+       "puente": "J1"
+      },
+      "producto_id": null,
+      "regla": "terminales del puente",
+      "sku": null,
+      "suministro": "no_declarado",
+      "unidad": null
+     }
+    ],
+    "lineas_pendientes": 5,
+    "resumen_cables": [
+     {
+      "cable_id": "PRY-SASTFLEX-CU-1x16",
+      "longitud_mm": 15507.0,
+      "origenes": [
+       {
+        "conductor_pe": "PE1"
+       },
+       {
+        "conductor_pe": "PE2"
+       },
+       {
+        "puente": "J1"
+       }
+      ]
+     }
+    ],
+    "resumen_por_producto": [
+     {
+      "cantidad": 36.0,
+      "estado_cantidad": "propuesta",
+      "lineas": 9,
+      "producto_id": "GEN_ARANDELA-3_8__PENDIENTE",
+      "sku": null,
+      "unidad": "pieza"
+     },
+     {
+      "cantidad": 18.0,
+      "estado_cantidad": "validada_usuario",
+      "lineas": 9,
+      "producto_id": "GEN_TORNILLO-3_8-W__LARGO-PENDIENTE",
+      "sku": null,
+      "unidad": "juego"
+     },
+     {
+      "cantidad": 36.0,
+      "estado_cantidad": "propuesta",
+      "lineas": 9,
+      "producto_id": "GEN_TUERCA-3_8-W__PENDIENTE",
+      "sku": null,
+      "unidad": "pieza"
+     },
+     {
+      "cantidad": 18.0,
+      "estado_cantidad": "validada_usuario",
+      "lineas": 9,
+      "producto_id": "IGH_VRW101-3.8Z",
+      "sku": "VRW101-3.8Z",
+      "unidad": "pieza"
+     },
+     {
+      "cantidad": 1,
+      "estado_cantidad": "regla_producto",
+      "lineas": 1,
+      "producto_id": "SAM_CS-300-90-065-18-Z",
+      "sku": "CS-300-90-065-18-Z",
+      "unidad": "pieza"
+     },
+     {
+      "cantidad": 2,
+      "cantidad_por_envase": 100.0,
+      "envases": 1,
+      "estado_cantidad": "declarada_en_trazado",
+      "lineas": 2,
+      "producto_id": "SAM_GFCE-B",
+      "sku": "GFCE-B",
+      "unidad": "pieza"
+     },
+     {
+      "cantidad": 18.0,
+      "estado_cantidad": "propuesta",
+      "lineas": 9,
+      "producto_id": "SAM_GFS-02-Z",
+      "sku": "GFS-02-Z",
+      "unidad": "pieza"
+     },
+     {
+      "cantidad": 24.0,
+      "cantidad_por_envase": 100.0,
+      "envases": 1,
+      "estado_cantidad": "documentada",
+      "lineas": 6,
+      "producto_id": "SAM_JB-CC-3_8",
+      "sku": "JB-CC-3/8",
+      "unidad": "juego"
+     },
+     {
+      "cantidad": 9,
+      "estado_cantidad": "declarada_en_trazado",
+      "lineas": 9,
+      "producto_id": "SAM_STS-300-Z",
+      "sku": "STS-300-Z",
+      "unidad": "pieza"
+     },
+     {
+      "cantidad": 5,
+      "estado_cantidad": "regla_producto",
+      "lineas": 5,
+      "producto_id": "SAM_TRES-300-065-18-Z",
+      "sku": "TRES-300-065-18-Z",
+      "unidad": "pieza"
+     },
+     {
+      "cantidad": 1,
+      "estado_cantidad": "regla_producto",
+      "lineas": 1,
+      "producto_id": "SAM_TS-300-065-18-Z",
+      "sku": "TS-300-065-18-Z",
+      "unidad": "pieza"
+     },
+     {
+      "cantidad": 1,
+      "estado_cantidad": "declarada_en_trazado",
+      "lineas": 1,
+      "producto_id": "SAM_TTRS-300-22-Z",
+      "sku": "TTRS-300-22-Z",
+      "unidad": "pieza"
+     }
+    ]
+   },
+   "conexiones": {
+    "C1": {
+     "a": [
+      "R1",
+      "P2"
+     ],
+     "b": [
+      "R2",
+      "P1"
+     ],
+     "compatibilidad": {
+      "condiciones": [],
+      "dimensiones": {
+       "ala_a_mm": 65.0,
+       "ala_b_mm": 65.0,
+       "ancho_a_mm": 300.0,
+       "ancho_b_mm": 300.0,
+       "interfaz_a": "Smarttray escalera – acople encastrable",
+       "interfaz_b": "Smarttray escalera – acople encastrable"
+      },
+      "estado": "COMPATIBLE_DOCUMENTADA",
+      "registro": {
+       "compatibilidad_id": "CMP-01535",
+       "estado_compatibilidad": "confirmada",
+       "estado_evidencia": "documentada",
+       "fila_origen": 1536,
+       "fuente_id": "F-001",
+       "observaciones": "Evidencia a nivel de sistema: 4 juegos 3/8\" unen dos componentes del sistema (F-001 PDF 3 / impr. 4) + pieza tabulada en la misma familia con igual ancho y ala. No hay tabla de compatibilidad por código.",
+       "pagina_fuente": "PDF 3 / impr. 4",
+       "producto_a_id": "SAM_TRES-300-065-18-Z",
+       "producto_b_id": "SAM_TRES-300-065-18-Z",
+       "puerto_a_id": "SAM_TRES-300-065-18-Z-P1",
+       "puerto_b_id": "SAM_TRES-300-065-18-Z-P2",
+       "tipo_conexion": "directa"
+      }
+     },
+     "encaje": {
+      "alcance": "Coherencia del modelo del CAD (puertos coincidentes y enfrentados). Las dimensiones físicas de las piezas no están publicadas: no se verifica la pieza real (D-14).",
+      "desvio_angular_grados": 0.0,
+      "estado": "COHERENTE",
+      "separacion_mm": 0.0,
+      "tolerancias": {
+       "angulo_grados": 1.0,
+       "posicion_mm": 1.0
+      }
+     }
+    },
+    "C2": {
+     "a": [
+      "R2",
+      "P2"
+     ],
+     "b": [
+      "T1",
+      "P1"
+     ],
+     "compatibilidad": {
+      "condiciones": [
+       "EQUIVALENCIA_EXTREMOS_RECTA_D-13"
+      ],
+      "dimensiones": {
+       "ala_a_mm": 65.0,
+       "ala_b_mm": 65.0,
+       "ancho_a_mm": 300.0,
+       "ancho_b_mm": 300.0,
+       "interfaz_a": "Smarttray escalera – acople encastrable",
+       "interfaz_b": "Smarttray escalera – acople encastrable"
+      },
+      "estado": "COMPATIBLE_DOCUMENTADA",
+      "registro": {
+       "compatibilidad_id": "CMP-01649",
+       "estado_compatibilidad": "confirmada",
+       "estado_evidencia": "documentada",
+       "fila_origen": 1650,
+       "fuente_id": "F-001",
+       "observaciones": "Evidencia a nivel de sistema: 4 juegos 3/8\" unen dos componentes del sistema (F-001 PDF 3 / impr. 4) + pieza tabulada en la misma familia con igual ancho y ala. No hay tabla de compatibilidad por código.",
+       "pagina_fuente": "PDF 3 / impr. 4",
+       "producto_a_id": "SAM_TRES-300-065-18-Z",
+       "producto_b_id": "SAM_TS-300-065-18-Z",
+       "puerto_a_id": "SAM_TRES-300-065-18-Z-P1",
+       "puerto_b_id": "SAM_TS-300-065-18-Z-P1",
+       "tipo_conexion": "directa"
+      }
+     },
+     "encaje": {
+      "alcance": "Coherencia del modelo del CAD (puertos coincidentes y enfrentados). Las dimensiones físicas de las piezas no están publicadas: no se verifica la pieza real (D-14).",
+      "desvio_angular_grados": 0.0,
+      "estado": "COHERENTE",
+      "separacion_mm": 0.0,
+      "tolerancias": {
+       "angulo_grados": 1.0,
+       "posicion_mm": 1.0
+      }
+     }
+    },
+    "C3": {
+     "a": [
+      "T1",
+      "P2"
+     ],
+     "b": [
+      "R3",
+      "P1"
+     ],
+     "compatibilidad": {
+      "condiciones": [],
+      "dimensiones": {
+       "ala_a_mm": 65.0,
+       "ala_b_mm": 65.0,
+       "ancho_a_mm": 300.0,
+       "ancho_b_mm": 300.0,
+       "interfaz_a": "Smarttray escalera – acople encastrable",
+       "interfaz_b": "Smarttray escalera – acople encastrable"
+      },
+      "estado": "COMPATIBLE_DOCUMENTADA",
+      "registro": {
+       "compatibilidad_id": "CMP-01650",
+       "estado_compatibilidad": "confirmada",
+       "estado_evidencia": "documentada",
+       "fila_origen": 1651,
+       "fuente_id": "F-001",
+       "observaciones": "Evidencia a nivel de sistema: 4 juegos 3/8\" unen dos componentes del sistema (F-001 PDF 3 / impr. 4) + pieza tabulada en la misma familia con igual ancho y ala. No hay tabla de compatibilidad por código.",
+       "pagina_fuente": "PDF 3 / impr. 4",
+       "producto_a_id": "SAM_TRES-300-065-18-Z",
+       "producto_b_id": "SAM_TS-300-065-18-Z",
+       "puerto_a_id": "SAM_TRES-300-065-18-Z-P1",
+       "puerto_b_id": "SAM_TS-300-065-18-Z-P2",
+       "tipo_conexion": "directa"
+      }
+     },
+     "encaje": {
+      "alcance": "Coherencia del modelo del CAD (puertos coincidentes y enfrentados). Las dimensiones físicas de las piezas no están publicadas: no se verifica la pieza real (D-14).",
+      "desvio_angular_grados": 0.0,
+      "estado": "COHERENTE",
+      "separacion_mm": 0.0,
+      "tolerancias": {
+       "angulo_grados": 1.0,
+       "posicion_mm": 1.0
+      }
+     }
+    },
+    "C4": {
+     "a": [
+      "T1",
+      "P3"
+     ],
+     "b": [
+      "R4",
+      "P1"
+     ],
+     "compatibilidad": {
+      "condiciones": [],
+      "dimensiones": {
+       "ala_a_mm": 65.0,
+       "ala_b_mm": 65.0,
+       "ancho_a_mm": 300.0,
+       "ancho_b_mm": 300.0,
+       "interfaz_a": "Smarttray escalera – acople encastrable",
+       "interfaz_b": "Smarttray escalera – acople encastrable"
+      },
+      "estado": "COMPATIBLE_DOCUMENTADA",
+      "registro": {
+       "compatibilidad_id": "CMP-01651",
+       "estado_compatibilidad": "confirmada",
+       "estado_evidencia": "documentada",
+       "fila_origen": 1652,
+       "fuente_id": "F-001",
+       "observaciones": "Evidencia a nivel de sistema: 4 juegos 3/8\" unen dos componentes del sistema (F-001 PDF 3 / impr. 4) + pieza tabulada en la misma familia con igual ancho y ala. No hay tabla de compatibilidad por código.",
+       "pagina_fuente": "PDF 3 / impr. 4",
+       "producto_a_id": "SAM_TRES-300-065-18-Z",
+       "producto_b_id": "SAM_TS-300-065-18-Z",
+       "puerto_a_id": "SAM_TRES-300-065-18-Z-P1",
+       "puerto_b_id": "SAM_TS-300-065-18-Z-P3",
+       "tipo_conexion": "directa"
+      }
+     },
+     "encaje": {
+      "alcance": "Coherencia del modelo del CAD (puertos coincidentes y enfrentados). Las dimensiones físicas de las piezas no están publicadas: no se verifica la pieza real (D-14).",
+      "desvio_angular_grados": 0.0,
+      "estado": "COHERENTE",
+      "separacion_mm": 0.0,
+      "tolerancias": {
+       "angulo_grados": 1.0,
+       "posicion_mm": 1.0
+      }
+     }
+    },
+    "C5": {
+     "a": [
+      "R4",
+      "P2"
+     ],
+     "b": [
+      "CS1",
+      "P1"
+     ],
+     "compatibilidad": {
+      "condiciones": [
+       "EQUIVALENCIA_EXTREMOS_RECTA_D-13"
+      ],
+      "dimensiones": {
+       "ala_a_mm": 65.0,
+       "ala_b_mm": 65.0,
+       "ancho_a_mm": 300.0,
+       "ancho_b_mm": 300.0,
+       "interfaz_a": "Smarttray escalera – acople encastrable",
+       "interfaz_b": "Smarttray escalera – acople encastrable"
+      },
+      "estado": "COMPATIBLE_DOCUMENTADA",
+      "registro": {
+       "compatibilidad_id": "CMP-01574",
+       "estado_compatibilidad": "confirmada",
+       "estado_evidencia": "documentada",
+       "fila_origen": 1575,
+       "fuente_id": "F-001",
+       "observaciones": "Evidencia a nivel de sistema: 4 juegos 3/8\" unen dos componentes del sistema (F-001 PDF 3 / impr. 4) + pieza tabulada en la misma familia con igual ancho y ala. No hay tabla de compatibilidad por código.",
+       "pagina_fuente": "PDF 3 / impr. 4",
+       "producto_a_id": "SAM_TRES-300-065-18-Z",
+       "producto_b_id": "SAM_CS-300-90-065-18-Z",
+       "puerto_a_id": "SAM_TRES-300-065-18-Z-P1",
+       "puerto_b_id": "SAM_CS-300-90-065-18-Z-P1",
+       "tipo_conexion": "directa"
+      }
+     },
+     "encaje": {
+      "alcance": "Coherencia del modelo del CAD (puertos coincidentes y enfrentados). Las dimensiones físicas de las piezas no están publicadas: no se verifica la pieza real (D-14).",
+      "desvio_angular_grados": 0.0,
+      "estado": "COHERENTE",
+      "separacion_mm": 0.0,
+      "tolerancias": {
+       "angulo_grados": 1.0,
+       "posicion_mm": 1.0
+      }
+     }
+    },
+    "C6": {
+     "a": [
+      "CS1",
+      "P2"
+     ],
+     "b": [
+      "R5",
+      "P1"
+     ],
+     "compatibilidad": {
+      "condiciones": [],
+      "dimensiones": {
+       "ala_a_mm": 65.0,
+       "ala_b_mm": 65.0,
+       "ancho_a_mm": 300.0,
+       "ancho_b_mm": 300.0,
+       "interfaz_a": "Smarttray escalera – acople encastrable",
+       "interfaz_b": "Smarttray escalera – acople encastrable"
+      },
+      "estado": "COMPATIBLE_DOCUMENTADA",
+      "registro": {
+       "compatibilidad_id": "CMP-01575",
+       "estado_compatibilidad": "confirmada",
+       "estado_evidencia": "documentada",
+       "fila_origen": 1576,
+       "fuente_id": "F-001",
+       "observaciones": "Evidencia a nivel de sistema: 4 juegos 3/8\" unen dos componentes del sistema (F-001 PDF 3 / impr. 4) + pieza tabulada en la misma familia con igual ancho y ala. No hay tabla de compatibilidad por código.",
+       "pagina_fuente": "PDF 3 / impr. 4",
+       "producto_a_id": "SAM_TRES-300-065-18-Z",
+       "producto_b_id": "SAM_CS-300-90-065-18-Z",
+       "puerto_a_id": "SAM_TRES-300-065-18-Z-P1",
+       "puerto_b_id": "SAM_CS-300-90-065-18-Z-P2",
+       "tipo_conexion": "directa"
+      }
+     },
+     "encaje": {
+      "alcance": "Coherencia del modelo del CAD (puertos coincidentes y enfrentados). Las dimensiones físicas de las piezas no están publicadas: no se verifica la pieza real (D-14).",
+      "desvio_angular_grados": 0.0,
+      "estado": "COHERENTE",
+      "separacion_mm": 0.0,
+      "tolerancias": {
+       "angulo_grados": 1.0,
+       "posicion_mm": 1.0
+      }
+     }
+    }
+   },
+   "corridas": [
+    {
+     "corrida_id": "CORR-R1",
+     "diagnosticos": [
+      {
+       "estado": "SIN_REGLA_ACREDITADA",
+       "extremo": {
+        "tipo": "libre"
+       },
+       "tema": "distancia extremo inicio → soporte más cercano",
+       "valor_mm": 750.0
+      },
+      {
+       "estado": "SIN_REGLA_ACREDITADA",
+       "extremo": {
+        "conexion": "C2",
+        "instancia": "T1",
+        "tipo": "pieza_especial",
+        "tipo_pieza": "T"
+       },
+       "tema": "distancia extremo fin → soporte más cercano",
+       "valor_mm": 750.0
+      },
+      {
+       "detalle": "No hay modelo documentado para vanos que incluyen curvas, T, X o reducciones.",
+       "estado": "NO_VERIFICABLE_VANO_A_TRAVES_DE_PIEZA_ESPECIAL",
+       "tema": "tramo hacia T T1"
+      },
+      {
+       "conexion": "C1",
+       "distancia_a_soporte_mm": 750.0,
+       "estado": "SIN_REGLA_ACREDITADA",
+       "fraccion_del_vano": 0.5,
+       "posicion_mm": 3000.0,
+       "tema": "posición de unión"
+      }
+     ],
+     "escenario": "actual",
+     "estado": "VANOS_CONDICIONADOS_COLOCACION_SIN_REGLA",
+     "extremo_fin": {
+      "conexion": "C2",
+      "instancia": "T1",
+      "tipo": "pieza_especial",
+      "tipo_pieza": "T"
+     },
+     "extremo_inicio": {
+      "tipo": "libre"
+     },
+     "longitud_mm": 6000.0,
+     "soportes": [
+      {
+       "posicion_mm": 750.0,
+       "soporte_id": "S1"
+      },
+      {
+       "posicion_mm": 2250.0,
+       "soporte_id": "S2"
+      },
+      {
+       "posicion_mm": 3750.0,
+       "soporte_id": "S3"
+      },
+      {
+       "posicion_mm": 5250.0,
+       "soporte_id": "S4"
+      }
+     ],
+     "vanos": [
+      {
+       "carga_kg_m": 2.849,
+       "cargas_incluidas": [
+        "cables de potencia asignados",
+        "PE"
+       ],
+       "criterio_carga": "máxima carga distribuida entre las piezas del vano (sin modelo de reparto)",
+       "entre": [
+        "S1",
+        "S2"
+       ],
+       "esquema_ensayo_contrastado": false,
+       "estado": "CUMPLE_CONDICIONADO",
+       "evaluaciones": [
+        {
+         "base_evidencia": "validada_por_usuario",
+         "cta_kg_m": 290.0,
+         "esquema_ensayo": {
+          "detalle": "Sin esquema de ensayo asociado a la fuente F-005.",
+          "esquema_id": null,
+          "estado": "NO_DECLARADO"
+         },
+         "estado": "CUMPLE_CONDICIONADO",
+         "estado_mecanico_registro": "CUMPLE_CONDICIONADO",
+         "instancia": "R1",
+         "registro_carga_id": "CAR-0051",
+         "utilizacion_pct": 0.9824
+        }
+       ],
+       "luz_mm": 1500.0,
+       "piezas": [
+        "R1"
+       ]
+      },
+      {
+       "carga_kg_m": 2.849,
+       "cargas_incluidas": [
+        "cables de potencia asignados",
+        "PE"
+       ],
+       "criterio_carga": "máxima carga distribuida entre las piezas del vano (sin modelo de reparto)",
+       "entre": [
+        "S2",
+        "S3"
+       ],
+       "esquema_ensayo_contrastado": false,
+       "estado": "CUMPLE_CONDICIONADO",
+       "evaluaciones": [
+        {
+         "base_evidencia": "validada_por_usuario",
+         "cta_kg_m": 290.0,
+         "esquema_ensayo": {
+          "detalle": "Sin esquema de ensayo asociado a la fuente F-005.",
+          "esquema_id": null,
+          "estado": "NO_DECLARADO"
+         },
+         "estado": "CUMPLE_CONDICIONADO",
+         "estado_mecanico_registro": "CUMPLE_CONDICIONADO",
+         "instancia": "R1",
+         "registro_carga_id": "CAR-0051",
+         "utilizacion_pct": 0.9824
+        },
+        {
+         "base_evidencia": "validada_por_usuario",
+         "cta_kg_m": 290.0,
+         "esquema_ensayo": {
+          "detalle": "Sin esquema de ensayo asociado a la fuente F-005.",
+          "esquema_id": null,
+          "estado": "NO_DECLARADO"
+         },
+         "estado": "CUMPLE_CONDICIONADO",
+         "estado_mecanico_registro": "CUMPLE_CONDICIONADO",
+         "instancia": "R2",
+         "registro_carga_id": "CAR-0051",
+         "utilizacion_pct": 0.9824
+        }
+       ],
+       "luz_mm": 1500.0,
+       "piezas": [
+        "R1",
+        "R2"
+       ]
+      },
+      {
+       "carga_kg_m": 2.849,
+       "cargas_incluidas": [
+        "cables de potencia asignados",
+        "PE"
+       ],
+       "criterio_carga": "máxima carga distribuida entre las piezas del vano (sin modelo de reparto)",
+       "entre": [
+        "S3",
+        "S4"
+       ],
+       "esquema_ensayo_contrastado": false,
+       "estado": "CUMPLE_CONDICIONADO",
+       "evaluaciones": [
+        {
+         "base_evidencia": "validada_por_usuario",
+         "cta_kg_m": 290.0,
+         "esquema_ensayo": {
+          "detalle": "Sin esquema de ensayo asociado a la fuente F-005.",
+          "esquema_id": null,
+          "estado": "NO_DECLARADO"
+         },
+         "estado": "CUMPLE_CONDICIONADO",
+         "estado_mecanico_registro": "CUMPLE_CONDICIONADO",
+         "instancia": "R2",
+         "registro_carga_id": "CAR-0051",
+         "utilizacion_pct": 0.9824
+        }
+       ],
+       "luz_mm": 1500.0,
+       "piezas": [
+        "R2"
+       ]
+      }
+     ]
+    },
+    {
+     "corrida_id": "CORR-R3",
+     "diagnosticos": [
+      {
+       "estado": "SIN_REGLA_ACREDITADA",
+       "extremo": {
+        "conexion": "C3",
+        "instancia": "T1",
+        "tipo": "pieza_especial",
+        "tipo_pieza": "T"
+       },
+       "tema": "distancia extremo inicio → soporte más cercano",
+       "valor_mm": 750.0
+      },
+      {
+       "detalle": "No hay modelo documentado para vanos que incluyen curvas, T, X o reducciones.",
+       "estado": "NO_VERIFICABLE_VANO_A_TRAVES_DE_PIEZA_ESPECIAL",
+       "tema": "tramo hacia T T1"
+      },
+      {
+       "estado": "SIN_REGLA_ACREDITADA",
+       "extremo": {
+        "tipo": "libre"
+       },
+       "tema": "distancia extremo fin → soporte más cercano",
+       "valor_mm": 750.0
+      }
+     ],
+     "escenario": "actual",
+     "estado": "NO_VERIFICABLE",
+     "extremo_fin": {
+      "tipo": "libre"
+     },
+     "extremo_inicio": {
+      "conexion": "C3",
+      "instancia": "T1",
+      "tipo": "pieza_especial",
+      "tipo_pieza": "T"
+     },
+     "longitud_mm": 3000.0,
+     "soportes": [
+      {
+       "posicion_mm": 750.0,
+       "soporte_id": "S5"
+      },
+      {
+       "posicion_mm": 2250.0,
+       "soporte_id": "S6"
+      }
+     ],
+     "vanos": [
+      {
+       "carga_kg_m": 1.508,
+       "cargas_incluidas": [
+        "cables de potencia asignados",
+        "PE"
+       ],
+       "criterio_carga": "máxima carga distribuida entre las piezas del vano (sin modelo de reparto)",
+       "detalle": "Tapas ['TP1']: masa no publicada; omitirla subestimaría la carga.",
+       "entre": [
+        "S5",
+        "S6"
+       ],
+       "estado": "NO_VERIFICABLE_CARGA_TAPA_DESCONOCIDA",
+       "luz_mm": 1500.0,
+       "piezas": [
+        "R3"
+       ]
+      }
+     ]
+    },
+    {
+     "corrida_id": "CORR-R4",
+     "diagnosticos": [
+      {
+       "estado": "SIN_REGLA_ACREDITADA",
+       "extremo": {
+        "conexion": "C4",
+        "instancia": "T1",
+        "tipo": "pieza_especial",
+        "tipo_pieza": "T"
+       },
+       "tema": "distancia extremo inicio → soporte más cercano",
+       "valor_mm": 750.0
+      },
+      {
+       "detalle": "No hay modelo documentado para vanos que incluyen curvas, T, X o reducciones.",
+       "estado": "NO_VERIFICABLE_VANO_A_TRAVES_DE_PIEZA_ESPECIAL",
+       "tema": "tramo hacia T T1"
+      },
+      {
+       "estado": "SIN_REGLA_ACREDITADA",
+       "extremo": {
+        "conexion": "C5",
+        "instancia": "CS1",
+        "tipo": "pieza_especial",
+        "tipo_pieza": "curva horizontal"
+       },
+       "tema": "distancia extremo fin → soporte más cercano",
+       "valor_mm": 750.0
+      },
+      {
+       "detalle": "No hay modelo documentado para vanos que incluyen curvas, T, X o reducciones.",
+       "estado": "NO_VERIFICABLE_VANO_A_TRAVES_DE_PIEZA_ESPECIAL",
+       "tema": "tramo hacia curva horizontal CS1"
+      }
+     ],
+     "escenario": "actual",
+     "estado": "VANOS_CONDICIONADOS_COLOCACION_SIN_REGLA",
+     "extremo_fin": {
+      "conexion": "C5",
+      "instancia": "CS1",
+      "tipo": "pieza_especial",
+      "tipo_pieza": "curva horizontal"
+     },
+     "extremo_inicio": {
+      "conexion": "C4",
+      "instancia": "T1",
+      "tipo": "pieza_especial",
+      "tipo_pieza": "T"
+     },
+     "longitud_mm": 3000.0,
+     "soportes": [
+      {
+       "posicion_mm": 750.0,
+       "soporte_id": "S7"
+      },
+      {
+       "posicion_mm": 2250.0,
+       "soporte_id": "S8"
+      }
+     ],
+     "vanos": [
+      {
+       "carga_kg_m": 1.508,
+       "cargas_incluidas": [
+        "cables de potencia asignados",
+        "PE"
+       ],
+       "criterio_carga": "máxima carga distribuida entre las piezas del vano (sin modelo de reparto)",
+       "entre": [
+        "S7",
+        "S8"
+       ],
+       "esquema_ensayo_contrastado": false,
+       "estado": "CUMPLE_CONDICIONADO",
+       "evaluaciones": [
+        {
+         "base_evidencia": "validada_por_usuario",
+         "cta_kg_m": 290.0,
+         "esquema_ensayo": {
+          "detalle": "Sin esquema de ensayo asociado a la fuente F-005.",
+          "esquema_id": null,
+          "estado": "NO_DECLARADO"
+         },
+         "estado": "CUMPLE_CONDICIONADO",
+         "estado_mecanico_registro": "CUMPLE_CONDICIONADO",
+         "instancia": "R4",
+         "registro_carga_id": "CAR-0051",
+         "utilizacion_pct": 0.52
+        }
+       ],
+       "luz_mm": 1500.0,
+       "piezas": [
+        "R4"
+       ]
+      }
+     ]
+    },
+    {
+     "corrida_id": "CORR-R5",
+     "diagnosticos": [
+      {
+       "estado": "SIN_REGLA_ACREDITADA",
+       "extremo": {
+        "conexion": "C6",
+        "instancia": "CS1",
+        "tipo": "pieza_especial",
+        "tipo_pieza": "curva horizontal"
+       },
+       "tema": "distancia extremo inicio → soporte más cercano",
+       "valor_mm": 750.0
+      },
+      {
+       "detalle": "No hay modelo documentado para vanos que incluyen curvas, T, X o reducciones.",
+       "estado": "NO_VERIFICABLE_VANO_A_TRAVES_DE_PIEZA_ESPECIAL",
+       "tema": "tramo hacia curva horizontal CS1"
+      },
+      {
+       "estado": "SIN_REGLA_ACREDITADA",
+       "extremo": {
+        "tipo": "libre"
+       },
+       "tema": "distancia extremo fin → soporte más cercano",
+       "valor_mm": 750.0
+      }
+     ],
+     "escenario": "actual",
+     "estado": "NO_VERIFICABLE_UN_SOLO_SOPORTE",
+     "extremo_fin": {
+      "tipo": "libre"
+     },
+     "extremo_inicio": {
+      "conexion": "C6",
+      "instancia": "CS1",
+      "tipo": "pieza_especial",
+      "tipo_pieza": "curva horizontal"
+     },
+     "longitud_mm": 1500.0,
+     "soportes": [
+      {
+       "posicion_mm": 750.0,
+       "soporte_id": "S9"
+      }
+     ],
+     "vanos": []
+    }
+   ],
+   "corridas_escenario_reserva": [
+    {
+     "corrida_id": "CORR-R1",
+     "diagnosticos": [
+      {
+       "estado": "SIN_REGLA_ACREDITADA",
+       "extremo": {
+        "tipo": "libre"
+       },
+       "tema": "distancia extremo inicio → soporte más cercano",
+       "valor_mm": 750.0
+      },
+      {
+       "estado": "SIN_REGLA_ACREDITADA",
+       "extremo": {
+        "conexion": "C2",
+        "instancia": "T1",
+        "tipo": "pieza_especial",
+        "tipo_pieza": "T"
+       },
+       "tema": "distancia extremo fin → soporte más cercano",
+       "valor_mm": 750.0
+      },
+      {
+       "detalle": "No hay modelo documentado para vanos que incluyen curvas, T, X o reducciones.",
+       "estado": "NO_VERIFICABLE_VANO_A_TRAVES_DE_PIEZA_ESPECIAL",
+       "tema": "tramo hacia T T1"
+      },
+      {
+       "conexion": "C1",
+       "distancia_a_soporte_mm": 750.0,
+       "estado": "SIN_REGLA_ACREDITADA",
+       "fraccion_del_vano": 0.5,
+       "posicion_mm": 3000.0,
+       "tema": "posición de unión"
+      }
+     ],
+     "escenario": "reserva_ocupada",
+     "estado": "VANOS_CONDICIONADOS_COLOCACION_SIN_REGLA",
+     "extremo_fin": {
+      "conexion": "C2",
+      "instancia": "T1",
+      "tipo": "pieza_especial",
+      "tipo_pieza": "T"
+     },
+     "extremo_inicio": {
+      "tipo": "libre"
+     },
+     "longitud_mm": 6000.0,
+     "soportes": [
+      {
+       "posicion_mm": 750.0,
+       "soporte_id": "S1"
+      },
+      {
+       "posicion_mm": 2250.0,
+       "soporte_id": "S2"
+      },
+      {
+       "posicion_mm": 3750.0,
+       "soporte_id": "S3"
+      },
+      {
+       "posicion_mm": 5250.0,
+       "soporte_id": "S4"
+      }
+     ],
+     "vanos": [
+      {
+       "carga_kg_m": 4.19,
+       "cargas_incluidas": [
+        "cables de potencia asignados",
+        "PE"
+       ],
+       "criterio_carga": "máxima carga distribuida entre las piezas del vano (sin modelo de reparto)",
+       "entre": [
+        "S1",
+        "S2"
+       ],
+       "esquema_ensayo_contrastado": false,
+       "estado": "CUMPLE_CONDICIONADO",
+       "evaluaciones": [
+        {
+         "base_evidencia": "validada_por_usuario",
+         "cta_kg_m": 290.0,
+         "esquema_ensayo": {
+          "detalle": "Sin esquema de ensayo asociado a la fuente F-005.",
+          "esquema_id": null,
+          "estado": "NO_DECLARADO"
+         },
+         "estado": "CUMPLE_CONDICIONADO",
+         "estado_mecanico_registro": "CUMPLE_CONDICIONADO",
+         "instancia": "R1",
+         "registro_carga_id": "CAR-0051",
+         "utilizacion_pct": 1.4448
+        }
+       ],
+       "luz_mm": 1500.0,
+       "piezas": [
+        "R1"
+       ]
+      },
+      {
+       "carga_kg_m": 4.19,
+       "cargas_incluidas": [
+        "cables de potencia asignados",
+        "PE"
+       ],
+       "criterio_carga": "máxima carga distribuida entre las piezas del vano (sin modelo de reparto)",
+       "entre": [
+        "S2",
+        "S3"
+       ],
+       "esquema_ensayo_contrastado": false,
+       "estado": "CUMPLE_CONDICIONADO",
+       "evaluaciones": [
+        {
+         "base_evidencia": "validada_por_usuario",
+         "cta_kg_m": 290.0,
+         "esquema_ensayo": {
+          "detalle": "Sin esquema de ensayo asociado a la fuente F-005.",
+          "esquema_id": null,
+          "estado": "NO_DECLARADO"
+         },
+         "estado": "CUMPLE_CONDICIONADO",
+         "estado_mecanico_registro": "CUMPLE_CONDICIONADO",
+         "instancia": "R1",
+         "registro_carga_id": "CAR-0051",
+         "utilizacion_pct": 1.4448
+        },
+        {
+         "base_evidencia": "validada_por_usuario",
+         "cta_kg_m": 290.0,
+         "esquema_ensayo": {
+          "detalle": "Sin esquema de ensayo asociado a la fuente F-005.",
+          "esquema_id": null,
+          "estado": "NO_DECLARADO"
+         },
+         "estado": "CUMPLE_CONDICIONADO",
+         "estado_mecanico_registro": "CUMPLE_CONDICIONADO",
+         "instancia": "R2",
+         "registro_carga_id": "CAR-0051",
+         "utilizacion_pct": 1.4448
+        }
+       ],
+       "luz_mm": 1500.0,
+       "piezas": [
+        "R1",
+        "R2"
+       ]
+      },
+      {
+       "carga_kg_m": 4.19,
+       "cargas_incluidas": [
+        "cables de potencia asignados",
+        "PE"
+       ],
+       "criterio_carga": "máxima carga distribuida entre las piezas del vano (sin modelo de reparto)",
+       "entre": [
+        "S3",
+        "S4"
+       ],
+       "esquema_ensayo_contrastado": false,
+       "estado": "CUMPLE_CONDICIONADO",
+       "evaluaciones": [
+        {
+         "base_evidencia": "validada_por_usuario",
+         "cta_kg_m": 290.0,
+         "esquema_ensayo": {
+          "detalle": "Sin esquema de ensayo asociado a la fuente F-005.",
+          "esquema_id": null,
+          "estado": "NO_DECLARADO"
+         },
+         "estado": "CUMPLE_CONDICIONADO",
+         "estado_mecanico_registro": "CUMPLE_CONDICIONADO",
+         "instancia": "R2",
+         "registro_carga_id": "CAR-0051",
+         "utilizacion_pct": 1.4448
+        }
+       ],
+       "luz_mm": 1500.0,
+       "piezas": [
+        "R2"
+       ]
+      }
+     ]
+    },
+    {
+     "corrida_id": "CORR-R3",
+     "diagnosticos": [
+      {
+       "estado": "SIN_REGLA_ACREDITADA",
+       "extremo": {
+        "conexion": "C3",
+        "instancia": "T1",
+        "tipo": "pieza_especial",
+        "tipo_pieza": "T"
+       },
+       "tema": "distancia extremo inicio → soporte más cercano",
+       "valor_mm": 750.0
+      },
+      {
+       "detalle": "No hay modelo documentado para vanos que incluyen curvas, T, X o reducciones.",
+       "estado": "NO_VERIFICABLE_VANO_A_TRAVES_DE_PIEZA_ESPECIAL",
+       "tema": "tramo hacia T T1"
+      },
+      {
+       "estado": "SIN_REGLA_ACREDITADA",
+       "extremo": {
+        "tipo": "libre"
+       },
+       "tema": "distancia extremo fin → soporte más cercano",
+       "valor_mm": 750.0
+      }
+     ],
+     "escenario": "reserva_ocupada",
+     "estado": "NO_VERIFICABLE",
+     "extremo_fin": {
+      "tipo": "libre"
+     },
+     "extremo_inicio": {
+      "conexion": "C3",
+      "instancia": "T1",
+      "tipo": "pieza_especial",
+      "tipo_pieza": "T"
+     },
+     "longitud_mm": 3000.0,
+     "soportes": [
+      {
+       "posicion_mm": 750.0,
+       "soporte_id": "S5"
+      },
+      {
+       "posicion_mm": 2250.0,
+       "soporte_id": "S6"
+      }
+     ],
+     "vanos": [
+      {
+       "carga_kg_m": 2.849,
+       "cargas_incluidas": [
+        "cables de potencia asignados",
+        "PE"
+       ],
+       "criterio_carga": "máxima carga distribuida entre las piezas del vano (sin modelo de reparto)",
+       "detalle": "Tapas ['TP1']: masa no publicada; omitirla subestimaría la carga.",
+       "entre": [
+        "S5",
+        "S6"
+       ],
+       "estado": "NO_VERIFICABLE_CARGA_TAPA_DESCONOCIDA",
+       "luz_mm": 1500.0,
+       "piezas": [
+        "R3"
+       ]
+      }
+     ]
+    },
+    {
+     "corrida_id": "CORR-R4",
+     "diagnosticos": [
+      {
+       "estado": "SIN_REGLA_ACREDITADA",
+       "extremo": {
+        "conexion": "C4",
+        "instancia": "T1",
+        "tipo": "pieza_especial",
+        "tipo_pieza": "T"
+       },
+       "tema": "distancia extremo inicio → soporte más cercano",
+       "valor_mm": 750.0
+      },
+      {
+       "detalle": "No hay modelo documentado para vanos que incluyen curvas, T, X o reducciones.",
+       "estado": "NO_VERIFICABLE_VANO_A_TRAVES_DE_PIEZA_ESPECIAL",
+       "tema": "tramo hacia T T1"
+      },
+      {
+       "estado": "SIN_REGLA_ACREDITADA",
+       "extremo": {
+        "conexion": "C5",
+        "instancia": "CS1",
+        "tipo": "pieza_especial",
+        "tipo_pieza": "curva horizontal"
+       },
+       "tema": "distancia extremo fin → soporte más cercano",
+       "valor_mm": 750.0
+      },
+      {
+       "detalle": "No hay modelo documentado para vanos que incluyen curvas, T, X o reducciones.",
+       "estado": "NO_VERIFICABLE_VANO_A_TRAVES_DE_PIEZA_ESPECIAL",
+       "tema": "tramo hacia curva horizontal CS1"
+      }
+     ],
+     "escenario": "reserva_ocupada",
+     "estado": "VANOS_CONDICIONADOS_COLOCACION_SIN_REGLA",
+     "extremo_fin": {
+      "conexion": "C5",
+      "instancia": "CS1",
+      "tipo": "pieza_especial",
+      "tipo_pieza": "curva horizontal"
+     },
+     "extremo_inicio": {
+      "conexion": "C4",
+      "instancia": "T1",
+      "tipo": "pieza_especial",
+      "tipo_pieza": "T"
+     },
+     "longitud_mm": 3000.0,
+     "soportes": [
+      {
+       "posicion_mm": 750.0,
+       "soporte_id": "S7"
+      },
+      {
+       "posicion_mm": 2250.0,
+       "soporte_id": "S8"
+      }
+     ],
+     "vanos": [
+      {
+       "carga_kg_m": 1.508,
+       "cargas_incluidas": [
+        "cables de potencia asignados",
+        "PE"
+       ],
+       "criterio_carga": "máxima carga distribuida entre las piezas del vano (sin modelo de reparto)",
+       "entre": [
+        "S7",
+        "S8"
+       ],
+       "esquema_ensayo_contrastado": false,
+       "estado": "CUMPLE_CONDICIONADO",
+       "evaluaciones": [
+        {
+         "base_evidencia": "validada_por_usuario",
+         "cta_kg_m": 290.0,
+         "esquema_ensayo": {
+          "detalle": "Sin esquema de ensayo asociado a la fuente F-005.",
+          "esquema_id": null,
+          "estado": "NO_DECLARADO"
+         },
+         "estado": "CUMPLE_CONDICIONADO",
+         "estado_mecanico_registro": "CUMPLE_CONDICIONADO",
+         "instancia": "R4",
+         "registro_carga_id": "CAR-0051",
+         "utilizacion_pct": 0.52
+        }
+       ],
+       "luz_mm": 1500.0,
+       "piezas": [
+        "R4"
+       ]
+      }
+     ]
+    },
+    {
+     "corrida_id": "CORR-R5",
+     "diagnosticos": [
+      {
+       "estado": "SIN_REGLA_ACREDITADA",
+       "extremo": {
+        "conexion": "C6",
+        "instancia": "CS1",
+        "tipo": "pieza_especial",
+        "tipo_pieza": "curva horizontal"
+       },
+       "tema": "distancia extremo inicio → soporte más cercano",
+       "valor_mm": 750.0
+      },
+      {
+       "detalle": "No hay modelo documentado para vanos que incluyen curvas, T, X o reducciones.",
+       "estado": "NO_VERIFICABLE_VANO_A_TRAVES_DE_PIEZA_ESPECIAL",
+       "tema": "tramo hacia curva horizontal CS1"
+      },
+      {
+       "estado": "SIN_REGLA_ACREDITADA",
+       "extremo": {
+        "tipo": "libre"
+       },
+       "tema": "distancia extremo fin → soporte más cercano",
+       "valor_mm": 750.0
+      }
+     ],
+     "escenario": "reserva_ocupada",
+     "estado": "NO_VERIFICABLE_UN_SOLO_SOPORTE",
+     "extremo_fin": {
+      "tipo": "libre"
+     },
+     "extremo_inicio": {
+      "conexion": "C6",
+      "instancia": "CS1",
+      "tipo": "pieza_especial",
+      "tipo_pieza": "curva horizontal"
+     },
+     "longitud_mm": 1500.0,
+     "soportes": [
+      {
+       "posicion_mm": 750.0,
+       "soporte_id": "S9"
+      }
+     ],
+     "vanos": []
+    }
+   ],
+   "datos": {
+    "cables": {
+     "datasets": {
+      "PRY-SINTENAX-VALIO-ED2020": {
+       "sha256_dataset": "43761477818f0448600c72eaa2749262dd9907fb42be811acd08d6ded6a4aa6c",
+       "version_dataset": "2"
+      },
+      "PRY-SUPERASTIC-ED2026": {
+       "sha256_dataset": "dd7d485eb8a973e76b1b992178f0de054cf87f3781148418ec5a266993cae8d1",
+       "version_dataset": "1"
+      }
+     },
+     "sha256_contenido": "53f586f7cb9c9ca11430eef89af7958665999cf08a7c256b10968f5cf12724ea"
+    },
+    "catalogo": {
+     "archivo_origen": "Catalogo_Bandejas_y_Accesorios_2.xlsx",
+     "derivaciones": {
+      "ids": [],
+      "version": "2"
+     },
+     "importado_utc": "2026-11-05T18:00:01+00:00",
+     "sha256_contenido": "820a02c2db44dd271570e01819e74b791dc05612e2bcc09c41f7f4e816013477",
+     "sha256_origen": "7be8b0f91666aa028a1b8f629d2cdd0ec68cf993ec2d504a0179358886a9894c",
+     "sha256_snapshot": "c649e63dd001ec5abbed0c888ac472d68d8cdaf3b23c56b4990eca17988fafb1",
+     "version_formato_snapshot": "3"
+    }
+   },
+   "decisiones": {
+    "valores": {
+     "D-02_separado_desactivado_equivale_a": "contacto",
+     "D-04_ancho_referencia": "util_si_existe_sino_nominal",
+     "D-05_criterio_reserva": "fraccion_libre_ancho_bandeja",
+     "D-06_evidencias_carga_aceptadas": [
+      "documentada",
+      "validada_por_usuario",
+      "adoptada_por_decision"
+     ],
+     "D-08_altura_referencia": "util_si_existe_sino_ala_nominal",
+     "D-13_equivalencia_extremos_recta": "aplicar_con_condicion",
+     "D-14_tolerancia_angulo_grados": 1.0,
+     "D-14_tolerancia_posicion_mm": 1.0,
+     "D-16_radio_disponible": "borde_interior_peor_caso",
+     "D-19_posicion_pe": "contra_ala_en_contacto",
+     "D-20_seccion_pe_mm2": 16,
+     "D-21_identificacion_pe_requerida": "verde/amarillo",
+     "D-22_tolerancia_luz_mm": 0.0,
+     "D-27_holgura_pe_mm": null,
+     "D-30_tolerancia_union_centro_mm": 10.0,
+     "esquemas_ensayo": [
+      {
+       "aplica_a": {
+        "fuente_id": [
+         "F-001"
+        ]
+       },
+       "descripcion": "Ensayo de carga de la tabla SAMET: dos tramos de 3 m unidos por un punto de unión (cupling zone), carga repartida uniformemente; vanos de 1,5 / 1,75 / 2 / 2,25 / 2,5 m con el vano central centrado en la unión y vanos vecinos.",
+       "esquema_id": "ESQ-SAMET-TABLA-ENSAYO",
+       "estado_evidencia": "validada por usuario",
+       "fuente": "Imagen aportada por el usuario (2026-11-05), docs/fuentes/esquema_ensayo_samet.png; coincide con la condición transcripta en TABLAS_CARGA ('dos tramos de 3 m con punto de unión'). D-12: el usuario indica que los ensayos se refieren a este esquema.",
+       "no_contrastado": [
+        "posición exacta de apoyos externos y longitud de voladizos (no se leen cotas de la imagen)",
+        "tipo de apoyo y fijación del ensayo",
+        "criterio de flecha/rotura de la CTA (IEC 61537 no disponible)"
+       ],
+       "topologia": {
+        "carga": "uniformemente distribuida",
+        "longitud_tramos_mm": [
+         3000,
+         3000
+        ],
+        "luces_ensayadas_mm": [
+         1500,
+         1750,
+         2000,
+         2250,
+         2500
+        ],
+        "union_en_centro_de_vano": true,
+        "union_sobre_apoyo": false,
+        "uniones_por_vano_max": 1,
+        "vano_con_vecinos": true
+       }
+      }
+     ],
+     "nota": "Valores por defecto de las decisiones de producto. Cada clave remite a docs/DECISIONES.md. Cambiar un valor cambia la huella de todo resultado.",
+     "nota_D-06": "Solo \"documentada\" produce VERIFICADA_*. Las otras dos producen CUMPLE_CONDICIONADO / NO_CUMPLE_CONDICIONADO. Nombres = evidencia_motor (ver catalogo.py).",
+     "nota_v020": "D-13, D-14, D-16, D-18, D-22, D-24, D-27 son PROPUESTAS activas con condición visible en el resultado. D-19 está PENDIENTE (opción propuesta: contacto_en_extremo_de_fila). Ver docs/DECISIONES.md.",
+     "nota_v021": "D-19 y D-21 (color) aprobadas por el usuario el 2026-11-05. D-12 resuelta: esquema de ensayo en datos/esquemas_ensayo.json (validado por usuario). D-30 propuesta.",
+     "nota_v022": "D-20 pasa a decisiones como valor (16 mm², aprobado por el usuario): la entrada del CAD ya no puede redefinirlo (auditoría H2). D-31 (PROPUESTA): un vano coincide con el esquema de ensayo solo si reproduce una ventana del ensayo: central (unión al centro, vecinos de igual luz a ambos lados, tramos de la longitud ensayada) o lateral (sin unión, dentro de un tramo de la longitud ensayada, contiguo a un central coincidente de igual luz). Lo que hay fuera de esa ventana no se contrasta (auditoría H8).",
+     "tipos_pieza_seleccionables": [
+      "recta"
+     ],
+     "version_decisiones": "2026-11-05.5"
+    },
+    "version": "2026-11-05.5"
+   },
+   "entrada": {
+    "accesorios": [],
+    "circuitos": [
+     {
+      "cable_id": "PRY-SVALIO-CU-1x35",
+      "cantidad": 3,
+      "circuito_id": "K1",
+      "funcion": "potencia",
+      "recorrido": [
+       "R1",
+       "R2",
+       "T1",
+       "R3"
+      ],
+      "separado": true
+     },
+     {
+      "cable_id": "PRY-SVALIO-CU-1x35",
+      "cantidad": 3,
+      "circuito_id": "K2",
+      "funcion": "potencia",
+      "recorrido": [
+       "R1",
+       "R2",
+       "T1",
+       "R4",
+       "CS1",
+       "R5"
+      ],
+      "separado": true
+     }
+    ],
+    "conexiones": [
+     {
+      "a": [
+       "R1",
+       "P2"
+      ],
+      "b": [
+       "R2",
+       "P1"
+      ],
+      "conexion_id": "C1"
+     },
+     {
+      "a": [
+       "R2",
+       "P2"
+      ],
+      "b": [
+       "T1",
+       "P1"
+      ],
+      "conexion_id": "C2"
+     },
+     {
+      "a": [
+       "T1",
+       "P2"
+      ],
+      "b": [
+       "R3",
+       "P1"
+      ],
+      "conexion_id": "C3"
+     },
+     {
+      "a": [
+       "T1",
+       "P3"
+      ],
+      "b": [
+       "R4",
+       "P1"
+      ],
+      "conexion_id": "C4"
+     },
+     {
+      "a": [
+       "R4",
+       "P2"
+      ],
+      "b": [
+       "CS1",
+       "P1"
+      ],
+      "conexion_id": "C5"
+     },
+     {
+      "a": [
+       "CS1",
+       "P2"
+      ],
+      "b": [
+       "R5",
+       "P1"
+      ],
+      "conexion_id": "C6"
+     }
+    ],
+    "eje_vertical": [
+     0.0,
+     0.0,
+     1.0
+    ],
+    "equipotencial": {
+     "puntos": [
+      {
+       "conductor_puente": null,
+       "conductores": [
+        "PE1"
+       ],
+       "conector": null,
+       "descripcion": "Barra PE del tablero de origen (ejemplo)",
+       "instancias": [],
+       "punto_id": "SP1",
+       "tipo": "sistema_proteccion"
+      },
+      {
+       "conductor_puente": null,
+       "conductores": [
+        "PE1",
+        "PE2"
+       ],
+       "conector": {
+        "descripcion": "Conector de derivación a definir",
+        "producto_id": null
+       },
+       "descripcion": null,
+       "instancias": [
+        "T1"
+       ],
+       "punto_id": "D1",
+       "tipo": "derivacion_pe"
+      },
+      {
+       "conductor_puente": null,
+       "conductores": [
+        "PE1"
+       ],
+       "conector": {
+        "producto_id": "SAM_GFCE-B"
+       },
+       "descripcion": null,
+       "instancias": [
+        "R1"
+       ],
+       "punto_id": "B1",
+       "tipo": "conexion_bandeja"
+      },
+      {
+       "conductor_puente": null,
+       "conductores": [
+        "PE2"
+       ],
+       "conector": {
+        "producto_id": "SAM_GFCE-B"
+       },
+       "descripcion": null,
+       "instancias": [
+        "R4"
+       ],
+       "punto_id": "B2",
+       "tipo": "conexion_bandeja"
+      },
+      {
+       "conductor_puente": {
+        "cable_id": "PRY-SASTFLEX-CU-1x16",
+        "longitud_mm": 400
+       },
+       "conductores": [],
+       "conector": null,
+       "descripcion": null,
+       "instancias": [
+        "R1",
+        "R2"
+       ],
+       "punto_id": "J1",
+       "tipo": "puente"
+      }
+     ]
+    },
+    "escenario_reserva": {
+     "circuitos": [
+      {
+       "cable_id": "PRY-SVALIO-CU-1x35",
+       "cantidad": 3,
+       "circuito_id": "K3",
+       "recorrido": [
+        "R1",
+        "R2",
+        "T1",
+        "R3"
+       ],
+       "separado": true
+      }
+     ],
+     "descripcion": "Ocupación futura: otro circuito por el tronco (escenario, no carga cubierta)"
+    },
+    "pe": {
+     "cable_id": "PRY-SASTFLEX-CU-1x16",
+     "conductores": [
+      {
+       "conductor_id": "PE1",
+       "fin": null,
+       "inicio": "SP1",
+       "recorrido": [
+        {
+         "instancia": "R1",
+         "longitud_mm": null
+        },
+        {
+         "instancia": "R2",
+         "longitud_mm": null
+        },
+        {
+         "instancia": "T1",
+         "longitud_mm": null
+        },
+        {
+         "instancia": "R3",
+         "longitud_mm": null
+        }
+       ]
+      },
+      {
+       "conductor_id": "PE2",
+       "fin": null,
+       "inicio": "D1",
+       "recorrido": [
+        {
+         "instancia": "T1",
+         "longitud_mm": 300.0
+        },
+        {
+         "instancia": "R4",
+         "longitud_mm": null
+        },
+        {
+         "instancia": "CS1",
+         "longitud_mm": null
+        },
+        {
+         "instancia": "R5",
+         "longitud_mm": null
+        }
+       ]
+      }
+     ],
+     "origen_requisito": "Requisito acordado del usuario (R-PE-16): PE 16 mm² en todos los tramos, incluidos ramales",
+     "seccion_requerida_mm2": 16.0
+    },
+    "piezas": [
+     {
+      "instancia_id": "R1",
+      "longitud_eje_mm": 3000.0,
+      "longitud_mm": 3000.0,
+      "producto_id": "SAM_TRES-300-065-18-Z",
+      "puertos": {
+       "P1": {
+        "direccion": [
+         -1.0,
+         0.0,
+         0.0
+        ],
+        "posicion_mm": [
+         0.0,
+         0.0,
+         3000.0
+        ]
+       },
+       "P2": {
+        "direccion": [
+         1.0,
+         0.0,
+         0.0
+        ],
+        "posicion_mm": [
+         3000.0,
+         0.0,
+         3000.0
+        ]
+       }
+      }
+     },
+     {
+      "instancia_id": "R2",
+      "longitud_eje_mm": 3000.0,
+      "longitud_mm": 3000.0,
+      "producto_id": "SAM_TRES-300-065-18-Z",
+      "puertos": {
+       "P1": {
+        "direccion": [
+         -1.0,
+         0.0,
+         0.0
+        ],
+        "posicion_mm": [
+         3000.0,
+         0.0,
+         3000.0
+        ]
+       },
+       "P2": {
+        "direccion": [
+         1.0,
+         0.0,
+         0.0
+        ],
+        "posicion_mm": [
+         6000.0,
+         0.0,
+         3000.0
+        ]
+       }
+      }
+     },
+     {
+      "instancia_id": "T1",
+      "longitud_eje_mm": 600.0,
+      "producto_id": "SAM_TS-300-065-18-Z",
+      "puertos": {
+       "P1": {
+        "direccion": [
+         -1.0,
+         0.0,
+         0.0
+        ],
+        "posicion_mm": [
+         6000.0,
+         0.0,
+         3000.0
+        ]
+       },
+       "P2": {
+        "direccion": [
+         1.0,
+         0.0,
+         0.0
+        ],
+        "posicion_mm": [
+         6600.0,
+         0.0,
+         3000.0
+        ]
+       },
+       "P3": {
+        "direccion": [
+         0.0,
+         1.0,
+         0.0
+        ],
+        "posicion_mm": [
+         6300.0,
+         450.0,
+         3000.0
+        ]
+       }
+      }
+     },
+     {
+      "instancia_id": "R3",
+      "longitud_eje_mm": 3000.0,
+      "longitud_mm": 3000.0,
+      "producto_id": "SAM_TRES-300-065-18-Z",
+      "puertos": {
+       "P1": {
+        "direccion": [
+         -1.0,
+         0.0,
+         0.0
+        ],
+        "posicion_mm": [
+         6600.0,
+         0.0,
+         3000.0
+        ]
+       },
+       "P2": {
+        "direccion": [
+         1.0,
+         0.0,
+         0.0
+        ],
+        "posicion_mm": [
+         9600.0,
+         0.0,
+         3000.0
+        ]
+       }
+      }
+     },
+     {
+      "instancia_id": "R4",
+      "longitud_eje_mm": 3000.0,
+      "longitud_mm": 3000.0,
+      "producto_id": "SAM_TRES-300-065-18-Z",
+      "puertos": {
+       "P1": {
+        "direccion": [
+         0.0,
+         -1.0,
+         0.0
+        ],
+        "posicion_mm": [
+         6300.0,
+         450.0,
+         3000.0
+        ]
+       },
+       "P2": {
+        "direccion": [
+         0.0,
+         1.0,
+         0.0
+        ],
+        "posicion_mm": [
+         6300.0,
+         3450.0,
+         3000.0
+        ]
+       }
+      }
+     },
+     {
+      "instancia_id": "CS1",
+      "longitud_eje_mm": 707.0,
+      "producto_id": "SAM_CS-300-90-065-18-Z",
+      "puertos": {
+       "P1": {
+        "direccion": [
+         0.0,
+         -1.0,
+         0.0
+        ],
+        "posicion_mm": [
+         6300.0,
+         3450.0,
+         3000.0
+        ]
+       },
+       "P2": {
+        "direccion": [
+         1.0,
+         0.0,
+         0.0
+        ],
+        "posicion_mm": [
+         6900.0,
+         4050.0,
+         3000.0
+        ]
+       }
+      }
+     },
+     {
+      "instancia_id": "R5",
+      "longitud_eje_mm": 1500.0,
+      "longitud_mm": 1500.0,
+      "producto_id": "SAM_TRES-300-065-18-Z",
+      "puertos": {
+       "P1": {
+        "direccion": [
+         -1.0,
+         0.0,
+         0.0
+        ],
+        "posicion_mm": [
+         6900.0,
+         4050.0,
+         3000.0
+        ]
+       },
+       "P2": {
+        "direccion": [
+         1.0,
+         0.0,
+         0.0
+        ],
+        "posicion_mm": [
+         8400.0,
+         4050.0,
+         3000.0
+        ]
+       }
+      }
+     }
+    ],
+    "reserva_solicitada_pct": 20.0,
+    "soportes": [
+     {
+      "distancia_desde_P1_mm": 750.0,
+      "instancia_id": "R1",
+      "producto_id": "SAM_STS-300-Z",
+      "sistema_soporte_id": "SIS-001",
+      "soporte_id": "S1"
+     },
+     {
+      "distancia_desde_P1_mm": 2250.0,
+      "instancia_id": "R1",
+      "producto_id": "SAM_STS-300-Z",
+      "sistema_soporte_id": "SIS-001",
+      "soporte_id": "S2"
+     },
+     {
+      "distancia_desde_P1_mm": 750.0,
+      "instancia_id": "R2",
+      "producto_id": "SAM_STS-300-Z",
+      "sistema_soporte_id": "SIS-001",
+      "soporte_id": "S3"
+     },
+     {
+      "distancia_desde_P1_mm": 2250.0,
+      "instancia_id": "R2",
+      "producto_id": "SAM_STS-300-Z",
+      "sistema_soporte_id": "SIS-001",
+      "soporte_id": "S4"
+     },
+     {
+      "distancia_desde_P1_mm": 750.0,
+      "instancia_id": "R3",
+      "producto_id": "SAM_STS-300-Z",
+      "sistema_soporte_id": "SIS-001",
+      "soporte_id": "S5"
+     },
+     {
+      "distancia_desde_P1_mm": 2250.0,
+      "instancia_id": "R3",
+      "producto_id": "SAM_STS-300-Z",
+      "sistema_soporte_id": "SIS-001",
+      "soporte_id": "S6"
+     },
+     {
+      "distancia_desde_P1_mm": 750.0,
+      "instancia_id": "R4",
+      "producto_id": "SAM_STS-300-Z",
+      "sistema_soporte_id": "SIS-001",
+      "soporte_id": "S7"
+     },
+     {
+      "distancia_desde_P1_mm": 2250.0,
+      "instancia_id": "R4",
+      "producto_id": "SAM_STS-300-Z",
+      "sistema_soporte_id": "SIS-001",
+      "soporte_id": "S8"
+     },
+     {
+      "distancia_desde_P1_mm": 750.0,
+      "instancia_id": "R5",
+      "producto_id": "SAM_STS-300-Z",
+      "sistema_soporte_id": "SIS-001",
+      "soporte_id": "S9"
+     }
+    ],
+    "tapas": [
+     {
+      "producto_id": "SAM_TTRS-300-22-Z",
+      "sobre": "R3",
+      "tapa_id": "TP1"
+     }
+    ],
+    "tipo_circuito": "potencia",
+    "version_contrato": "trazado/1"
+   },
+   "equipotencial": {
+    "alcance": "Conectividad del modelo informático. No es continuidad medida, ni resistencia, ni verificación de la sección del PE frente a la falla.",
+    "bandejas": [
+     {
+      "alcanzada_desde_sistema_proteccion_en_modelo": false,
+      "instancia": "CS1",
+      "pe_pasa_por_la_pieza": true,
+      "vinculo_previsto": "SIN_VINCULO_PREVISTO"
+     },
+     {
+      "alcanzada_desde_sistema_proteccion_en_modelo": true,
+      "instancia": "R1",
+      "pe_pasa_por_la_pieza": true,
+      "vinculo_previsto": "DIRECTO"
+     },
+     {
+      "alcanzada_desde_sistema_proteccion_en_modelo": true,
+      "instancia": "R2",
+      "pe_pasa_por_la_pieza": true,
+      "vinculo_previsto": "VIA_PUENTE"
+     },
+     {
+      "alcanzada_desde_sistema_proteccion_en_modelo": false,
+      "instancia": "R3",
+      "pe_pasa_por_la_pieza": true,
+      "vinculo_previsto": "SIN_VINCULO_PREVISTO"
+     },
+     {
+      "alcanzada_desde_sistema_proteccion_en_modelo": true,
+      "instancia": "R4",
+      "pe_pasa_por_la_pieza": true,
+      "vinculo_previsto": "DIRECTO"
+     },
+     {
+      "alcanzada_desde_sistema_proteccion_en_modelo": false,
+      "instancia": "R5",
+      "pe_pasa_por_la_pieza": true,
+      "vinculo_previsto": "SIN_VINCULO_PREVISTO"
+     },
+     {
+      "alcanzada_desde_sistema_proteccion_en_modelo": false,
+      "instancia": "T1",
+      "pe_pasa_por_la_pieza": true,
+      "vinculo_previsto": "SIN_VINCULO_PREVISTO"
+     }
+    ],
+    "componentes_de_bandeja": [
+     {
+      "con_vinculo_previsto": true,
+      "piezas": [
+       "CS1",
+       "R1",
+       "R2",
+       "R3",
+       "R4",
+       "R5",
+       "T1"
+      ]
+     }
+    ],
+    "conectores_pendientes": [
+     "SP1",
+     "D1",
+     "B1",
+     "B2",
+     "J1"
+    ],
+    "continuidad_de_uniones": {
+     "detalle": "El catálogo no declara continuidad eléctrica de las uniones (IEC 61537 la clasifica, pero no hay declaración del fabricante). Las uniones no se usan como vínculo.",
+     "estado": "NO_DOCUMENTADA"
+    },
+    "estados": {
+     "cobertura_fisica_pe": "COMPLETA",
+     "conductores_sin_vinculo_al_sistema_proteccion": [],
+     "conexion_sistema_proteccion": "PRESENTE",
+     "conexiones_previstas": "PENDIENTES",
+     "puntos_fisicamente_inconsistentes": [],
+     "verificacion_electrica_de_diseno": "PENDIENTE",
+     "verificacion_por_inspeccion_o_medicion": "NO_REALIZADA",
+     "vinculos_bandeja": "PIEZAS_SIN_VINCULO_PREVISTO"
+    },
+    "piezas_sin_vinculo_previsto": [
+     "CS1",
+     "R3",
+     "R5",
+     "T1"
+    ],
+    "puntos": [
+     {
+      "conductor_puente": null,
+      "conductores": [
+       "PE1"
+      ],
+      "conector": null,
+      "descripcion": "Barra PE del tablero de origen (ejemplo)",
+      "estado_conector": "CONECTOR_NO_DEFINIDO",
+      "estado_fisico": "NO_CONTRASTABLE",
+      "instancias": [],
+      "observaciones": [],
+      "punto_id": "SP1",
+      "tipo": "sistema_proteccion"
+     },
+     {
+      "conductor_puente": null,
+      "conductores": [
+       "PE1",
+       "PE2"
+      ],
+      "conector": {
+       "descripcion": "Conector de derivación a definir",
+       "producto_id": null
+      },
+      "descripcion": null,
+      "estado_conector": "CONECTOR_NO_DEFINIDO",
+      "estado_fisico": "COHERENTE_EN_EL_MODELO",
+      "instancias": [
+       "T1"
+      ],
+      "observaciones": [],
+      "punto_id": "D1",
+      "tipo": "derivacion_pe"
+     },
+     {
+      "conductor_puente": null,
+      "conductores": [
+       "PE1"
+      ],
+      "conector": {
+       "producto_id": "SAM_GFCE-B"
+      },
+      "descripcion": null,
+      "detalle_conector": {
+       "alojamiento_en_bandeja": "COMPATIBLE_DOCUMENTADA",
+       "registro": {
+        "compatibilidad_id": "CMP-02321",
+        "estado_compatibilidad": "confirmada",
+        "estado_evidencia": "documentada",
+        "fila_origen": 2322,
+        "fuente_id": "F-001",
+        "observaciones": "Alojamiento para la grampa equipotencial GFCE-B declarado en la línea (F-002 y F-001, 'Las ventajas', PDF 3 / impr. 4-5).",
+        "pagina_fuente": "PDF 3 / impr. 4-5",
+        "producto_a_id": "SAM_GFCE-B",
+        "producto_b_id": "SAM_TRES-300-065-18-Z",
+        "puerto_a_id": null,
+        "puerto_b_id": null,
+        "tipo_conexion": "accesorio interior"
+       },
+       "seccion_y_material_del_conductor": "NO_DOCUMENTADA"
+      },
+      "estado_conector": "PENDIENTE_COMPATIBILIDAD_ELECTRICA",
+      "estado_fisico": "COHERENTE_EN_EL_MODELO",
+      "instancias": [
+       "R1"
+      ],
+      "observaciones": [],
+      "punto_id": "B1",
+      "tipo": "conexion_bandeja"
+     },
+     {
+      "conductor_puente": null,
+      "conductores": [
+       "PE2"
+      ],
+      "conector": {
+       "producto_id": "SAM_GFCE-B"
+      },
+      "descripcion": null,
+      "detalle_conector": {
+       "alojamiento_en_bandeja": "COMPATIBLE_DOCUMENTADA",
+       "registro": {
+        "compatibilidad_id": "CMP-02321",
+        "estado_compatibilidad": "confirmada",
+        "estado_evidencia": "documentada",
+        "fila_origen": 2322,
+        "fuente_id": "F-001",
+        "observaciones": "Alojamiento para la grampa equipotencial GFCE-B declarado en la línea (F-002 y F-001, 'Las ventajas', PDF 3 / impr. 4-5).",
+        "pagina_fuente": "PDF 3 / impr. 4-5",
+        "producto_a_id": "SAM_GFCE-B",
+        "producto_b_id": "SAM_TRES-300-065-18-Z",
+        "puerto_a_id": null,
+        "puerto_b_id": null,
+        "tipo_conexion": "accesorio interior"
+       },
+       "seccion_y_material_del_conductor": "NO_DOCUMENTADA"
+      },
+      "estado_conector": "PENDIENTE_COMPATIBILIDAD_ELECTRICA",
+      "estado_fisico": "COHERENTE_EN_EL_MODELO",
+      "instancias": [
+       "R4"
+      ],
+      "observaciones": [],
+      "punto_id": "B2",
+      "tipo": "conexion_bandeja"
+     },
+     {
+      "conductor_puente": {
+       "cable_id": "PRY-SASTFLEX-CU-1x16",
+       "longitud_mm": 400
+      },
+      "conductores": [],
+      "conector": null,
+      "descripcion": null,
+      "estado_conector": "CONECTOR_NO_DEFINIDO",
+      "estado_fisico": "COHERENTE_EN_EL_MODELO",
+      "instancias": [
+       "R1",
+       "R2"
+      ],
+      "observaciones": [],
+      "punto_id": "J1",
+      "tipo": "puente"
+     }
+    ],
+    "requisito_de_vinculo_por_pieza": "NO_DOCUMENTADO (D-26): se informa, no se exige",
+    "tapas_y_piezas_desmontables": [
+     {
+      "sobre": "R3",
+      "tapa_id": "TP1",
+      "vinculo": "REQUISITO_NO_DOCUMENTADO (D-26)"
+     }
+    ]
+   },
+   "geometria_piezas": {
+    "CS1": {
+     "clase": "curva horizontal",
+     "estado": "COHERENTE",
+     "giro_grados": 90.0,
+     "observaciones": []
+    },
+    "R1": {
+     "clase": "recta",
+     "desvio_direcciones_eje_grados": [
+      0.0,
+      0.0
+     ],
+     "distancia_puertos_mm": 3000.0,
+     "estado": "COHERENTE",
+     "giro_grados": 0.0,
+     "observaciones": []
+    },
+    "R2": {
+     "clase": "recta",
+     "desvio_direcciones_eje_grados": [
+      0.0,
+      0.0
+     ],
+     "distancia_puertos_mm": 3000.0,
+     "estado": "COHERENTE",
+     "giro_grados": 0.0,
+     "observaciones": []
+    },
+    "R3": {
+     "clase": "recta",
+     "desvio_direcciones_eje_grados": [
+      0.0,
+      0.0
+     ],
+     "distancia_puertos_mm": 3000.0,
+     "estado": "COHERENTE",
+     "giro_grados": 0.0,
+     "observaciones": []
+    },
+    "R4": {
+     "clase": "recta",
+     "desvio_direcciones_eje_grados": [
+      0.0,
+      0.0
+     ],
+     "distancia_puertos_mm": 3000.0,
+     "estado": "COHERENTE",
+     "giro_grados": 0.0,
+     "observaciones": []
+    },
+    "R5": {
+     "clase": "recta",
+     "desvio_direcciones_eje_grados": [
+      0.0,
+      0.0
+     ],
+     "distancia_puertos_mm": 1500.0,
+     "estado": "COHERENTE",
+     "giro_grados": 0.0,
+     "observaciones": []
+    },
+    "T1": {
+     "detalle": "'T': la ubicación relativa de las bocas no está publicada; solo se verifica el encaje en conexiones.",
+     "estado": "SIN_REGLA_GEOMETRICA_INTERNA"
+    }
+   },
+   "huella": "f6838c558c1f05fb0553f4614384364b8e652ae2b7a603ccb50e5e0772891007",
+   "motor": {
+    "contrato": "trazado/1",
+    "nombre": "motor_bandejas",
+    "version": "0.2.2"
+   },
+   "ocupacion": {
+    "CS1": {
+     "modo_seccion": "pieza",
+     "secciones": {
+      "pieza": {
+       "altura_referencia_mm": 65.0,
+       "ancho_ocupado_mm": 76.0,
+       "ancho_referencia_mm": 300.0,
+       "base_altura": "ala_nominal",
+       "base_ancho": "nominal",
+       "circuitos": [
+        "K2"
+       ],
+       "condiciones": [
+        "D-19_PE_CONTRA_ALA_HUECO_PE_POTENCIA_NO_DEFINIDO",
+        "ANCHO_NOMINAL_NO_UTIL",
+        "ALTURA_ALA_NOMINAL_NO_UTIL"
+       ],
+       "diametro_max_mm": 13.8,
+       "disposicion_potencia": {
+        "ancho_ocupado_mm": 69.0,
+        "capas": 1,
+        "decisiones": [
+         "D-01"
+        ],
+        "diametro_max_mm": 13.8,
+        "excluye": "márgenes laterales, separación a las alas, reserva",
+        "formula": "W = n·D + (n−1)·g ; g = D ⇒ W = (2n−1)·D (separado, una fila)",
+        "hueco_libre_entre_superficies_mm": 13.8,
+        "metodo": "M-DISP-1",
+        "modo": "separado",
+        "n_cables": 3,
+        "paso_entre_centros_mm": 27.6
+       },
+       "estado": "PRESELECCION_CONDICIONADA",
+       "n_conductores_pe": 1,
+       "reserva": {
+        "ancho_libre_mm": 224.0,
+        "ancho_max_ocupable_mm": 240.0,
+        "cabe": true,
+        "condicion": "W_ocupado ≤ (1 − r)·W_ref",
+        "criterio": "fraccion_libre_ancho_bandeja",
+        "cumple": true,
+        "denominador_criterio": "ancho de referencia de la bandeja (W_ref)",
+        "metodo": "M-RES-1",
+        "reserva_libre_pct": 74.667,
+        "reserva_solicitada_pct": 20.0,
+        "sobrante_sobre_ocupado_pct": 294.737
+       }
+      }
+     }
+    },
+    "R1": {
+     "modo_seccion": "pieza",
+     "secciones": {
+      "pieza": {
+       "altura_referencia_mm": 65.0,
+       "ancho_ocupado_mm": 158.8,
+       "ancho_referencia_mm": 300.0,
+       "base_altura": "ala_nominal",
+       "base_ancho": "nominal",
+       "circuitos": [
+        "K1",
+        "K2"
+       ],
+       "condiciones": [
+        "D-19_PE_CONTRA_ALA_HUECO_PE_POTENCIA_NO_DEFINIDO",
+        "ANCHO_NOMINAL_NO_UTIL",
+        "ALTURA_ALA_NOMINAL_NO_UTIL"
+       ],
+       "diametro_max_mm": 13.8,
+       "disposicion_potencia": {
+        "ancho_ocupado_mm": 151.8,
+        "capas": 1,
+        "decisiones": [
+         "D-01"
+        ],
+        "diametro_max_mm": 13.8,
+        "excluye": "márgenes laterales, separación a las alas, reserva",
+        "formula": "W = n·D + (n−1)·g ; g = D ⇒ W = (2n−1)·D (separado, una fila)",
+        "hueco_libre_entre_superficies_mm": 13.8,
+        "metodo": "M-DISP-1",
+        "modo": "separado",
+        "n_cables": 6,
+        "paso_entre_centros_mm": 27.6
+       },
+       "estado": "PRESELECCION_CONDICIONADA",
+       "n_conductores_pe": 1,
+       "reserva": {
+        "ancho_libre_mm": 141.2,
+        "ancho_max_ocupable_mm": 240.0,
+        "cabe": true,
+        "condicion": "W_ocupado ≤ (1 − r)·W_ref",
+        "criterio": "fraccion_libre_ancho_bandeja",
+        "cumple": true,
+        "denominador_criterio": "ancho de referencia de la bandeja (W_ref)",
+        "metodo": "M-RES-1",
+        "reserva_libre_pct": 47.067,
+        "reserva_solicitada_pct": 20.0,
+        "sobrante_sobre_ocupado_pct": 88.917
+       }
+      }
+     }
+    },
+    "R2": {
+     "modo_seccion": "pieza",
+     "secciones": {
+      "pieza": {
+       "altura_referencia_mm": 65.0,
+       "ancho_ocupado_mm": 158.8,
+       "ancho_referencia_mm": 300.0,
+       "base_altura": "ala_nominal",
+       "base_ancho": "nominal",
+       "circuitos": [
+        "K1",
+        "K2"
+       ],
+       "condiciones": [
+        "D-19_PE_CONTRA_ALA_HUECO_PE_POTENCIA_NO_DEFINIDO",
+        "ANCHO_NOMINAL_NO_UTIL",
+        "ALTURA_ALA_NOMINAL_NO_UTIL"
+       ],
+       "diametro_max_mm": 13.8,
+       "disposicion_potencia": {
+        "ancho_ocupado_mm": 151.8,
+        "capas": 1,
+        "decisiones": [
+         "D-01"
+        ],
+        "diametro_max_mm": 13.8,
+        "excluye": "márgenes laterales, separación a las alas, reserva",
+        "formula": "W = n·D + (n−1)·g ; g = D ⇒ W = (2n−1)·D (separado, una fila)",
+        "hueco_libre_entre_superficies_mm": 13.8,
+        "metodo": "M-DISP-1",
+        "modo": "separado",
+        "n_cables": 6,
+        "paso_entre_centros_mm": 27.6
+       },
+       "estado": "PRESELECCION_CONDICIONADA",
+       "n_conductores_pe": 1,
+       "reserva": {
+        "ancho_libre_mm": 141.2,
+        "ancho_max_ocupable_mm": 240.0,
+        "cabe": true,
+        "condicion": "W_ocupado ≤ (1 − r)·W_ref",
+        "criterio": "fraccion_libre_ancho_bandeja",
+        "cumple": true,
+        "denominador_criterio": "ancho de referencia de la bandeja (W_ref)",
+        "metodo": "M-RES-1",
+        "reserva_libre_pct": 47.067,
+        "reserva_solicitada_pct": 20.0,
+        "sobrante_sobre_ocupado_pct": 88.917
+       }
+      }
+     }
+    },
+    "R3": {
+     "modo_seccion": "pieza",
+     "secciones": {
+      "pieza": {
+       "altura_referencia_mm": 65.0,
+       "ancho_ocupado_mm": 76.0,
+       "ancho_referencia_mm": 300.0,
+       "base_altura": "ala_nominal",
+       "base_ancho": "nominal",
+       "circuitos": [
+        "K1"
+       ],
+       "condiciones": [
+        "D-19_PE_CONTRA_ALA_HUECO_PE_POTENCIA_NO_DEFINIDO",
+        "ANCHO_NOMINAL_NO_UTIL",
+        "ALTURA_ALA_NOMINAL_NO_UTIL"
+       ],
+       "diametro_max_mm": 13.8,
+       "disposicion_potencia": {
+        "ancho_ocupado_mm": 69.0,
+        "capas": 1,
+        "decisiones": [
+         "D-01"
+        ],
+        "diametro_max_mm": 13.8,
+        "excluye": "márgenes laterales, separación a las alas, reserva",
+        "formula": "W = n·D + (n−1)·g ; g = D ⇒ W = (2n−1)·D (separado, una fila)",
+        "hueco_libre_entre_superficies_mm": 13.8,
+        "metodo": "M-DISP-1",
+        "modo": "separado",
+        "n_cables": 3,
+        "paso_entre_centros_mm": 27.6
+       },
+       "estado": "PRESELECCION_CONDICIONADA",
+       "n_conductores_pe": 1,
+       "reserva": {
+        "ancho_libre_mm": 224.0,
+        "ancho_max_ocupable_mm": 240.0,
+        "cabe": true,
+        "condicion": "W_ocupado ≤ (1 − r)·W_ref",
+        "criterio": "fraccion_libre_ancho_bandeja",
+        "cumple": true,
+        "denominador_criterio": "ancho de referencia de la bandeja (W_ref)",
+        "metodo": "M-RES-1",
+        "reserva_libre_pct": 74.667,
+        "reserva_solicitada_pct": 20.0,
+        "sobrante_sobre_ocupado_pct": 294.737
+       }
+      }
+     }
+    },
+    "R4": {
+     "modo_seccion": "pieza",
+     "secciones": {
+      "pieza": {
+       "altura_referencia_mm": 65.0,
+       "ancho_ocupado_mm": 76.0,
+       "ancho_referencia_mm": 300.0,
+       "base_altura": "ala_nominal",
+       "base_ancho": "nominal",
+       "circuitos": [
+        "K2"
+       ],
+       "condiciones": [
+        "D-19_PE_CONTRA_ALA_HUECO_PE_POTENCIA_NO_DEFINIDO",
+        "ANCHO_NOMINAL_NO_UTIL",
+        "ALTURA_ALA_NOMINAL_NO_UTIL"
+       ],
+       "diametro_max_mm": 13.8,
+       "disposicion_potencia": {
+        "ancho_ocupado_mm": 69.0,
+        "capas": 1,
+        "decisiones": [
+         "D-01"
+        ],
+        "diametro_max_mm": 13.8,
+        "excluye": "márgenes laterales, separación a las alas, reserva",
+        "formula": "W = n·D + (n−1)·g ; g = D ⇒ W = (2n−1)·D (separado, una fila)",
+        "hueco_libre_entre_superficies_mm": 13.8,
+        "metodo": "M-DISP-1",
+        "modo": "separado",
+        "n_cables": 3,
+        "paso_entre_centros_mm": 27.6
+       },
+       "estado": "PRESELECCION_CONDICIONADA",
+       "n_conductores_pe": 1,
+       "reserva": {
+        "ancho_libre_mm": 224.0,
+        "ancho_max_ocupable_mm": 240.0,
+        "cabe": true,
+        "condicion": "W_ocupado ≤ (1 − r)·W_ref",
+        "criterio": "fraccion_libre_ancho_bandeja",
+        "cumple": true,
+        "denominador_criterio": "ancho de referencia de la bandeja (W_ref)",
+        "metodo": "M-RES-1",
+        "reserva_libre_pct": 74.667,
+        "reserva_solicitada_pct": 20.0,
+        "sobrante_sobre_ocupado_pct": 294.737
+       }
+      }
+     }
+    },
+    "R5": {
+     "modo_seccion": "pieza",
+     "secciones": {
+      "pieza": {
+       "altura_referencia_mm": 65.0,
+       "ancho_ocupado_mm": 76.0,
+       "ancho_referencia_mm": 300.0,
+       "base_altura": "ala_nominal",
+       "base_ancho": "nominal",
+       "circuitos": [
+        "K2"
+       ],
+       "condiciones": [
+        "D-19_PE_CONTRA_ALA_HUECO_PE_POTENCIA_NO_DEFINIDO",
+        "ANCHO_NOMINAL_NO_UTIL",
+        "ALTURA_ALA_NOMINAL_NO_UTIL"
+       ],
+       "diametro_max_mm": 13.8,
+       "disposicion_potencia": {
+        "ancho_ocupado_mm": 69.0,
+        "capas": 1,
+        "decisiones": [
+         "D-01"
+        ],
+        "diametro_max_mm": 13.8,
+        "excluye": "márgenes laterales, separación a las alas, reserva",
+        "formula": "W = n·D + (n−1)·g ; g = D ⇒ W = (2n−1)·D (separado, una fila)",
+        "hueco_libre_entre_superficies_mm": 13.8,
+        "metodo": "M-DISP-1",
+        "modo": "separado",
+        "n_cables": 3,
+        "paso_entre_centros_mm": 27.6
+       },
+       "estado": "PRESELECCION_CONDICIONADA",
+       "n_conductores_pe": 1,
+       "reserva": {
+        "ancho_libre_mm": 224.0,
+        "ancho_max_ocupable_mm": 240.0,
+        "cabe": true,
+        "condicion": "W_ocupado ≤ (1 − r)·W_ref",
+        "criterio": "fraccion_libre_ancho_bandeja",
+        "cumple": true,
+        "denominador_criterio": "ancho de referencia de la bandeja (W_ref)",
+        "metodo": "M-RES-1",
+        "reserva_libre_pct": 74.667,
+        "reserva_solicitada_pct": 20.0,
+        "sobrante_sobre_ocupado_pct": 294.737
+       }
+      }
+     }
+    },
+    "T1": {
+     "modo_seccion": "puerto",
+     "secciones": {
+      "P1": {
+       "altura_referencia_mm": 65.0,
+       "ancho_ocupado_mm": 158.8,
+       "ancho_referencia_mm": 300.0,
+       "base_altura": "ala_nominal",
+       "base_ancho": "nominal",
+       "circuitos": [
+        "K1",
+        "K2"
+       ],
+       "condiciones": [
+        "D-19_PE_CONTRA_ALA_HUECO_PE_POTENCIA_NO_DEFINIDO",
+        "ANCHO_NOMINAL_NO_UTIL",
+        "ALTURA_ALA_NOMINAL_NO_UTIL"
+       ],
+       "diametro_max_mm": 13.8,
+       "disposicion_potencia": {
+        "ancho_ocupado_mm": 151.8,
+        "capas": 1,
+        "decisiones": [
+         "D-01"
+        ],
+        "diametro_max_mm": 13.8,
+        "excluye": "márgenes laterales, separación a las alas, reserva",
+        "formula": "W = n·D + (n−1)·g ; g = D ⇒ W = (2n−1)·D (separado, una fila)",
+        "hueco_libre_entre_superficies_mm": 13.8,
+        "metodo": "M-DISP-1",
+        "modo": "separado",
+        "n_cables": 6,
+        "paso_entre_centros_mm": 27.6
+       },
+       "estado": "PRESELECCION_CONDICIONADA",
+       "n_conductores_pe": 1,
+       "reserva": {
+        "ancho_libre_mm": 141.2,
+        "ancho_max_ocupable_mm": 240.0,
+        "cabe": true,
+        "condicion": "W_ocupado ≤ (1 − r)·W_ref",
+        "criterio": "fraccion_libre_ancho_bandeja",
+        "cumple": true,
+        "denominador_criterio": "ancho de referencia de la bandeja (W_ref)",
+        "metodo": "M-RES-1",
+        "reserva_libre_pct": 47.067,
+        "reserva_solicitada_pct": 20.0,
+        "sobrante_sobre_ocupado_pct": 88.917
+       }
+      },
+      "P2": {
+       "altura_referencia_mm": 65.0,
+       "ancho_ocupado_mm": 76.0,
+       "ancho_referencia_mm": 300.0,
+       "base_altura": "ala_nominal",
+       "base_ancho": "nominal",
+       "circuitos": [
+        "K1"
+       ],
+       "condiciones": [
+        "D-19_PE_CONTRA_ALA_HUECO_PE_POTENCIA_NO_DEFINIDO",
+        "ANCHO_NOMINAL_NO_UTIL",
+        "ALTURA_ALA_NOMINAL_NO_UTIL"
+       ],
+       "diametro_max_mm": 13.8,
+       "disposicion_potencia": {
+        "ancho_ocupado_mm": 69.0,
+        "capas": 1,
+        "decisiones": [
+         "D-01"
+        ],
+        "diametro_max_mm": 13.8,
+        "excluye": "márgenes laterales, separación a las alas, reserva",
+        "formula": "W = n·D + (n−1)·g ; g = D ⇒ W = (2n−1)·D (separado, una fila)",
+        "hueco_libre_entre_superficies_mm": 13.8,
+        "metodo": "M-DISP-1",
+        "modo": "separado",
+        "n_cables": 3,
+        "paso_entre_centros_mm": 27.6
+       },
+       "estado": "PRESELECCION_CONDICIONADA",
+       "n_conductores_pe": 1,
+       "reserva": {
+        "ancho_libre_mm": 224.0,
+        "ancho_max_ocupable_mm": 240.0,
+        "cabe": true,
+        "condicion": "W_ocupado ≤ (1 − r)·W_ref",
+        "criterio": "fraccion_libre_ancho_bandeja",
+        "cumple": true,
+        "denominador_criterio": "ancho de referencia de la bandeja (W_ref)",
+        "metodo": "M-RES-1",
+        "reserva_libre_pct": 74.667,
+        "reserva_solicitada_pct": 20.0,
+        "sobrante_sobre_ocupado_pct": 294.737
+       }
+      },
+      "P3": {
+       "altura_referencia_mm": 65.0,
+       "ancho_ocupado_mm": 76.0,
+       "ancho_referencia_mm": 300.0,
+       "base_altura": "ala_nominal",
+       "base_ancho": "nominal",
+       "circuitos": [
+        "K2"
+       ],
+       "condiciones": [
+        "D-19_PE_CONTRA_ALA_HUECO_PE_POTENCIA_NO_DEFINIDO",
+        "ANCHO_NOMINAL_NO_UTIL",
+        "ALTURA_ALA_NOMINAL_NO_UTIL"
+       ],
+       "diametro_max_mm": 13.8,
+       "disposicion_potencia": {
+        "ancho_ocupado_mm": 69.0,
+        "capas": 1,
+        "decisiones": [
+         "D-01"
+        ],
+        "diametro_max_mm": 13.8,
+        "excluye": "márgenes laterales, separación a las alas, reserva",
+        "formula": "W = n·D + (n−1)·g ; g = D ⇒ W = (2n−1)·D (separado, una fila)",
+        "hueco_libre_entre_superficies_mm": 13.8,
+        "metodo": "M-DISP-1",
+        "modo": "separado",
+        "n_cables": 3,
+        "paso_entre_centros_mm": 27.6
+       },
+       "estado": "PRESELECCION_CONDICIONADA",
+       "n_conductores_pe": 1,
+       "reserva": {
+        "ancho_libre_mm": 224.0,
+        "ancho_max_ocupable_mm": 240.0,
+        "cabe": true,
+        "condicion": "W_ocupado ≤ (1 − r)·W_ref",
+        "criterio": "fraccion_libre_ancho_bandeja",
+        "cumple": true,
+        "denominador_criterio": "ancho de referencia de la bandeja (W_ref)",
+        "metodo": "M-RES-1",
+        "reserva_libre_pct": 74.667,
+        "reserva_solicitada_pct": 20.0,
+        "sobrante_sobre_ocupado_pct": 294.737
+       }
+      }
+     }
+    }
+   },
+   "pe": {
+    "cable": {
+     "cable_id": "PRY-SASTFLEX-CU-1x16",
+     "colores": [
+      "negro",
+      "blanco",
+      "celeste",
+      "rojo",
+      "marrón",
+      "verde/amarillo"
+     ],
+     "condiciones_empleo": [
+      "cañería embutida",
+      "cañería a la vista",
+      "cableado de tableros"
+     ],
+     "diametro_exterior_mm": 7.0,
+     "estado_color": "CUMPLE",
+     "estado_eleccion": "MODELO_A_CONFIRMAR (D-21: requisitos 16 mm² verde/amarillo aprobados)",
+     "estado_seccion": "COINCIDE_CON_REQUISITO",
+     "masa_kg_m": 0.167,
+     "material": "cobre",
+     "observaciones": [
+      "Las condiciones de empleo de la ficha (cañería embutida, cañería a la vista, cableado de tableros) no incluyen bandejas: admisibilidad en bandeja a verificar con la reglamentación.",
+      "Radio mínimo de curvatura no publicado en la ficha."
+     ],
+     "procedencia": {
+      "archivo": "PRY2026_Superastic Jet_v2.pdf (no adjuntado; leído desde la web de Prysmian Argentina)",
+      "dataset_id": "PRY-SUPERASTIC-ED2026",
+      "documento": "Superastic Jet® / Flex – Instalaciones Fijas Baja Tensión 450/750 V",
+      "edicion": "Edición 2026 (contraportada: Edición 2026 / Edición 2020)",
+      "estado_evidencia": "documentada (ficha de fabricante, valor aproximado)",
+      "fila": "16",
+      "pagina": "03",
+      "tabla": "Características técnicas (IRAM) – Superastic Flex"
+     },
+     "requisito_color": "verde/amarillo",
+     "seccion_mm2": 16.0
+    },
+    "cobertura": {
+     "estado": "COMPLETA",
+     "piezas_con_cobertura_indeterminada": [],
+     "piezas_con_cobertura_parcial": [],
+     "piezas_requeridas": 7,
+     "piezas_sin_pe": [],
+     "por_pieza": {
+      "CS1": {
+       "conductores_que_la_recorren_entera": [
+        "PE2"
+       ],
+       "estado": "COMPLETA"
+      },
+      "R1": {
+       "conductores_que_la_recorren_entera": [
+        "PE1"
+       ],
+       "estado": "COMPLETA"
+      },
+      "R2": {
+       "conductores_que_la_recorren_entera": [
+        "PE1"
+       ],
+       "estado": "COMPLETA"
+      },
+      "R3": {
+       "conductores_que_la_recorren_entera": [
+        "PE1"
+       ],
+       "estado": "COMPLETA"
+      },
+      "R4": {
+       "conductores_que_la_recorren_entera": [
+        "PE2"
+       ],
+       "estado": "COMPLETA"
+      },
+      "R5": {
+       "conductores_que_la_recorren_entera": [
+        "PE2"
+       ],
+       "estado": "COMPLETA"
+      },
+      "T1": {
+       "conductores_que_la_recorren_entera": [
+        "PE1"
+       ],
+       "estado": "COMPLETA"
+      }
+     },
+     "tipos_con_requisito": [
+      "recta",
+      "curva horizontal",
+      "curva vertical interior",
+      "curva vertical exterior",
+      "curva vertical articulada",
+      "T",
+      "X",
+      "reducción"
+     ],
+     "tolerancia_mm": 1.0
+    },
+    "conductores": [
+     {
+      "conductor_id": "PE1",
+      "curvatura": [
+       {
+        "detalle": "Atraviesa la pieza de boca a boca opuesta.",
+        "estado": "SIN_CURVATURA",
+        "instancia": "T1",
+        "pieza_tipo": "T",
+        "radio_publicado_mm": 300.0,
+        "referencia_radio": "interior"
+       }
+      ],
+      "faltantes": [],
+      "fin": null,
+      "holgura_mm": null,
+      "holgura_regla": "sin regla explícita: no se aplica (D-27)",
+      "inicio": "SP1",
+      "longitud_completa": true,
+      "longitud_geometrica_mm": 9600.0,
+      "recorrido": {
+       "conexiones_cruzadas": [
+        "C1",
+        "C2",
+        "C3"
+       ],
+       "estado": "CONTINUO",
+       "pasos": [
+        {
+         "instancia": "R1",
+         "puerto_entrada": null,
+         "puerto_salida": "P2"
+        },
+        {
+         "instancia": "R2",
+         "puerto_entrada": "P1",
+         "puerto_salida": "P2"
+        },
+        {
+         "instancia": "T1",
+         "puerto_entrada": "P1",
+         "puerto_salida": "P2"
+        },
+        {
+         "instancia": "R3",
+         "puerto_entrada": "P1",
+         "puerto_salida": null
+        }
+       ],
+       "saltos_sin_conexion": []
+      },
+      "tramos": [
+       {
+        "instancia": "R1",
+        "longitud_mm": 3000.0,
+        "parcial": false
+       },
+       {
+        "instancia": "R2",
+        "longitud_mm": 3000.0,
+        "parcial": false
+       },
+       {
+        "instancia": "T1",
+        "longitud_mm": 600.0,
+        "parcial": false
+       },
+       {
+        "instancia": "R3",
+        "longitud_mm": 3000.0,
+        "parcial": false
+       }
+      ]
+     },
+     {
+      "conductor_id": "PE2",
+      "curvatura": [
+       {
+        "detalle": "El cable entra o sale de la bandeja en esta pieza; su trayectoria no está modelada.",
+        "estado": "NO_EVALUADO_EXTREMO_DE_RECORRIDO",
+        "instancia": "T1"
+       },
+       {
+        "detalle": "La ficha de PRY-SASTFLEX-CU-1x16 no publica radio mínimo de curvatura.",
+        "estado": "NO_VERIFICABLE_RADIO_CABLE_NO_PUBLICADO",
+        "instancia": "CS1",
+        "pieza_tipo": "curva horizontal",
+        "radio_borde_interior_mm": 300.0,
+        "radio_publicado_mm": 300.0,
+        "referencia_radio": "interior",
+        "supuesto": "Peor caso: cable contra el ala interior (no se supone que siga el eje) — D-16."
+       }
+      ],
+      "faltantes": [],
+      "fin": null,
+      "holgura_mm": null,
+      "holgura_regla": "sin regla explícita: no se aplica (D-27)",
+      "inicio": "D1",
+      "longitud_completa": true,
+      "longitud_geometrica_mm": 5507.0,
+      "recorrido": {
+       "conexiones_cruzadas": [
+        "C4",
+        "C5",
+        "C6"
+       ],
+       "estado": "CONTINUO",
+       "pasos": [
+        {
+         "instancia": "T1",
+         "puerto_entrada": null,
+         "puerto_salida": "P3"
+        },
+        {
+         "instancia": "R4",
+         "puerto_entrada": "P1",
+         "puerto_salida": "P2"
+        },
+        {
+         "instancia": "CS1",
+         "puerto_entrada": "P1",
+         "puerto_salida": "P2"
+        },
+        {
+         "instancia": "R5",
+         "puerto_entrada": "P1",
+         "puerto_salida": null
+        }
+       ],
+       "saltos_sin_conexion": []
+      },
+      "tramos": [
+       {
+        "instancia": "T1",
+        "longitud_mm": 300.0,
+        "parcial": true
+       },
+       {
+        "instancia": "R4",
+        "longitud_mm": 3000.0,
+        "parcial": false
+       },
+       {
+        "instancia": "CS1",
+        "longitud_mm": 707.0,
+        "parcial": false
+       },
+       {
+        "instancia": "R5",
+        "longitud_mm": 1500.0,
+        "parcial": false
+       }
+      ]
+     }
+    ],
+    "conductores_por_pieza": {
+     "CS1": [
+      "PE2"
+     ],
+     "R1": [
+      "PE1"
+     ],
+     "R2": [
+      "PE1"
+     ],
+     "R3": [
+      "PE1"
+     ],
+     "R4": [
+      "PE2"
+     ],
+     "R5": [
+      "PE2"
+     ],
+     "T1": [
+      "PE1",
+      "PE2"
+     ]
+    },
+    "longitud_total_geometrica_mm": 15107.0,
+    "longitudes_completas": true,
+    "requisito": {
+     "alcance": "Requisito del proyecto. No se declara suficiente por norma: dimensionamiento y montaje requieren verificación independiente.",
+     "descripcion": "PE de 16 mm² recorriendo todos los tramos de bandeja, incluidos los ramales.",
+     "estado": "COINCIDE_CON_REQUISITO_APROBADO",
+     "origen": "Requisito aprobado del usuario (D-20, decisiones de producto)",
+     "origen_declarado_en_entrada": "Requisito acordado del usuario (R-PE-16): PE 16 mm² en todos los tramos, incluidos ramales",
+     "seccion_declarada_en_entrada_mm2": 16.0,
+     "seccion_requerida_mm2": 16
+    },
+    "segmentos_compartidos": [
+     {
+      "conductores": [
+       "PE1",
+       "PE2"
+      ],
+      "instancia": "T1",
+      "longitud_eje_mm": 600.0
+     }
+    ]
+   },
+   "resumen": {
+    "aplicabilidad_soportes": {
+     "APLICA_DOCUMENTADA": 9
+    },
+    "aviso": "Resultado de preselección. No aprueba la instalación: no contrasta todas las condiciones de montaje y ensayo, ni verifica eléctricamente (intensidad, PE frente a la falla, continuidad medida).",
+    "compatibilidad": {
+     "COMPATIBLE_DOCUMENTADA": 6
+    },
+    "corridas": {
+     "NO_VERIFICABLE": 1,
+     "NO_VERIFICABLE_UN_SOLO_SOPORTE": 1,
+     "VANOS_CONDICIONADOS_COLOCACION_SIN_REGLA": 2
+    },
+    "curvatura": {
+     "NO_VERIFICABLE_RADIO_CABLE_NO_PUBLICADO": 2,
+     "SIN_CURVATURA": 1
+    },
+    "curvatura_pe": {
+     "NO_EVALUADO_EXTREMO_DE_RECORRIDO": 1,
+     "NO_VERIFICABLE_RADIO_CABLE_NO_PUBLICADO": 1,
+     "SIN_CURVATURA": 1
+    },
+    "decisiones_que_bloquean": [],
+    "encaje": {
+     "COHERENTE": 6
+    },
+    "equipotencial": {
+     "cobertura_fisica_pe": "COMPLETA",
+     "conductores_sin_vinculo_al_sistema_proteccion": [],
+     "conexion_sistema_proteccion": "PRESENTE",
+     "conexiones_previstas": "PENDIENTES",
+     "puntos_fisicamente_inconsistentes": [],
+     "verificacion_electrica_de_diseno": "PENDIENTE",
+     "verificacion_por_inspeccion_o_medicion": "NO_REALIZADA",
+     "vinculos_bandeja": "PIEZAS_SIN_VINCULO_PREVISTO"
+    },
+    "estado_trazado": "PRESELECCION_CONDICIONADA",
+    "geometria_piezas": {
+     "COHERENTE": 6,
+     "SIN_REGLA_GEOMETRICA_INTERNA": 1
+    },
+    "incumplimientos": [],
+    "lineas_computo_pendientes": 5,
+    "ocupacion": {
+     "PRESELECCION_CONDICIONADA": 9
+    },
+    "recorridos": {
+     "CONTINUO": 2
+    },
+    "vanos": {
+     "CUMPLE_CONDICIONADO": 4,
+     "NO_VERIFICABLE_CARGA_TAPA_DESCONOCIDA": 1
+    },
+    "verificaciones_bloqueadas": []
+   },
+   "soportes": [
+    {
+     "anclaje_y_sustrato": {
+      "detalle": "Fijación al sustrato fuera del alcance (REV-016).",
+      "estado": "NO_VERIFICABLE_FUERA_DE_ALCANCE"
+     },
+     "aplicabilidad": {
+      "aplicacion_id": "APL-001",
+      "estado": "APLICA_DOCUMENTADA",
+      "fuente_id": "F-004",
+      "pagina_fuente": "Anexo, pág. adicional 1 de 7",
+      "rango_ancho_mm": [
+       150.0,
+       600.0
+      ],
+      "tipo_fijacion_bandeja": "GFS-02-Z (grampa de fijación)"
+     },
+     "capacidad_soporte": {
+      "detalle": "La carga por apoyo requiere un modelo estructural (continuidad, posición de uniones, ramales) que no está documentado. No se reparte la carga con un modelo supuesto.",
+      "estado": "NO_VERIFICABLE_SIN_MODELO_DE_REPARTO",
+      "valores_publicados": [
+       {
+        "carga_unidad": "kg",
+        "carga_valor": 379.0,
+        "condiciones_ensayo": "Encabezado de columna 'CTA 1[Kg/m] / (*)[Kg]': los valores marcados (*) están en kg. Punto/modo de aplicación no declarados.",
+        "criterio_o_norma_declarada": "IEC 61537:2006 (certificación)",
+        "distribucion_carga": "no especificada",
+        "estado_evidencia_catalogo": "documentada",
+        "evidencia_motor": "documentada",
+        "fila": 43,
+        "fuente_id": "F-004",
+        "hoja": "TABLAS_CARGA",
+        "luz_entre_apoyos_mm": null,
+        "pagina_fuente": "Anexo, pág. adicional 1 de 7",
+        "registro_carga_id": "CAR-0042"
+       }
+      ]
+     },
+     "instancia_id": "R1",
+     "pertenencia": {
+      "condicion_de_uso_texto": "Un trapecio por punto de apoyo, para bandeja de ancho 300",
+      "correspondencia_ancho": "TEXTO_NO_ESTRUCTURADO_NO_VERIFICADO",
+      "estado": "ASOCIADO",
+      "evidencia": "documentada"
+     },
+     "producto_id": "SAM_STS-300-Z",
+     "sistema_soporte_id": "SIS-001",
+     "soporte_id": "S1",
+     "tipo_pieza_soportada": "recta"
+    },
+    {
+     "anclaje_y_sustrato": {
+      "detalle": "Fijación al sustrato fuera del alcance (REV-016).",
+      "estado": "NO_VERIFICABLE_FUERA_DE_ALCANCE"
+     },
+     "aplicabilidad": {
+      "aplicacion_id": "APL-001",
+      "estado": "APLICA_DOCUMENTADA",
+      "fuente_id": "F-004",
+      "pagina_fuente": "Anexo, pág. adicional 1 de 7",
+      "rango_ancho_mm": [
+       150.0,
+       600.0
+      ],
+      "tipo_fijacion_bandeja": "GFS-02-Z (grampa de fijación)"
+     },
+     "capacidad_soporte": {
+      "detalle": "La carga por apoyo requiere un modelo estructural (continuidad, posición de uniones, ramales) que no está documentado. No se reparte la carga con un modelo supuesto.",
+      "estado": "NO_VERIFICABLE_SIN_MODELO_DE_REPARTO",
+      "valores_publicados": [
+       {
+        "carga_unidad": "kg",
+        "carga_valor": 379.0,
+        "condiciones_ensayo": "Encabezado de columna 'CTA 1[Kg/m] / (*)[Kg]': los valores marcados (*) están en kg. Punto/modo de aplicación no declarados.",
+        "criterio_o_norma_declarada": "IEC 61537:2006 (certificación)",
+        "distribucion_carga": "no especificada",
+        "estado_evidencia_catalogo": "documentada",
+        "evidencia_motor": "documentada",
+        "fila": 43,
+        "fuente_id": "F-004",
+        "hoja": "TABLAS_CARGA",
+        "luz_entre_apoyos_mm": null,
+        "pagina_fuente": "Anexo, pág. adicional 1 de 7",
+        "registro_carga_id": "CAR-0042"
+       }
+      ]
+     },
+     "instancia_id": "R1",
+     "pertenencia": {
+      "condicion_de_uso_texto": "Un trapecio por punto de apoyo, para bandeja de ancho 300",
+      "correspondencia_ancho": "TEXTO_NO_ESTRUCTURADO_NO_VERIFICADO",
+      "estado": "ASOCIADO",
+      "evidencia": "documentada"
+     },
+     "producto_id": "SAM_STS-300-Z",
+     "sistema_soporte_id": "SIS-001",
+     "soporte_id": "S2",
+     "tipo_pieza_soportada": "recta"
+    },
+    {
+     "anclaje_y_sustrato": {
+      "detalle": "Fijación al sustrato fuera del alcance (REV-016).",
+      "estado": "NO_VERIFICABLE_FUERA_DE_ALCANCE"
+     },
+     "aplicabilidad": {
+      "aplicacion_id": "APL-001",
+      "estado": "APLICA_DOCUMENTADA",
+      "fuente_id": "F-004",
+      "pagina_fuente": "Anexo, pág. adicional 1 de 7",
+      "rango_ancho_mm": [
+       150.0,
+       600.0
+      ],
+      "tipo_fijacion_bandeja": "GFS-02-Z (grampa de fijación)"
+     },
+     "capacidad_soporte": {
+      "detalle": "La carga por apoyo requiere un modelo estructural (continuidad, posición de uniones, ramales) que no está documentado. No se reparte la carga con un modelo supuesto.",
+      "estado": "NO_VERIFICABLE_SIN_MODELO_DE_REPARTO",
+      "valores_publicados": [
+       {
+        "carga_unidad": "kg",
+        "carga_valor": 379.0,
+        "condiciones_ensayo": "Encabezado de columna 'CTA 1[Kg/m] / (*)[Kg]': los valores marcados (*) están en kg. Punto/modo de aplicación no declarados.",
+        "criterio_o_norma_declarada": "IEC 61537:2006 (certificación)",
+        "distribucion_carga": "no especificada",
+        "estado_evidencia_catalogo": "documentada",
+        "evidencia_motor": "documentada",
+        "fila": 43,
+        "fuente_id": "F-004",
+        "hoja": "TABLAS_CARGA",
+        "luz_entre_apoyos_mm": null,
+        "pagina_fuente": "Anexo, pág. adicional 1 de 7",
+        "registro_carga_id": "CAR-0042"
+       }
+      ]
+     },
+     "instancia_id": "R2",
+     "pertenencia": {
+      "condicion_de_uso_texto": "Un trapecio por punto de apoyo, para bandeja de ancho 300",
+      "correspondencia_ancho": "TEXTO_NO_ESTRUCTURADO_NO_VERIFICADO",
+      "estado": "ASOCIADO",
+      "evidencia": "documentada"
+     },
+     "producto_id": "SAM_STS-300-Z",
+     "sistema_soporte_id": "SIS-001",
+     "soporte_id": "S3",
+     "tipo_pieza_soportada": "recta"
+    },
+    {
+     "anclaje_y_sustrato": {
+      "detalle": "Fijación al sustrato fuera del alcance (REV-016).",
+      "estado": "NO_VERIFICABLE_FUERA_DE_ALCANCE"
+     },
+     "aplicabilidad": {
+      "aplicacion_id": "APL-001",
+      "estado": "APLICA_DOCUMENTADA",
+      "fuente_id": "F-004",
+      "pagina_fuente": "Anexo, pág. adicional 1 de 7",
+      "rango_ancho_mm": [
+       150.0,
+       600.0
+      ],
+      "tipo_fijacion_bandeja": "GFS-02-Z (grampa de fijación)"
+     },
+     "capacidad_soporte": {
+      "detalle": "La carga por apoyo requiere un modelo estructural (continuidad, posición de uniones, ramales) que no está documentado. No se reparte la carga con un modelo supuesto.",
+      "estado": "NO_VERIFICABLE_SIN_MODELO_DE_REPARTO",
+      "valores_publicados": [
+       {
+        "carga_unidad": "kg",
+        "carga_valor": 379.0,
+        "condiciones_ensayo": "Encabezado de columna 'CTA 1[Kg/m] / (*)[Kg]': los valores marcados (*) están en kg. Punto/modo de aplicación no declarados.",
+        "criterio_o_norma_declarada": "IEC 61537:2006 (certificación)",
+        "distribucion_carga": "no especificada",
+        "estado_evidencia_catalogo": "documentada",
+        "evidencia_motor": "documentada",
+        "fila": 43,
+        "fuente_id": "F-004",
+        "hoja": "TABLAS_CARGA",
+        "luz_entre_apoyos_mm": null,
+        "pagina_fuente": "Anexo, pág. adicional 1 de 7",
+        "registro_carga_id": "CAR-0042"
+       }
+      ]
+     },
+     "instancia_id": "R2",
+     "pertenencia": {
+      "condicion_de_uso_texto": "Un trapecio por punto de apoyo, para bandeja de ancho 300",
+      "correspondencia_ancho": "TEXTO_NO_ESTRUCTURADO_NO_VERIFICADO",
+      "estado": "ASOCIADO",
+      "evidencia": "documentada"
+     },
+     "producto_id": "SAM_STS-300-Z",
+     "sistema_soporte_id": "SIS-001",
+     "soporte_id": "S4",
+     "tipo_pieza_soportada": "recta"
+    },
+    {
+     "anclaje_y_sustrato": {
+      "detalle": "Fijación al sustrato fuera del alcance (REV-016).",
+      "estado": "NO_VERIFICABLE_FUERA_DE_ALCANCE"
+     },
+     "aplicabilidad": {
+      "aplicacion_id": "APL-001",
+      "estado": "APLICA_DOCUMENTADA",
+      "fuente_id": "F-004",
+      "pagina_fuente": "Anexo, pág. adicional 1 de 7",
+      "rango_ancho_mm": [
+       150.0,
+       600.0
+      ],
+      "tipo_fijacion_bandeja": "GFS-02-Z (grampa de fijación)"
+     },
+     "capacidad_soporte": {
+      "detalle": "La carga por apoyo requiere un modelo estructural (continuidad, posición de uniones, ramales) que no está documentado. No se reparte la carga con un modelo supuesto.",
+      "estado": "NO_VERIFICABLE_SIN_MODELO_DE_REPARTO",
+      "valores_publicados": [
+       {
+        "carga_unidad": "kg",
+        "carga_valor": 379.0,
+        "condiciones_ensayo": "Encabezado de columna 'CTA 1[Kg/m] / (*)[Kg]': los valores marcados (*) están en kg. Punto/modo de aplicación no declarados.",
+        "criterio_o_norma_declarada": "IEC 61537:2006 (certificación)",
+        "distribucion_carga": "no especificada",
+        "estado_evidencia_catalogo": "documentada",
+        "evidencia_motor": "documentada",
+        "fila": 43,
+        "fuente_id": "F-004",
+        "hoja": "TABLAS_CARGA",
+        "luz_entre_apoyos_mm": null,
+        "pagina_fuente": "Anexo, pág. adicional 1 de 7",
+        "registro_carga_id": "CAR-0042"
+       }
+      ]
+     },
+     "instancia_id": "R3",
+     "pertenencia": {
+      "condicion_de_uso_texto": "Un trapecio por punto de apoyo, para bandeja de ancho 300",
+      "correspondencia_ancho": "TEXTO_NO_ESTRUCTURADO_NO_VERIFICADO",
+      "estado": "ASOCIADO",
+      "evidencia": "documentada"
+     },
+     "producto_id": "SAM_STS-300-Z",
+     "sistema_soporte_id": "SIS-001",
+     "soporte_id": "S5",
+     "tipo_pieza_soportada": "recta"
+    },
+    {
+     "anclaje_y_sustrato": {
+      "detalle": "Fijación al sustrato fuera del alcance (REV-016).",
+      "estado": "NO_VERIFICABLE_FUERA_DE_ALCANCE"
+     },
+     "aplicabilidad": {
+      "aplicacion_id": "APL-001",
+      "estado": "APLICA_DOCUMENTADA",
+      "fuente_id": "F-004",
+      "pagina_fuente": "Anexo, pág. adicional 1 de 7",
+      "rango_ancho_mm": [
+       150.0,
+       600.0
+      ],
+      "tipo_fijacion_bandeja": "GFS-02-Z (grampa de fijación)"
+     },
+     "capacidad_soporte": {
+      "detalle": "La carga por apoyo requiere un modelo estructural (continuidad, posición de uniones, ramales) que no está documentado. No se reparte la carga con un modelo supuesto.",
+      "estado": "NO_VERIFICABLE_SIN_MODELO_DE_REPARTO",
+      "valores_publicados": [
+       {
+        "carga_unidad": "kg",
+        "carga_valor": 379.0,
+        "condiciones_ensayo": "Encabezado de columna 'CTA 1[Kg/m] / (*)[Kg]': los valores marcados (*) están en kg. Punto/modo de aplicación no declarados.",
+        "criterio_o_norma_declarada": "IEC 61537:2006 (certificación)",
+        "distribucion_carga": "no especificada",
+        "estado_evidencia_catalogo": "documentada",
+        "evidencia_motor": "documentada",
+        "fila": 43,
+        "fuente_id": "F-004",
+        "hoja": "TABLAS_CARGA",
+        "luz_entre_apoyos_mm": null,
+        "pagina_fuente": "Anexo, pág. adicional 1 de 7",
+        "registro_carga_id": "CAR-0042"
+       }
+      ]
+     },
+     "instancia_id": "R3",
+     "pertenencia": {
+      "condicion_de_uso_texto": "Un trapecio por punto de apoyo, para bandeja de ancho 300",
+      "correspondencia_ancho": "TEXTO_NO_ESTRUCTURADO_NO_VERIFICADO",
+      "estado": "ASOCIADO",
+      "evidencia": "documentada"
+     },
+     "producto_id": "SAM_STS-300-Z",
+     "sistema_soporte_id": "SIS-001",
+     "soporte_id": "S6",
+     "tipo_pieza_soportada": "recta"
+    },
+    {
+     "anclaje_y_sustrato": {
+      "detalle": "Fijación al sustrato fuera del alcance (REV-016).",
+      "estado": "NO_VERIFICABLE_FUERA_DE_ALCANCE"
+     },
+     "aplicabilidad": {
+      "aplicacion_id": "APL-001",
+      "estado": "APLICA_DOCUMENTADA",
+      "fuente_id": "F-004",
+      "pagina_fuente": "Anexo, pág. adicional 1 de 7",
+      "rango_ancho_mm": [
+       150.0,
+       600.0
+      ],
+      "tipo_fijacion_bandeja": "GFS-02-Z (grampa de fijación)"
+     },
+     "capacidad_soporte": {
+      "detalle": "La carga por apoyo requiere un modelo estructural (continuidad, posición de uniones, ramales) que no está documentado. No se reparte la carga con un modelo supuesto.",
+      "estado": "NO_VERIFICABLE_SIN_MODELO_DE_REPARTO",
+      "valores_publicados": [
+       {
+        "carga_unidad": "kg",
+        "carga_valor": 379.0,
+        "condiciones_ensayo": "Encabezado de columna 'CTA 1[Kg/m] / (*)[Kg]': los valores marcados (*) están en kg. Punto/modo de aplicación no declarados.",
+        "criterio_o_norma_declarada": "IEC 61537:2006 (certificación)",
+        "distribucion_carga": "no especificada",
+        "estado_evidencia_catalogo": "documentada",
+        "evidencia_motor": "documentada",
+        "fila": 43,
+        "fuente_id": "F-004",
+        "hoja": "TABLAS_CARGA",
+        "luz_entre_apoyos_mm": null,
+        "pagina_fuente": "Anexo, pág. adicional 1 de 7",
+        "registro_carga_id": "CAR-0042"
+       }
+      ]
+     },
+     "instancia_id": "R4",
+     "pertenencia": {
+      "condicion_de_uso_texto": "Un trapecio por punto de apoyo, para bandeja de ancho 300",
+      "correspondencia_ancho": "TEXTO_NO_ESTRUCTURADO_NO_VERIFICADO",
+      "estado": "ASOCIADO",
+      "evidencia": "documentada"
+     },
+     "producto_id": "SAM_STS-300-Z",
+     "sistema_soporte_id": "SIS-001",
+     "soporte_id": "S7",
+     "tipo_pieza_soportada": "recta"
+    },
+    {
+     "anclaje_y_sustrato": {
+      "detalle": "Fijación al sustrato fuera del alcance (REV-016).",
+      "estado": "NO_VERIFICABLE_FUERA_DE_ALCANCE"
+     },
+     "aplicabilidad": {
+      "aplicacion_id": "APL-001",
+      "estado": "APLICA_DOCUMENTADA",
+      "fuente_id": "F-004",
+      "pagina_fuente": "Anexo, pág. adicional 1 de 7",
+      "rango_ancho_mm": [
+       150.0,
+       600.0
+      ],
+      "tipo_fijacion_bandeja": "GFS-02-Z (grampa de fijación)"
+     },
+     "capacidad_soporte": {
+      "detalle": "La carga por apoyo requiere un modelo estructural (continuidad, posición de uniones, ramales) que no está documentado. No se reparte la carga con un modelo supuesto.",
+      "estado": "NO_VERIFICABLE_SIN_MODELO_DE_REPARTO",
+      "valores_publicados": [
+       {
+        "carga_unidad": "kg",
+        "carga_valor": 379.0,
+        "condiciones_ensayo": "Encabezado de columna 'CTA 1[Kg/m] / (*)[Kg]': los valores marcados (*) están en kg. Punto/modo de aplicación no declarados.",
+        "criterio_o_norma_declarada": "IEC 61537:2006 (certificación)",
+        "distribucion_carga": "no especificada",
+        "estado_evidencia_catalogo": "documentada",
+        "evidencia_motor": "documentada",
+        "fila": 43,
+        "fuente_id": "F-004",
+        "hoja": "TABLAS_CARGA",
+        "luz_entre_apoyos_mm": null,
+        "pagina_fuente": "Anexo, pág. adicional 1 de 7",
+        "registro_carga_id": "CAR-0042"
+       }
+      ]
+     },
+     "instancia_id": "R4",
+     "pertenencia": {
+      "condicion_de_uso_texto": "Un trapecio por punto de apoyo, para bandeja de ancho 300",
+      "correspondencia_ancho": "TEXTO_NO_ESTRUCTURADO_NO_VERIFICADO",
+      "estado": "ASOCIADO",
+      "evidencia": "documentada"
+     },
+     "producto_id": "SAM_STS-300-Z",
+     "sistema_soporte_id": "SIS-001",
+     "soporte_id": "S8",
+     "tipo_pieza_soportada": "recta"
+    },
+    {
+     "anclaje_y_sustrato": {
+      "detalle": "Fijación al sustrato fuera del alcance (REV-016).",
+      "estado": "NO_VERIFICABLE_FUERA_DE_ALCANCE"
+     },
+     "aplicabilidad": {
+      "aplicacion_id": "APL-001",
+      "estado": "APLICA_DOCUMENTADA",
+      "fuente_id": "F-004",
+      "pagina_fuente": "Anexo, pág. adicional 1 de 7",
+      "rango_ancho_mm": [
+       150.0,
+       600.0
+      ],
+      "tipo_fijacion_bandeja": "GFS-02-Z (grampa de fijación)"
+     },
+     "capacidad_soporte": {
+      "detalle": "La carga por apoyo requiere un modelo estructural (continuidad, posición de uniones, ramales) que no está documentado. No se reparte la carga con un modelo supuesto.",
+      "estado": "NO_VERIFICABLE_SIN_MODELO_DE_REPARTO",
+      "valores_publicados": [
+       {
+        "carga_unidad": "kg",
+        "carga_valor": 379.0,
+        "condiciones_ensayo": "Encabezado de columna 'CTA 1[Kg/m] / (*)[Kg]': los valores marcados (*) están en kg. Punto/modo de aplicación no declarados.",
+        "criterio_o_norma_declarada": "IEC 61537:2006 (certificación)",
+        "distribucion_carga": "no especificada",
+        "estado_evidencia_catalogo": "documentada",
+        "evidencia_motor": "documentada",
+        "fila": 43,
+        "fuente_id": "F-004",
+        "hoja": "TABLAS_CARGA",
+        "luz_entre_apoyos_mm": null,
+        "pagina_fuente": "Anexo, pág. adicional 1 de 7",
+        "registro_carga_id": "CAR-0042"
+       }
+      ]
+     },
+     "instancia_id": "R5",
+     "pertenencia": {
+      "condicion_de_uso_texto": "Un trapecio por punto de apoyo, para bandeja de ancho 300",
+      "correspondencia_ancho": "TEXTO_NO_ESTRUCTURADO_NO_VERIFICADO",
+      "estado": "ASOCIADO",
+      "evidencia": "documentada"
+     },
+     "producto_id": "SAM_STS-300-Z",
+     "sistema_soporte_id": "SIS-001",
+     "soporte_id": "S9",
+     "tipo_pieza_soportada": "recta"
+    }
+   ],
+   "tapas": {
+    "TP1": {
+     "estado": "COMPATIBLE_DOCUMENTADA",
+     "registro": {
+      "compatibilidad_id": "CMP-01943",
+      "estado_compatibilidad": "confirmada",
+      "estado_evidencia": "documentada",
+      "fila_origen": 1944,
+      "fuente_id": "F-001",
+      "observaciones": "'Tapa universal Smarttray … las mismas usadas en la línea Smarttray perforada' + tabla de tapas de la sección Z con el mismo código (PDF 6 / impr. 11).",
+      "pagina_fuente": "PDF 3 / impr. 4-5",
+      "producto_a_id": "SAM_TTRS-300-22-Z",
+      "producto_b_id": "SAM_TRES-300-065-18-Z",
+      "puerto_a_id": null,
+      "puerto_b_id": null,
+      "tipo_conexion": "tapa"
+     }
+    }
+   },
+   "verificacion_electrica": {
+    "aviso": "Resultado de preselección. No aprueba la instalación: no contrasta todas las condiciones de montaje y ensayo, ni verifica eléctricamente (intensidad, PE frente a la falla, continuidad medida).",
+    "estado": "NO_REALIZADA"
+   },
+   "vigencia": "VIGENTE"
+  },
+  "revision_entrada": 0,
+  "solicitud_id": "v-3",
+  "tipo": "trazado",
+  "version_contrato": "1.0",
+  "version_motor": "0.2.2"
+ },
+ "solicitud": {
+  "clave": "TRAZADO-1",
+  "entrada": {
+   "accesorios": [],
+   "circuitos": [
+    {
+     "cable_id": "PRY-SVALIO-CU-1x35",
+     "cantidad": 3,
+     "circuito_id": "K1",
+     "funcion": "potencia",
+     "recorrido": [
+      "R1",
+      "R2",
+      "T1",
+      "R3"
+     ],
+     "separado": true
+    },
+    {
+     "cable_id": "PRY-SVALIO-CU-1x35",
+     "cantidad": 3,
+     "circuito_id": "K2",
+     "funcion": "potencia",
+     "recorrido": [
+      "R1",
+      "R2",
+      "T1",
+      "R4",
+      "CS1",
+      "R5"
+     ],
+     "separado": true
+    }
+   ],
+   "conexiones": [
+    {
+     "a": [
+      "R1",
+      "P2"
+     ],
+     "b": [
+      "R2",
+      "P1"
+     ],
+     "conexion_id": "C1"
+    },
+    {
+     "a": [
+      "R2",
+      "P2"
+     ],
+     "b": [
+      "T1",
+      "P1"
+     ],
+     "conexion_id": "C2"
+    },
+    {
+     "a": [
+      "T1",
+      "P2"
+     ],
+     "b": [
+      "R3",
+      "P1"
+     ],
+     "conexion_id": "C3"
+    },
+    {
+     "a": [
+      "T1",
+      "P3"
+     ],
+     "b": [
+      "R4",
+      "P1"
+     ],
+     "conexion_id": "C4"
+    },
+    {
+     "a": [
+      "R4",
+      "P2"
+     ],
+     "b": [
+      "CS1",
+      "P1"
+     ],
+     "conexion_id": "C5"
+    },
+    {
+     "a": [
+      "CS1",
+      "P2"
+     ],
+     "b": [
+      "R5",
+      "P1"
+     ],
+     "conexion_id": "C6"
+    }
+   ],
+   "eje_vertical": [
+    0,
+    0,
+    1
+   ],
+   "equipotencial": {
+    "puntos": [
+     {
+      "conductores": [
+       "PE1"
+      ],
+      "descripcion": "Barra PE del tablero de origen (ejemplo)",
+      "punto_id": "SP1",
+      "tipo": "sistema_proteccion"
+     },
+     {
+      "conductores": [
+       "PE1",
+       "PE2"
+      ],
+      "conector": {
+       "descripcion": "Conector de derivación a definir",
+       "producto_id": null
+      },
+      "instancias": [
+       "T1"
+      ],
+      "punto_id": "D1",
+      "tipo": "derivacion_pe"
+     },
+     {
+      "conductores": [
+       "PE1"
+      ],
+      "conector": {
+       "producto_id": "SAM_GFCE-B"
+      },
+      "instancias": [
+       "R1"
+      ],
+      "punto_id": "B1",
+      "tipo": "conexion_bandeja"
+     },
+     {
+      "conductores": [
+       "PE2"
+      ],
+      "conector": {
+       "producto_id": "SAM_GFCE-B"
+      },
+      "instancias": [
+       "R4"
+      ],
+      "punto_id": "B2",
+      "tipo": "conexion_bandeja"
+     },
+     {
+      "conductor_puente": {
+       "cable_id": "PRY-SASTFLEX-CU-1x16",
+       "longitud_mm": 400
+      },
+      "conector": null,
+      "instancias": [
+       "R1",
+       "R2"
+      ],
+      "punto_id": "J1",
+      "tipo": "puente"
+     }
+    ]
+   },
+   "escenario_reserva": {
+    "circuitos": [
+     {
+      "cable_id": "PRY-SVALIO-CU-1x35",
+      "cantidad": 3,
+      "circuito_id": "K3",
+      "recorrido": [
+       "R1",
+       "R2",
+       "T1",
+       "R3"
+      ],
+      "separado": true
+     }
+    ],
+    "descripcion": "Ocupación futura: otro circuito por el tronco (escenario, no carga cubierta)"
+   },
+   "meta": {
+    "descripcion": "EJEMPLO SINTÉTICO de trazado. Productos y datos del catálogo real; posiciones, longitudes de eje de piezas especiales, circuitos y soportes son inventados para mostrar el contrato. No son productos ni geometrías acreditadas.",
+    "ejemplo_sintetico": true
+   },
+   "pe": {
+    "cable_id": "PRY-SASTFLEX-CU-1x16",
+    "conductores": [
+     {
+      "conductor_id": "PE1",
+      "fin": null,
+      "inicio": "SP1",
+      "recorrido": [
+       "R1",
+       "R2",
+       "T1",
+       "R3"
+      ]
+     },
+     {
+      "conductor_id": "PE2",
+      "fin": null,
+      "inicio": "D1",
+      "recorrido": [
+       {
+        "instancia": "T1",
+        "longitud_mm": 300
+       },
+       "R4",
+       "CS1",
+       "R5"
+      ]
+     }
+    ],
+    "origen_requisito": "Requisito acordado del usuario (R-PE-16): PE 16 mm² en todos los tramos, incluidos ramales",
+    "seccion_requerida_mm2": 16
+   },
+   "piezas": [
+    {
+     "instancia_id": "R1",
+     "longitud_mm": 3000,
+     "producto_id": "SAM_TRES-300-065-18-Z",
+     "puertos": {
+      "P1": {
+       "direccion": [
+        -1,
+        0,
+        0
+       ],
+       "posicion_mm": [
+        0,
+        0,
+        3000
+       ]
+      },
+      "P2": {
+       "direccion": [
+        1,
+        0,
+        0
+       ],
+       "posicion_mm": [
+        3000,
+        0,
+        3000
+       ]
+      }
+     }
+    },
+    {
+     "instancia_id": "R2",
+     "longitud_mm": 3000,
+     "producto_id": "SAM_TRES-300-065-18-Z",
+     "puertos": {
+      "P1": {
+       "direccion": [
+        -1,
+        0,
+        0
+       ],
+       "posicion_mm": [
+        3000,
+        0,
+        3000
+       ]
+      },
+      "P2": {
+       "direccion": [
+        1,
+        0,
+        0
+       ],
+       "posicion_mm": [
+        6000,
+        0,
+        3000
+       ]
+      }
+     }
+    },
+    {
+     "instancia_id": "T1",
+     "longitud_eje_mm": 600,
+     "producto_id": "SAM_TS-300-065-18-Z",
+     "puertos": {
+      "P1": {
+       "direccion": [
+        -1,
+        0,
+        0
+       ],
+       "posicion_mm": [
+        6000,
+        0,
+        3000
+       ]
+      },
+      "P2": {
+       "direccion": [
+        1,
+        0,
+        0
+       ],
+       "posicion_mm": [
+        6600,
+        0,
+        3000
+       ]
+      },
+      "P3": {
+       "direccion": [
+        0,
+        1,
+        0
+       ],
+       "posicion_mm": [
+        6300,
+        450,
+        3000
+       ]
+      }
+     }
+    },
+    {
+     "instancia_id": "R3",
+     "longitud_mm": 3000,
+     "producto_id": "SAM_TRES-300-065-18-Z",
+     "puertos": {
+      "P1": {
+       "direccion": [
+        -1,
+        0,
+        0
+       ],
+       "posicion_mm": [
+        6600,
+        0,
+        3000
+       ]
+      },
+      "P2": {
+       "direccion": [
+        1,
+        0,
+        0
+       ],
+       "posicion_mm": [
+        9600,
+        0,
+        3000
+       ]
+      }
+     }
+    },
+    {
+     "instancia_id": "R4",
+     "longitud_mm": 3000,
+     "producto_id": "SAM_TRES-300-065-18-Z",
+     "puertos": {
+      "P1": {
+       "direccion": [
+        0,
+        -1,
+        0
+       ],
+       "posicion_mm": [
+        6300,
+        450,
+        3000
+       ]
+      },
+      "P2": {
+       "direccion": [
+        0,
+        1,
+        0
+       ],
+       "posicion_mm": [
+        6300,
+        3450,
+        3000
+       ]
+      }
+     }
+    },
+    {
+     "instancia_id": "CS1",
+     "longitud_eje_mm": 707,
+     "producto_id": "SAM_CS-300-90-065-18-Z",
+     "puertos": {
+      "P1": {
+       "direccion": [
+        0,
+        -1,
+        0
+       ],
+       "posicion_mm": [
+        6300,
+        3450,
+        3000
+       ]
+      },
+      "P2": {
+       "direccion": [
+        1,
+        0,
+        0
+       ],
+       "posicion_mm": [
+        6900,
+        4050,
+        3000
+       ]
+      }
+     }
+    },
+    {
+     "instancia_id": "R5",
+     "longitud_mm": 1500,
+     "producto_id": "SAM_TRES-300-065-18-Z",
+     "puertos": {
+      "P1": {
+       "direccion": [
+        -1,
+        0,
+        0
+       ],
+       "posicion_mm": [
+        6900,
+        4050,
+        3000
+       ]
+      },
+      "P2": {
+       "direccion": [
+        1,
+        0,
+        0
+       ],
+       "posicion_mm": [
+        8400,
+        4050,
+        3000
+       ]
+      }
+     }
+    }
+   ],
+   "reserva_solicitada_pct": 20,
+   "soportes": [
+    {
+     "distancia_desde_P1_mm": 750,
+     "instancia_id": "R1",
+     "producto_id": "SAM_STS-300-Z",
+     "sistema_soporte_id": "SIS-001",
+     "soporte_id": "S1"
+    },
+    {
+     "distancia_desde_P1_mm": 2250,
+     "instancia_id": "R1",
+     "producto_id": "SAM_STS-300-Z",
+     "sistema_soporte_id": "SIS-001",
+     "soporte_id": "S2"
+    },
+    {
+     "distancia_desde_P1_mm": 750,
+     "instancia_id": "R2",
+     "producto_id": "SAM_STS-300-Z",
+     "sistema_soporte_id": "SIS-001",
+     "soporte_id": "S3"
+    },
+    {
+     "distancia_desde_P1_mm": 2250,
+     "instancia_id": "R2",
+     "producto_id": "SAM_STS-300-Z",
+     "sistema_soporte_id": "SIS-001",
+     "soporte_id": "S4"
+    },
+    {
+     "distancia_desde_P1_mm": 750,
+     "instancia_id": "R3",
+     "producto_id": "SAM_STS-300-Z",
+     "sistema_soporte_id": "SIS-001",
+     "soporte_id": "S5"
+    },
+    {
+     "distancia_desde_P1_mm": 2250,
+     "instancia_id": "R3",
+     "producto_id": "SAM_STS-300-Z",
+     "sistema_soporte_id": "SIS-001",
+     "soporte_id": "S6"
+    },
+    {
+     "distancia_desde_P1_mm": 750,
+     "instancia_id": "R4",
+     "producto_id": "SAM_STS-300-Z",
+     "sistema_soporte_id": "SIS-001",
+     "soporte_id": "S7"
+    },
+    {
+     "distancia_desde_P1_mm": 2250,
+     "instancia_id": "R4",
+     "producto_id": "SAM_STS-300-Z",
+     "sistema_soporte_id": "SIS-001",
+     "soporte_id": "S8"
+    },
+    {
+     "distancia_desde_P1_mm": 750,
+     "instancia_id": "R5",
+     "producto_id": "SAM_STS-300-Z",
+     "sistema_soporte_id": "SIS-001",
+     "soporte_id": "S9"
+    }
+   ],
+   "tapas": [
+    {
+     "producto_id": "SAM_TTRS-300-22-Z",
+     "sobre": "R3",
+     "tapa_id": "TP1"
+    }
+   ],
+   "tipo_circuito": "potencia",
+   "version_contrato": "trazado/1"
+  },
+  "revision_entrada": 0,
+  "solicitud_id": "v-3",
+  "tipo": "trazado",
+  "version_contrato": "1.0"
+ }
+}

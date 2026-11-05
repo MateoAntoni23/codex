@@ -1,3 +1,4 @@
+import { TrayWorkspace } from './tray/TrayWorkspace';
 import { useEffect } from 'react';
 import './styles/global.css';
 import { Layout } from './ui/Layout';
@@ -21,6 +22,7 @@ function PreviewApp() {
 }
 
 export function App() {
+  if (new URLSearchParams(window.location.search).get("workspace") === "bandejas") return <TrayWorkspace />;
   const isPreview =
     typeof window !== 'undefined' &&
     new URLSearchParams(window.location.search).get('preview') === 'v2';

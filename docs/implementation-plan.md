@@ -588,3 +588,12 @@ distinción entre "compartir corredor" y "compartir la misma bandeja".
 
 Requisitos absorbidos por M5 (cables y mangueras) y M7 (metraje y validaciones).
 BOM y checklist distinguen cables de mangueras por separado.
+
+## Integración experimental motor_bandejas 0.2.2
+
+Entrega separada del guardado/activación de equipos v2. Ver
+[mapeo, inicio y límites](motor-bandejas-integration.md) y
+[registro de validación](motor-bandejas-validation.md).
+Permite editar trazados sintéticos, calcular por HTTP en Python, inspeccionar
+resultados/diagnósticos, invalidar y recalcular. No implica que bandejas,
+accesorios o conexiones eléctricas reales estén aprobados ni persistidos.

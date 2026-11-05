@@ -666,3 +666,19 @@ html, body, #root {
   color: #cc8833;
   line-height: 1.5;
 }
+
+/* Experimental tray workspace: independent of persisted equipment editor. */
+.tray-workspace{height:100vh;display:grid;grid-template-columns:300px minmax(300px,1fr) 370px;grid-template-rows:auto minmax(0,1fr);gap:8px;padding:8px;background:#171b27}
+.tray-workspace header{grid-column:1/-1;max-height:190px;overflow:auto}
+.tray-workspace aside,.tray-workspace article{overflow:auto;padding:10px;background:#222738}
+.tray-workspace main{min-height:0;display:flex;flex-direction:column}
+.tray-workspace main>div{flex:1;min-height:220px}
+.tray-workspace button{margin:3px;padding:7px;background:#3c4967;color:white;border:1px solid #7183a3;border-radius:4px;cursor:pointer}
+.tray-workspace aside>button{display:block;width:95%;text-align:left}
+.tray-workspace .active{outline:2px solid #ffcf33}
+.tray-workspace label{display:block;margin:6px 0}.tray-workspace input,.tray-workspace select{width:100%;background:#101722;color:white;padding:5px;border:1px solid #8291a5}
+.tray-workspace fieldset{margin:8px 0;padding:7px}.tray-workspace p{margin:7px 0;line-height:1.4}.tray-workspace a{color:#8dd7ff}
+.tray-workspace textarea{width:100%;height:260px;background:#0e1520;color:white;font-family:monospace}
+.tray-json{font-size:11px;white-space:pre-wrap;overflow-wrap:anywhere;margin:6px 0;padding:6px;background:#101722;max-height:400px;overflow:auto}
+.tray-workspace details{border-bottom:1px solid #67758b;padding:6px 0}.tray-workspace summary{cursor:pointer;font-weight:bold}
+@media(max-width:1000px){.tray-workspace{grid-template-columns:260px 1fr}.tray-workspace article{grid-column:1/-1;max-height:400px}.tray-workspace{overflow:auto;grid-template-rows:auto 65vh auto}}

@@ -1,0 +1,183 @@
+{
+ "descripcion": "Comportamiento OBSERVADO en el calculador Smarttray de Samet (capturas PDF). Casos de comparación, no resultados normativos.",
+ "fecha_observacion": "2026-11-05 (capturas entregadas por el usuario)",
+ "casos": [
+  {
+   "caso_id": "SAMET-C1",
+   "archivo": "PRUEBA.pdf",
+   "sha256_archivo": "1c351a976ff51a010cb255de96d9765e1bc5bd178ba5123000a5d284bd2467e4",
+   "condiciones": {
+    "tipo_circuito": "potencia (verificado: clase CSS del botón y 'Separado' habilitado solo en modo 1)",
+    "vano": "1,5m (RAEA 90364)",
+    "reserva": "20% (RAEA 90364)",
+    "modelo_samet": "id 104 'Syntenax Valio - Cobre 1 x 6' (mode 1, unipolar)"
+   },
+   "uso": {
+    "cantidad": 4,
+    "separado": true,
+    "apilado": false
+   },
+   "carga_requerida_samet_kg_m": 0.44,
+   "tray_hits": [
+    {
+     "sku": "TRPS-100-22-Z",
+     "factor_samet": 113.6,
+     "reserva_real_samet_pct": 54
+    },
+    {
+     "sku": "TRES-150-065-18-Z",
+     "factor_samet": 659.1,
+     "reserva_real_samet_pct": 131
+    },
+    {
+     "sku": "TRES-150-065-18-G",
+     "factor_samet": 681.8,
+     "reserva_real_samet_pct": 131
+    },
+    {
+     "sku": "TRES-150-090-18-Z",
+     "factor_samet": 909.1,
+     "reserva_real_samet_pct": 131
+    },
+    {
+     "sku": "TRES-150-090-18-G",
+     "factor_samet": 1000,
+     "reserva_real_samet_pct": 131
+    },
+    {
+     "sku": "TRES-150-115-18-Z",
+     "factor_samet": 1204.5,
+     "reserva_real_samet_pct": 131
+    },
+    {
+     "sku": "TRES-150-115-18-G",
+     "factor_samet": 1318.2,
+     "reserva_real_samet_pct": 131
+    },
+    {
+     "sku": "TRA-100",
+     "factor_samet": 0,
+     "reserva_real_samet_pct": 54
+    }
+   ]
+  },
+  {
+   "caso_id": "SAMET-C2",
+   "archivo": "PRUEBA_8_CONDUCTORES.pdf",
+   "sha256_archivo": "35abab5c17347e61f536f7409177c844ccb49a6834916cc8e9953535bcca1d8d",
+   "condiciones": {
+    "tipo_circuito": "potencia (verificado: clase CSS del botón y 'Separado' habilitado solo en modo 1)",
+    "vano": "1,5m (RAEA 90364)",
+    "reserva": "20% (RAEA 90364)",
+    "modelo_samet": "id 104 'Syntenax Valio - Cobre 1 x 6' (mode 1, unipolar)"
+   },
+   "uso": {
+    "cantidad": 8,
+    "separado": true,
+    "apilado": false
+   },
+   "carga_requerida_samet_kg_m": 0.88,
+   "tray_hits": [
+    {
+     "sku": "TRPS-200-22-Z",
+     "factor_samet": 68.2,
+     "reserva_real_samet_pct": 54
+    },
+    {
+     "sku": "TRES-300-065-18-Z",
+     "factor_samet": 329.5,
+     "reserva_real_samet_pct": 131
+    },
+    {
+     "sku": "TRES-300-065-18-G",
+     "factor_samet": 340.9,
+     "reserva_real_samet_pct": 131
+    },
+    {
+     "sku": "TRES-300-090-18-Z",
+     "factor_samet": 454.5,
+     "reserva_real_samet_pct": 131
+    },
+    {
+     "sku": "TRES-300-090-18-G",
+     "factor_samet": 500,
+     "reserva_real_samet_pct": 131
+    },
+    {
+     "sku": "TRES-300-115-18-Z",
+     "factor_samet": 602.3,
+     "reserva_real_samet_pct": 131
+    },
+    {
+     "sku": "TRES-300-115-18-G",
+     "factor_samet": 659.1,
+     "reserva_real_samet_pct": 131
+    },
+    {
+     "sku": "TRA-200",
+     "factor_samet": 0,
+     "reserva_real_samet_pct": 54
+    }
+   ]
+  },
+  {
+   "caso_id": "SAMET-C3",
+   "archivo": "PRUEB_3.pdf",
+   "sha256_archivo": "a0c53f48859ec4ed1a30e69ef4a23a0a300a59487dca802f199abc8bcaace316",
+   "condiciones": {
+    "tipo_circuito": "potencia (verificado: clase CSS del botón y 'Separado' habilitado solo en modo 1)",
+    "vano": "1,5m (RAEA 90364)",
+    "reserva": "20% (RAEA 90364)",
+    "modelo_samet": "id 104 'Syntenax Valio - Cobre 1 x 6' (mode 1, unipolar)"
+   },
+   "uso": {
+    "cantidad": 8,
+    "separado": false,
+    "apilado": false
+   },
+   "carga_requerida_samet_kg_m": 0.88,
+   "tray_hits": [
+    {
+     "sku": "TRPS-100-22-Z",
+     "factor_samet": 56.8,
+     "reserva_real_samet_pct": 54
+    },
+    {
+     "sku": "TRES-150-065-18-Z",
+     "factor_samet": 329.5,
+     "reserva_real_samet_pct": 131
+    },
+    {
+     "sku": "TRES-150-065-18-G",
+     "factor_samet": 340.9,
+     "reserva_real_samet_pct": 131
+    },
+    {
+     "sku": "TRES-150-090-18-Z",
+     "factor_samet": 454.5,
+     "reserva_real_samet_pct": 131
+    },
+    {
+     "sku": "TRES-150-090-18-G",
+     "factor_samet": 500,
+     "reserva_real_samet_pct": 131
+    },
+    {
+     "sku": "TRES-150-115-18-Z",
+     "factor_samet": 602.3,
+     "reserva_real_samet_pct": 131
+    },
+    {
+     "sku": "TRES-150-115-18-G",
+     "factor_samet": 659.1,
+     "reserva_real_samet_pct": 131
+    },
+    {
+     "sku": "TRA-100",
+     "factor_samet": 0,
+     "reserva_real_samet_pct": 54
+    }
+   ]
+  }
+ ]
+}

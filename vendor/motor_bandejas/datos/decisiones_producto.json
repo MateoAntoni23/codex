@@ -1,0 +1,30 @@
+{
+  "version_decisiones": "2026-11-05.5",
+  "nota": "Valores por defecto de las decisiones de producto. Cada clave remite a docs/DECISIONES.md. Cambiar un valor cambia la huella de todo resultado.",
+  "D-02_separado_desactivado_equivale_a": "contacto",
+  "D-04_ancho_referencia": "util_si_existe_sino_nominal",
+  "D-05_criterio_reserva": "fraccion_libre_ancho_bandeja",
+  "D-06_evidencias_carga_aceptadas": [
+    "documentada",
+    "validada_por_usuario",
+    "adoptada_por_decision"
+  ],
+  "D-08_altura_referencia": "util_si_existe_sino_ala_nominal",
+  "tipos_pieza_seleccionables": [
+    "recta"
+  ],
+  "nota_D-06": "Solo \"documentada\" produce VERIFICADA_*. Las otras dos producen CUMPLE_CONDICIONADO / NO_CUMPLE_CONDICIONADO. Nombres = evidencia_motor (ver catalogo.py).",
+  "D-13_equivalencia_extremos_recta": "aplicar_con_condicion",
+  "D-14_tolerancia_posicion_mm": 1.0,
+  "D-14_tolerancia_angulo_grados": 1.0,
+  "D-16_radio_disponible": "borde_interior_peor_caso",
+  "D-19_posicion_pe": "contra_ala_en_contacto",
+  "D-22_tolerancia_luz_mm": 0.0,
+  "D-27_holgura_pe_mm": null,
+  "nota_v020": "D-13, D-14, D-16, D-18, D-22, D-24, D-27 son PROPUESTAS activas con condición visible en el resultado. D-19 está PENDIENTE (opción propuesta: contacto_en_extremo_de_fila). Ver docs/DECISIONES.md.",
+  "D-20_seccion_pe_mm2": 16,
+  "D-21_identificacion_pe_requerida": "verde/amarillo",
+  "D-30_tolerancia_union_centro_mm": 10.0,
+  "nota_v021": "D-19 y D-21 (color) aprobadas por el usuario el 2026-11-05. D-12 resuelta: esquema de ensayo en datos/esquemas_ensayo.json (validado por usuario). D-30 propuesta.",
+  "nota_v022": "D-20 pasa a decisiones como valor (16 mm², aprobado por el usuario): la entrada del CAD ya no puede redefinirlo (auditoría H2). D-31 (PROPUESTA): un vano coincide con el esquema de ensayo solo si reproduce una ventana del ensayo: central (unión al centro, vecinos de igual luz a ambos lados, tramos de la longitud ensayada) o lateral (sin unión, dentro de un tramo de la longitud ensayada, contiguo a un central coincidente de igual luz). Lo que hay fuera de esa ventana no se contrasta (auditoría H8)."
+}

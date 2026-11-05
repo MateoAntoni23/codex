@@ -1,0 +1,5134 @@
+{
+ "descripcion": "Vector sector_caso1 (generado por herramientas/generar_vectores.py)",
+ "respuesta": {
+  "clave": "SECTOR-1",
+  "estado": "ok",
+  "huella": "2015a8f4b8340dc13d378d6090aba137f3e4c4274a32a0e8d0283af20daaa25a",
+  "resultado": {
+   "advertencias": [],
+   "candidatos": [
+    {
+     "acabado_normalizado": "no especificado",
+     "ala_nominal_mm": 50.0,
+     "ancho_nominal_mm": 100.0,
+     "condiciones": [
+      "ANCHO_NOMINAL_NO_UTIL",
+      "ALTURA_ALA_NOMINAL_NO_UTIL",
+      "MECANICA_NO_VERIFICABLE_SIN_REGISTRO"
+     ],
+     "diametro_alambre_mm": 4.76,
+     "espesor_chapa_mm": null,
+     "estado": "PRESELECCION_CONDICIONADA",
+     "familia_id": "FAMIQ-ALAMBRE-INOX",
+     "geometria": {
+      "advertencias": [
+       "Ancho útil no publicado: se usa el ancho nominal del catálogo (D-04).",
+       "Alto útil no publicado: se compara el diámetro con el ala nominal (D-08)."
+      ],
+      "altura_referencia_mm": 50.0,
+      "ancho_referencia_mm": 100.0,
+      "base_altura": "ala_nominal",
+      "base_ancho": "nominal",
+      "estado": "CUMPLE",
+      "reserva": {
+       "ancho_libre_mm": 43.3,
+       "ancho_max_ocupable_mm": 80.0,
+       "cabe": true,
+       "condicion": "W_ocupado ≤ (1 − r)·W_ref",
+       "criterio": "fraccion_libre_ancho_bandeja",
+       "cumple": true,
+       "denominador_criterio": "ancho de referencia de la bandeja (W_ref)",
+       "metodo": "M-RES-1",
+       "reserva_libre_pct": 43.3,
+       "reserva_solicitada_pct": 20.0,
+       "sobrante_sobre_ocupado_pct": 76.367
+      }
+     },
+     "mecanica": {
+      "alcance": "Compara solo la masa propia de los cables con la CTA publicada para la misma luz. El esquema del ensayo (número de tramos, posición de uniones, tipo de apoyo) NO se contrasta con la instalación (D-12).",
+      "base_evidencia": null,
+      "carga_cables_kg_m": 0.456,
+      "cta_kg_m": null,
+      "detalle": "El catálogo no tiene carga de trabajo admisible para este producto y vano.",
+      "esquema_ensayo_contrastado": false,
+      "estado": "NO_VERIFICABLE_SIN_REGISTRO",
+      "metodo": "M-MEC-1",
+      "vano_mm": 1500.0
+     },
+     "minimo_apto_completo_de_linea": false,
+     "minimo_geometrico_de_linea": true,
+     "minimo_sin_rechazo_de_linea": true,
+     "nombre_familia": "Bandejas portacables en acero inoxidable AISI 304",
+     "procedencia": {
+      "estado_dato": "transcrito",
+      "fila": 359,
+      "fuente_id": "F-008",
+      "hoja": "PRODUCTOS",
+      "pagina_fuente": "p. 1 – Bandeja tramo recto (ítem 1)"
+     },
+     "producto_id": "FAMIQ_300708",
+     "sku": "300708",
+     "tipo_constructivo": "alambre"
+    },
+    {
+     "acabado_normalizado": "no especificado",
+     "ala_nominal_mm": 50.0,
+     "ancho_nominal_mm": 150.0,
+     "condiciones": [
+      "ANCHO_NOMINAL_NO_UTIL",
+      "ALTURA_ALA_NOMINAL_NO_UTIL",
+      "MECANICA_NO_VERIFICABLE_SIN_REGISTRO"
+     ],
+     "diametro_alambre_mm": 4.76,
+     "espesor_chapa_mm": null,
+     "estado": "PRESELECCION_CONDICIONADA",
+     "familia_id": "FAMIQ-ALAMBRE-INOX",
+     "geometria": {
+      "advertencias": [
+       "Ancho útil no publicado: se usa el ancho nominal del catálogo (D-04).",
+       "Alto útil no publicado: se compara el diámetro con el ala nominal (D-08)."
+      ],
+      "altura_referencia_mm": 50.0,
+      "ancho_referencia_mm": 150.0,
+      "base_altura": "ala_nominal",
+      "base_ancho": "nominal",
+      "estado": "CUMPLE",
+      "reserva": {
+       "ancho_libre_mm": 93.3,
+       "ancho_max_ocupable_mm": 120.0,
+       "cabe": true,
+       "condicion": "W_ocupado ≤ (1 − r)·W_ref",
+       "criterio": "fraccion_libre_ancho_bandeja",
+       "cumple": true,
+       "denominador_criterio": "ancho de referencia de la bandeja (W_ref)",
+       "metodo": "M-RES-1",
+       "reserva_libre_pct": 62.2,
+       "reserva_solicitada_pct": 20.0,
+       "sobrante_sobre_ocupado_pct": 164.55
+      }
+     },
+     "mecanica": {
+      "alcance": "Compara solo la masa propia de los cables con la CTA publicada para la misma luz. El esquema del ensayo (número de tramos, posición de uniones, tipo de apoyo) NO se contrasta con la instalación (D-12).",
+      "base_evidencia": null,
+      "carga_cables_kg_m": 0.456,
+      "cta_kg_m": null,
+      "detalle": "El catálogo no tiene carga de trabajo admisible para este producto y vano.",
+      "esquema_ensayo_contrastado": false,
+      "estado": "NO_VERIFICABLE_SIN_REGISTRO",
+      "metodo": "M-MEC-1",
+      "vano_mm": 1500.0
+     },
+     "minimo_apto_completo_de_linea": false,
+     "minimo_geometrico_de_linea": false,
+     "minimo_sin_rechazo_de_linea": false,
+     "nombre_familia": "Bandejas portacables en acero inoxidable AISI 304",
+     "procedencia": {
+      "estado_dato": "transcrito",
+      "fila": 360,
+      "fuente_id": "F-008",
+      "hoja": "PRODUCTOS",
+      "pagina_fuente": "p. 1 – Bandeja tramo recto (ítem 1)"
+     },
+     "producto_id": "FAMIQ_300709",
+     "sku": "300709",
+     "tipo_constructivo": "alambre"
+    },
+    {
+     "acabado_normalizado": "no especificado",
+     "ala_nominal_mm": 50.0,
+     "ancho_nominal_mm": 200.0,
+     "condiciones": [
+      "ANCHO_NOMINAL_NO_UTIL",
+      "ALTURA_ALA_NOMINAL_NO_UTIL",
+      "MECANICA_NO_VERIFICABLE_SIN_REGISTRO"
+     ],
+     "diametro_alambre_mm": 4.76,
+     "espesor_chapa_mm": null,
+     "estado": "PRESELECCION_CONDICIONADA",
+     "familia_id": "FAMIQ-ALAMBRE-INOX",
+     "geometria": {
+      "advertencias": [
+       "Ancho útil no publicado: se usa el ancho nominal del catálogo (D-04).",
+       "Alto útil no publicado: se compara el diámetro con el ala nominal (D-08)."
+      ],
+      "altura_referencia_mm": 50.0,
+      "ancho_referencia_mm": 200.0,
+      "base_altura": "ala_nominal",
+      "base_ancho": "nominal",
+      "estado": "CUMPLE",
+      "reserva": {
+       "ancho_libre_mm": 143.3,
+       "ancho_max_ocupable_mm": 160.0,
+       "cabe": true,
+       "condicion": "W_ocupado ≤ (1 − r)·W_ref",
+       "criterio": "fraccion_libre_ancho_bandeja",
+       "cumple": true,
+       "denominador_criterio": "ancho de referencia de la bandeja (W_ref)",
+       "metodo": "M-RES-1",
+       "reserva_libre_pct": 71.65,
+       "reserva_solicitada_pct": 20.0,
+       "sobrante_sobre_ocupado_pct": 252.734
+      }
+     },
+     "mecanica": {
+      "alcance": "Compara solo la masa propia de los cables con la CTA publicada para la misma luz. El esquema del ensayo (número de tramos, posición de uniones, tipo de apoyo) NO se contrasta con la instalación (D-12).",
+      "base_evidencia": null,
+      "carga_cables_kg_m": 0.456,
+      "cta_kg_m": null,
+      "detalle": "El catálogo no tiene carga de trabajo admisible para este producto y vano.",
+      "esquema_ensayo_contrastado": false,
+      "estado": "NO_VERIFICABLE_SIN_REGISTRO",
+      "metodo": "M-MEC-1",
+      "vano_mm": 1500.0
+     },
+     "minimo_apto_completo_de_linea": false,
+     "minimo_geometrico_de_linea": false,
+     "minimo_sin_rechazo_de_linea": false,
+     "nombre_familia": "Bandejas portacables en acero inoxidable AISI 304",
+     "procedencia": {
+      "estado_dato": "transcrito",
+      "fila": 361,
+      "fuente_id": "F-008",
+      "hoja": "PRODUCTOS",
+      "pagina_fuente": "p. 1 – Bandeja tramo recto (ítem 1)"
+     },
+     "producto_id": "FAMIQ_300710",
+     "sku": "300710",
+     "tipo_constructivo": "alambre"
+    },
+    {
+     "acabado_normalizado": "no especificado",
+     "ala_nominal_mm": 50.0,
+     "ancho_nominal_mm": 300.0,
+     "condiciones": [
+      "ANCHO_NOMINAL_NO_UTIL",
+      "ALTURA_ALA_NOMINAL_NO_UTIL",
+      "MECANICA_NO_VERIFICABLE_SIN_REGISTRO"
+     ],
+     "diametro_alambre_mm": 4.76,
+     "espesor_chapa_mm": null,
+     "estado": "PRESELECCION_CONDICIONADA",
+     "familia_id": "FAMIQ-ALAMBRE-INOX",
+     "geometria": {
+      "advertencias": [
+       "Ancho útil no publicado: se usa el ancho nominal del catálogo (D-04).",
+       "Alto útil no publicado: se compara el diámetro con el ala nominal (D-08)."
+      ],
+      "altura_referencia_mm": 50.0,
+      "ancho_referencia_mm": 300.0,
+      "base_altura": "ala_nominal",
+      "base_ancho": "nominal",
+      "estado": "CUMPLE",
+      "reserva": {
+       "ancho_libre_mm": 243.3,
+       "ancho_max_ocupable_mm": 240.0,
+       "cabe": true,
+       "condicion": "W_ocupado ≤ (1 − r)·W_ref",
+       "criterio": "fraccion_libre_ancho_bandeja",
+       "cumple": true,
+       "denominador_criterio": "ancho de referencia de la bandeja (W_ref)",
+       "metodo": "M-RES-1",
+       "reserva_libre_pct": 81.1,
+       "reserva_solicitada_pct": 20.0,
+       "sobrante_sobre_ocupado_pct": 429.101
+      }
+     },
+     "mecanica": {
+      "alcance": "Compara solo la masa propia de los cables con la CTA publicada para la misma luz. El esquema del ensayo (número de tramos, posición de uniones, tipo de apoyo) NO se contrasta con la instalación (D-12).",
+      "base_evidencia": null,
+      "carga_cables_kg_m": 0.456,
+      "cta_kg_m": null,
+      "detalle": "El catálogo no tiene carga de trabajo admisible para este producto y vano.",
+      "esquema_ensayo_contrastado": false,
+      "estado": "NO_VERIFICABLE_SIN_REGISTRO",
+      "metodo": "M-MEC-1",
+      "vano_mm": 1500.0
+     },
+     "minimo_apto_completo_de_linea": false,
+     "minimo_geometrico_de_linea": false,
+     "minimo_sin_rechazo_de_linea": false,
+     "nombre_familia": "Bandejas portacables en acero inoxidable AISI 304",
+     "procedencia": {
+      "estado_dato": "transcrito",
+      "fila": 362,
+      "fuente_id": "F-008",
+      "hoja": "PRODUCTOS",
+      "pagina_fuente": "p. 1 – Bandeja tramo recto (ítem 1)"
+     },
+     "producto_id": "FAMIQ_300712",
+     "sku": "300712",
+     "tipo_constructivo": "alambre"
+    },
+    {
+     "acabado_normalizado": "no especificado",
+     "ala_nominal_mm": 50.0,
+     "ancho_nominal_mm": 400.0,
+     "condiciones": [
+      "ANCHO_NOMINAL_NO_UTIL",
+      "ALTURA_ALA_NOMINAL_NO_UTIL",
+      "MECANICA_NO_VERIFICABLE_SIN_REGISTRO"
+     ],
+     "diametro_alambre_mm": 4.76,
+     "espesor_chapa_mm": null,
+     "estado": "PRESELECCION_CONDICIONADA",
+     "familia_id": "FAMIQ-ALAMBRE-INOX",
+     "geometria": {
+      "advertencias": [
+       "Ancho útil no publicado: se usa el ancho nominal del catálogo (D-04).",
+       "Alto útil no publicado: se compara el diámetro con el ala nominal (D-08)."
+      ],
+      "altura_referencia_mm": 50.0,
+      "ancho_referencia_mm": 400.0,
+      "base_altura": "ala_nominal",
+      "base_ancho": "nominal",
+      "estado": "CUMPLE",
+      "reserva": {
+       "ancho_libre_mm": 343.3,
+       "ancho_max_ocupable_mm": 320.0,
+       "cabe": true,
+       "condicion": "W_ocupado ≤ (1 − r)·W_ref",
+       "criterio": "fraccion_libre_ancho_bandeja",
+       "cumple": true,
+       "denominador_criterio": "ancho de referencia de la bandeja (W_ref)",
+       "metodo": "M-RES-1",
+       "reserva_libre_pct": 85.825,
+       "reserva_solicitada_pct": 20.0,
+       "sobrante_sobre_ocupado_pct": 605.467
+      }
+     },
+     "mecanica": {
+      "alcance": "Compara solo la masa propia de los cables con la CTA publicada para la misma luz. El esquema del ensayo (número de tramos, posición de uniones, tipo de apoyo) NO se contrasta con la instalación (D-12).",
+      "base_evidencia": null,
+      "carga_cables_kg_m": 0.456,
+      "cta_kg_m": null,
+      "detalle": "El catálogo no tiene carga de trabajo admisible para este producto y vano.",
+      "esquema_ensayo_contrastado": false,
+      "estado": "NO_VERIFICABLE_SIN_REGISTRO",
+      "metodo": "M-MEC-1",
+      "vano_mm": 1500.0
+     },
+     "minimo_apto_completo_de_linea": false,
+     "minimo_geometrico_de_linea": false,
+     "minimo_sin_rechazo_de_linea": false,
+     "nombre_familia": "Bandejas portacables en acero inoxidable AISI 304",
+     "procedencia": {
+      "estado_dato": "transcrito",
+      "fila": 363,
+      "fuente_id": "F-008",
+      "hoja": "PRODUCTOS",
+      "pagina_fuente": "p. 1 – Bandeja tramo recto (ítem 1)"
+     },
+     "producto_id": "FAMIQ_300714",
+     "sku": "300714",
+     "tipo_constructivo": "alambre"
+    },
+    {
+     "acabado_normalizado": "no especificado",
+     "ala_nominal_mm": 50.0,
+     "ancho_nominal_mm": 500.0,
+     "condiciones": [
+      "ANCHO_NOMINAL_NO_UTIL",
+      "ALTURA_ALA_NOMINAL_NO_UTIL",
+      "MECANICA_NO_VERIFICABLE_SIN_REGISTRO"
+     ],
+     "diametro_alambre_mm": 4.76,
+     "espesor_chapa_mm": null,
+     "estado": "PRESELECCION_CONDICIONADA",
+     "familia_id": "FAMIQ-ALAMBRE-INOX",
+     "geometria": {
+      "advertencias": [
+       "Ancho útil no publicado: se usa el ancho nominal del catálogo (D-04).",
+       "Alto útil no publicado: se compara el diámetro con el ala nominal (D-08)."
+      ],
+      "altura_referencia_mm": 50.0,
+      "ancho_referencia_mm": 500.0,
+      "base_altura": "ala_nominal",
+      "base_ancho": "nominal",
+      "estado": "CUMPLE",
+      "reserva": {
+       "ancho_libre_mm": 443.3,
+       "ancho_max_ocupable_mm": 400.0,
+       "cabe": true,
+       "condicion": "W_ocupado ≤ (1 − r)·W_ref",
+       "criterio": "fraccion_libre_ancho_bandeja",
+       "cumple": true,
+       "denominador_criterio": "ancho de referencia de la bandeja (W_ref)",
+       "metodo": "M-RES-1",
+       "reserva_libre_pct": 88.66,
+       "reserva_solicitada_pct": 20.0,
+       "sobrante_sobre_ocupado_pct": 781.834
+      }
+     },
+     "mecanica": {
+      "alcance": "Compara solo la masa propia de los cables con la CTA publicada para la misma luz. El esquema del ensayo (número de tramos, posición de uniones, tipo de apoyo) NO se contrasta con la instalación (D-12).",
+      "base_evidencia": null,
+      "carga_cables_kg_m": 0.456,
+      "cta_kg_m": null,
+      "detalle": "El catálogo no tiene carga de trabajo admisible para este producto y vano.",
+      "esquema_ensayo_contrastado": false,
+      "estado": "NO_VERIFICABLE_SIN_REGISTRO",
+      "metodo": "M-MEC-1",
+      "vano_mm": 1500.0
+     },
+     "minimo_apto_completo_de_linea": false,
+     "minimo_geometrico_de_linea": false,
+     "minimo_sin_rechazo_de_linea": false,
+     "nombre_familia": "Bandejas portacables en acero inoxidable AISI 304",
+     "procedencia": {
+      "estado_dato": "transcrito",
+      "fila": 364,
+      "fuente_id": "F-008",
+      "hoja": "PRODUCTOS",
+      "pagina_fuente": "p. 1 – Bandeja tramo recto (ítem 1)"
+     },
+     "producto_id": "FAMIQ_300716",
+     "sku": "300716",
+     "tipo_constructivo": "alambre"
+    },
+    {
+     "acabado_normalizado": "no especificado",
+     "ala_nominal_mm": 50.0,
+     "ancho_nominal_mm": 600.0,
+     "condiciones": [
+      "ANCHO_NOMINAL_NO_UTIL",
+      "ALTURA_ALA_NOMINAL_NO_UTIL",
+      "MECANICA_NO_VERIFICABLE_SIN_REGISTRO"
+     ],
+     "diametro_alambre_mm": 4.76,
+     "espesor_chapa_mm": null,
+     "estado": "PRESELECCION_CONDICIONADA",
+     "familia_id": "FAMIQ-ALAMBRE-INOX",
+     "geometria": {
+      "advertencias": [
+       "Ancho útil no publicado: se usa el ancho nominal del catálogo (D-04).",
+       "Alto útil no publicado: se compara el diámetro con el ala nominal (D-08)."
+      ],
+      "altura_referencia_mm": 50.0,
+      "ancho_referencia_mm": 600.0,
+      "base_altura": "ala_nominal",
+      "base_ancho": "nominal",
+      "estado": "CUMPLE",
+      "reserva": {
+       "ancho_libre_mm": 543.3,
+       "ancho_max_ocupable_mm": 480.0,
+       "cabe": true,
+       "condicion": "W_ocupado ≤ (1 − r)·W_ref",
+       "criterio": "fraccion_libre_ancho_bandeja",
+       "cumple": true,
+       "denominador_criterio": "ancho de referencia de la bandeja (W_ref)",
+       "metodo": "M-RES-1",
+       "reserva_libre_pct": 90.55,
+       "reserva_solicitada_pct": 20.0,
+       "sobrante_sobre_ocupado_pct": 958.201
+      }
+     },
+     "mecanica": {
+      "alcance": "Compara solo la masa propia de los cables con la CTA publicada para la misma luz. El esquema del ensayo (número de tramos, posición de uniones, tipo de apoyo) NO se contrasta con la instalación (D-12).",
+      "base_evidencia": null,
+      "carga_cables_kg_m": 0.456,
+      "cta_kg_m": null,
+      "detalle": "El catálogo no tiene carga de trabajo admisible para este producto y vano.",
+      "esquema_ensayo_contrastado": false,
+      "estado": "NO_VERIFICABLE_SIN_REGISTRO",
+      "metodo": "M-MEC-1",
+      "vano_mm": 1500.0
+     },
+     "minimo_apto_completo_de_linea": false,
+     "minimo_geometrico_de_linea": false,
+     "minimo_sin_rechazo_de_linea": false,
+     "nombre_familia": "Bandejas portacables en acero inoxidable AISI 304",
+     "procedencia": {
+      "estado_dato": "transcrito",
+      "fila": 365,
+      "fuente_id": "F-008",
+      "hoja": "PRODUCTOS",
+      "pagina_fuente": "p. 1 – Bandeja tramo recto (ítem 1)"
+     },
+     "producto_id": "FAMIQ_300717",
+     "sku": "300717",
+     "tipo_constructivo": "alambre"
+    },
+    {
+     "acabado_normalizado": "galvanizado por inmersión en caliente post-fabricación",
+     "ala_nominal_mm": 65.0,
+     "ancho_nominal_mm": 150.0,
+     "condiciones": [
+      "ANCHO_NOMINAL_NO_UTIL",
+      "ALTURA_ALA_NOMINAL_NO_UTIL"
+     ],
+     "diametro_alambre_mm": null,
+     "espesor_chapa_mm": 1.24,
+     "estado": "PRESELECCION_CONDICIONADA",
+     "familia_id": "SAM-STE-G",
+     "geometria": {
+      "advertencias": [
+       "Ancho útil no publicado: se usa el ancho nominal del catálogo (D-04).",
+       "Alto útil no publicado: se compara el diámetro con el ala nominal (D-08)."
+      ],
+      "altura_referencia_mm": 65.0,
+      "ancho_referencia_mm": 150.0,
+      "base_altura": "ala_nominal",
+      "base_ancho": "nominal",
+      "estado": "CUMPLE",
+      "reserva": {
+       "ancho_libre_mm": 93.3,
+       "ancho_max_ocupable_mm": 120.0,
+       "cabe": true,
+       "condicion": "W_ocupado ≤ (1 − r)·W_ref",
+       "criterio": "fraccion_libre_ancho_bandeja",
+       "cumple": true,
+       "denominador_criterio": "ancho de referencia de la bandeja (W_ref)",
+       "metodo": "M-RES-1",
+       "reserva_libre_pct": 62.2,
+       "reserva_solicitada_pct": 20.0,
+       "sobrante_sobre_ocupado_pct": 164.55
+      }
+     },
+     "mecanica": {
+      "alcance": "Compara solo la masa propia de los cables con la CTA publicada para la misma luz. El esquema del ensayo (número de tramos, posición de uniones, tipo de apoyo) NO se contrasta con la instalación (D-12).",
+      "base_evidencia": "documentada",
+      "carga_cables_kg_m": 0.456,
+      "cociente_cta_carga": 679.82,
+      "cta_kg_m": 310.0,
+      "esquema_ensayo_contrastado": false,
+      "estado": "VERIFICADA_CUMPLE",
+      "metodo": "M-MEC-1",
+      "nota_cociente": "CTA/q: compatible con el 'factor de seguridad' mostrado por Samet (H-S1). No es un coeficiente normativo.",
+      "registro": {
+       "carga_unidad": "kg/m",
+       "carga_valor": 310.0,
+       "condiciones_ensayo": "CTA (carga de trabajo admisible). Flecha declarada 6.2 mm. Esquema: dos tramos de 3 m con punto de unión, carga repartida uniformemente.",
+       "criterio_o_norma_declarada": "IEC 61537:2006 – apartado 10.3 (declarado)",
+       "distribucion_carga": "uniformemente distribuida",
+       "estado_evidencia_catalogo": "documentada",
+       "evidencia_motor": "documentada",
+       "fila": 2,
+       "fuente_id": "F-001",
+       "hoja": "TABLAS_CARGA",
+       "luz_entre_apoyos_mm": 1500.0,
+       "pagina_fuente": "PDF 10 / impr. 19",
+       "registro_carga_id": "CAR-0001"
+      },
+      "utilizacion_pct": 0.1471,
+      "vano_mm": 1500.0
+     },
+     "minimo_apto_completo_de_linea": false,
+     "minimo_geometrico_de_linea": true,
+     "minimo_sin_rechazo_de_linea": true,
+     "nombre_familia": "Smarttray Escalera soldada",
+     "procedencia": {
+      "estado_dato": "transcrito",
+      "fila": 2,
+      "fuente_id": "F-001",
+      "hoja": "PRODUCTOS",
+      "pagina_fuente": "PDF 8 / impr. 15"
+     },
+     "producto_id": "SAM_TRES-150-065-18-G",
+     "sku": "TRES-150-065-18-G",
+     "tipo_constructivo": "escalera"
+    },
+    {
+     "acabado_normalizado": "galvanizado por inmersión en caliente post-fabricación",
+     "ala_nominal_mm": 65.0,
+     "ancho_nominal_mm": 300.0,
+     "condiciones": [
+      "ANCHO_NOMINAL_NO_UTIL",
+      "ALTURA_ALA_NOMINAL_NO_UTIL"
+     ],
+     "diametro_alambre_mm": null,
+     "espesor_chapa_mm": 1.24,
+     "estado": "PRESELECCION_CONDICIONADA",
+     "familia_id": "SAM-STE-G",
+     "geometria": {
+      "advertencias": [
+       "Ancho útil no publicado: se usa el ancho nominal del catálogo (D-04).",
+       "Alto útil no publicado: se compara el diámetro con el ala nominal (D-08)."
+      ],
+      "altura_referencia_mm": 65.0,
+      "ancho_referencia_mm": 300.0,
+      "base_altura": "ala_nominal",
+      "base_ancho": "nominal",
+      "estado": "CUMPLE",
+      "reserva": {
+       "ancho_libre_mm": 243.3,
+       "ancho_max_ocupable_mm": 240.0,
+       "cabe": true,
+       "condicion": "W_ocupado ≤ (1 − r)·W_ref",
+       "criterio": "fraccion_libre_ancho_bandeja",
+       "cumple": true,
+       "denominador_criterio": "ancho de referencia de la bandeja (W_ref)",
+       "metodo": "M-RES-1",
+       "reserva_libre_pct": 81.1,
+       "reserva_solicitada_pct": 20.0,
+       "sobrante_sobre_ocupado_pct": 429.101
+      }
+     },
+     "mecanica": {
+      "alcance": "Compara solo la masa propia de los cables con la CTA publicada para la misma luz. El esquema del ensayo (número de tramos, posición de uniones, tipo de apoyo) NO se contrasta con la instalación (D-12).",
+      "base_evidencia": "documentada",
+      "carga_cables_kg_m": 0.456,
+      "cociente_cta_carga": 679.82,
+      "cta_kg_m": 310.0,
+      "esquema_ensayo_contrastado": false,
+      "estado": "VERIFICADA_CUMPLE",
+      "metodo": "M-MEC-1",
+      "nota_cociente": "CTA/q: compatible con el 'factor de seguridad' mostrado por Samet (H-S1). No es un coeficiente normativo.",
+      "registro": {
+       "carga_unidad": "kg/m",
+       "carga_valor": 310.0,
+       "condiciones_ensayo": "CTA (carga de trabajo admisible). Flecha declarada 7.1 mm. Esquema: dos tramos de 3 m con punto de unión, carga repartida uniformemente.",
+       "criterio_o_norma_declarada": "IEC 61537:2006 – apartado 10.3 (declarado)",
+       "distribucion_carga": "uniformemente distribuida",
+       "estado_evidencia_catalogo": "documentada",
+       "evidencia_motor": "documentada",
+       "fila": 7,
+       "fuente_id": "F-001",
+       "hoja": "TABLAS_CARGA",
+       "luz_entre_apoyos_mm": 1500.0,
+       "pagina_fuente": "PDF 10 / impr. 19",
+       "registro_carga_id": "CAR-0006"
+      },
+      "utilizacion_pct": 0.1471,
+      "vano_mm": 1500.0
+     },
+     "minimo_apto_completo_de_linea": false,
+     "minimo_geometrico_de_linea": false,
+     "minimo_sin_rechazo_de_linea": false,
+     "nombre_familia": "Smarttray Escalera soldada",
+     "procedencia": {
+      "estado_dato": "transcrito",
+      "fila": 9,
+      "fuente_id": "F-001",
+      "hoja": "PRODUCTOS",
+      "pagina_fuente": "PDF 8 / impr. 15"
+     },
+     "producto_id": "SAM_TRES-300-065-18-G",
+     "sku": "TRES-300-065-18-G",
+     "tipo_constructivo": "escalera"
+    },
+    {
+     "acabado_normalizado": "galvanizado por inmersión en caliente post-fabricación",
+     "ala_nominal_mm": 65.0,
+     "ancho_nominal_mm": 450.0,
+     "condiciones": [
+      "ANCHO_NOMINAL_NO_UTIL",
+      "ALTURA_ALA_NOMINAL_NO_UTIL"
+     ],
+     "diametro_alambre_mm": null,
+     "espesor_chapa_mm": 1.24,
+     "estado": "PRESELECCION_CONDICIONADA",
+     "familia_id": "SAM-STE-G",
+     "geometria": {
+      "advertencias": [
+       "Ancho útil no publicado: se usa el ancho nominal del catálogo (D-04).",
+       "Alto útil no publicado: se compara el diámetro con el ala nominal (D-08)."
+      ],
+      "altura_referencia_mm": 65.0,
+      "ancho_referencia_mm": 450.0,
+      "base_altura": "ala_nominal",
+      "base_ancho": "nominal",
+      "estado": "CUMPLE",
+      "reserva": {
+       "ancho_libre_mm": 393.3,
+       "ancho_max_ocupable_mm": 360.0,
+       "cabe": true,
+       "condicion": "W_ocupado ≤ (1 − r)·W_ref",
+       "criterio": "fraccion_libre_ancho_bandeja",
+       "cumple": true,
+       "denominador_criterio": "ancho de referencia de la bandeja (W_ref)",
+       "metodo": "M-RES-1",
+       "reserva_libre_pct": 87.4,
+       "reserva_solicitada_pct": 20.0,
+       "sobrante_sobre_ocupado_pct": 693.651
+      }
+     },
+     "mecanica": {
+      "alcance": "Compara solo la masa propia de los cables con la CTA publicada para la misma luz. El esquema del ensayo (número de tramos, posición de uniones, tipo de apoyo) NO se contrasta con la instalación (D-12).",
+      "base_evidencia": "documentada",
+      "carga_cables_kg_m": 0.456,
+      "cociente_cta_carga": 679.82,
+      "cta_kg_m": 310.0,
+      "esquema_ensayo_contrastado": false,
+      "estado": "VERIFICADA_CUMPLE",
+      "metodo": "M-MEC-1",
+      "nota_cociente": "CTA/q: compatible con el 'factor de seguridad' mostrado por Samet (H-S1). No es un coeficiente normativo.",
+      "registro": {
+       "carga_unidad": "kg/m",
+       "carga_valor": 310.0,
+       "condiciones_ensayo": "CTA (carga de trabajo admisible). Flecha declarada 8.6 mm. Esquema: dos tramos de 3 m con punto de unión, carga repartida uniformemente.",
+       "criterio_o_norma_declarada": "IEC 61537:2006 – apartado 10.3 (declarado)",
+       "distribucion_carga": "uniformemente distribuida",
+       "estado_evidencia_catalogo": "documentada",
+       "evidencia_motor": "documentada",
+       "fila": 12,
+       "fuente_id": "F-001",
+       "hoja": "TABLAS_CARGA",
+       "luz_entre_apoyos_mm": 1500.0,
+       "pagina_fuente": "PDF 10 / impr. 19",
+       "registro_carga_id": "CAR-0011"
+      },
+      "utilizacion_pct": 0.1471,
+      "vano_mm": 1500.0
+     },
+     "minimo_apto_completo_de_linea": false,
+     "minimo_geometrico_de_linea": false,
+     "minimo_sin_rechazo_de_linea": false,
+     "nombre_familia": "Smarttray Escalera soldada",
+     "procedencia": {
+      "estado_dato": "transcrito",
+      "fila": 16,
+      "fuente_id": "F-001",
+      "hoja": "PRODUCTOS",
+      "pagina_fuente": "PDF 8 / impr. 15"
+     },
+     "producto_id": "SAM_TRES-450-065-18-G",
+     "sku": "TRES-450-065-18-G",
+     "tipo_constructivo": "escalera"
+    },
+    {
+     "acabado_normalizado": "galvanizado por inmersión en caliente post-fabricación",
+     "ala_nominal_mm": 65.0,
+     "ancho_nominal_mm": 600.0,
+     "condiciones": [
+      "ANCHO_NOMINAL_NO_UTIL",
+      "ALTURA_ALA_NOMINAL_NO_UTIL"
+     ],
+     "diametro_alambre_mm": null,
+     "espesor_chapa_mm": 1.24,
+     "estado": "PRESELECCION_CONDICIONADA",
+     "familia_id": "SAM-STE-G",
+     "geometria": {
+      "advertencias": [
+       "Ancho útil no publicado: se usa el ancho nominal del catálogo (D-04).",
+       "Alto útil no publicado: se compara el diámetro con el ala nominal (D-08)."
+      ],
+      "altura_referencia_mm": 65.0,
+      "ancho_referencia_mm": 600.0,
+      "base_altura": "ala_nominal",
+      "base_ancho": "nominal",
+      "estado": "CUMPLE",
+      "reserva": {
+       "ancho_libre_mm": 543.3,
+       "ancho_max_ocupable_mm": 480.0,
+       "cabe": true,
+       "condicion": "W_ocupado ≤ (1 − r)·W_ref",
+       "criterio": "fraccion_libre_ancho_bandeja",
+       "cumple": true,
+       "denominador_criterio": "ancho de referencia de la bandeja (W_ref)",
+       "metodo": "M-RES-1",
+       "reserva_libre_pct": 90.55,
+       "reserva_solicitada_pct": 20.0,
+       "sobrante_sobre_ocupado_pct": 958.201
+      }
+     },
+     "mecanica": {
+      "alcance": "Compara solo la masa propia de los cables con la CTA publicada para la misma luz. El esquema del ensayo (número de tramos, posición de uniones, tipo de apoyo) NO se contrasta con la instalación (D-12).",
+      "base_evidencia": "documentada",
+      "carga_cables_kg_m": 0.456,
+      "cociente_cta_carga": 679.82,
+      "cta_kg_m": 310.0,
+      "esquema_ensayo_contrastado": false,
+      "estado": "VERIFICADA_CUMPLE",
+      "metodo": "M-MEC-1",
+      "nota_cociente": "CTA/q: compatible con el 'factor de seguridad' mostrado por Samet (H-S1). No es un coeficiente normativo.",
+      "registro": {
+       "carga_unidad": "kg/m",
+       "carga_valor": 310.0,
+       "condiciones_ensayo": "CTA (carga de trabajo admisible). Flecha declarada 9.7 mm. Esquema: dos tramos de 3 m con punto de unión, carga repartida uniformemente.",
+       "criterio_o_norma_declarada": "IEC 61537:2006 – apartado 10.3 (declarado)",
+       "distribucion_carga": "uniformemente distribuida",
+       "estado_evidencia_catalogo": "documentada",
+       "evidencia_motor": "documentada",
+       "fila": 17,
+       "fuente_id": "F-001",
+       "hoja": "TABLAS_CARGA",
+       "luz_entre_apoyos_mm": 1500.0,
+       "pagina_fuente": "PDF 10 / impr. 19",
+       "registro_carga_id": "CAR-0016"
+      },
+      "utilizacion_pct": 0.1471,
+      "vano_mm": 1500.0
+     },
+     "minimo_apto_completo_de_linea": false,
+     "minimo_geometrico_de_linea": false,
+     "minimo_sin_rechazo_de_linea": false,
+     "nombre_familia": "Smarttray Escalera soldada",
+     "procedencia": {
+      "estado_dato": "transcrito",
+      "fila": 23,
+      "fuente_id": "F-001",
+      "hoja": "PRODUCTOS",
+      "pagina_fuente": "PDF 8 / impr. 15"
+     },
+     "producto_id": "SAM_TRES-600-065-18-G",
+     "sku": "TRES-600-065-18-G",
+     "tipo_constructivo": "escalera"
+    },
+    {
+     "acabado_normalizado": "galvanizado por inmersión en caliente post-fabricación",
+     "ala_nominal_mm": 65.0,
+     "ancho_nominal_mm": 150.0,
+     "condiciones": [
+      "ANCHO_NOMINAL_NO_UTIL",
+      "ALTURA_ALA_NOMINAL_NO_UTIL",
+      "MECANICA_NO_VERIFICABLE_SIN_REGISTRO"
+     ],
+     "diametro_alambre_mm": null,
+     "espesor_chapa_mm": 2.1,
+     "estado": "PRESELECCION_CONDICIONADA",
+     "familia_id": "SAM-STE-G",
+     "geometria": {
+      "advertencias": [
+       "Ancho útil no publicado: se usa el ancho nominal del catálogo (D-04).",
+       "Alto útil no publicado: se compara el diámetro con el ala nominal (D-08)."
+      ],
+      "altura_referencia_mm": 65.0,
+      "ancho_referencia_mm": 150.0,
+      "base_altura": "ala_nominal",
+      "base_ancho": "nominal",
+      "estado": "CUMPLE",
+      "reserva": {
+       "ancho_libre_mm": 93.3,
+       "ancho_max_ocupable_mm": 120.0,
+       "cabe": true,
+       "condicion": "W_ocupado ≤ (1 − r)·W_ref",
+       "criterio": "fraccion_libre_ancho_bandeja",
+       "cumple": true,
+       "denominador_criterio": "ancho de referencia de la bandeja (W_ref)",
+       "metodo": "M-RES-1",
+       "reserva_libre_pct": 62.2,
+       "reserva_solicitada_pct": 20.0,
+       "sobrante_sobre_ocupado_pct": 164.55
+      }
+     },
+     "mecanica": {
+      "alcance": "Compara solo la masa propia de los cables con la CTA publicada para la misma luz. El esquema del ensayo (número de tramos, posición de uniones, tipo de apoyo) NO se contrasta con la instalación (D-12).",
+      "base_evidencia": null,
+      "carga_cables_kg_m": 0.456,
+      "cta_kg_m": null,
+      "detalle": "El catálogo no tiene carga de trabajo admisible para este producto y vano.",
+      "esquema_ensayo_contrastado": false,
+      "estado": "NO_VERIFICABLE_SIN_REGISTRO",
+      "metodo": "M-MEC-1",
+      "vano_mm": 1500.0
+     },
+     "minimo_apto_completo_de_linea": false,
+     "minimo_geometrico_de_linea": true,
+     "minimo_sin_rechazo_de_linea": true,
+     "nombre_familia": "Smarttray Escalera soldada",
+     "procedencia": {
+      "estado_dato": "transcrito",
+      "fila": 5,
+      "fuente_id": "F-001",
+      "hoja": "PRODUCTOS",
+      "pagina_fuente": "PDF 8 / impr. 15"
+     },
+     "producto_id": "SAM_TRES-150-065-14-G",
+     "sku": "TRES-150-065-14-G",
+     "tipo_constructivo": "escalera"
+    },
+    {
+     "acabado_normalizado": "galvanizado por inmersión en caliente post-fabricación",
+     "ala_nominal_mm": 65.0,
+     "ancho_nominal_mm": 300.0,
+     "condiciones": [
+      "ANCHO_NOMINAL_NO_UTIL",
+      "ALTURA_ALA_NOMINAL_NO_UTIL",
+      "MECANICA_NO_VERIFICABLE_SIN_REGISTRO"
+     ],
+     "diametro_alambre_mm": null,
+     "espesor_chapa_mm": 2.1,
+     "estado": "PRESELECCION_CONDICIONADA",
+     "familia_id": "SAM-STE-G",
+     "geometria": {
+      "advertencias": [
+       "Ancho útil no publicado: se usa el ancho nominal del catálogo (D-04).",
+       "Alto útil no publicado: se compara el diámetro con el ala nominal (D-08)."
+      ],
+      "altura_referencia_mm": 65.0,
+      "ancho_referencia_mm": 300.0,
+      "base_altura": "ala_nominal",
+      "base_ancho": "nominal",
+      "estado": "CUMPLE",
+      "reserva": {
+       "ancho_libre_mm": 243.3,
+       "ancho_max_ocupable_mm": 240.0,
+       "cabe": true,
+       "condicion": "W_ocupado ≤ (1 − r)·W_ref",
+       "criterio": "fraccion_libre_ancho_bandeja",
+       "cumple": true,
+       "denominador_criterio": "ancho de referencia de la bandeja (W_ref)",
+       "metodo": "M-RES-1",
+       "reserva_libre_pct": 81.1,
+       "reserva_solicitada_pct": 20.0,
+       "sobrante_sobre_ocupado_pct": 429.101
+      }
+     },
+     "mecanica": {
+      "alcance": "Compara solo la masa propia de los cables con la CTA publicada para la misma luz. El esquema del ensayo (número de tramos, posición de uniones, tipo de apoyo) NO se contrasta con la instalación (D-12).",
+      "base_evidencia": null,
+      "carga_cables_kg_m": 0.456,
+      "cta_kg_m": null,
+      "detalle": "El catálogo no tiene carga de trabajo admisible para este producto y vano.",
+      "esquema_ensayo_contrastado": false,
+      "estado": "NO_VERIFICABLE_SIN_REGISTRO",
+      "metodo": "M-MEC-1",
+      "vano_mm": 1500.0
+     },
+     "minimo_apto_completo_de_linea": false,
+     "minimo_geometrico_de_linea": false,
+     "minimo_sin_rechazo_de_linea": false,
+     "nombre_familia": "Smarttray Escalera soldada",
+     "procedencia": {
+      "estado_dato": "transcrito",
+      "fila": 12,
+      "fuente_id": "F-001",
+      "hoja": "PRODUCTOS",
+      "pagina_fuente": "PDF 8 / impr. 15"
+     },
+     "producto_id": "SAM_TRES-300-065-14-G",
+     "sku": "TRES-300-065-14-G",
+     "tipo_constructivo": "escalera"
+    },
+    {
+     "acabado_normalizado": "galvanizado por inmersión en caliente post-fabricación",
+     "ala_nominal_mm": 65.0,
+     "ancho_nominal_mm": 450.0,
+     "condiciones": [
+      "ANCHO_NOMINAL_NO_UTIL",
+      "ALTURA_ALA_NOMINAL_NO_UTIL",
+      "MECANICA_NO_VERIFICABLE_SIN_REGISTRO"
+     ],
+     "diametro_alambre_mm": null,
+     "espesor_chapa_mm": 2.1,
+     "estado": "PRESELECCION_CONDICIONADA",
+     "familia_id": "SAM-STE-G",
+     "geometria": {
+      "advertencias": [
+       "Ancho útil no publicado: se usa el ancho nominal del catálogo (D-04).",
+       "Alto útil no publicado: se compara el diámetro con el ala nominal (D-08)."
+      ],
+      "altura_referencia_mm": 65.0,
+      "ancho_referencia_mm": 450.0,
+      "base_altura": "ala_nominal",
+      "base_ancho": "nominal",
+      "estado": "CUMPLE",
+      "reserva": {
+       "ancho_libre_mm": 393.3,
+       "ancho_max_ocupable_mm": 360.0,
+       "cabe": true,
+       "condicion": "W_ocupado ≤ (1 − r)·W_ref",
+       "criterio": "fraccion_libre_ancho_bandeja",
+       "cumple": true,
+       "denominador_criterio": "ancho de referencia de la bandeja (W_ref)",
+       "metodo": "M-RES-1",
+       "reserva_libre_pct": 87.4,
+       "reserva_solicitada_pct": 20.0,
+       "sobrante_sobre_ocupado_pct": 693.651
+      }
+     },
+     "mecanica": {
+      "alcance": "Compara solo la masa propia de los cables con la CTA publicada para la misma luz. El esquema del ensayo (número de tramos, posición de uniones, tipo de apoyo) NO se contrasta con la instalación (D-12).",
+      "base_evidencia": null,
+      "carga_cables_kg_m": 0.456,
+      "cta_kg_m": null,
+      "detalle": "El catálogo no tiene carga de trabajo admisible para este producto y vano.",
+      "esquema_ensayo_contrastado": false,
+      "estado": "NO_VERIFICABLE_SIN_REGISTRO",
+      "metodo": "M-MEC-1",
+      "vano_mm": 1500.0
+     },
+     "minimo_apto_completo_de_linea": false,
+     "minimo_geometrico_de_linea": false,
+     "minimo_sin_rechazo_de_linea": false,
+     "nombre_familia": "Smarttray Escalera soldada",
+     "procedencia": {
+      "estado_dato": "transcrito",
+      "fila": 19,
+      "fuente_id": "F-001",
+      "hoja": "PRODUCTOS",
+      "pagina_fuente": "PDF 8 / impr. 15"
+     },
+     "producto_id": "SAM_TRES-450-065-14-G",
+     "sku": "TRES-450-065-14-G",
+     "tipo_constructivo": "escalera"
+    },
+    {
+     "acabado_normalizado": "galvanizado por inmersión en caliente post-fabricación",
+     "ala_nominal_mm": 65.0,
+     "ancho_nominal_mm": 600.0,
+     "condiciones": [
+      "ANCHO_NOMINAL_NO_UTIL",
+      "ALTURA_ALA_NOMINAL_NO_UTIL",
+      "MECANICA_NO_VERIFICABLE_SIN_REGISTRO"
+     ],
+     "diametro_alambre_mm": null,
+     "espesor_chapa_mm": 2.1,
+     "estado": "PRESELECCION_CONDICIONADA",
+     "familia_id": "SAM-STE-G",
+     "geometria": {
+      "advertencias": [
+       "Ancho útil no publicado: se usa el ancho nominal del catálogo (D-04).",
+       "Alto útil no publicado: se compara el diámetro con el ala nominal (D-08)."
+      ],
+      "altura_referencia_mm": 65.0,
+      "ancho_referencia_mm": 600.0,
+      "base_altura": "ala_nominal",
+      "base_ancho": "nominal",
+      "estado": "CUMPLE",
+      "reserva": {
+       "ancho_libre_mm": 543.3,
+       "ancho_max_ocupable_mm": 480.0,
+       "cabe": true,
+       "condicion": "W_ocupado ≤ (1 − r)·W_ref",
+       "criterio": "fraccion_libre_ancho_bandeja",
+       "cumple": true,
+       "denominador_criterio": "ancho de referencia de la bandeja (W_ref)",
+       "metodo": "M-RES-1",
+       "reserva_libre_pct": 90.55,
+       "reserva_solicitada_pct": 20.0,
+       "sobrante_sobre_ocupado_pct": 958.201
+      }
+     },
+     "mecanica": {
+      "alcance": "Compara solo la masa propia de los cables con la CTA publicada para la misma luz. El esquema del ensayo (número de tramos, posición de uniones, tipo de apoyo) NO se contrasta con la instalación (D-12).",
+      "base_evidencia": null,
+      "carga_cables_kg_m": 0.456,
+      "cta_kg_m": null,
+      "detalle": "El catálogo no tiene carga de trabajo admisible para este producto y vano.",
+      "esquema_ensayo_contrastado": false,
+      "estado": "NO_VERIFICABLE_SIN_REGISTRO",
+      "metodo": "M-MEC-1",
+      "vano_mm": 1500.0
+     },
+     "minimo_apto_completo_de_linea": false,
+     "minimo_geometrico_de_linea": false,
+     "minimo_sin_rechazo_de_linea": false,
+     "nombre_familia": "Smarttray Escalera soldada",
+     "procedencia": {
+      "estado_dato": "transcrito",
+      "fila": 26,
+      "fuente_id": "F-001",
+      "hoja": "PRODUCTOS",
+      "pagina_fuente": "PDF 8 / impr. 15"
+     },
+     "producto_id": "SAM_TRES-600-065-14-G",
+     "sku": "TRES-600-065-14-G",
+     "tipo_constructivo": "escalera"
+    },
+    {
+     "acabado_normalizado": "galvanizado por inmersión en caliente post-fabricación",
+     "ala_nominal_mm": 90.0,
+     "ancho_nominal_mm": 150.0,
+     "condiciones": [
+      "ANCHO_NOMINAL_NO_UTIL",
+      "ALTURA_ALA_NOMINAL_NO_UTIL"
+     ],
+     "diametro_alambre_mm": null,
+     "espesor_chapa_mm": 1.24,
+     "estado": "PRESELECCION_CONDICIONADA",
+     "familia_id": "SAM-STE-G",
+     "geometria": {
+      "advertencias": [
+       "Ancho útil no publicado: se usa el ancho nominal del catálogo (D-04).",
+       "Alto útil no publicado: se compara el diámetro con el ala nominal (D-08)."
+      ],
+      "altura_referencia_mm": 90.0,
+      "ancho_referencia_mm": 150.0,
+      "base_altura": "ala_nominal",
+      "base_ancho": "nominal",
+      "estado": "CUMPLE",
+      "reserva": {
+       "ancho_libre_mm": 93.3,
+       "ancho_max_ocupable_mm": 120.0,
+       "cabe": true,
+       "condicion": "W_ocupado ≤ (1 − r)·W_ref",
+       "criterio": "fraccion_libre_ancho_bandeja",
+       "cumple": true,
+       "denominador_criterio": "ancho de referencia de la bandeja (W_ref)",
+       "metodo": "M-RES-1",
+       "reserva_libre_pct": 62.2,
+       "reserva_solicitada_pct": 20.0,
+       "sobrante_sobre_ocupado_pct": 164.55
+      }
+     },
+     "mecanica": {
+      "alcance": "Compara solo la masa propia de los cables con la CTA publicada para la misma luz. El esquema del ensayo (número de tramos, posición de uniones, tipo de apoyo) NO se contrasta con la instalación (D-12).",
+      "base_evidencia": "documentada",
+      "carga_cables_kg_m": 0.456,
+      "cociente_cta_carga": 964.91,
+      "cta_kg_m": 440.0,
+      "esquema_ensayo_contrastado": false,
+      "estado": "VERIFICADA_CUMPLE",
+      "metodo": "M-MEC-1",
+      "nota_cociente": "CTA/q: compatible con el 'factor de seguridad' mostrado por Samet (H-S1). No es un coeficiente normativo.",
+      "registro": {
+       "carga_unidad": "kg/m",
+       "carga_valor": 440.0,
+       "condiciones_ensayo": "CTA (carga de trabajo admisible). Flecha declarada 6.5 mm. Esquema: dos tramos de 3 m con punto de unión, carga repartida uniformemente.",
+       "criterio_o_norma_declarada": "IEC 61537:2006 – apartado 10.3 (declarado)",
+       "distribucion_carga": "uniformemente distribuida",
+       "estado_evidencia_catalogo": "documentada",
+       "evidencia_motor": "documentada",
+       "fila": 22,
+       "fuente_id": "F-001",
+       "hoja": "TABLAS_CARGA",
+       "luz_entre_apoyos_mm": 1500.0,
+       "pagina_fuente": "PDF 10 / impr. 19",
+       "registro_carga_id": "CAR-0021"
+      },
+      "utilizacion_pct": 0.1036,
+      "vano_mm": 1500.0
+     },
+     "minimo_apto_completo_de_linea": false,
+     "minimo_geometrico_de_linea": true,
+     "minimo_sin_rechazo_de_linea": true,
+     "nombre_familia": "Smarttray Escalera soldada",
+     "procedencia": {
+      "estado_dato": "transcrito",
+      "fila": 3,
+      "fuente_id": "F-001",
+      "hoja": "PRODUCTOS",
+      "pagina_fuente": "PDF 8 / impr. 15"
+     },
+     "producto_id": "SAM_TRES-150-090-18-G",
+     "sku": "TRES-150-090-18-G",
+     "tipo_constructivo": "escalera"
+    },
+    {
+     "acabado_normalizado": "galvanizado por inmersión en caliente post-fabricación",
+     "ala_nominal_mm": 90.0,
+     "ancho_nominal_mm": 300.0,
+     "condiciones": [
+      "ANCHO_NOMINAL_NO_UTIL",
+      "ALTURA_ALA_NOMINAL_NO_UTIL"
+     ],
+     "diametro_alambre_mm": null,
+     "espesor_chapa_mm": 1.24,
+     "estado": "PRESELECCION_CONDICIONADA",
+     "familia_id": "SAM-STE-G",
+     "geometria": {
+      "advertencias": [
+       "Ancho útil no publicado: se usa el ancho nominal del catálogo (D-04).",
+       "Alto útil no publicado: se compara el diámetro con el ala nominal (D-08)."
+      ],
+      "altura_referencia_mm": 90.0,
+      "ancho_referencia_mm": 300.0,
+      "base_altura": "ala_nominal",
+      "base_ancho": "nominal",
+      "estado": "CUMPLE",
+      "reserva": {
+       "ancho_libre_mm": 243.3,
+       "ancho_max_ocupable_mm": 240.0,
+       "cabe": true,
+       "condicion": "W_ocupado ≤ (1 − r)·W_ref",
+       "criterio": "fraccion_libre_ancho_bandeja",
+       "cumple": true,
+       "denominador_criterio": "ancho de referencia de la bandeja (W_ref)",
+       "metodo": "M-RES-1",
+       "reserva_libre_pct": 81.1,
+       "reserva_solicitada_pct": 20.0,
+       "sobrante_sobre_ocupado_pct": 429.101
+      }
+     },
+     "mecanica": {
+      "alcance": "Compara solo la masa propia de los cables con la CTA publicada para la misma luz. El esquema del ensayo (número de tramos, posición de uniones, tipo de apoyo) NO se contrasta con la instalación (D-12).",
+      "base_evidencia": "documentada",
+      "carga_cables_kg_m": 0.456,
+      "cociente_cta_carga": 964.91,
+      "cta_kg_m": 440.0,
+      "esquema_ensayo_contrastado": false,
+      "estado": "VERIFICADA_CUMPLE",
+      "metodo": "M-MEC-1",
+      "nota_cociente": "CTA/q: compatible con el 'factor de seguridad' mostrado por Samet (H-S1). No es un coeficiente normativo.",
+      "registro": {
+       "carga_unidad": "kg/m",
+       "carga_valor": 440.0,
+       "condiciones_ensayo": "CTA (carga de trabajo admisible). Flecha declarada 8.3 mm. Esquema: dos tramos de 3 m con punto de unión, carga repartida uniformemente.",
+       "criterio_o_norma_declarada": "IEC 61537:2006 – apartado 10.3 (declarado)",
+       "distribucion_carga": "uniformemente distribuida",
+       "estado_evidencia_catalogo": "documentada",
+       "evidencia_motor": "documentada",
+       "fila": 27,
+       "fuente_id": "F-001",
+       "hoja": "TABLAS_CARGA",
+       "luz_entre_apoyos_mm": 1500.0,
+       "pagina_fuente": "PDF 10 / impr. 19",
+       "registro_carga_id": "CAR-0026"
+      },
+      "utilizacion_pct": 0.1036,
+      "vano_mm": 1500.0
+     },
+     "minimo_apto_completo_de_linea": false,
+     "minimo_geometrico_de_linea": false,
+     "minimo_sin_rechazo_de_linea": false,
+     "nombre_familia": "Smarttray Escalera soldada",
+     "procedencia": {
+      "estado_dato": "transcrito",
+      "fila": 10,
+      "fuente_id": "F-001",
+      "hoja": "PRODUCTOS",
+      "pagina_fuente": "PDF 8 / impr. 15"
+     },
+     "producto_id": "SAM_TRES-300-090-18-G",
+     "sku": "TRES-300-090-18-G",
+     "tipo_constructivo": "escalera"
+    },
+    {
+     "acabado_normalizado": "galvanizado por inmersión en caliente post-fabricación",
+     "ala_nominal_mm": 90.0,
+     "ancho_nominal_mm": 450.0,
+     "condiciones": [
+      "ANCHO_NOMINAL_NO_UTIL",
+      "ALTURA_ALA_NOMINAL_NO_UTIL"
+     ],
+     "diametro_alambre_mm": null,
+     "espesor_chapa_mm": 1.24,
+     "estado": "PRESELECCION_CONDICIONADA",
+     "familia_id": "SAM-STE-G",
+     "geometria": {
+      "advertencias": [
+       "Ancho útil no publicado: se usa el ancho nominal del catálogo (D-04).",
+       "Alto útil no publicado: se compara el diámetro con el ala nominal (D-08)."
+      ],
+      "altura_referencia_mm": 90.0,
+      "ancho_referencia_mm": 450.0,
+      "base_altura": "ala_nominal",
+      "base_ancho": "nominal",
+      "estado": "CUMPLE",
+      "reserva": {
+       "ancho_libre_mm": 393.3,
+       "ancho_max_ocupable_mm": 360.0,
+       "cabe": true,
+       "condicion": "W_ocupado ≤ (1 − r)·W_ref",
+       "criterio": "fraccion_libre_ancho_bandeja",
+       "cumple": true,
+       "denominador_criterio": "ancho de referencia de la bandeja (W_ref)",
+       "metodo": "M-RES-1",
+       "reserva_libre_pct": 87.4,
+       "reserva_solicitada_pct": 20.0,
+       "sobrante_sobre_ocupado_pct": 693.651
+      }
+     },
+     "mecanica": {
+      "alcance": "Compara solo la masa propia de los cables con la CTA publicada para la misma luz. El esquema del ensayo (número de tramos, posición de uniones, tipo de apoyo) NO se contrasta con la instalación (D-12).",
+      "base_evidencia": "documentada",
+      "carga_cables_kg_m": 0.456,
+      "cociente_cta_carga": 964.91,
+      "cta_kg_m": 440.0,
+      "esquema_ensayo_contrastado": false,
+      "estado": "VERIFICADA_CUMPLE",
+      "metodo": "M-MEC-1",
+      "nota_cociente": "CTA/q: compatible con el 'factor de seguridad' mostrado por Samet (H-S1). No es un coeficiente normativo.",
+      "registro": {
+       "carga_unidad": "kg/m",
+       "carga_valor": 440.0,
+       "condiciones_ensayo": "CTA (carga de trabajo admisible). Flecha declarada 9.5 mm. Esquema: dos tramos de 3 m con punto de unión, carga repartida uniformemente.",
+       "criterio_o_norma_declarada": "IEC 61537:2006 – apartado 10.3 (declarado)",
+       "distribucion_carga": "uniformemente distribuida",
+       "estado_evidencia_catalogo": "documentada",
+       "evidencia_motor": "documentada",
+       "fila": 32,
+       "fuente_id": "F-001",
+       "hoja": "TABLAS_CARGA",
+       "luz_entre_apoyos_mm": 1500.0,
+       "pagina_fuente": "PDF 10 / impr. 19",
+       "registro_carga_id": "CAR-0031"
+      },
+      "utilizacion_pct": 0.1036,
+      "vano_mm": 1500.0
+     },
+     "minimo_apto_completo_de_linea": false,
+     "minimo_geometrico_de_linea": false,
+     "minimo_sin_rechazo_de_linea": false,
+     "nombre_familia": "Smarttray Escalera soldada",
+     "procedencia": {
+      "estado_dato": "transcrito",
+      "fila": 17,
+      "fuente_id": "F-001",
+      "hoja": "PRODUCTOS",
+      "pagina_fuente": "PDF 8 / impr. 15"
+     },
+     "producto_id": "SAM_TRES-450-090-18-G",
+     "sku": "TRES-450-090-18-G",
+     "tipo_constructivo": "escalera"
+    },
+    {
+     "acabado_normalizado": "galvanizado por inmersión en caliente post-fabricación",
+     "ala_nominal_mm": 90.0,
+     "ancho_nominal_mm": 600.0,
+     "condiciones": [
+      "ANCHO_NOMINAL_NO_UTIL",
+      "ALTURA_ALA_NOMINAL_NO_UTIL"
+     ],
+     "diametro_alambre_mm": null,
+     "espesor_chapa_mm": 1.24,
+     "estado": "PRESELECCION_CONDICIONADA",
+     "familia_id": "SAM-STE-G",
+     "geometria": {
+      "advertencias": [
+       "Ancho útil no publicado: se usa el ancho nominal del catálogo (D-04).",
+       "Alto útil no publicado: se compara el diámetro con el ala nominal (D-08)."
+      ],
+      "altura_referencia_mm": 90.0,
+      "ancho_referencia_mm": 600.0,
+      "base_altura": "ala_nominal",
+      "base_ancho": "nominal",
+      "estado": "CUMPLE",
+      "reserva": {
+       "ancho_libre_mm": 543.3,
+       "ancho_max_ocupable_mm": 480.0,
+       "cabe": true,
+       "condicion": "W_ocupado ≤ (1 − r)·W_ref",
+       "criterio": "fraccion_libre_ancho_bandeja",
+       "cumple": true,
+       "denominador_criterio": "ancho de referencia de la bandeja (W_ref)",
+       "metodo": "M-RES-1",
+       "reserva_libre_pct": 90.55,
+       "reserva_solicitada_pct": 20.0,
+       "sobrante_sobre_ocupado_pct": 958.201
+      }
+     },
+     "mecanica": {
+      "alcance": "Compara solo la masa propia de los cables con la CTA publicada para la misma luz. El esquema del ensayo (número de tramos, posición de uniones, tipo de apoyo) NO se contrasta con la instalación (D-12).",
+      "base_evidencia": "documentada",
+      "carga_cables_kg_m": 0.456,
+      "cociente_cta_carga": 964.91,
+      "cta_kg_m": 440.0,
+      "esquema_ensayo_contrastado": false,
+      "estado": "VERIFICADA_CUMPLE",
+      "metodo": "M-MEC-1",
+      "nota_cociente": "CTA/q: compatible con el 'factor de seguridad' mostrado por Samet (H-S1). No es un coeficiente normativo.",
+      "registro": {
+       "carga_unidad": "kg/m",
+       "carga_valor": 440.0,
+       "condiciones_ensayo": "CTA (carga de trabajo admisible). Flecha declarada 11 mm. Esquema: dos tramos de 3 m con punto de unión, carga repartida uniformemente.",
+       "criterio_o_norma_declarada": "IEC 61537:2006 – apartado 10.3 (declarado)",
+       "distribucion_carga": "uniformemente distribuida",
+       "estado_evidencia_catalogo": "documentada",
+       "evidencia_motor": "documentada",
+       "fila": 37,
+       "fuente_id": "F-001",
+       "hoja": "TABLAS_CARGA",
+       "luz_entre_apoyos_mm": 1500.0,
+       "pagina_fuente": "PDF 10 / impr. 19",
+       "registro_carga_id": "CAR-0036"
+      },
+      "utilizacion_pct": 0.1036,
+      "vano_mm": 1500.0
+     },
+     "minimo_apto_completo_de_linea": false,
+     "minimo_geometrico_de_linea": false,
+     "minimo_sin_rechazo_de_linea": false,
+     "nombre_familia": "Smarttray Escalera soldada",
+     "procedencia": {
+      "estado_dato": "transcrito",
+      "fila": 24,
+      "fuente_id": "F-001",
+      "hoja": "PRODUCTOS",
+      "pagina_fuente": "PDF 8 / impr. 15"
+     },
+     "producto_id": "SAM_TRES-600-090-18-G",
+     "sku": "TRES-600-090-18-G",
+     "tipo_constructivo": "escalera"
+    },
+    {
+     "acabado_normalizado": "galvanizado por inmersión en caliente post-fabricación",
+     "ala_nominal_mm": 90.0,
+     "ancho_nominal_mm": 150.0,
+     "condiciones": [
+      "ANCHO_NOMINAL_NO_UTIL",
+      "ALTURA_ALA_NOMINAL_NO_UTIL",
+      "MECANICA_NO_VERIFICABLE_SIN_REGISTRO"
+     ],
+     "diametro_alambre_mm": null,
+     "espesor_chapa_mm": 2.1,
+     "estado": "PRESELECCION_CONDICIONADA",
+     "familia_id": "SAM-STE-G",
+     "geometria": {
+      "advertencias": [
+       "Ancho útil no publicado: se usa el ancho nominal del catálogo (D-04).",
+       "Alto útil no publicado: se compara el diámetro con el ala nominal (D-08)."
+      ],
+      "altura_referencia_mm": 90.0,
+      "ancho_referencia_mm": 150.0,
+      "base_altura": "ala_nominal",
+      "base_ancho": "nominal",
+      "estado": "CUMPLE",
+      "reserva": {
+       "ancho_libre_mm": 93.3,
+       "ancho_max_ocupable_mm": 120.0,
+       "cabe": true,
+       "condicion": "W_ocupado ≤ (1 − r)·W_ref",
+       "criterio": "fraccion_libre_ancho_bandeja",
+       "cumple": true,
+       "denominador_criterio": "ancho de referencia de la bandeja (W_ref)",
+       "metodo": "M-RES-1",
+       "reserva_libre_pct": 62.2,
+       "reserva_solicitada_pct": 20.0,
+       "sobrante_sobre_ocupado_pct": 164.55
+      }
+     },
+     "mecanica": {
+      "alcance": "Compara solo la masa propia de los cables con la CTA publicada para la misma luz. El esquema del ensayo (número de tramos, posición de uniones, tipo de apoyo) NO se contrasta con la instalación (D-12).",
+      "base_evidencia": null,
+      "carga_cables_kg_m": 0.456,
+      "cta_kg_m": null,
+      "detalle": "El catálogo no tiene carga de trabajo admisible para este producto y vano.",
+      "esquema_ensayo_contrastado": false,
+      "estado": "NO_VERIFICABLE_SIN_REGISTRO",
+      "metodo": "M-MEC-1",
+      "vano_mm": 1500.0
+     },
+     "minimo_apto_completo_de_linea": false,
+     "minimo_geometrico_de_linea": true,
+     "minimo_sin_rechazo_de_linea": true,
+     "nombre_familia": "Smarttray Escalera soldada",
+     "procedencia": {
+      "estado_dato": "transcrito",
+      "fila": 6,
+      "fuente_id": "F-001",
+      "hoja": "PRODUCTOS",
+      "pagina_fuente": "PDF 8 / impr. 15"
+     },
+     "producto_id": "SAM_TRES-150-090-14-G",
+     "sku": "TRES-150-090-14-G",
+     "tipo_constructivo": "escalera"
+    },
+    {
+     "acabado_normalizado": "galvanizado por inmersión en caliente post-fabricación",
+     "ala_nominal_mm": 90.0,
+     "ancho_nominal_mm": 300.0,
+     "condiciones": [
+      "ANCHO_NOMINAL_NO_UTIL",
+      "ALTURA_ALA_NOMINAL_NO_UTIL",
+      "MECANICA_NO_VERIFICABLE_SIN_REGISTRO"
+     ],
+     "diametro_alambre_mm": null,
+     "espesor_chapa_mm": 2.1,
+     "estado": "PRESELECCION_CONDICIONADA",
+     "familia_id": "SAM-STE-G",
+     "geometria": {
+      "advertencias": [
+       "Ancho útil no publicado: se usa el ancho nominal del catálogo (D-04).",
+       "Alto útil no publicado: se compara el diámetro con el ala nominal (D-08)."
+      ],
+      "altura_referencia_mm": 90.0,
+      "ancho_referencia_mm": 300.0,
+      "base_altura": "ala_nominal",
+      "base_ancho": "nominal",
+      "estado": "CUMPLE",
+      "reserva": {
+       "ancho_libre_mm": 243.3,
+       "ancho_max_ocupable_mm": 240.0,
+       "cabe": true,
+       "condicion": "W_ocupado ≤ (1 − r)·W_ref",
+       "criterio": "fraccion_libre_ancho_bandeja",
+       "cumple": true,
+       "denominador_criterio": "ancho de referencia de la bandeja (W_ref)",
+       "metodo": "M-RES-1",
+       "reserva_libre_pct": 81.1,
+       "reserva_solicitada_pct": 20.0,
+       "sobrante_sobre_ocupado_pct": 429.101
+      }
+     },
+     "mecanica": {
+      "alcance": "Compara solo la masa propia de los cables con la CTA publicada para la misma luz. El esquema del ensayo (número de tramos, posición de uniones, tipo de apoyo) NO se contrasta con la instalación (D-12).",
+      "base_evidencia": null,
+      "carga_cables_kg_m": 0.456,
+      "cta_kg_m": null,
+      "detalle": "El catálogo no tiene carga de trabajo admisible para este producto y vano.",
+      "esquema_ensayo_contrastado": false,
+      "estado": "NO_VERIFICABLE_SIN_REGISTRO",
+      "metodo": "M-MEC-1",
+      "vano_mm": 1500.0
+     },
+     "minimo_apto_completo_de_linea": false,
+     "minimo_geometrico_de_linea": false,
+     "minimo_sin_rechazo_de_linea": false,
+     "nombre_familia": "Smarttray Escalera soldada",
+     "procedencia": {
+      "estado_dato": "transcrito",
+      "fila": 13,
+      "fuente_id": "F-001",
+      "hoja": "PRODUCTOS",
+      "pagina_fuente": "PDF 8 / impr. 15"
+     },
+     "producto_id": "SAM_TRES-300-090-14-G",
+     "sku": "TRES-300-090-14-G",
+     "tipo_constructivo": "escalera"
+    },
+    {
+     "acabado_normalizado": "galvanizado por inmersión en caliente post-fabricación",
+     "ala_nominal_mm": 90.0,
+     "ancho_nominal_mm": 450.0,
+     "condiciones": [
+      "ANCHO_NOMINAL_NO_UTIL",
+      "ALTURA_ALA_NOMINAL_NO_UTIL",
+      "MECANICA_NO_VERIFICABLE_SIN_REGISTRO"
+     ],
+     "diametro_alambre_mm": null,
+     "espesor_chapa_mm": 2.1,
+     "estado": "PRESELECCION_CONDICIONADA",
+     "familia_id": "SAM-STE-G",
+     "geometria": {
+      "advertencias": [
+       "Ancho útil no publicado: se usa el ancho nominal del catálogo (D-04).",
+       "Alto útil no publicado: se compara el diámetro con el ala nominal (D-08)."
+      ],
+      "altura_referencia_mm": 90.0,
+      "ancho_referencia_mm": 450.0,
+      "base_altura": "ala_nominal",
+      "base_ancho": "nominal",
+      "estado": "CUMPLE",
+      "reserva": {
+       "ancho_libre_mm": 393.3,
+       "ancho_max_ocupable_mm": 360.0,
+       "cabe": true,
+       "condicion": "W_ocupado ≤ (1 − r)·W_ref",
+       "criterio": "fraccion_libre_ancho_bandeja",
+       "cumple": true,
+       "denominador_criterio": "ancho de referencia de la bandeja (W_ref)",
+       "metodo": "M-RES-1",
+       "reserva_libre_pct": 87.4,
+       "reserva_solicitada_pct": 20.0,
+       "sobrante_sobre_ocupado_pct": 693.651
+      }
+     },
+     "mecanica": {
+      "alcance": "Compara solo la masa propia de los cables con la CTA publicada para la misma luz. El esquema del ensayo (número de tramos, posición de uniones, tipo de apoyo) NO se contrasta con la instalación (D-12).",
+      "base_evidencia": null,
+      "carga_cables_kg_m": 0.456,
+      "cta_kg_m": null,
+      "detalle": "El catálogo no tiene carga de trabajo admisible para este producto y vano.",
+      "esquema_ensayo_contrastado": false,
+      "estado": "NO_VERIFICABLE_SIN_REGISTRO",
+      "metodo": "M-MEC-1",
+      "vano_mm": 1500.0
+     },
+     "minimo_apto_completo_de_linea": false,
+     "minimo_geometrico_de_linea": false,
+     "minimo_sin_rechazo_de_linea": false,
+     "nombre_familia": "Smarttray Escalera soldada",
+     "procedencia": {
+      "estado_dato": "transcrito",
+      "fila": 20,
+      "fuente_id": "F-001",
+      "hoja": "PRODUCTOS",
+      "pagina_fuente": "PDF 8 / impr. 15"
+     },
+     "producto_id": "SAM_TRES-450-090-14-G",
+     "sku": "TRES-450-090-14-G",
+     "tipo_constructivo": "escalera"
+    },
+    {
+     "acabado_normalizado": "galvanizado por inmersión en caliente post-fabricación",
+     "ala_nominal_mm": 90.0,
+     "ancho_nominal_mm": 600.0,
+     "condiciones": [
+      "ANCHO_NOMINAL_NO_UTIL",
+      "ALTURA_ALA_NOMINAL_NO_UTIL",
+      "MECANICA_NO_VERIFICABLE_SIN_REGISTRO"
+     ],
+     "diametro_alambre_mm": null,
+     "espesor_chapa_mm": 2.1,
+     "estado": "PRESELECCION_CONDICIONADA",
+     "familia_id": "SAM-STE-G",
+     "geometria": {
+      "advertencias": [
+       "Ancho útil no publicado: se usa el ancho nominal del catálogo (D-04).",
+       "Alto útil no publicado: se compara el diámetro con el ala nominal (D-08)."
+      ],
+      "altura_referencia_mm": 90.0,
+      "ancho_referencia_mm": 600.0,
+      "base_altura": "ala_nominal",
+      "base_ancho": "nominal",
+      "estado": "CUMPLE",
+      "reserva": {
+       "ancho_libre_mm": 543.3,
+       "ancho_max_ocupable_mm": 480.0,
+       "cabe": true,
+       "condicion": "W_ocupado ≤ (1 − r)·W_ref",
+       "criterio": "fraccion_libre_ancho_bandeja",
+       "cumple": true,
+       "denominador_criterio": "ancho de referencia de la bandeja (W_ref)",
+       "metodo": "M-RES-1",
+       "reserva_libre_pct": 90.55,
+       "reserva_solicitada_pct": 20.0,
+       "sobrante_sobre_ocupado_pct": 958.201
+      }
+     },
+     "mecanica": {
+      "alcance": "Compara solo la masa propia de los cables con la CTA publicada para la misma luz. El esquema del ensayo (número de tramos, posición de uniones, tipo de apoyo) NO se contrasta con la instalación (D-12).",
+      "base_evidencia": null,
+      "carga_cables_kg_m": 0.456,
+      "cta_kg_m": null,
+      "detalle": "El catálogo no tiene carga de trabajo admisible para este producto y vano.",
+      "esquema_ensayo_contrastado": false,
+      "estado": "NO_VERIFICABLE_SIN_REGISTRO",
+      "metodo": "M-MEC-1",
+      "vano_mm": 1500.0
+     },
+     "minimo_apto_completo_de_linea": false,
+     "minimo_geometrico_de_linea": false,
+     "minimo_sin_rechazo_de_linea": false,
+     "nombre_familia": "Smarttray Escalera soldada",
+     "procedencia": {
+      "estado_dato": "transcrito",
+      "fila": 27,
+      "fuente_id": "F-001",
+      "hoja": "PRODUCTOS",
+      "pagina_fuente": "PDF 8 / impr. 15"
+     },
+     "producto_id": "SAM_TRES-600-090-14-G",
+     "sku": "TRES-600-090-14-G",
+     "tipo_constructivo": "escalera"
+    },
+    {
+     "acabado_normalizado": "galvanizado por inmersión en caliente post-fabricación",
+     "ala_nominal_mm": 115.0,
+     "ancho_nominal_mm": 150.0,
+     "condiciones": [
+      "ANCHO_NOMINAL_NO_UTIL",
+      "ALTURA_ALA_NOMINAL_NO_UTIL",
+      "MECANICA_NO_VERIFICABLE_SIN_REGISTRO"
+     ],
+     "diametro_alambre_mm": null,
+     "espesor_chapa_mm": 1.24,
+     "estado": "PRESELECCION_CONDICIONADA",
+     "familia_id": "SAM-STE-G",
+     "geometria": {
+      "advertencias": [
+       "Ancho útil no publicado: se usa el ancho nominal del catálogo (D-04).",
+       "Alto útil no publicado: se compara el diámetro con el ala nominal (D-08)."
+      ],
+      "altura_referencia_mm": 115.0,
+      "ancho_referencia_mm": 150.0,
+      "base_altura": "ala_nominal",
+      "base_ancho": "nominal",
+      "estado": "CUMPLE",
+      "reserva": {
+       "ancho_libre_mm": 93.3,
+       "ancho_max_ocupable_mm": 120.0,
+       "cabe": true,
+       "condicion": "W_ocupado ≤ (1 − r)·W_ref",
+       "criterio": "fraccion_libre_ancho_bandeja",
+       "cumple": true,
+       "denominador_criterio": "ancho de referencia de la bandeja (W_ref)",
+       "metodo": "M-RES-1",
+       "reserva_libre_pct": 62.2,
+       "reserva_solicitada_pct": 20.0,
+       "sobrante_sobre_ocupado_pct": 164.55
+      }
+     },
+     "mecanica": {
+      "alcance": "Compara solo la masa propia de los cables con la CTA publicada para la misma luz. El esquema del ensayo (número de tramos, posición de uniones, tipo de apoyo) NO se contrasta con la instalación (D-12).",
+      "base_evidencia": null,
+      "carga_cables_kg_m": 0.456,
+      "cta_kg_m": null,
+      "detalle": "El catálogo no tiene carga de trabajo admisible para este producto y vano.",
+      "esquema_ensayo_contrastado": false,
+      "estado": "NO_VERIFICABLE_SIN_REGISTRO",
+      "metodo": "M-MEC-1",
+      "vano_mm": 1500.0
+     },
+     "minimo_apto_completo_de_linea": false,
+     "minimo_geometrico_de_linea": true,
+     "minimo_sin_rechazo_de_linea": true,
+     "nombre_familia": "Smarttray Escalera soldada",
+     "procedencia": {
+      "estado_dato": "transcrito",
+      "fila": 4,
+      "fuente_id": "F-001",
+      "hoja": "PRODUCTOS",
+      "pagina_fuente": "PDF 8 / impr. 15"
+     },
+     "producto_id": "SAM_TRES-150-115-18-G",
+     "sku": "TRES-150-115-18-G",
+     "tipo_constructivo": "escalera"
+    },
+    {
+     "acabado_normalizado": "galvanizado por inmersión en caliente post-fabricación",
+     "ala_nominal_mm": 115.0,
+     "ancho_nominal_mm": 300.0,
+     "condiciones": [
+      "ANCHO_NOMINAL_NO_UTIL",
+      "ALTURA_ALA_NOMINAL_NO_UTIL",
+      "MECANICA_NO_VERIFICABLE_SIN_REGISTRO"
+     ],
+     "diametro_alambre_mm": null,
+     "espesor_chapa_mm": 1.24,
+     "estado": "PRESELECCION_CONDICIONADA",
+     "familia_id": "SAM-STE-G",
+     "geometria": {
+      "advertencias": [
+       "Ancho útil no publicado: se usa el ancho nominal del catálogo (D-04).",
+       "Alto útil no publicado: se compara el diámetro con el ala nominal (D-08)."
+      ],
+      "altura_referencia_mm": 115.0,
+      "ancho_referencia_mm": 300.0,
+      "base_altura": "ala_nominal",
+      "base_ancho": "nominal",
+      "estado": "CUMPLE",
+      "reserva": {
+       "ancho_libre_mm": 243.3,
+       "ancho_max_ocupable_mm": 240.0,
+       "cabe": true,
+       "condicion": "W_ocupado ≤ (1 − r)·W_ref",
+       "criterio": "fraccion_libre_ancho_bandeja",
+       "cumple": true,
+       "denominador_criterio": "ancho de referencia de la bandeja (W_ref)",
+       "metodo": "M-RES-1",
+       "reserva_libre_pct": 81.1,
+       "reserva_solicitada_pct": 20.0,
+       "sobrante_sobre_ocupado_pct": 429.101
+      }
+     },
+     "mecanica": {
+      "alcance": "Compara solo la masa propia de los cables con la CTA publicada para la misma luz. El esquema del ensayo (número de tramos, posición de uniones, tipo de apoyo) NO se contrasta con la instalación (D-12).",
+      "base_evidencia": null,
+      "carga_cables_kg_m": 0.456,
+      "cta_kg_m": null,
+      "detalle": "El catálogo no tiene carga de trabajo admisible para este producto y vano.",
+      "esquema_ensayo_contrastado": false,
+      "estado": "NO_VERIFICABLE_SIN_REGISTRO",
+      "metodo": "M-MEC-1",
+      "vano_mm": 1500.0
+     },
+     "minimo_apto_completo_de_linea": false,
+     "minimo_geometrico_de_linea": false,
+     "minimo_sin_rechazo_de_linea": false,
+     "nombre_familia": "Smarttray Escalera soldada",
+     "procedencia": {
+      "estado_dato": "transcrito",
+      "fila": 11,
+      "fuente_id": "F-001",
+      "hoja": "PRODUCTOS",
+      "pagina_fuente": "PDF 8 / impr. 15"
+     },
+     "producto_id": "SAM_TRES-300-115-18-G",
+     "sku": "TRES-300-115-18-G",
+     "tipo_constructivo": "escalera"
+    },
+    {
+     "acabado_normalizado": "galvanizado por inmersión en caliente post-fabricación",
+     "ala_nominal_mm": 115.0,
+     "ancho_nominal_mm": 450.0,
+     "condiciones": [
+      "ANCHO_NOMINAL_NO_UTIL",
+      "ALTURA_ALA_NOMINAL_NO_UTIL",
+      "MECANICA_NO_VERIFICABLE_SIN_REGISTRO"
+     ],
+     "diametro_alambre_mm": null,
+     "espesor_chapa_mm": 1.24,
+     "estado": "PRESELECCION_CONDICIONADA",
+     "familia_id": "SAM-STE-G",
+     "geometria": {
+      "advertencias": [
+       "Ancho útil no publicado: se usa el ancho nominal del catálogo (D-04).",
+       "Alto útil no publicado: se compara el diámetro con el ala nominal (D-08)."
+      ],
+      "altura_referencia_mm": 115.0,
+      "ancho_referencia_mm": 450.0,
+      "base_altura": "ala_nominal",
+      "base_ancho": "nominal",
+      "estado": "CUMPLE",
+      "reserva": {
+       "ancho_libre_mm": 393.3,
+       "ancho_max_ocupable_mm": 360.0,
+       "cabe": true,
+       "condicion": "W_ocupado ≤ (1 − r)·W_ref",
+       "criterio": "fraccion_libre_ancho_bandeja",
+       "cumple": true,
+       "denominador_criterio": "ancho de referencia de la bandeja (W_ref)",
+       "metodo": "M-RES-1",
+       "reserva_libre_pct": 87.4,
+       "reserva_solicitada_pct": 20.0,
+       "sobrante_sobre_ocupado_pct": 693.651
+      }
+     },
+     "mecanica": {
+      "alcance": "Compara solo la masa propia de los cables con la CTA publicada para la misma luz. El esquema del ensayo (número de tramos, posición de uniones, tipo de apoyo) NO se contrasta con la instalación (D-12).",
+      "base_evidencia": null,
+      "carga_cables_kg_m": 0.456,
+      "cta_kg_m": null,
+      "detalle": "El catálogo no tiene carga de trabajo admisible para este producto y vano.",
+      "esquema_ensayo_contrastado": false,
+      "estado": "NO_VERIFICABLE_SIN_REGISTRO",
+      "metodo": "M-MEC-1",
+      "vano_mm": 1500.0
+     },
+     "minimo_apto_completo_de_linea": false,
+     "minimo_geometrico_de_linea": false,
+     "minimo_sin_rechazo_de_linea": false,
+     "nombre_familia": "Smarttray Escalera soldada",
+     "procedencia": {
+      "estado_dato": "transcrito",
+      "fila": 18,
+      "fuente_id": "F-001",
+      "hoja": "PRODUCTOS",
+      "pagina_fuente": "PDF 8 / impr. 15"
+     },
+     "producto_id": "SAM_TRES-450-115-18-G",
+     "sku": "TRES-450-115-18-G",
+     "tipo_constructivo": "escalera"
+    },
+    {
+     "acabado_normalizado": "galvanizado por inmersión en caliente post-fabricación",
+     "ala_nominal_mm": 115.0,
+     "ancho_nominal_mm": 600.0,
+     "condiciones": [
+      "ANCHO_NOMINAL_NO_UTIL",
+      "ALTURA_ALA_NOMINAL_NO_UTIL",
+      "MECANICA_NO_VERIFICABLE_SIN_REGISTRO"
+     ],
+     "diametro_alambre_mm": null,
+     "espesor_chapa_mm": 1.24,
+     "estado": "PRESELECCION_CONDICIONADA",
+     "familia_id": "SAM-STE-G",
+     "geometria": {
+      "advertencias": [
+       "Ancho útil no publicado: se usa el ancho nominal del catálogo (D-04).",
+       "Alto útil no publicado: se compara el diámetro con el ala nominal (D-08)."
+      ],
+      "altura_referencia_mm": 115.0,
+      "ancho_referencia_mm": 600.0,
+      "base_altura": "ala_nominal",
+      "base_ancho": "nominal",
+      "estado": "CUMPLE",
+      "reserva": {
+       "ancho_libre_mm": 543.3,
+       "ancho_max_ocupable_mm": 480.0,
+       "cabe": true,
+       "condicion": "W_ocupado ≤ (1 − r)·W_ref",
+       "criterio": "fraccion_libre_ancho_bandeja",
+       "cumple": true,
+       "denominador_criterio": "ancho de referencia de la bandeja (W_ref)",
+       "metodo": "M-RES-1",
+       "reserva_libre_pct": 90.55,
+       "reserva_solicitada_pct": 20.0,
+       "sobrante_sobre_ocupado_pct": 958.201
+      }
+     },
+     "mecanica": {
+      "alcance": "Compara solo la masa propia de los cables con la CTA publicada para la misma luz. El esquema del ensayo (número de tramos, posición de uniones, tipo de apoyo) NO se contrasta con la instalación (D-12).",
+      "base_evidencia": null,
+      "carga_cables_kg_m": 0.456,
+      "cta_kg_m": null,
+      "detalle": "El catálogo no tiene carga de trabajo admisible para este producto y vano.",
+      "esquema_ensayo_contrastado": false,
+      "estado": "NO_VERIFICABLE_SIN_REGISTRO",
+      "metodo": "M-MEC-1",
+      "vano_mm": 1500.0
+     },
+     "minimo_apto_completo_de_linea": false,
+     "minimo_geometrico_de_linea": false,
+     "minimo_sin_rechazo_de_linea": false,
+     "nombre_familia": "Smarttray Escalera soldada",
+     "procedencia": {
+      "estado_dato": "transcrito",
+      "fila": 25,
+      "fuente_id": "F-001",
+      "hoja": "PRODUCTOS",
+      "pagina_fuente": "PDF 8 / impr. 15"
+     },
+     "producto_id": "SAM_TRES-600-115-18-G",
+     "sku": "TRES-600-115-18-G",
+     "tipo_constructivo": "escalera"
+    },
+    {
+     "acabado_normalizado": "galvanizado por inmersión en caliente post-fabricación",
+     "ala_nominal_mm": 115.0,
+     "ancho_nominal_mm": 150.0,
+     "condiciones": [
+      "ANCHO_NOMINAL_NO_UTIL",
+      "ALTURA_ALA_NOMINAL_NO_UTIL",
+      "MECANICA_NO_VERIFICABLE_SIN_REGISTRO"
+     ],
+     "diametro_alambre_mm": null,
+     "espesor_chapa_mm": 2.1,
+     "estado": "PRESELECCION_CONDICIONADA",
+     "familia_id": "SAM-STE-G",
+     "geometria": {
+      "advertencias": [
+       "Ancho útil no publicado: se usa el ancho nominal del catálogo (D-04).",
+       "Alto útil no publicado: se compara el diámetro con el ala nominal (D-08)."
+      ],
+      "altura_referencia_mm": 115.0,
+      "ancho_referencia_mm": 150.0,
+      "base_altura": "ala_nominal",
+      "base_ancho": "nominal",
+      "estado": "CUMPLE",
+      "reserva": {
+       "ancho_libre_mm": 93.3,
+       "ancho_max_ocupable_mm": 120.0,
+       "cabe": true,
+       "condicion": "W_ocupado ≤ (1 − r)·W_ref",
+       "criterio": "fraccion_libre_ancho_bandeja",
+       "cumple": true,
+       "denominador_criterio": "ancho de referencia de la bandeja (W_ref)",
+       "metodo": "M-RES-1",
+       "reserva_libre_pct": 62.2,
+       "reserva_solicitada_pct": 20.0,
+       "sobrante_sobre_ocupado_pct": 164.55
+      }
+     },
+     "mecanica": {
+      "alcance": "Compara solo la masa propia de los cables con la CTA publicada para la misma luz. El esquema del ensayo (número de tramos, posición de uniones, tipo de apoyo) NO se contrasta con la instalación (D-12).",
+      "base_evidencia": null,
+      "carga_cables_kg_m": 0.456,
+      "cta_kg_m": null,
+      "detalle": "El catálogo no tiene carga de trabajo admisible para este producto y vano.",
+      "esquema_ensayo_contrastado": false,
+      "estado": "NO_VERIFICABLE_SIN_REGISTRO",
+      "metodo": "M-MEC-1",
+      "vano_mm": 1500.0
+     },
+     "minimo_apto_completo_de_linea": false,
+     "minimo_geometrico_de_linea": true,
+     "minimo_sin_rechazo_de_linea": true,
+     "nombre_familia": "Smarttray Escalera soldada",
+     "procedencia": {
+      "estado_dato": "transcrito",
+      "fila": 7,
+      "fuente_id": "F-001",
+      "hoja": "PRODUCTOS",
+      "pagina_fuente": "PDF 8 / impr. 15"
+     },
+     "producto_id": "SAM_TRES-150-115-14-G",
+     "sku": "TRES-150-115-14-G",
+     "tipo_constructivo": "escalera"
+    },
+    {
+     "acabado_normalizado": "galvanizado por inmersión en caliente post-fabricación",
+     "ala_nominal_mm": 115.0,
+     "ancho_nominal_mm": 300.0,
+     "condiciones": [
+      "ANCHO_NOMINAL_NO_UTIL",
+      "ALTURA_ALA_NOMINAL_NO_UTIL",
+      "MECANICA_NO_VERIFICABLE_SIN_REGISTRO"
+     ],
+     "diametro_alambre_mm": null,
+     "espesor_chapa_mm": 2.1,
+     "estado": "PRESELECCION_CONDICIONADA",
+     "familia_id": "SAM-STE-G",
+     "geometria": {
+      "advertencias": [
+       "Ancho útil no publicado: se usa el ancho nominal del catálogo (D-04).",
+       "Alto útil no publicado: se compara el diámetro con el ala nominal (D-08)."
+      ],
+      "altura_referencia_mm": 115.0,
+      "ancho_referencia_mm": 300.0,
+      "base_altura": "ala_nominal",
+      "base_ancho": "nominal",
+      "estado": "CUMPLE",
+      "reserva": {
+       "ancho_libre_mm": 243.3,
+       "ancho_max_ocupable_mm": 240.0,
+       "cabe": true,
+       "condicion": "W_ocupado ≤ (1 − r)·W_ref",
+       "criterio": "fraccion_libre_ancho_bandeja",
+       "cumple": true,
+       "denominador_criterio": "ancho de referencia de la bandeja (W_ref)",
+       "metodo": "M-RES-1",
+       "reserva_libre_pct": 81.1,
+       "reserva_solicitada_pct": 20.0,
+       "sobrante_sobre_ocupado_pct": 429.101
+      }
+     },
+     "mecanica": {
+      "alcance": "Compara solo la masa propia de los cables con la CTA publicada para la misma luz. El esquema del ensayo (número de tramos, posición de uniones, tipo de apoyo) NO se contrasta con la instalación (D-12).",
+      "base_evidencia": null,
+      "carga_cables_kg_m": 0.456,
+      "cta_kg_m": null,
+      "detalle": "El catálogo no tiene carga de trabajo admisible para este producto y vano.",
+      "esquema_ensayo_contrastado": false,
+      "estado": "NO_VERIFICABLE_SIN_REGISTRO",
+      "metodo": "M-MEC-1",
+      "vano_mm": 1500.0
+     },
+     "minimo_apto_completo_de_linea": false,
+     "minimo_geometrico_de_linea": false,
+     "minimo_sin_rechazo_de_linea": false,
+     "nombre_familia": "Smarttray Escalera soldada",
+     "procedencia": {
+      "estado_dato": "transcrito",
+      "fila": 14,
+      "fuente_id": "F-001",
+      "hoja": "PRODUCTOS",
+      "pagina_fuente": "PDF 8 / impr. 15"
+     },
+     "producto_id": "SAM_TRES-300-115-14-G",
+     "sku": "TRES-300-115-14-G",
+     "tipo_constructivo": "escalera"
+    },
+    {
+     "acabado_normalizado": "galvanizado por inmersión en caliente post-fabricación",
+     "ala_nominal_mm": 115.0,
+     "ancho_nominal_mm": 450.0,
+     "condiciones": [
+      "ANCHO_NOMINAL_NO_UTIL",
+      "ALTURA_ALA_NOMINAL_NO_UTIL",
+      "MECANICA_NO_VERIFICABLE_SIN_REGISTRO"
+     ],
+     "diametro_alambre_mm": null,
+     "espesor_chapa_mm": 2.1,
+     "estado": "PRESELECCION_CONDICIONADA",
+     "familia_id": "SAM-STE-G",
+     "geometria": {
+      "advertencias": [
+       "Ancho útil no publicado: se usa el ancho nominal del catálogo (D-04).",
+       "Alto útil no publicado: se compara el diámetro con el ala nominal (D-08)."
+      ],
+      "altura_referencia_mm": 115.0,
+      "ancho_referencia_mm": 450.0,
+      "base_altura": "ala_nominal",
+      "base_ancho": "nominal",
+      "estado": "CUMPLE",
+      "reserva": {
+       "ancho_libre_mm": 393.3,
+       "ancho_max_ocupable_mm": 360.0,
+       "cabe": true,
+       "condicion": "W_ocupado ≤ (1 − r)·W_ref",
+       "criterio": "fraccion_libre_ancho_bandeja",
+       "cumple": true,
+       "denominador_criterio": "ancho de referencia de la bandeja (W_ref)",
+       "metodo": "M-RES-1",
+       "reserva_libre_pct": 87.4,
+       "reserva_solicitada_pct": 20.0,
+       "sobrante_sobre_ocupado_pct": 693.651
+      }
+     },
+     "mecanica": {
+      "alcance": "Compara solo la masa propia de los cables con la CTA publicada para la misma luz. El esquema del ensayo (número de tramos, posición de uniones, tipo de apoyo) NO se contrasta con la instalación (D-12).",
+      "base_evidencia": null,
+      "carga_cables_kg_m": 0.456,
+      "cta_kg_m": null,
+      "detalle": "El catálogo no tiene carga de trabajo admisible para este producto y vano.",
+      "esquema_ensayo_contrastado": false,
+      "estado": "NO_VERIFICABLE_SIN_REGISTRO",
+      "metodo": "M-MEC-1",
+      "vano_mm": 1500.0
+     },
+     "minimo_apto_completo_de_linea": false,
+     "minimo_geometrico_de_linea": false,
+     "minimo_sin_rechazo_de_linea": false,
+     "nombre_familia": "Smarttray Escalera soldada",
+     "procedencia": {
+      "estado_dato": "transcrito",
+      "fila": 21,
+      "fuente_id": "F-001",
+      "hoja": "PRODUCTOS",
+      "pagina_fuente": "PDF 8 / impr. 15"
+     },
+     "producto_id": "SAM_TRES-450-115-14-G",
+     "sku": "TRES-450-115-14-G",
+     "tipo_constructivo": "escalera"
+    },
+    {
+     "acabado_normalizado": "galvanizado por inmersión en caliente post-fabricación",
+     "ala_nominal_mm": 115.0,
+     "ancho_nominal_mm": 600.0,
+     "condiciones": [
+      "ANCHO_NOMINAL_NO_UTIL",
+      "ALTURA_ALA_NOMINAL_NO_UTIL",
+      "MECANICA_NO_VERIFICABLE_SIN_REGISTRO"
+     ],
+     "diametro_alambre_mm": null,
+     "espesor_chapa_mm": 2.1,
+     "estado": "PRESELECCION_CONDICIONADA",
+     "familia_id": "SAM-STE-G",
+     "geometria": {
+      "advertencias": [
+       "Ancho útil no publicado: se usa el ancho nominal del catálogo (D-04).",
+       "Alto útil no publicado: se compara el diámetro con el ala nominal (D-08)."
+      ],
+      "altura_referencia_mm": 115.0,
+      "ancho_referencia_mm": 600.0,
+      "base_altura": "ala_nominal",
+      "base_ancho": "nominal",
+      "estado": "CUMPLE",
+      "reserva": {
+       "ancho_libre_mm": 543.3,
+       "ancho_max_ocupable_mm": 480.0,
+       "cabe": true,
+       "condicion": "W_ocupado ≤ (1 − r)·W_ref",
+       "criterio": "fraccion_libre_ancho_bandeja",
+       "cumple": true,
+       "denominador_criterio": "ancho de referencia de la bandeja (W_ref)",
+       "metodo": "M-RES-1",
+       "reserva_libre_pct": 90.55,
+       "reserva_solicitada_pct": 20.0,
+       "sobrante_sobre_ocupado_pct": 958.201
+      }
+     },
+     "mecanica": {
+      "alcance": "Compara solo la masa propia de los cables con la CTA publicada para la misma luz. El esquema del ensayo (número de tramos, posición de uniones, tipo de apoyo) NO se contrasta con la instalación (D-12).",
+      "base_evidencia": null,
+      "carga_cables_kg_m": 0.456,
+      "cta_kg_m": null,
+      "detalle": "El catálogo no tiene carga de trabajo admisible para este producto y vano.",
+      "esquema_ensayo_contrastado": false,
+      "estado": "NO_VERIFICABLE_SIN_REGISTRO",
+      "metodo": "M-MEC-1",
+      "vano_mm": 1500.0
+     },
+     "minimo_apto_completo_de_linea": false,
+     "minimo_geometrico_de_linea": false,
+     "minimo_sin_rechazo_de_linea": false,
+     "nombre_familia": "Smarttray Escalera soldada",
+     "procedencia": {
+      "estado_dato": "transcrito",
+      "fila": 28,
+      "fuente_id": "F-001",
+      "hoja": "PRODUCTOS",
+      "pagina_fuente": "PDF 8 / impr. 15"
+     },
+     "producto_id": "SAM_TRES-600-115-14-G",
+     "sku": "TRES-600-115-14-G",
+     "tipo_constructivo": "escalera"
+    },
+    {
+     "acabado_normalizado": "galvanizado por inmersión en caliente post-fabricación",
+     "ala_nominal_mm": 150.0,
+     "ancho_nominal_mm": 150.0,
+     "condiciones": [
+      "ANCHO_NOMINAL_NO_UTIL",
+      "ALTURA_ALA_NOMINAL_NO_UTIL",
+      "MECANICA_NO_VERIFICABLE_SIN_REGISTRO"
+     ],
+     "diametro_alambre_mm": null,
+     "espesor_chapa_mm": 2.1,
+     "estado": "PRESELECCION_CONDICIONADA",
+     "familia_id": "SAM-STE-G",
+     "geometria": {
+      "advertencias": [
+       "Ancho útil no publicado: se usa el ancho nominal del catálogo (D-04).",
+       "Alto útil no publicado: se compara el diámetro con el ala nominal (D-08)."
+      ],
+      "altura_referencia_mm": 150.0,
+      "ancho_referencia_mm": 150.0,
+      "base_altura": "ala_nominal",
+      "base_ancho": "nominal",
+      "estado": "CUMPLE",
+      "reserva": {
+       "ancho_libre_mm": 93.3,
+       "ancho_max_ocupable_mm": 120.0,
+       "cabe": true,
+       "condicion": "W_ocupado ≤ (1 − r)·W_ref",
+       "criterio": "fraccion_libre_ancho_bandeja",
+       "cumple": true,
+       "denominador_criterio": "ancho de referencia de la bandeja (W_ref)",
+       "metodo": "M-RES-1",
+       "reserva_libre_pct": 62.2,
+       "reserva_solicitada_pct": 20.0,
+       "sobrante_sobre_ocupado_pct": 164.55
+      }
+     },
+     "mecanica": {
+      "alcance": "Compara solo la masa propia de los cables con la CTA publicada para la misma luz. El esquema del ensayo (número de tramos, posición de uniones, tipo de apoyo) NO se contrasta con la instalación (D-12).",
+      "base_evidencia": null,
+      "carga_cables_kg_m": 0.456,
+      "cta_kg_m": null,
+      "detalle": "El catálogo no tiene carga de trabajo admisible para este producto y vano.",
+      "esquema_ensayo_contrastado": false,
+      "estado": "NO_VERIFICABLE_SIN_REGISTRO",
+      "metodo": "M-MEC-1",
+      "vano_mm": 1500.0
+     },
+     "minimo_apto_completo_de_linea": false,
+     "minimo_geometrico_de_linea": true,
+     "minimo_sin_rechazo_de_linea": true,
+     "nombre_familia": "Smarttray Escalera soldada",
+     "procedencia": {
+      "estado_dato": "transcrito",
+      "fila": 8,
+      "fuente_id": "F-001",
+      "hoja": "PRODUCTOS",
+      "pagina_fuente": "PDF 8 / impr. 15"
+     },
+     "producto_id": "SAM_TRES-150-150-14-G",
+     "sku": "TRES-150-150-14-G",
+     "tipo_constructivo": "escalera"
+    },
+    {
+     "acabado_normalizado": "galvanizado por inmersión en caliente post-fabricación",
+     "ala_nominal_mm": 150.0,
+     "ancho_nominal_mm": 300.0,
+     "condiciones": [
+      "ANCHO_NOMINAL_NO_UTIL",
+      "ALTURA_ALA_NOMINAL_NO_UTIL",
+      "MECANICA_NO_VERIFICABLE_SIN_REGISTRO"
+     ],
+     "diametro_alambre_mm": null,
+     "espesor_chapa_mm": 2.1,
+     "estado": "PRESELECCION_CONDICIONADA",
+     "familia_id": "SAM-STE-G",
+     "geometria": {
+      "advertencias": [
+       "Ancho útil no publicado: se usa el ancho nominal del catálogo (D-04).",
+       "Alto útil no publicado: se compara el diámetro con el ala nominal (D-08)."
+      ],
+      "altura_referencia_mm": 150.0,
+      "ancho_referencia_mm": 300.0,
+      "base_altura": "ala_nominal",
+      "base_ancho": "nominal",
+      "estado": "CUMPLE",
+      "reserva": {
+       "ancho_libre_mm": 243.3,
+       "ancho_max_ocupable_mm": 240.0,
+       "cabe": true,
+       "condicion": "W_ocupado ≤ (1 − r)·W_ref",
+       "criterio": "fraccion_libre_ancho_bandeja",
+       "cumple": true,
+       "denominador_criterio": "ancho de referencia de la bandeja (W_ref)",
+       "metodo": "M-RES-1",
+       "reserva_libre_pct": 81.1,
+       "reserva_solicitada_pct": 20.0,
+       "sobrante_sobre_ocupado_pct": 429.101
+      }
+     },
+     "mecanica": {
+      "alcance": "Compara solo la masa propia de los cables con la CTA publicada para la misma luz. El esquema del ensayo (número de tramos, posición de uniones, tipo de apoyo) NO se contrasta con la instalación (D-12).",
+      "base_evidencia": null,
+      "carga_cables_kg_m": 0.456,
+      "cta_kg_m": null,
+      "detalle": "El catálogo no tiene carga de trabajo admisible para este producto y vano.",
+      "esquema_ensayo_contrastado": false,
+      "estado": "NO_VERIFICABLE_SIN_REGISTRO",
+      "metodo": "M-MEC-1",
+      "vano_mm": 1500.0
+     },
+     "minimo_apto_completo_de_linea": false,
+     "minimo_geometrico_de_linea": false,
+     "minimo_sin_rechazo_de_linea": false,
+     "nombre_familia": "Smarttray Escalera soldada",
+     "procedencia": {
+      "estado_dato": "transcrito",
+      "fila": 15,
+      "fuente_id": "F-001",
+      "hoja": "PRODUCTOS",
+      "pagina_fuente": "PDF 8 / impr. 15"
+     },
+     "producto_id": "SAM_TRES-300-150-14-G",
+     "sku": "TRES-300-150-14-G",
+     "tipo_constructivo": "escalera"
+    },
+    {
+     "acabado_normalizado": "galvanizado por inmersión en caliente post-fabricación",
+     "ala_nominal_mm": 150.0,
+     "ancho_nominal_mm": 450.0,
+     "condiciones": [
+      "ANCHO_NOMINAL_NO_UTIL",
+      "ALTURA_ALA_NOMINAL_NO_UTIL",
+      "MECANICA_NO_VERIFICABLE_SIN_REGISTRO"
+     ],
+     "diametro_alambre_mm": null,
+     "espesor_chapa_mm": 2.1,
+     "estado": "PRESELECCION_CONDICIONADA",
+     "familia_id": "SAM-STE-G",
+     "geometria": {
+      "advertencias": [
+       "Ancho útil no publicado: se usa el ancho nominal del catálogo (D-04).",
+       "Alto útil no publicado: se compara el diámetro con el ala nominal (D-08)."
+      ],
+      "altura_referencia_mm": 150.0,
+      "ancho_referencia_mm": 450.0,
+      "base_altura": "ala_nominal",
+      "base_ancho": "nominal",
+      "estado": "CUMPLE",
+      "reserva": {
+       "ancho_libre_mm": 393.3,
+       "ancho_max_ocupable_mm": 360.0,
+       "cabe": true,
+       "condicion": "W_ocupado ≤ (1 − r)·W_ref",
+       "criterio": "fraccion_libre_ancho_bandeja",
+       "cumple": true,
+       "denominador_criterio": "ancho de referencia de la bandeja (W_ref)",
+       "metodo": "M-RES-1",
+       "reserva_libre_pct": 87.4,
+       "reserva_solicitada_pct": 20.0,
+       "sobrante_sobre_ocupado_pct": 693.651
+      }
+     },
+     "mecanica": {
+      "alcance": "Compara solo la masa propia de los cables con la CTA publicada para la misma luz. El esquema del ensayo (número de tramos, posición de uniones, tipo de apoyo) NO se contrasta con la instalación (D-12).",
+      "base_evidencia": null,
+      "carga_cables_kg_m": 0.456,
+      "cta_kg_m": null,
+      "detalle": "El catálogo no tiene carga de trabajo admisible para este producto y vano.",
+      "esquema_ensayo_contrastado": false,
+      "estado": "NO_VERIFICABLE_SIN_REGISTRO",
+      "metodo": "M-MEC-1",
+      "vano_mm": 1500.0
+     },
+     "minimo_apto_completo_de_linea": false,
+     "minimo_geometrico_de_linea": false,
+     "minimo_sin_rechazo_de_linea": false,
+     "nombre_familia": "Smarttray Escalera soldada",
+     "procedencia": {
+      "estado_dato": "transcrito",
+      "fila": 22,
+      "fuente_id": "F-001",
+      "hoja": "PRODUCTOS",
+      "pagina_fuente": "PDF 8 / impr. 15"
+     },
+     "producto_id": "SAM_TRES-450-150-14-G",
+     "sku": "TRES-450-150-14-G",
+     "tipo_constructivo": "escalera"
+    },
+    {
+     "acabado_normalizado": "galvanizado por inmersión en caliente post-fabricación",
+     "ala_nominal_mm": 150.0,
+     "ancho_nominal_mm": 600.0,
+     "condiciones": [
+      "ANCHO_NOMINAL_NO_UTIL",
+      "ALTURA_ALA_NOMINAL_NO_UTIL",
+      "MECANICA_NO_VERIFICABLE_SIN_REGISTRO"
+     ],
+     "diametro_alambre_mm": null,
+     "espesor_chapa_mm": 2.1,
+     "estado": "PRESELECCION_CONDICIONADA",
+     "familia_id": "SAM-STE-G",
+     "geometria": {
+      "advertencias": [
+       "Ancho útil no publicado: se usa el ancho nominal del catálogo (D-04).",
+       "Alto útil no publicado: se compara el diámetro con el ala nominal (D-08)."
+      ],
+      "altura_referencia_mm": 150.0,
+      "ancho_referencia_mm": 600.0,
+      "base_altura": "ala_nominal",
+      "base_ancho": "nominal",
+      "estado": "CUMPLE",
+      "reserva": {
+       "ancho_libre_mm": 543.3,
+       "ancho_max_ocupable_mm": 480.0,
+       "cabe": true,
+       "condicion": "W_ocupado ≤ (1 − r)·W_ref",
+       "criterio": "fraccion_libre_ancho_bandeja",
+       "cumple": true,
+       "denominador_criterio": "ancho de referencia de la bandeja (W_ref)",
+       "metodo": "M-RES-1",
+       "reserva_libre_pct": 90.55,
+       "reserva_solicitada_pct": 20.0,
+       "sobrante_sobre_ocupado_pct": 958.201
+      }
+     },
+     "mecanica": {
+      "alcance": "Compara solo la masa propia de los cables con la CTA publicada para la misma luz. El esquema del ensayo (número de tramos, posición de uniones, tipo de apoyo) NO se contrasta con la instalación (D-12).",
+      "base_evidencia": null,
+      "carga_cables_kg_m": 0.456,
+      "cta_kg_m": null,
+      "detalle": "El catálogo no tiene carga de trabajo admisible para este producto y vano.",
+      "esquema_ensayo_contrastado": false,
+      "estado": "NO_VERIFICABLE_SIN_REGISTRO",
+      "metodo": "M-MEC-1",
+      "vano_mm": 1500.0
+     },
+     "minimo_apto_completo_de_linea": false,
+     "minimo_geometrico_de_linea": false,
+     "minimo_sin_rechazo_de_linea": false,
+     "nombre_familia": "Smarttray Escalera soldada",
+     "procedencia": {
+      "estado_dato": "transcrito",
+      "fila": 29,
+      "fuente_id": "F-001",
+      "hoja": "PRODUCTOS",
+      "pagina_fuente": "PDF 8 / impr. 15"
+     },
+     "producto_id": "SAM_TRES-600-150-14-G",
+     "sku": "TRES-600-150-14-G",
+     "tipo_constructivo": "escalera"
+    },
+    {
+     "acabado_normalizado": "chapa pregalvanizada en origen",
+     "ala_nominal_mm": 65.0,
+     "ancho_nominal_mm": 150.0,
+     "condiciones": [
+      "ANCHO_NOMINAL_NO_UTIL",
+      "ALTURA_ALA_NOMINAL_NO_UTIL",
+      "CTA_VALIDADA_POR_USUARIO"
+     ],
+     "diametro_alambre_mm": null,
+     "espesor_chapa_mm": 1.24,
+     "estado": "PRESELECCION_CONDICIONADA",
+     "familia_id": "SAM-STE-Z",
+     "geometria": {
+      "advertencias": [
+       "Ancho útil no publicado: se usa el ancho nominal del catálogo (D-04).",
+       "Alto útil no publicado: se compara el diámetro con el ala nominal (D-08)."
+      ],
+      "altura_referencia_mm": 65.0,
+      "ancho_referencia_mm": 150.0,
+      "base_altura": "ala_nominal",
+      "base_ancho": "nominal",
+      "estado": "CUMPLE",
+      "reserva": {
+       "ancho_libre_mm": 93.3,
+       "ancho_max_ocupable_mm": 120.0,
+       "cabe": true,
+       "condicion": "W_ocupado ≤ (1 − r)·W_ref",
+       "criterio": "fraccion_libre_ancho_bandeja",
+       "cumple": true,
+       "denominador_criterio": "ancho de referencia de la bandeja (W_ref)",
+       "metodo": "M-RES-1",
+       "reserva_libre_pct": 62.2,
+       "reserva_solicitada_pct": 20.0,
+       "sobrante_sobre_ocupado_pct": 164.55
+      }
+     },
+     "mecanica": {
+      "advertencia": "Registros de carga múltiples para la misma luz con valores distintos; se usó el menor.",
+      "alcance": "Compara solo la masa propia de los cables con la CTA publicada para la misma luz. El esquema del ensayo (número de tramos, posición de uniones, tipo de apoyo) NO se contrasta con la instalación (D-12).",
+      "base_evidencia": "validada_por_usuario",
+      "carga_cables_kg_m": 0.456,
+      "cociente_cta_carga": 635.96,
+      "cta_kg_m": 290.0,
+      "esquema_ensayo_contrastado": false,
+      "estado": "CUMPLE_CONDICIONADO",
+      "metodo": "M-MEC-1",
+      "nota_cociente": "CTA/q: compatible con el 'factor de seguridad' mostrado por Samet (H-S1). No es un coeficiente normativo.",
+      "registro": {
+       "carga_unidad": "kg/m",
+       "carga_valor": 290.0,
+       "condiciones_ensayo": "Valor adoptado: menor entre CAR-0090 (F-001, 300 kg/m a 1500 mm) y CAR-0091 (F-004, 290 kg/m sin luz). No demuestra equivalencia de condiciones de ensayo.",
+       "criterio_o_norma_declarada": "Regla del usuario REV-020 (el menor)",
+       "distribucion_carga": "uniformemente distribuida",
+       "estado_evidencia_catalogo": "validada por usuario",
+       "evidencia_motor": "validada_por_usuario",
+       "fila": 47,
+       "fuente_id": "F-005",
+       "hoja": "TABLAS_CARGA",
+       "luz_entre_apoyos_mm": 1500.0,
+       "pagina_fuente": "REV-020 / REV-043",
+       "registro_carga_id": "CAR-0046"
+      },
+      "utilizacion_pct": 0.1572,
+      "vano_mm": 1500.0
+     },
+     "minimo_apto_completo_de_linea": false,
+     "minimo_geometrico_de_linea": true,
+     "minimo_sin_rechazo_de_linea": true,
+     "nombre_familia": "Smarttray Escalera ensamble en frío",
+     "procedencia": {
+      "estado_dato": "transcrito",
+      "fila": 426,
+      "fuente_id": "F-001",
+      "hoja": "PRODUCTOS",
+      "pagina_fuente": "PDF 4 / impr. 7"
+     },
+     "producto_id": "SAM_TRES-150-065-18-Z",
+     "sku": "TRES-150-065-18-Z",
+     "tipo_constructivo": "escalera"
+    },
+    {
+     "acabado_normalizado": "chapa pregalvanizada en origen",
+     "ala_nominal_mm": 65.0,
+     "ancho_nominal_mm": 300.0,
+     "condiciones": [
+      "ANCHO_NOMINAL_NO_UTIL",
+      "ALTURA_ALA_NOMINAL_NO_UTIL",
+      "CTA_VALIDADA_POR_USUARIO"
+     ],
+     "diametro_alambre_mm": null,
+     "espesor_chapa_mm": 1.24,
+     "estado": "PRESELECCION_CONDICIONADA",
+     "familia_id": "SAM-STE-Z",
+     "geometria": {
+      "advertencias": [
+       "Ancho útil no publicado: se usa el ancho nominal del catálogo (D-04).",
+       "Alto útil no publicado: se compara el diámetro con el ala nominal (D-08)."
+      ],
+      "altura_referencia_mm": 65.0,
+      "ancho_referencia_mm": 300.0,
+      "base_altura": "ala_nominal",
+      "base_ancho": "nominal",
+      "estado": "CUMPLE",
+      "reserva": {
+       "ancho_libre_mm": 243.3,
+       "ancho_max_ocupable_mm": 240.0,
+       "cabe": true,
+       "condicion": "W_ocupado ≤ (1 − r)·W_ref",
+       "criterio": "fraccion_libre_ancho_bandeja",
+       "cumple": true,
+       "denominador_criterio": "ancho de referencia de la bandeja (W_ref)",
+       "metodo": "M-RES-1",
+       "reserva_libre_pct": 81.1,
+       "reserva_solicitada_pct": 20.0,
+       "sobrante_sobre_ocupado_pct": 429.101
+      }
+     },
+     "mecanica": {
+      "advertencia": "Registros de carga múltiples para la misma luz con valores distintos; se usó el menor.",
+      "alcance": "Compara solo la masa propia de los cables con la CTA publicada para la misma luz. El esquema del ensayo (número de tramos, posición de uniones, tipo de apoyo) NO se contrasta con la instalación (D-12).",
+      "base_evidencia": "validada_por_usuario",
+      "carga_cables_kg_m": 0.456,
+      "cociente_cta_carga": 635.96,
+      "cta_kg_m": 290.0,
+      "esquema_ensayo_contrastado": false,
+      "estado": "CUMPLE_CONDICIONADO",
+      "metodo": "M-MEC-1",
+      "nota_cociente": "CTA/q: compatible con el 'factor de seguridad' mostrado por Samet (H-S1). No es un coeficiente normativo.",
+      "registro": {
+       "carga_unidad": "kg/m",
+       "carga_valor": 290.0,
+       "condiciones_ensayo": "Valor adoptado: menor entre CAR-0092 (F-001, 300 kg/m a 1500 mm) y CAR-0093 (F-004, 290 kg/m sin luz). No demuestra equivalencia de condiciones de ensayo.",
+       "criterio_o_norma_declarada": "Regla del usuario REV-020 (el menor)",
+       "distribucion_carga": "uniformemente distribuida",
+       "estado_evidencia_catalogo": "validada por usuario",
+       "evidencia_motor": "validada_por_usuario",
+       "fila": 52,
+       "fuente_id": "F-005",
+       "hoja": "TABLAS_CARGA",
+       "luz_entre_apoyos_mm": 1500.0,
+       "pagina_fuente": "REV-020 / REV-043",
+       "registro_carga_id": "CAR-0051"
+      },
+      "utilizacion_pct": 0.1572,
+      "vano_mm": 1500.0
+     },
+     "minimo_apto_completo_de_linea": false,
+     "minimo_geometrico_de_linea": false,
+     "minimo_sin_rechazo_de_linea": false,
+     "nombre_familia": "Smarttray Escalera ensamble en frío",
+     "procedencia": {
+      "estado_dato": "transcrito",
+      "fila": 429,
+      "fuente_id": "F-001",
+      "hoja": "PRODUCTOS",
+      "pagina_fuente": "PDF 4 / impr. 7"
+     },
+     "producto_id": "SAM_TRES-300-065-18-Z",
+     "sku": "TRES-300-065-18-Z",
+     "tipo_constructivo": "escalera"
+    },
+    {
+     "acabado_normalizado": "chapa pregalvanizada en origen",
+     "ala_nominal_mm": 65.0,
+     "ancho_nominal_mm": 450.0,
+     "condiciones": [
+      "ANCHO_NOMINAL_NO_UTIL",
+      "ALTURA_ALA_NOMINAL_NO_UTIL",
+      "CTA_VALIDADA_POR_USUARIO"
+     ],
+     "diametro_alambre_mm": null,
+     "espesor_chapa_mm": 1.24,
+     "estado": "PRESELECCION_CONDICIONADA",
+     "familia_id": "SAM-STE-Z",
+     "geometria": {
+      "advertencias": [
+       "Ancho útil no publicado: se usa el ancho nominal del catálogo (D-04).",
+       "Alto útil no publicado: se compara el diámetro con el ala nominal (D-08)."
+      ],
+      "altura_referencia_mm": 65.0,
+      "ancho_referencia_mm": 450.0,
+      "base_altura": "ala_nominal",
+      "base_ancho": "nominal",
+      "estado": "CUMPLE",
+      "reserva": {
+       "ancho_libre_mm": 393.3,
+       "ancho_max_ocupable_mm": 360.0,
+       "cabe": true,
+       "condicion": "W_ocupado ≤ (1 − r)·W_ref",
+       "criterio": "fraccion_libre_ancho_bandeja",
+       "cumple": true,
+       "denominador_criterio": "ancho de referencia de la bandeja (W_ref)",
+       "metodo": "M-RES-1",
+       "reserva_libre_pct": 87.4,
+       "reserva_solicitada_pct": 20.0,
+       "sobrante_sobre_ocupado_pct": 693.651
+      }
+     },
+     "mecanica": {
+      "advertencia": "Registros de carga múltiples para la misma luz con valores distintos; se usó el menor.",
+      "alcance": "Compara solo la masa propia de los cables con la CTA publicada para la misma luz. El esquema del ensayo (número de tramos, posición de uniones, tipo de apoyo) NO se contrasta con la instalación (D-12).",
+      "base_evidencia": "validada_por_usuario",
+      "carga_cables_kg_m": 0.456,
+      "cociente_cta_carga": 635.96,
+      "cta_kg_m": 290.0,
+      "esquema_ensayo_contrastado": false,
+      "estado": "CUMPLE_CONDICIONADO",
+      "metodo": "M-MEC-1",
+      "nota_cociente": "CTA/q: compatible con el 'factor de seguridad' mostrado por Samet (H-S1). No es un coeficiente normativo.",
+      "registro": {
+       "carga_unidad": "kg/m",
+       "carga_valor": 290.0,
+       "condiciones_ensayo": "Valor adoptado: menor entre CAR-0094 (F-001, 300 kg/m a 1500 mm) y CAR-0095 (F-004, 290 kg/m sin luz). No demuestra equivalencia de condiciones de ensayo.",
+       "criterio_o_norma_declarada": "Regla del usuario REV-020 (el menor)",
+       "distribucion_carga": "uniformemente distribuida",
+       "estado_evidencia_catalogo": "validada por usuario",
+       "evidencia_motor": "validada_por_usuario",
+       "fila": 57,
+       "fuente_id": "F-005",
+       "hoja": "TABLAS_CARGA",
+       "luz_entre_apoyos_mm": 1500.0,
+       "pagina_fuente": "REV-020 / REV-043",
+       "registro_carga_id": "CAR-0056"
+      },
+      "utilizacion_pct": 0.1572,
+      "vano_mm": 1500.0
+     },
+     "minimo_apto_completo_de_linea": false,
+     "minimo_geometrico_de_linea": false,
+     "minimo_sin_rechazo_de_linea": false,
+     "nombre_familia": "Smarttray Escalera ensamble en frío",
+     "procedencia": {
+      "estado_dato": "transcrito",
+      "fila": 432,
+      "fuente_id": "F-001",
+      "hoja": "PRODUCTOS",
+      "pagina_fuente": "PDF 4 / impr. 7"
+     },
+     "producto_id": "SAM_TRES-450-065-18-Z",
+     "sku": "TRES-450-065-18-Z",
+     "tipo_constructivo": "escalera"
+    },
+    {
+     "acabado_normalizado": "chapa pregalvanizada en origen",
+     "ala_nominal_mm": 65.0,
+     "ancho_nominal_mm": 600.0,
+     "condiciones": [
+      "ANCHO_NOMINAL_NO_UTIL",
+      "ALTURA_ALA_NOMINAL_NO_UTIL",
+      "CTA_VALIDADA_POR_USUARIO"
+     ],
+     "diametro_alambre_mm": null,
+     "espesor_chapa_mm": 1.24,
+     "estado": "PRESELECCION_CONDICIONADA",
+     "familia_id": "SAM-STE-Z",
+     "geometria": {
+      "advertencias": [
+       "Ancho útil no publicado: se usa el ancho nominal del catálogo (D-04).",
+       "Alto útil no publicado: se compara el diámetro con el ala nominal (D-08)."
+      ],
+      "altura_referencia_mm": 65.0,
+      "ancho_referencia_mm": 600.0,
+      "base_altura": "ala_nominal",
+      "base_ancho": "nominal",
+      "estado": "CUMPLE",
+      "reserva": {
+       "ancho_libre_mm": 543.3,
+       "ancho_max_ocupable_mm": 480.0,
+       "cabe": true,
+       "condicion": "W_ocupado ≤ (1 − r)·W_ref",
+       "criterio": "fraccion_libre_ancho_bandeja",
+       "cumple": true,
+       "denominador_criterio": "ancho de referencia de la bandeja (W_ref)",
+       "metodo": "M-RES-1",
+       "reserva_libre_pct": 90.55,
+       "reserva_solicitada_pct": 20.0,
+       "sobrante_sobre_ocupado_pct": 958.201
+      }
+     },
+     "mecanica": {
+      "advertencia": "Registros de carga múltiples para la misma luz con valores distintos; se usó el menor.",
+      "alcance": "Compara solo la masa propia de los cables con la CTA publicada para la misma luz. El esquema del ensayo (número de tramos, posición de uniones, tipo de apoyo) NO se contrasta con la instalación (D-12).",
+      "base_evidencia": "validada_por_usuario",
+      "carga_cables_kg_m": 0.456,
+      "cociente_cta_carga": 635.96,
+      "cta_kg_m": 290.0,
+      "esquema_ensayo_contrastado": false,
+      "estado": "CUMPLE_CONDICIONADO",
+      "metodo": "M-MEC-1",
+      "nota_cociente": "CTA/q: compatible con el 'factor de seguridad' mostrado por Samet (H-S1). No es un coeficiente normativo.",
+      "registro": {
+       "carga_unidad": "kg/m",
+       "carga_valor": 290.0,
+       "condiciones_ensayo": "Valor adoptado: menor entre CAR-0096 (F-001, 300 kg/m a 1500 mm) y CAR-0097 (F-004, 290 kg/m sin luz). No demuestra equivalencia de condiciones de ensayo.",
+       "criterio_o_norma_declarada": "Regla del usuario REV-020 (el menor)",
+       "distribucion_carga": "uniformemente distribuida",
+       "estado_evidencia_catalogo": "validada por usuario",
+       "evidencia_motor": "validada_por_usuario",
+       "fila": 62,
+       "fuente_id": "F-005",
+       "hoja": "TABLAS_CARGA",
+       "luz_entre_apoyos_mm": 1500.0,
+       "pagina_fuente": "REV-020 / REV-043",
+       "registro_carga_id": "CAR-0061"
+      },
+      "utilizacion_pct": 0.1572,
+      "vano_mm": 1500.0
+     },
+     "minimo_apto_completo_de_linea": false,
+     "minimo_geometrico_de_linea": false,
+     "minimo_sin_rechazo_de_linea": false,
+     "nombre_familia": "Smarttray Escalera ensamble en frío",
+     "procedencia": {
+      "estado_dato": "transcrito",
+      "fila": 435,
+      "fuente_id": "F-001",
+      "hoja": "PRODUCTOS",
+      "pagina_fuente": "PDF 4 / impr. 7"
+     },
+     "producto_id": "SAM_TRES-600-065-18-Z",
+     "sku": "TRES-600-065-18-Z",
+     "tipo_constructivo": "escalera"
+    },
+    {
+     "acabado_normalizado": "chapa pregalvanizada en origen",
+     "ala_nominal_mm": 90.0,
+     "ancho_nominal_mm": 150.0,
+     "condiciones": [
+      "ANCHO_NOMINAL_NO_UTIL",
+      "ALTURA_ALA_NOMINAL_NO_UTIL"
+     ],
+     "diametro_alambre_mm": null,
+     "espesor_chapa_mm": 1.24,
+     "estado": "PRESELECCION_CONDICIONADA",
+     "familia_id": "SAM-STE-Z",
+     "geometria": {
+      "advertencias": [
+       "Ancho útil no publicado: se usa el ancho nominal del catálogo (D-04).",
+       "Alto útil no publicado: se compara el diámetro con el ala nominal (D-08)."
+      ],
+      "altura_referencia_mm": 90.0,
+      "ancho_referencia_mm": 150.0,
+      "base_altura": "ala_nominal",
+      "base_ancho": "nominal",
+      "estado": "CUMPLE",
+      "reserva": {
+       "ancho_libre_mm": 93.3,
+       "ancho_max_ocupable_mm": 120.0,
+       "cabe": true,
+       "condicion": "W_ocupado ≤ (1 − r)·W_ref",
+       "criterio": "fraccion_libre_ancho_bandeja",
+       "cumple": true,
+       "denominador_criterio": "ancho de referencia de la bandeja (W_ref)",
+       "metodo": "M-RES-1",
+       "reserva_libre_pct": 62.2,
+       "reserva_solicitada_pct": 20.0,
+       "sobrante_sobre_ocupado_pct": 164.55
+      }
+     },
+     "mecanica": {
+      "alcance": "Compara solo la masa propia de los cables con la CTA publicada para la misma luz. El esquema del ensayo (número de tramos, posición de uniones, tipo de apoyo) NO se contrasta con la instalación (D-12).",
+      "base_evidencia": "documentada",
+      "carga_cables_kg_m": 0.456,
+      "cociente_cta_carga": 877.19,
+      "cta_kg_m": 400.0,
+      "esquema_ensayo_contrastado": false,
+      "estado": "VERIFICADA_CUMPLE",
+      "metodo": "M-MEC-1",
+      "nota_cociente": "CTA/q: compatible con el 'factor de seguridad' mostrado por Samet (H-S1). No es un coeficiente normativo.",
+      "registro": {
+       "carga_unidad": "kg/m",
+       "carga_valor": 400.0,
+       "condiciones_ensayo": "CTA. Flecha declarada 7.6 mm. Esquema: dos tramos de 3 m con punto de unión.",
+       "criterio_o_norma_declarada": "IEC 61537:2006 – apartado 10.3 (declarado)",
+       "distribucion_carga": "uniformemente distribuida",
+       "estado_evidencia_catalogo": "documentada",
+       "evidencia_motor": "documentada",
+       "fila": 67,
+       "fuente_id": "F-001",
+       "hoja": "TABLAS_CARGA",
+       "luz_entre_apoyos_mm": 1500.0,
+       "pagina_fuente": "PDF 7 / impr. 12",
+       "registro_carga_id": "CAR-0066"
+      },
+      "utilizacion_pct": 0.114,
+      "vano_mm": 1500.0
+     },
+     "minimo_apto_completo_de_linea": false,
+     "minimo_geometrico_de_linea": true,
+     "minimo_sin_rechazo_de_linea": true,
+     "nombre_familia": "Smarttray Escalera ensamble en frío",
+     "procedencia": {
+      "estado_dato": "transcrito",
+      "fila": 427,
+      "fuente_id": "F-001",
+      "hoja": "PRODUCTOS",
+      "pagina_fuente": "PDF 4 / impr. 7"
+     },
+     "producto_id": "SAM_TRES-150-090-18-Z",
+     "sku": "TRES-150-090-18-Z",
+     "tipo_constructivo": "escalera"
+    },
+    {
+     "acabado_normalizado": "chapa pregalvanizada en origen",
+     "ala_nominal_mm": 90.0,
+     "ancho_nominal_mm": 300.0,
+     "condiciones": [
+      "ANCHO_NOMINAL_NO_UTIL",
+      "ALTURA_ALA_NOMINAL_NO_UTIL"
+     ],
+     "diametro_alambre_mm": null,
+     "espesor_chapa_mm": 1.24,
+     "estado": "PRESELECCION_CONDICIONADA",
+     "familia_id": "SAM-STE-Z",
+     "geometria": {
+      "advertencias": [
+       "Ancho útil no publicado: se usa el ancho nominal del catálogo (D-04).",
+       "Alto útil no publicado: se compara el diámetro con el ala nominal (D-08)."
+      ],
+      "altura_referencia_mm": 90.0,
+      "ancho_referencia_mm": 300.0,
+      "base_altura": "ala_nominal",
+      "base_ancho": "nominal",
+      "estado": "CUMPLE",
+      "reserva": {
+       "ancho_libre_mm": 243.3,
+       "ancho_max_ocupable_mm": 240.0,
+       "cabe": true,
+       "condicion": "W_ocupado ≤ (1 − r)·W_ref",
+       "criterio": "fraccion_libre_ancho_bandeja",
+       "cumple": true,
+       "denominador_criterio": "ancho de referencia de la bandeja (W_ref)",
+       "metodo": "M-RES-1",
+       "reserva_libre_pct": 81.1,
+       "reserva_solicitada_pct": 20.0,
+       "sobrante_sobre_ocupado_pct": 429.101
+      }
+     },
+     "mecanica": {
+      "alcance": "Compara solo la masa propia de los cables con la CTA publicada para la misma luz. El esquema del ensayo (número de tramos, posición de uniones, tipo de apoyo) NO se contrasta con la instalación (D-12).",
+      "base_evidencia": "documentada",
+      "carga_cables_kg_m": 0.456,
+      "cociente_cta_carga": 877.19,
+      "cta_kg_m": 400.0,
+      "esquema_ensayo_contrastado": false,
+      "estado": "VERIFICADA_CUMPLE",
+      "metodo": "M-MEC-1",
+      "nota_cociente": "CTA/q: compatible con el 'factor de seguridad' mostrado por Samet (H-S1). No es un coeficiente normativo.",
+      "registro": {
+       "carga_unidad": "kg/m",
+       "carga_valor": 400.0,
+       "condiciones_ensayo": "CTA. Flecha declarada 8.5 mm. Esquema: dos tramos de 3 m con punto de unión.",
+       "criterio_o_norma_declarada": "IEC 61537:2006 – apartado 10.3 (declarado)",
+       "distribucion_carga": "uniformemente distribuida",
+       "estado_evidencia_catalogo": "documentada",
+       "evidencia_motor": "documentada",
+       "fila": 72,
+       "fuente_id": "F-001",
+       "hoja": "TABLAS_CARGA",
+       "luz_entre_apoyos_mm": 1500.0,
+       "pagina_fuente": "PDF 7 / impr. 12",
+       "registro_carga_id": "CAR-0071"
+      },
+      "utilizacion_pct": 0.114,
+      "vano_mm": 1500.0
+     },
+     "minimo_apto_completo_de_linea": false,
+     "minimo_geometrico_de_linea": false,
+     "minimo_sin_rechazo_de_linea": false,
+     "nombre_familia": "Smarttray Escalera ensamble en frío",
+     "procedencia": {
+      "estado_dato": "transcrito",
+      "fila": 430,
+      "fuente_id": "F-001",
+      "hoja": "PRODUCTOS",
+      "pagina_fuente": "PDF 4 / impr. 7"
+     },
+     "producto_id": "SAM_TRES-300-090-18-Z",
+     "sku": "TRES-300-090-18-Z",
+     "tipo_constructivo": "escalera"
+    },
+    {
+     "acabado_normalizado": "chapa pregalvanizada en origen",
+     "ala_nominal_mm": 90.0,
+     "ancho_nominal_mm": 450.0,
+     "condiciones": [
+      "ANCHO_NOMINAL_NO_UTIL",
+      "ALTURA_ALA_NOMINAL_NO_UTIL"
+     ],
+     "diametro_alambre_mm": null,
+     "espesor_chapa_mm": 1.24,
+     "estado": "PRESELECCION_CONDICIONADA",
+     "familia_id": "SAM-STE-Z",
+     "geometria": {
+      "advertencias": [
+       "Ancho útil no publicado: se usa el ancho nominal del catálogo (D-04).",
+       "Alto útil no publicado: se compara el diámetro con el ala nominal (D-08)."
+      ],
+      "altura_referencia_mm": 90.0,
+      "ancho_referencia_mm": 450.0,
+      "base_altura": "ala_nominal",
+      "base_ancho": "nominal",
+      "estado": "CUMPLE",
+      "reserva": {
+       "ancho_libre_mm": 393.3,
+       "ancho_max_ocupable_mm": 360.0,
+       "cabe": true,
+       "condicion": "W_ocupado ≤ (1 − r)·W_ref",
+       "criterio": "fraccion_libre_ancho_bandeja",
+       "cumple": true,
+       "denominador_criterio": "ancho de referencia de la bandeja (W_ref)",
+       "metodo": "M-RES-1",
+       "reserva_libre_pct": 87.4,
+       "reserva_solicitada_pct": 20.0,
+       "sobrante_sobre_ocupado_pct": 693.651
+      }
+     },
+     "mecanica": {
+      "alcance": "Compara solo la masa propia de los cables con la CTA publicada para la misma luz. El esquema del ensayo (número de tramos, posición de uniones, tipo de apoyo) NO se contrasta con la instalación (D-12).",
+      "base_evidencia": "documentada",
+      "carga_cables_kg_m": 0.456,
+      "cociente_cta_carga": 877.19,
+      "cta_kg_m": 400.0,
+      "esquema_ensayo_contrastado": false,
+      "estado": "VERIFICADA_CUMPLE",
+      "metodo": "M-MEC-1",
+      "nota_cociente": "CTA/q: compatible con el 'factor de seguridad' mostrado por Samet (H-S1). No es un coeficiente normativo.",
+      "registro": {
+       "carga_unidad": "kg/m",
+       "carga_valor": 400.0,
+       "condiciones_ensayo": "CTA. Flecha declarada 8.8 mm. Esquema: dos tramos de 3 m con punto de unión.",
+       "criterio_o_norma_declarada": "IEC 61537:2006 – apartado 10.3 (declarado)",
+       "distribucion_carga": "uniformemente distribuida",
+       "estado_evidencia_catalogo": "documentada",
+       "evidencia_motor": "documentada",
+       "fila": 77,
+       "fuente_id": "F-001",
+       "hoja": "TABLAS_CARGA",
+       "luz_entre_apoyos_mm": 1500.0,
+       "pagina_fuente": "PDF 7 / impr. 12",
+       "registro_carga_id": "CAR-0076"
+      },
+      "utilizacion_pct": 0.114,
+      "vano_mm": 1500.0
+     },
+     "minimo_apto_completo_de_linea": false,
+     "minimo_geometrico_de_linea": false,
+     "minimo_sin_rechazo_de_linea": false,
+     "nombre_familia": "Smarttray Escalera ensamble en frío",
+     "procedencia": {
+      "estado_dato": "transcrito",
+      "fila": 433,
+      "fuente_id": "F-001",
+      "hoja": "PRODUCTOS",
+      "pagina_fuente": "PDF 4 / impr. 7"
+     },
+     "producto_id": "SAM_TRES-450-090-18-Z",
+     "sku": "TRES-450-090-18-Z",
+     "tipo_constructivo": "escalera"
+    },
+    {
+     "acabado_normalizado": "chapa pregalvanizada en origen",
+     "ala_nominal_mm": 90.0,
+     "ancho_nominal_mm": 600.0,
+     "condiciones": [
+      "ANCHO_NOMINAL_NO_UTIL",
+      "ALTURA_ALA_NOMINAL_NO_UTIL"
+     ],
+     "diametro_alambre_mm": null,
+     "espesor_chapa_mm": 1.24,
+     "estado": "PRESELECCION_CONDICIONADA",
+     "familia_id": "SAM-STE-Z",
+     "geometria": {
+      "advertencias": [
+       "Ancho útil no publicado: se usa el ancho nominal del catálogo (D-04).",
+       "Alto útil no publicado: se compara el diámetro con el ala nominal (D-08)."
+      ],
+      "altura_referencia_mm": 90.0,
+      "ancho_referencia_mm": 600.0,
+      "base_altura": "ala_nominal",
+      "base_ancho": "nominal",
+      "estado": "CUMPLE",
+      "reserva": {
+       "ancho_libre_mm": 543.3,
+       "ancho_max_ocupable_mm": 480.0,
+       "cabe": true,
+       "condicion": "W_ocupado ≤ (1 − r)·W_ref",
+       "criterio": "fraccion_libre_ancho_bandeja",
+       "cumple": true,
+       "denominador_criterio": "ancho de referencia de la bandeja (W_ref)",
+       "metodo": "M-RES-1",
+       "reserva_libre_pct": 90.55,
+       "reserva_solicitada_pct": 20.0,
+       "sobrante_sobre_ocupado_pct": 958.201
+      }
+     },
+     "mecanica": {
+      "alcance": "Compara solo la masa propia de los cables con la CTA publicada para la misma luz. El esquema del ensayo (número de tramos, posición de uniones, tipo de apoyo) NO se contrasta con la instalación (D-12).",
+      "base_evidencia": "documentada",
+      "carga_cables_kg_m": 0.456,
+      "cociente_cta_carga": 877.19,
+      "cta_kg_m": 400.0,
+      "esquema_ensayo_contrastado": false,
+      "estado": "VERIFICADA_CUMPLE",
+      "metodo": "M-MEC-1",
+      "nota_cociente": "CTA/q: compatible con el 'factor de seguridad' mostrado por Samet (H-S1). No es un coeficiente normativo.",
+      "registro": {
+       "carga_unidad": "kg/m",
+       "carga_valor": 400.0,
+       "condiciones_ensayo": "CTA. Flecha declarada 11.5 mm. Esquema: dos tramos de 3 m con punto de unión.",
+       "criterio_o_norma_declarada": "IEC 61537:2006 – apartado 10.3 (declarado)",
+       "distribucion_carga": "uniformemente distribuida",
+       "estado_evidencia_catalogo": "documentada",
+       "evidencia_motor": "documentada",
+       "fila": 82,
+       "fuente_id": "F-001",
+       "hoja": "TABLAS_CARGA",
+       "luz_entre_apoyos_mm": 1500.0,
+       "pagina_fuente": "PDF 7 / impr. 12",
+       "registro_carga_id": "CAR-0081"
+      },
+      "utilizacion_pct": 0.114,
+      "vano_mm": 1500.0
+     },
+     "minimo_apto_completo_de_linea": false,
+     "minimo_geometrico_de_linea": false,
+     "minimo_sin_rechazo_de_linea": false,
+     "nombre_familia": "Smarttray Escalera ensamble en frío",
+     "procedencia": {
+      "estado_dato": "transcrito",
+      "fila": 436,
+      "fuente_id": "F-001",
+      "hoja": "PRODUCTOS",
+      "pagina_fuente": "PDF 4 / impr. 7"
+     },
+     "producto_id": "SAM_TRES-600-090-18-Z",
+     "sku": "TRES-600-090-18-Z",
+     "tipo_constructivo": "escalera"
+    },
+    {
+     "acabado_normalizado": "chapa pregalvanizada en origen",
+     "ala_nominal_mm": 115.0,
+     "ancho_nominal_mm": 150.0,
+     "condiciones": [
+      "ANCHO_NOMINAL_NO_UTIL",
+      "ALTURA_ALA_NOMINAL_NO_UTIL",
+      "MECANICA_NO_VERIFICABLE_LUZ_NO_DECLARADA"
+     ],
+     "diametro_alambre_mm": null,
+     "espesor_chapa_mm": 1.24,
+     "estado": "PRESELECCION_CONDICIONADA",
+     "familia_id": "SAM-STE-Z",
+     "geometria": {
+      "advertencias": [
+       "Ancho útil no publicado: se usa el ancho nominal del catálogo (D-04).",
+       "Alto útil no publicado: se compara el diámetro con el ala nominal (D-08)."
+      ],
+      "altura_referencia_mm": 115.0,
+      "ancho_referencia_mm": 150.0,
+      "base_altura": "ala_nominal",
+      "base_ancho": "nominal",
+      "estado": "CUMPLE",
+      "reserva": {
+       "ancho_libre_mm": 93.3,
+       "ancho_max_ocupable_mm": 120.0,
+       "cabe": true,
+       "condicion": "W_ocupado ≤ (1 − r)·W_ref",
+       "criterio": "fraccion_libre_ancho_bandeja",
+       "cumple": true,
+       "denominador_criterio": "ancho de referencia de la bandeja (W_ref)",
+       "metodo": "M-RES-1",
+       "reserva_libre_pct": 62.2,
+       "reserva_solicitada_pct": 20.0,
+       "sobrante_sobre_ocupado_pct": 164.55
+      }
+     },
+     "mecanica": {
+      "alcance": "Compara solo la masa propia de los cables con la CTA publicada para la misma luz. El esquema del ensayo (número de tramos, posición de uniones, tipo de apoyo) NO se contrasta con la instalación (D-12).",
+      "base_evidencia": null,
+      "carga_cables_kg_m": 0.456,
+      "cta_kg_m": null,
+      "detalle": "Existe una CTA publicada sin luz entre apoyos declarada: no se asume que corresponda al vano solicitado. Valor solo informativo.",
+      "esquema_ensayo_contrastado": false,
+      "estado": "NO_VERIFICABLE_LUZ_NO_DECLARADA",
+      "metodo": "M-MEC-1",
+      "registros_considerados": [
+       {
+        "carga_unidad": "kg/m",
+        "carga_valor": 530.0,
+        "condiciones_ensayo": "CTA según certificado; luz y esquema no declarados en F-004.",
+        "criterio_o_norma_declarada": "IEC 61537:2006 (certificación)",
+        "distribucion_carga": "no especificada",
+        "estado_evidencia_catalogo": "documentada",
+        "evidencia_motor": "documentada",
+        "fila": 87,
+        "fuente_id": "F-004",
+        "hoja": "TABLAS_CARGA",
+        "luz_entre_apoyos_mm": null,
+        "pagina_fuente": "Anexo, pág. adicional 1 de 7",
+        "registro_carga_id": "CAR-0086"
+       }
+      ],
+      "vano_mm": 1500.0
+     },
+     "minimo_apto_completo_de_linea": false,
+     "minimo_geometrico_de_linea": true,
+     "minimo_sin_rechazo_de_linea": true,
+     "nombre_familia": "Smarttray Escalera ensamble en frío",
+     "procedencia": {
+      "estado_dato": "transcrito",
+      "fila": 428,
+      "fuente_id": "F-001",
+      "hoja": "PRODUCTOS",
+      "pagina_fuente": "PDF 4 / impr. 7"
+     },
+     "producto_id": "SAM_TRES-150-115-18-Z",
+     "sku": "TRES-150-115-18-Z",
+     "tipo_constructivo": "escalera"
+    },
+    {
+     "acabado_normalizado": "chapa pregalvanizada en origen",
+     "ala_nominal_mm": 115.0,
+     "ancho_nominal_mm": 300.0,
+     "condiciones": [
+      "ANCHO_NOMINAL_NO_UTIL",
+      "ALTURA_ALA_NOMINAL_NO_UTIL",
+      "MECANICA_NO_VERIFICABLE_LUZ_NO_DECLARADA"
+     ],
+     "diametro_alambre_mm": null,
+     "espesor_chapa_mm": 1.24,
+     "estado": "PRESELECCION_CONDICIONADA",
+     "familia_id": "SAM-STE-Z",
+     "geometria": {
+      "advertencias": [
+       "Ancho útil no publicado: se usa el ancho nominal del catálogo (D-04).",
+       "Alto útil no publicado: se compara el diámetro con el ala nominal (D-08)."
+      ],
+      "altura_referencia_mm": 115.0,
+      "ancho_referencia_mm": 300.0,
+      "base_altura": "ala_nominal",
+      "base_ancho": "nominal",
+      "estado": "CUMPLE",
+      "reserva": {
+       "ancho_libre_mm": 243.3,
+       "ancho_max_ocupable_mm": 240.0,
+       "cabe": true,
+       "condicion": "W_ocupado ≤ (1 − r)·W_ref",
+       "criterio": "fraccion_libre_ancho_bandeja",
+       "cumple": true,
+       "denominador_criterio": "ancho de referencia de la bandeja (W_ref)",
+       "metodo": "M-RES-1",
+       "reserva_libre_pct": 81.1,
+       "reserva_solicitada_pct": 20.0,
+       "sobrante_sobre_ocupado_pct": 429.101
+      }
+     },
+     "mecanica": {
+      "alcance": "Compara solo la masa propia de los cables con la CTA publicada para la misma luz. El esquema del ensayo (número de tramos, posición de uniones, tipo de apoyo) NO se contrasta con la instalación (D-12).",
+      "base_evidencia": null,
+      "carga_cables_kg_m": 0.456,
+      "cta_kg_m": null,
+      "detalle": "Existe una CTA publicada sin luz entre apoyos declarada: no se asume que corresponda al vano solicitado. Valor solo informativo.",
+      "esquema_ensayo_contrastado": false,
+      "estado": "NO_VERIFICABLE_LUZ_NO_DECLARADA",
+      "metodo": "M-MEC-1",
+      "registros_considerados": [
+       {
+        "carga_unidad": "kg/m",
+        "carga_valor": 530.0,
+        "condiciones_ensayo": "CTA según certificado; luz y esquema no declarados en F-004.",
+        "criterio_o_norma_declarada": "IEC 61537:2006 (certificación)",
+        "distribucion_carga": "no especificada",
+        "estado_evidencia_catalogo": "documentada",
+        "evidencia_motor": "documentada",
+        "fila": 88,
+        "fuente_id": "F-004",
+        "hoja": "TABLAS_CARGA",
+        "luz_entre_apoyos_mm": null,
+        "pagina_fuente": "Anexo, pág. adicional 1 de 7",
+        "registro_carga_id": "CAR-0087"
+       }
+      ],
+      "vano_mm": 1500.0
+     },
+     "minimo_apto_completo_de_linea": false,
+     "minimo_geometrico_de_linea": false,
+     "minimo_sin_rechazo_de_linea": false,
+     "nombre_familia": "Smarttray Escalera ensamble en frío",
+     "procedencia": {
+      "estado_dato": "transcrito",
+      "fila": 431,
+      "fuente_id": "F-001",
+      "hoja": "PRODUCTOS",
+      "pagina_fuente": "PDF 4 / impr. 7"
+     },
+     "producto_id": "SAM_TRES-300-115-18-Z",
+     "sku": "TRES-300-115-18-Z",
+     "tipo_constructivo": "escalera"
+    },
+    {
+     "acabado_normalizado": "chapa pregalvanizada en origen",
+     "ala_nominal_mm": 115.0,
+     "ancho_nominal_mm": 450.0,
+     "condiciones": [
+      "ANCHO_NOMINAL_NO_UTIL",
+      "ALTURA_ALA_NOMINAL_NO_UTIL",
+      "MECANICA_NO_VERIFICABLE_LUZ_NO_DECLARADA"
+     ],
+     "diametro_alambre_mm": null,
+     "espesor_chapa_mm": 1.24,
+     "estado": "PRESELECCION_CONDICIONADA",
+     "familia_id": "SAM-STE-Z",
+     "geometria": {
+      "advertencias": [
+       "Ancho útil no publicado: se usa el ancho nominal del catálogo (D-04).",
+       "Alto útil no publicado: se compara el diámetro con el ala nominal (D-08)."
+      ],
+      "altura_referencia_mm": 115.0,
+      "ancho_referencia_mm": 450.0,
+      "base_altura": "ala_nominal",
+      "base_ancho": "nominal",
+      "estado": "CUMPLE",
+      "reserva": {
+       "ancho_libre_mm": 393.3,
+       "ancho_max_ocupable_mm": 360.0,
+       "cabe": true,
+       "condicion": "W_ocupado ≤ (1 − r)·W_ref",
+       "criterio": "fraccion_libre_ancho_bandeja",
+       "cumple": true,
+       "denominador_criterio": "ancho de referencia de la bandeja (W_ref)",
+       "metodo": "M-RES-1",
+       "reserva_libre_pct": 87.4,
+       "reserva_solicitada_pct": 20.0,
+       "sobrante_sobre_ocupado_pct": 693.651
+      }
+     },
+     "mecanica": {
+      "alcance": "Compara solo la masa propia de los cables con la CTA publicada para la misma luz. El esquema del ensayo (número de tramos, posición de uniones, tipo de apoyo) NO se contrasta con la instalación (D-12).",
+      "base_evidencia": null,
+      "carga_cables_kg_m": 0.456,
+      "cta_kg_m": null,
+      "detalle": "Existe una CTA publicada sin luz entre apoyos declarada: no se asume que corresponda al vano solicitado. Valor solo informativo.",
+      "esquema_ensayo_contrastado": false,
+      "estado": "NO_VERIFICABLE_LUZ_NO_DECLARADA",
+      "metodo": "M-MEC-1",
+      "registros_considerados": [
+       {
+        "carga_unidad": "kg/m",
+        "carga_valor": 530.0,
+        "condiciones_ensayo": "CTA según certificado; luz y esquema no declarados en F-004.",
+        "criterio_o_norma_declarada": "IEC 61537:2006 (certificación)",
+        "distribucion_carga": "no especificada",
+        "estado_evidencia_catalogo": "documentada",
+        "evidencia_motor": "documentada",
+        "fila": 89,
+        "fuente_id": "F-004",
+        "hoja": "TABLAS_CARGA",
+        "luz_entre_apoyos_mm": null,
+        "pagina_fuente": "Anexo, pág. adicional 1 de 7",
+        "registro_carga_id": "CAR-0088"
+       }
+      ],
+      "vano_mm": 1500.0
+     },
+     "minimo_apto_completo_de_linea": false,
+     "minimo_geometrico_de_linea": false,
+     "minimo_sin_rechazo_de_linea": false,
+     "nombre_familia": "Smarttray Escalera ensamble en frío",
+     "procedencia": {
+      "estado_dato": "transcrito",
+      "fila": 434,
+      "fuente_id": "F-001",
+      "hoja": "PRODUCTOS",
+      "pagina_fuente": "PDF 4 / impr. 7"
+     },
+     "producto_id": "SAM_TRES-450-115-18-Z",
+     "sku": "TRES-450-115-18-Z",
+     "tipo_constructivo": "escalera"
+    },
+    {
+     "acabado_normalizado": "chapa pregalvanizada en origen",
+     "ala_nominal_mm": 115.0,
+     "ancho_nominal_mm": 600.0,
+     "condiciones": [
+      "ANCHO_NOMINAL_NO_UTIL",
+      "ALTURA_ALA_NOMINAL_NO_UTIL",
+      "MECANICA_NO_VERIFICABLE_LUZ_NO_DECLARADA"
+     ],
+     "diametro_alambre_mm": null,
+     "espesor_chapa_mm": 1.24,
+     "estado": "PRESELECCION_CONDICIONADA",
+     "familia_id": "SAM-STE-Z",
+     "geometria": {
+      "advertencias": [
+       "Ancho útil no publicado: se usa el ancho nominal del catálogo (D-04).",
+       "Alto útil no publicado: se compara el diámetro con el ala nominal (D-08)."
+      ],
+      "altura_referencia_mm": 115.0,
+      "ancho_referencia_mm": 600.0,
+      "base_altura": "ala_nominal",
+      "base_ancho": "nominal",
+      "estado": "CUMPLE",
+      "reserva": {
+       "ancho_libre_mm": 543.3,
+       "ancho_max_ocupable_mm": 480.0,
+       "cabe": true,
+       "condicion": "W_ocupado ≤ (1 − r)·W_ref",
+       "criterio": "fraccion_libre_ancho_bandeja",
+       "cumple": true,
+       "denominador_criterio": "ancho de referencia de la bandeja (W_ref)",
+       "metodo": "M-RES-1",
+       "reserva_libre_pct": 90.55,
+       "reserva_solicitada_pct": 20.0,
+       "sobrante_sobre_ocupado_pct": 958.201
+      }
+     },
+     "mecanica": {
+      "alcance": "Compara solo la masa propia de los cables con la CTA publicada para la misma luz. El esquema del ensayo (número de tramos, posición de uniones, tipo de apoyo) NO se contrasta con la instalación (D-12).",
+      "base_evidencia": null,
+      "carga_cables_kg_m": 0.456,
+      "cta_kg_m": null,
+      "detalle": "Existe una CTA publicada sin luz entre apoyos declarada: no se asume que corresponda al vano solicitado. Valor solo informativo.",
+      "esquema_ensayo_contrastado": false,
+      "estado": "NO_VERIFICABLE_LUZ_NO_DECLARADA",
+      "metodo": "M-MEC-1",
+      "registros_considerados": [
+       {
+        "carga_unidad": "kg/m",
+        "carga_valor": 530.0,
+        "condiciones_ensayo": "CTA según certificado; luz y esquema no declarados en F-004.",
+        "criterio_o_norma_declarada": "IEC 61537:2006 (certificación)",
+        "distribucion_carga": "no especificada",
+        "estado_evidencia_catalogo": "documentada",
+        "evidencia_motor": "documentada",
+        "fila": 90,
+        "fuente_id": "F-004",
+        "hoja": "TABLAS_CARGA",
+        "luz_entre_apoyos_mm": null,
+        "pagina_fuente": "Anexo, pág. adicional 1 de 7",
+        "registro_carga_id": "CAR-0089"
+       }
+      ],
+      "vano_mm": 1500.0
+     },
+     "minimo_apto_completo_de_linea": false,
+     "minimo_geometrico_de_linea": false,
+     "minimo_sin_rechazo_de_linea": false,
+     "nombre_familia": "Smarttray Escalera ensamble en frío",
+     "procedencia": {
+      "estado_dato": "transcrito",
+      "fila": 437,
+      "fuente_id": "F-001",
+      "hoja": "PRODUCTOS",
+      "pagina_fuente": "PDF 4 / impr. 7"
+     },
+     "producto_id": "SAM_TRES-600-115-18-Z",
+     "sku": "TRES-600-115-18-Z",
+     "tipo_constructivo": "escalera"
+    },
+    {
+     "acabado_normalizado": "chapa pregalvanizada en origen",
+     "ala_nominal_mm": 50.0,
+     "ancho_nominal_mm": 100.0,
+     "condiciones": [
+      "ANCHO_NOMINAL_NO_UTIL",
+      "ALTURA_ALA_NOMINAL_NO_UTIL",
+      "MECANICA_NO_VERIFICABLE_SIN_REGISTRO"
+     ],
+     "diametro_alambre_mm": null,
+     "espesor_chapa_mm": 0.71,
+     "estado": "PRESELECCION_CONDICIONADA",
+     "familia_id": "SAM-STP-Z",
+     "geometria": {
+      "advertencias": [
+       "Ancho útil no publicado: se usa el ancho nominal del catálogo (D-04).",
+       "Alto útil no publicado: se compara el diámetro con el ala nominal (D-08)."
+      ],
+      "altura_referencia_mm": 50.0,
+      "ancho_referencia_mm": 100.0,
+      "base_altura": "ala_nominal",
+      "base_ancho": "nominal",
+      "estado": "CUMPLE",
+      "reserva": {
+       "ancho_libre_mm": 43.3,
+       "ancho_max_ocupable_mm": 80.0,
+       "cabe": true,
+       "condicion": "W_ocupado ≤ (1 − r)·W_ref",
+       "criterio": "fraccion_libre_ancho_bandeja",
+       "cumple": true,
+       "denominador_criterio": "ancho de referencia de la bandeja (W_ref)",
+       "metodo": "M-RES-1",
+       "reserva_libre_pct": 43.3,
+       "reserva_solicitada_pct": 20.0,
+       "sobrante_sobre_ocupado_pct": 76.367
+      }
+     },
+     "mecanica": {
+      "alcance": "Compara solo la masa propia de los cables con la CTA publicada para la misma luz. El esquema del ensayo (número de tramos, posición de uniones, tipo de apoyo) NO se contrasta con la instalación (D-12).",
+      "base_evidencia": null,
+      "carga_cables_kg_m": 0.456,
+      "cta_kg_m": null,
+      "detalle": "El catálogo no tiene carga de trabajo admisible para este producto y vano.",
+      "esquema_ensayo_contrastado": false,
+      "estado": "NO_VERIFICABLE_SIN_REGISTRO",
+      "metodo": "M-MEC-1",
+      "vano_mm": 1500.0
+     },
+     "minimo_apto_completo_de_linea": false,
+     "minimo_geometrico_de_linea": true,
+     "minimo_sin_rechazo_de_linea": true,
+     "nombre_familia": "Smarttray Perforada",
+     "procedencia": {
+      "estado_dato": "transcrito",
+      "fila": 616,
+      "fuente_id": "F-002",
+      "hoja": "PRODUCTOS",
+      "pagina_fuente": "PDF 4 / impr. 7"
+     },
+     "producto_id": "SAM_TRPS-100-22-Z",
+     "sku": "TRPS-100-22-Z",
+     "tipo_constructivo": "perforada"
+    },
+    {
+     "acabado_normalizado": "chapa pregalvanizada en origen",
+     "ala_nominal_mm": 50.0,
+     "ancho_nominal_mm": 150.0,
+     "condiciones": [
+      "ANCHO_NOMINAL_NO_UTIL",
+      "ALTURA_ALA_NOMINAL_NO_UTIL",
+      "MECANICA_NO_VERIFICABLE_SIN_REGISTRO"
+     ],
+     "diametro_alambre_mm": null,
+     "espesor_chapa_mm": 0.71,
+     "estado": "PRESELECCION_CONDICIONADA",
+     "familia_id": "SAM-STP-Z",
+     "geometria": {
+      "advertencias": [
+       "Ancho útil no publicado: se usa el ancho nominal del catálogo (D-04).",
+       "Alto útil no publicado: se compara el diámetro con el ala nominal (D-08)."
+      ],
+      "altura_referencia_mm": 50.0,
+      "ancho_referencia_mm": 150.0,
+      "base_altura": "ala_nominal",
+      "base_ancho": "nominal",
+      "estado": "CUMPLE",
+      "reserva": {
+       "ancho_libre_mm": 93.3,
+       "ancho_max_ocupable_mm": 120.0,
+       "cabe": true,
+       "condicion": "W_ocupado ≤ (1 − r)·W_ref",
+       "criterio": "fraccion_libre_ancho_bandeja",
+       "cumple": true,
+       "denominador_criterio": "ancho de referencia de la bandeja (W_ref)",
+       "metodo": "M-RES-1",
+       "reserva_libre_pct": 62.2,
+       "reserva_solicitada_pct": 20.0,
+       "sobrante_sobre_ocupado_pct": 164.55
+      }
+     },
+     "mecanica": {
+      "alcance": "Compara solo la masa propia de los cables con la CTA publicada para la misma luz. El esquema del ensayo (número de tramos, posición de uniones, tipo de apoyo) NO se contrasta con la instalación (D-12).",
+      "base_evidencia": null,
+      "carga_cables_kg_m": 0.456,
+      "cta_kg_m": null,
+      "detalle": "El catálogo no tiene carga de trabajo admisible para este producto y vano.",
+      "esquema_ensayo_contrastado": false,
+      "estado": "NO_VERIFICABLE_SIN_REGISTRO",
+      "metodo": "M-MEC-1",
+      "vano_mm": 1500.0
+     },
+     "minimo_apto_completo_de_linea": false,
+     "minimo_geometrico_de_linea": false,
+     "minimo_sin_rechazo_de_linea": false,
+     "nombre_familia": "Smarttray Perforada",
+     "procedencia": {
+      "estado_dato": "transcrito",
+      "fila": 617,
+      "fuente_id": "F-002",
+      "hoja": "PRODUCTOS",
+      "pagina_fuente": "PDF 4 / impr. 7"
+     },
+     "producto_id": "SAM_TRPS-150-22-Z",
+     "sku": "TRPS-150-22-Z",
+     "tipo_constructivo": "perforada"
+    },
+    {
+     "acabado_normalizado": "chapa pregalvanizada en origen",
+     "ala_nominal_mm": 50.0,
+     "ancho_nominal_mm": 200.0,
+     "condiciones": [
+      "ANCHO_NOMINAL_NO_UTIL",
+      "ALTURA_ALA_NOMINAL_NO_UTIL",
+      "MECANICA_NO_VERIFICABLE_SIN_REGISTRO"
+     ],
+     "diametro_alambre_mm": null,
+     "espesor_chapa_mm": 0.71,
+     "estado": "PRESELECCION_CONDICIONADA",
+     "familia_id": "SAM-STP-Z",
+     "geometria": {
+      "advertencias": [
+       "Ancho útil no publicado: se usa el ancho nominal del catálogo (D-04).",
+       "Alto útil no publicado: se compara el diámetro con el ala nominal (D-08)."
+      ],
+      "altura_referencia_mm": 50.0,
+      "ancho_referencia_mm": 200.0,
+      "base_altura": "ala_nominal",
+      "base_ancho": "nominal",
+      "estado": "CUMPLE",
+      "reserva": {
+       "ancho_libre_mm": 143.3,
+       "ancho_max_ocupable_mm": 160.0,
+       "cabe": true,
+       "condicion": "W_ocupado ≤ (1 − r)·W_ref",
+       "criterio": "fraccion_libre_ancho_bandeja",
+       "cumple": true,
+       "denominador_criterio": "ancho de referencia de la bandeja (W_ref)",
+       "metodo": "M-RES-1",
+       "reserva_libre_pct": 71.65,
+       "reserva_solicitada_pct": 20.0,
+       "sobrante_sobre_ocupado_pct": 252.734
+      }
+     },
+     "mecanica": {
+      "alcance": "Compara solo la masa propia de los cables con la CTA publicada para la misma luz. El esquema del ensayo (número de tramos, posición de uniones, tipo de apoyo) NO se contrasta con la instalación (D-12).",
+      "base_evidencia": null,
+      "carga_cables_kg_m": 0.456,
+      "cta_kg_m": null,
+      "detalle": "El catálogo no tiene carga de trabajo admisible para este producto y vano.",
+      "esquema_ensayo_contrastado": false,
+      "estado": "NO_VERIFICABLE_SIN_REGISTRO",
+      "metodo": "M-MEC-1",
+      "vano_mm": 1500.0
+     },
+     "minimo_apto_completo_de_linea": false,
+     "minimo_geometrico_de_linea": false,
+     "minimo_sin_rechazo_de_linea": false,
+     "nombre_familia": "Smarttray Perforada",
+     "procedencia": {
+      "estado_dato": "transcrito",
+      "fila": 618,
+      "fuente_id": "F-002",
+      "hoja": "PRODUCTOS",
+      "pagina_fuente": "PDF 4 / impr. 7"
+     },
+     "producto_id": "SAM_TRPS-200-22-Z",
+     "sku": "TRPS-200-22-Z",
+     "tipo_constructivo": "perforada"
+    },
+    {
+     "acabado_normalizado": "chapa pregalvanizada en origen",
+     "ala_nominal_mm": 50.0,
+     "ancho_nominal_mm": 300.0,
+     "condiciones": [
+      "ANCHO_NOMINAL_NO_UTIL",
+      "ALTURA_ALA_NOMINAL_NO_UTIL",
+      "MECANICA_NO_VERIFICABLE_SIN_REGISTRO"
+     ],
+     "diametro_alambre_mm": null,
+     "espesor_chapa_mm": 0.71,
+     "estado": "PRESELECCION_CONDICIONADA",
+     "familia_id": "SAM-STP-Z",
+     "geometria": {
+      "advertencias": [
+       "Ancho útil no publicado: se usa el ancho nominal del catálogo (D-04).",
+       "Alto útil no publicado: se compara el diámetro con el ala nominal (D-08)."
+      ],
+      "altura_referencia_mm": 50.0,
+      "ancho_referencia_mm": 300.0,
+      "base_altura": "ala_nominal",
+      "base_ancho": "nominal",
+      "estado": "CUMPLE",
+      "reserva": {
+       "ancho_libre_mm": 243.3,
+       "ancho_max_ocupable_mm": 240.0,
+       "cabe": true,
+       "condicion": "W_ocupado ≤ (1 − r)·W_ref",
+       "criterio": "fraccion_libre_ancho_bandeja",
+       "cumple": true,
+       "denominador_criterio": "ancho de referencia de la bandeja (W_ref)",
+       "metodo": "M-RES-1",
+       "reserva_libre_pct": 81.1,
+       "reserva_solicitada_pct": 20.0,
+       "sobrante_sobre_ocupado_pct": 429.101
+      }
+     },
+     "mecanica": {
+      "alcance": "Compara solo la masa propia de los cables con la CTA publicada para la misma luz. El esquema del ensayo (número de tramos, posición de uniones, tipo de apoyo) NO se contrasta con la instalación (D-12).",
+      "base_evidencia": null,
+      "carga_cables_kg_m": 0.456,
+      "cta_kg_m": null,
+      "detalle": "El catálogo no tiene carga de trabajo admisible para este producto y vano.",
+      "esquema_ensayo_contrastado": false,
+      "estado": "NO_VERIFICABLE_SIN_REGISTRO",
+      "metodo": "M-MEC-1",
+      "vano_mm": 1500.0
+     },
+     "minimo_apto_completo_de_linea": false,
+     "minimo_geometrico_de_linea": false,
+     "minimo_sin_rechazo_de_linea": false,
+     "nombre_familia": "Smarttray Perforada",
+     "procedencia": {
+      "estado_dato": "transcrito",
+      "fila": 619,
+      "fuente_id": "F-002",
+      "hoja": "PRODUCTOS",
+      "pagina_fuente": "PDF 4 / impr. 7"
+     },
+     "producto_id": "SAM_TRPS-300-22-Z",
+     "sku": "TRPS-300-22-Z",
+     "tipo_constructivo": "perforada"
+    },
+    {
+     "acabado_normalizado": "chapa pregalvanizada en origen",
+     "ala_nominal_mm": 50.0,
+     "ancho_nominal_mm": 450.0,
+     "condiciones": [
+      "ANCHO_NOMINAL_NO_UTIL",
+      "ALTURA_ALA_NOMINAL_NO_UTIL",
+      "MECANICA_NO_VERIFICABLE_SIN_REGISTRO"
+     ],
+     "diametro_alambre_mm": null,
+     "espesor_chapa_mm": 0.89,
+     "estado": "PRESELECCION_CONDICIONADA",
+     "familia_id": "SAM-STP-Z",
+     "geometria": {
+      "advertencias": [
+       "Ancho útil no publicado: se usa el ancho nominal del catálogo (D-04).",
+       "Alto útil no publicado: se compara el diámetro con el ala nominal (D-08)."
+      ],
+      "altura_referencia_mm": 50.0,
+      "ancho_referencia_mm": 450.0,
+      "base_altura": "ala_nominal",
+      "base_ancho": "nominal",
+      "estado": "CUMPLE",
+      "reserva": {
+       "ancho_libre_mm": 393.3,
+       "ancho_max_ocupable_mm": 360.0,
+       "cabe": true,
+       "condicion": "W_ocupado ≤ (1 − r)·W_ref",
+       "criterio": "fraccion_libre_ancho_bandeja",
+       "cumple": true,
+       "denominador_criterio": "ancho de referencia de la bandeja (W_ref)",
+       "metodo": "M-RES-1",
+       "reserva_libre_pct": 87.4,
+       "reserva_solicitada_pct": 20.0,
+       "sobrante_sobre_ocupado_pct": 693.651
+      }
+     },
+     "mecanica": {
+      "alcance": "Compara solo la masa propia de los cables con la CTA publicada para la misma luz. El esquema del ensayo (número de tramos, posición de uniones, tipo de apoyo) NO se contrasta con la instalación (D-12).",
+      "base_evidencia": null,
+      "carga_cables_kg_m": 0.456,
+      "cta_kg_m": null,
+      "detalle": "El catálogo no tiene carga de trabajo admisible para este producto y vano.",
+      "esquema_ensayo_contrastado": false,
+      "estado": "NO_VERIFICABLE_SIN_REGISTRO",
+      "metodo": "M-MEC-1",
+      "vano_mm": 1500.0
+     },
+     "minimo_apto_completo_de_linea": false,
+     "minimo_geometrico_de_linea": true,
+     "minimo_sin_rechazo_de_linea": true,
+     "nombre_familia": "Smarttray Perforada",
+     "procedencia": {
+      "estado_dato": "transcrito",
+      "fila": 620,
+      "fuente_id": "F-002",
+      "hoja": "PRODUCTOS",
+      "pagina_fuente": "PDF 4 / impr. 7"
+     },
+     "producto_id": "SAM_TRPS-450-20-Z",
+     "sku": "TRPS-450-20-Z",
+     "tipo_constructivo": "perforada"
+    },
+    {
+     "acabado_normalizado": "chapa pregalvanizada en origen",
+     "ala_nominal_mm": 50.0,
+     "ancho_nominal_mm": 600.0,
+     "condiciones": [
+      "ANCHO_NOMINAL_NO_UTIL",
+      "ALTURA_ALA_NOMINAL_NO_UTIL",
+      "MECANICA_NO_VERIFICABLE_SIN_REGISTRO"
+     ],
+     "diametro_alambre_mm": null,
+     "espesor_chapa_mm": 0.89,
+     "estado": "PRESELECCION_CONDICIONADA",
+     "familia_id": "SAM-STP-Z",
+     "geometria": {
+      "advertencias": [
+       "Ancho útil no publicado: se usa el ancho nominal del catálogo (D-04).",
+       "Alto útil no publicado: se compara el diámetro con el ala nominal (D-08)."
+      ],
+      "altura_referencia_mm": 50.0,
+      "ancho_referencia_mm": 600.0,
+      "base_altura": "ala_nominal",
+      "base_ancho": "nominal",
+      "estado": "CUMPLE",
+      "reserva": {
+       "ancho_libre_mm": 543.3,
+       "ancho_max_ocupable_mm": 480.0,
+       "cabe": true,
+       "condicion": "W_ocupado ≤ (1 − r)·W_ref",
+       "criterio": "fraccion_libre_ancho_bandeja",
+       "cumple": true,
+       "denominador_criterio": "ancho de referencia de la bandeja (W_ref)",
+       "metodo": "M-RES-1",
+       "reserva_libre_pct": 90.55,
+       "reserva_solicitada_pct": 20.0,
+       "sobrante_sobre_ocupado_pct": 958.201
+      }
+     },
+     "mecanica": {
+      "alcance": "Compara solo la masa propia de los cables con la CTA publicada para la misma luz. El esquema del ensayo (número de tramos, posición de uniones, tipo de apoyo) NO se contrasta con la instalación (D-12).",
+      "base_evidencia": null,
+      "carga_cables_kg_m": 0.456,
+      "cta_kg_m": null,
+      "detalle": "El catálogo no tiene carga de trabajo admisible para este producto y vano.",
+      "esquema_ensayo_contrastado": false,
+      "estado": "NO_VERIFICABLE_SIN_REGISTRO",
+      "metodo": "M-MEC-1",
+      "vano_mm": 1500.0
+     },
+     "minimo_apto_completo_de_linea": false,
+     "minimo_geometrico_de_linea": false,
+     "minimo_sin_rechazo_de_linea": false,
+     "nombre_familia": "Smarttray Perforada",
+     "procedencia": {
+      "estado_dato": "transcrito",
+      "fila": 621,
+      "fuente_id": "F-002",
+      "hoja": "PRODUCTOS",
+      "pagina_fuente": "PDF 4 / impr. 7"
+     },
+     "producto_id": "SAM_TRPS-600-20-Z",
+     "sku": "TRPS-600-20-Z",
+     "tipo_constructivo": "perforada"
+    },
+    {
+     "acabado_normalizado": "pintado (base no declarada)",
+     "ala_nominal_mm": 50.0,
+     "ancho_nominal_mm": 100.0,
+     "condiciones": [
+      "ANCHO_NOMINAL_NO_UTIL",
+      "ALTURA_ALA_NOMINAL_NO_UTIL",
+      "MECANICA_NO_VERIFICABLE_SIN_REGISTRO"
+     ],
+     "diametro_alambre_mm": null,
+     "espesor_chapa_mm": 0.71,
+     "estado": "PRESELECCION_CONDICIONADA",
+     "familia_id": "SAM-STP-ZN",
+     "geometria": {
+      "advertencias": [
+       "Ancho útil no publicado: se usa el ancho nominal del catálogo (D-04).",
+       "Alto útil no publicado: se compara el diámetro con el ala nominal (D-08)."
+      ],
+      "altura_referencia_mm": 50.0,
+      "ancho_referencia_mm": 100.0,
+      "base_altura": "ala_nominal",
+      "base_ancho": "nominal",
+      "estado": "CUMPLE",
+      "reserva": {
+       "ancho_libre_mm": 43.3,
+       "ancho_max_ocupable_mm": 80.0,
+       "cabe": true,
+       "condicion": "W_ocupado ≤ (1 − r)·W_ref",
+       "criterio": "fraccion_libre_ancho_bandeja",
+       "cumple": true,
+       "denominador_criterio": "ancho de referencia de la bandeja (W_ref)",
+       "metodo": "M-RES-1",
+       "reserva_libre_pct": 43.3,
+       "reserva_solicitada_pct": 20.0,
+       "sobrante_sobre_ocupado_pct": 76.367
+      }
+     },
+     "mecanica": {
+      "alcance": "Compara solo la masa propia de los cables con la CTA publicada para la misma luz. El esquema del ensayo (número de tramos, posición de uniones, tipo de apoyo) NO se contrasta con la instalación (D-12).",
+      "base_evidencia": null,
+      "carga_cables_kg_m": 0.456,
+      "cta_kg_m": null,
+      "detalle": "El catálogo no tiene carga de trabajo admisible para este producto y vano.",
+      "esquema_ensayo_contrastado": false,
+      "estado": "NO_VERIFICABLE_SIN_REGISTRO",
+      "metodo": "M-MEC-1",
+      "vano_mm": 1500.0
+     },
+     "minimo_apto_completo_de_linea": false,
+     "minimo_geometrico_de_linea": true,
+     "minimo_sin_rechazo_de_linea": true,
+     "nombre_familia": "Smarttray Perforada color",
+     "procedencia": {
+      "estado_dato": "transcrito",
+      "fila": 769,
+      "fuente_id": "F-002",
+      "hoja": "PRODUCTOS",
+      "pagina_fuente": "PDF 9 / impr. 16"
+     },
+     "producto_id": "SAM_TRPS-100-22-ZN",
+     "sku": "TRPS-100-22-ZN",
+     "tipo_constructivo": "perforada"
+    },
+    {
+     "acabado_normalizado": "pintado (base no declarada)",
+     "ala_nominal_mm": 50.0,
+     "ancho_nominal_mm": 100.0,
+     "condiciones": [
+      "ANCHO_NOMINAL_NO_UTIL",
+      "ALTURA_ALA_NOMINAL_NO_UTIL",
+      "MECANICA_NO_VERIFICABLE_SIN_REGISTRO"
+     ],
+     "diametro_alambre_mm": null,
+     "espesor_chapa_mm": 0.71,
+     "estado": "PRESELECCION_CONDICIONADA",
+     "familia_id": "SAM-STP-ZN",
+     "geometria": {
+      "advertencias": [
+       "Ancho útil no publicado: se usa el ancho nominal del catálogo (D-04).",
+       "Alto útil no publicado: se compara el diámetro con el ala nominal (D-08)."
+      ],
+      "altura_referencia_mm": 50.0,
+      "ancho_referencia_mm": 100.0,
+      "base_altura": "ala_nominal",
+      "base_ancho": "nominal",
+      "estado": "CUMPLE",
+      "reserva": {
+       "ancho_libre_mm": 43.3,
+       "ancho_max_ocupable_mm": 80.0,
+       "cabe": true,
+       "condicion": "W_ocupado ≤ (1 − r)·W_ref",
+       "criterio": "fraccion_libre_ancho_bandeja",
+       "cumple": true,
+       "denominador_criterio": "ancho de referencia de la bandeja (W_ref)",
+       "metodo": "M-RES-1",
+       "reserva_libre_pct": 43.3,
+       "reserva_solicitada_pct": 20.0,
+       "sobrante_sobre_ocupado_pct": 76.367
+      }
+     },
+     "mecanica": {
+      "alcance": "Compara solo la masa propia de los cables con la CTA publicada para la misma luz. El esquema del ensayo (número de tramos, posición de uniones, tipo de apoyo) NO se contrasta con la instalación (D-12).",
+      "base_evidencia": null,
+      "carga_cables_kg_m": 0.456,
+      "cta_kg_m": null,
+      "detalle": "El catálogo no tiene carga de trabajo admisible para este producto y vano.",
+      "esquema_ensayo_contrastado": false,
+      "estado": "NO_VERIFICABLE_SIN_REGISTRO",
+      "metodo": "M-MEC-1",
+      "vano_mm": 1500.0
+     },
+     "minimo_apto_completo_de_linea": false,
+     "minimo_geometrico_de_linea": false,
+     "minimo_sin_rechazo_de_linea": false,
+     "nombre_familia": "Smarttray Perforada color",
+     "procedencia": {
+      "estado_dato": "transcrito",
+      "fila": 776,
+      "fuente_id": "F-002",
+      "hoja": "PRODUCTOS",
+      "pagina_fuente": "PDF 9 / impr. 16"
+     },
+     "producto_id": "SAM_TRPS-100-22-ZB",
+     "sku": "TRPS-100-22-ZB",
+     "tipo_constructivo": "perforada"
+    },
+    {
+     "acabado_normalizado": "pintado (base no declarada)",
+     "ala_nominal_mm": 50.0,
+     "ancho_nominal_mm": 150.0,
+     "condiciones": [
+      "ANCHO_NOMINAL_NO_UTIL",
+      "ALTURA_ALA_NOMINAL_NO_UTIL",
+      "MECANICA_NO_VERIFICABLE_SIN_REGISTRO"
+     ],
+     "diametro_alambre_mm": null,
+     "espesor_chapa_mm": 0.71,
+     "estado": "PRESELECCION_CONDICIONADA",
+     "familia_id": "SAM-STP-ZN",
+     "geometria": {
+      "advertencias": [
+       "Ancho útil no publicado: se usa el ancho nominal del catálogo (D-04).",
+       "Alto útil no publicado: se compara el diámetro con el ala nominal (D-08)."
+      ],
+      "altura_referencia_mm": 50.0,
+      "ancho_referencia_mm": 150.0,
+      "base_altura": "ala_nominal",
+      "base_ancho": "nominal",
+      "estado": "CUMPLE",
+      "reserva": {
+       "ancho_libre_mm": 93.3,
+       "ancho_max_ocupable_mm": 120.0,
+       "cabe": true,
+       "condicion": "W_ocupado ≤ (1 − r)·W_ref",
+       "criterio": "fraccion_libre_ancho_bandeja",
+       "cumple": true,
+       "denominador_criterio": "ancho de referencia de la bandeja (W_ref)",
+       "metodo": "M-RES-1",
+       "reserva_libre_pct": 62.2,
+       "reserva_solicitada_pct": 20.0,
+       "sobrante_sobre_ocupado_pct": 164.55
+      }
+     },
+     "mecanica": {
+      "alcance": "Compara solo la masa propia de los cables con la CTA publicada para la misma luz. El esquema del ensayo (número de tramos, posición de uniones, tipo de apoyo) NO se contrasta con la instalación (D-12).",
+      "base_evidencia": null,
+      "carga_cables_kg_m": 0.456,
+      "cta_kg_m": null,
+      "detalle": "El catálogo no tiene carga de trabajo admisible para este producto y vano.",
+      "esquema_ensayo_contrastado": false,
+      "estado": "NO_VERIFICABLE_SIN_REGISTRO",
+      "metodo": "M-MEC-1",
+      "vano_mm": 1500.0
+     },
+     "minimo_apto_completo_de_linea": false,
+     "minimo_geometrico_de_linea": false,
+     "minimo_sin_rechazo_de_linea": false,
+     "nombre_familia": "Smarttray Perforada color",
+     "procedencia": {
+      "estado_dato": "transcrito",
+      "fila": 770,
+      "fuente_id": "F-002",
+      "hoja": "PRODUCTOS",
+      "pagina_fuente": "PDF 9 / impr. 16"
+     },
+     "producto_id": "SAM_TRPS-150-22-ZN",
+     "sku": "TRPS-150-22-ZN",
+     "tipo_constructivo": "perforada"
+    },
+    {
+     "acabado_normalizado": "pintado (base no declarada)",
+     "ala_nominal_mm": 50.0,
+     "ancho_nominal_mm": 150.0,
+     "condiciones": [
+      "ANCHO_NOMINAL_NO_UTIL",
+      "ALTURA_ALA_NOMINAL_NO_UTIL",
+      "MECANICA_NO_VERIFICABLE_SIN_REGISTRO"
+     ],
+     "diametro_alambre_mm": null,
+     "espesor_chapa_mm": 0.71,
+     "estado": "PRESELECCION_CONDICIONADA",
+     "familia_id": "SAM-STP-ZN",
+     "geometria": {
+      "advertencias": [
+       "Ancho útil no publicado: se usa el ancho nominal del catálogo (D-04).",
+       "Alto útil no publicado: se compara el diámetro con el ala nominal (D-08)."
+      ],
+      "altura_referencia_mm": 50.0,
+      "ancho_referencia_mm": 150.0,
+      "base_altura": "ala_nominal",
+      "base_ancho": "nominal",
+      "estado": "CUMPLE",
+      "reserva": {
+       "ancho_libre_mm": 93.3,
+       "ancho_max_ocupable_mm": 120.0,
+       "cabe": true,
+       "condicion": "W_ocupado ≤ (1 − r)·W_ref",
+       "criterio": "fraccion_libre_ancho_bandeja",
+       "cumple": true,
+       "denominador_criterio": "ancho de referencia de la bandeja (W_ref)",
+       "metodo": "M-RES-1",
+       "reserva_libre_pct": 62.2,
+       "reserva_solicitada_pct": 20.0,
+       "sobrante_sobre_ocupado_pct": 164.55
+      }
+     },
+     "mecanica": {
+      "alcance": "Compara solo la masa propia de los cables con la CTA publicada para la misma luz. El esquema del ensayo (número de tramos, posición de uniones, tipo de apoyo) NO se contrasta con la instalación (D-12).",
+      "base_evidencia": null,
+      "carga_cables_kg_m": 0.456,
+      "cta_kg_m": null,
+      "detalle": "El catálogo no tiene carga de trabajo admisible para este producto y vano.",
+      "esquema_ensayo_contrastado": false,
+      "estado": "NO_VERIFICABLE_SIN_REGISTRO",
+      "metodo": "M-MEC-1",
+      "vano_mm": 1500.0
+     },
+     "minimo_apto_completo_de_linea": false,
+     "minimo_geometrico_de_linea": false,
+     "minimo_sin_rechazo_de_linea": false,
+     "nombre_familia": "Smarttray Perforada color",
+     "procedencia": {
+      "estado_dato": "transcrito",
+      "fila": 777,
+      "fuente_id": "F-002",
+      "hoja": "PRODUCTOS",
+      "pagina_fuente": "PDF 9 / impr. 16"
+     },
+     "producto_id": "SAM_TRPS-150-22-ZB",
+     "sku": "TRPS-150-22-ZB",
+     "tipo_constructivo": "perforada"
+    },
+    {
+     "acabado_normalizado": "pintado (base no declarada)",
+     "ala_nominal_mm": 50.0,
+     "ancho_nominal_mm": 200.0,
+     "condiciones": [
+      "ANCHO_NOMINAL_NO_UTIL",
+      "ALTURA_ALA_NOMINAL_NO_UTIL",
+      "MECANICA_NO_VERIFICABLE_SIN_REGISTRO"
+     ],
+     "diametro_alambre_mm": null,
+     "espesor_chapa_mm": 0.71,
+     "estado": "PRESELECCION_CONDICIONADA",
+     "familia_id": "SAM-STP-ZN",
+     "geometria": {
+      "advertencias": [
+       "Ancho útil no publicado: se usa el ancho nominal del catálogo (D-04).",
+       "Alto útil no publicado: se compara el diámetro con el ala nominal (D-08)."
+      ],
+      "altura_referencia_mm": 50.0,
+      "ancho_referencia_mm": 200.0,
+      "base_altura": "ala_nominal",
+      "base_ancho": "nominal",
+      "estado": "CUMPLE",
+      "reserva": {
+       "ancho_libre_mm": 143.3,
+       "ancho_max_ocupable_mm": 160.0,
+       "cabe": true,
+       "condicion": "W_ocupado ≤ (1 − r)·W_ref",
+       "criterio": "fraccion_libre_ancho_bandeja",
+       "cumple": true,
+       "denominador_criterio": "ancho de referencia de la bandeja (W_ref)",
+       "metodo": "M-RES-1",
+       "reserva_libre_pct": 71.65,
+       "reserva_solicitada_pct": 20.0,
+       "sobrante_sobre_ocupado_pct": 252.734
+      }
+     },
+     "mecanica": {
+      "alcance": "Compara solo la masa propia de los cables con la CTA publicada para la misma luz. El esquema del ensayo (número de tramos, posición de uniones, tipo de apoyo) NO se contrasta con la instalación (D-12).",
+      "base_evidencia": null,
+      "carga_cables_kg_m": 0.456,
+      "cta_kg_m": null,
+      "detalle": "El catálogo no tiene carga de trabajo admisible para este producto y vano.",
+      "esquema_ensayo_contrastado": false,
+      "estado": "NO_VERIFICABLE_SIN_REGISTRO",
+      "metodo": "M-MEC-1",
+      "vano_mm": 1500.0
+     },
+     "minimo_apto_completo_de_linea": false,
+     "minimo_geometrico_de_linea": false,
+     "minimo_sin_rechazo_de_linea": false,
+     "nombre_familia": "Smarttray Perforada color",
+     "procedencia": {
+      "estado_dato": "transcrito",
+      "fila": 771,
+      "fuente_id": "F-002",
+      "hoja": "PRODUCTOS",
+      "pagina_fuente": "PDF 9 / impr. 16"
+     },
+     "producto_id": "SAM_TRPS-200-22-ZN",
+     "sku": "TRPS-200-22-ZN",
+     "tipo_constructivo": "perforada"
+    },
+    {
+     "acabado_normalizado": "pintado (base no declarada)",
+     "ala_nominal_mm": 50.0,
+     "ancho_nominal_mm": 200.0,
+     "condiciones": [
+      "ANCHO_NOMINAL_NO_UTIL",
+      "ALTURA_ALA_NOMINAL_NO_UTIL",
+      "MECANICA_NO_VERIFICABLE_SIN_REGISTRO"
+     ],
+     "diametro_alambre_mm": null,
+     "espesor_chapa_mm": 0.71,
+     "estado": "PRESELECCION_CONDICIONADA",
+     "familia_id": "SAM-STP-ZN",
+     "geometria": {
+      "advertencias": [
+       "Ancho útil no publicado: se usa el ancho nominal del catálogo (D-04).",
+       "Alto útil no publicado: se compara el diámetro con el ala nominal (D-08)."
+      ],
+      "altura_referencia_mm": 50.0,
+      "ancho_referencia_mm": 200.0,
+      "base_altura": "ala_nominal",
+      "base_ancho": "nominal",
+      "estado": "CUMPLE",
+      "reserva": {
+       "ancho_libre_mm": 143.3,
+       "ancho_max_ocupable_mm": 160.0,
+       "cabe": true,
+       "condicion": "W_ocupado ≤ (1 − r)·W_ref",
+       "criterio": "fraccion_libre_ancho_bandeja",
+       "cumple": true,
+       "denominador_criterio": "ancho de referencia de la bandeja (W_ref)",
+       "metodo": "M-RES-1",
+       "reserva_libre_pct": 71.65,
+       "reserva_solicitada_pct": 20.0,
+       "sobrante_sobre_ocupado_pct": 252.734
+      }
+     },
+     "mecanica": {
+      "alcance": "Compara solo la masa propia de los cables con la CTA publicada para la misma luz. El esquema del ensayo (número de tramos, posición de uniones, tipo de apoyo) NO se contrasta con la instalación (D-12).",
+      "base_evidencia": null,
+      "carga_cables_kg_m": 0.456,
+      "cta_kg_m": null,
+      "detalle": "El catálogo no tiene carga de trabajo admisible para este producto y vano.",
+      "esquema_ensayo_contrastado": false,
+      "estado": "NO_VERIFICABLE_SIN_REGISTRO",
+      "metodo": "M-MEC-1",
+      "vano_mm": 1500.0
+     },
+     "minimo_apto_completo_de_linea": false,
+     "minimo_geometrico_de_linea": false,
+     "minimo_sin_rechazo_de_linea": false,
+     "nombre_familia": "Smarttray Perforada color",
+     "procedencia": {
+      "estado_dato": "transcrito",
+      "fila": 778,
+      "fuente_id": "F-002",
+      "hoja": "PRODUCTOS",
+      "pagina_fuente": "PDF 9 / impr. 16"
+     },
+     "producto_id": "SAM_TRPS-200-22-ZB",
+     "sku": "TRPS-200-22-ZB",
+     "tipo_constructivo": "perforada"
+    },
+    {
+     "acabado_normalizado": "pintado (base no declarada)",
+     "ala_nominal_mm": 50.0,
+     "ancho_nominal_mm": 300.0,
+     "condiciones": [
+      "ANCHO_NOMINAL_NO_UTIL",
+      "ALTURA_ALA_NOMINAL_NO_UTIL",
+      "MECANICA_NO_VERIFICABLE_SIN_REGISTRO"
+     ],
+     "diametro_alambre_mm": null,
+     "espesor_chapa_mm": 0.71,
+     "estado": "PRESELECCION_CONDICIONADA",
+     "familia_id": "SAM-STP-ZN",
+     "geometria": {
+      "advertencias": [
+       "Ancho útil no publicado: se usa el ancho nominal del catálogo (D-04).",
+       "Alto útil no publicado: se compara el diámetro con el ala nominal (D-08)."
+      ],
+      "altura_referencia_mm": 50.0,
+      "ancho_referencia_mm": 300.0,
+      "base_altura": "ala_nominal",
+      "base_ancho": "nominal",
+      "estado": "CUMPLE",
+      "reserva": {
+       "ancho_libre_mm": 243.3,
+       "ancho_max_ocupable_mm": 240.0,
+       "cabe": true,
+       "condicion": "W_ocupado ≤ (1 − r)·W_ref",
+       "criterio": "fraccion_libre_ancho_bandeja",
+       "cumple": true,
+       "denominador_criterio": "ancho de referencia de la bandeja (W_ref)",
+       "metodo": "M-RES-1",
+       "reserva_libre_pct": 81.1,
+       "reserva_solicitada_pct": 20.0,
+       "sobrante_sobre_ocupado_pct": 429.101
+      }
+     },
+     "mecanica": {
+      "alcance": "Compara solo la masa propia de los cables con la CTA publicada para la misma luz. El esquema del ensayo (número de tramos, posición de uniones, tipo de apoyo) NO se contrasta con la instalación (D-12).",
+      "base_evidencia": null,
+      "carga_cables_kg_m": 0.456,
+      "cta_kg_m": null,
+      "detalle": "El catálogo no tiene carga de trabajo admisible para este producto y vano.",
+      "esquema_ensayo_contrastado": false,
+      "estado": "NO_VERIFICABLE_SIN_REGISTRO",
+      "metodo": "M-MEC-1",
+      "vano_mm": 1500.0
+     },
+     "minimo_apto_completo_de_linea": false,
+     "minimo_geometrico_de_linea": false,
+     "minimo_sin_rechazo_de_linea": false,
+     "nombre_familia": "Smarttray Perforada color",
+     "procedencia": {
+      "estado_dato": "transcrito",
+      "fila": 772,
+      "fuente_id": "F-002",
+      "hoja": "PRODUCTOS",
+      "pagina_fuente": "PDF 9 / impr. 16"
+     },
+     "producto_id": "SAM_TRPS-300-22-ZN",
+     "sku": "TRPS-300-22-ZN",
+     "tipo_constructivo": "perforada"
+    },
+    {
+     "acabado_normalizado": "pintado (base no declarada)",
+     "ala_nominal_mm": 50.0,
+     "ancho_nominal_mm": 300.0,
+     "condiciones": [
+      "ANCHO_NOMINAL_NO_UTIL",
+      "ALTURA_ALA_NOMINAL_NO_UTIL",
+      "MECANICA_NO_VERIFICABLE_SIN_REGISTRO"
+     ],
+     "diametro_alambre_mm": null,
+     "espesor_chapa_mm": 0.71,
+     "estado": "PRESELECCION_CONDICIONADA",
+     "familia_id": "SAM-STP-ZN",
+     "geometria": {
+      "advertencias": [
+       "Ancho útil no publicado: se usa el ancho nominal del catálogo (D-04).",
+       "Alto útil no publicado: se compara el diámetro con el ala nominal (D-08)."
+      ],
+      "altura_referencia_mm": 50.0,
+      "ancho_referencia_mm": 300.0,
+      "base_altura": "ala_nominal",
+      "base_ancho": "nominal",
+      "estado": "CUMPLE",
+      "reserva": {
+       "ancho_libre_mm": 243.3,
+       "ancho_max_ocupable_mm": 240.0,
+       "cabe": true,
+       "condicion": "W_ocupado ≤ (1 − r)·W_ref",
+       "criterio": "fraccion_libre_ancho_bandeja",
+       "cumple": true,
+       "denominador_criterio": "ancho de referencia de la bandeja (W_ref)",
+       "metodo": "M-RES-1",
+       "reserva_libre_pct": 81.1,
+       "reserva_solicitada_pct": 20.0,
+       "sobrante_sobre_ocupado_pct": 429.101
+      }
+     },
+     "mecanica": {
+      "alcance": "Compara solo la masa propia de los cables con la CTA publicada para la misma luz. El esquema del ensayo (número de tramos, posición de uniones, tipo de apoyo) NO se contrasta con la instalación (D-12).",
+      "base_evidencia": null,
+      "carga_cables_kg_m": 0.456,
+      "cta_kg_m": null,
+      "detalle": "El catálogo no tiene carga de trabajo admisible para este producto y vano.",
+      "esquema_ensayo_contrastado": false,
+      "estado": "NO_VERIFICABLE_SIN_REGISTRO",
+      "metodo": "M-MEC-1",
+      "vano_mm": 1500.0
+     },
+     "minimo_apto_completo_de_linea": false,
+     "minimo_geometrico_de_linea": false,
+     "minimo_sin_rechazo_de_linea": false,
+     "nombre_familia": "Smarttray Perforada color",
+     "procedencia": {
+      "estado_dato": "transcrito",
+      "fila": 779,
+      "fuente_id": "F-002",
+      "hoja": "PRODUCTOS",
+      "pagina_fuente": "PDF 9 / impr. 16"
+     },
+     "producto_id": "SAM_TRPS-300-22-ZB",
+     "sku": "TRPS-300-22-ZB",
+     "tipo_constructivo": "perforada"
+    },
+    {
+     "acabado_normalizado": "pintado (base no declarada)",
+     "ala_nominal_mm": 50.0,
+     "ancho_nominal_mm": 450.0,
+     "condiciones": [
+      "ANCHO_NOMINAL_NO_UTIL",
+      "ALTURA_ALA_NOMINAL_NO_UTIL",
+      "MECANICA_NO_VERIFICABLE_SIN_REGISTRO"
+     ],
+     "diametro_alambre_mm": null,
+     "espesor_chapa_mm": 0.89,
+     "estado": "PRESELECCION_CONDICIONADA",
+     "familia_id": "SAM-STP-ZN",
+     "geometria": {
+      "advertencias": [
+       "Ancho útil no publicado: se usa el ancho nominal del catálogo (D-04).",
+       "Alto útil no publicado: se compara el diámetro con el ala nominal (D-08)."
+      ],
+      "altura_referencia_mm": 50.0,
+      "ancho_referencia_mm": 450.0,
+      "base_altura": "ala_nominal",
+      "base_ancho": "nominal",
+      "estado": "CUMPLE",
+      "reserva": {
+       "ancho_libre_mm": 393.3,
+       "ancho_max_ocupable_mm": 360.0,
+       "cabe": true,
+       "condicion": "W_ocupado ≤ (1 − r)·W_ref",
+       "criterio": "fraccion_libre_ancho_bandeja",
+       "cumple": true,
+       "denominador_criterio": "ancho de referencia de la bandeja (W_ref)",
+       "metodo": "M-RES-1",
+       "reserva_libre_pct": 87.4,
+       "reserva_solicitada_pct": 20.0,
+       "sobrante_sobre_ocupado_pct": 693.651
+      }
+     },
+     "mecanica": {
+      "alcance": "Compara solo la masa propia de los cables con la CTA publicada para la misma luz. El esquema del ensayo (número de tramos, posición de uniones, tipo de apoyo) NO se contrasta con la instalación (D-12).",
+      "base_evidencia": null,
+      "carga_cables_kg_m": 0.456,
+      "cta_kg_m": null,
+      "detalle": "El catálogo no tiene carga de trabajo admisible para este producto y vano.",
+      "esquema_ensayo_contrastado": false,
+      "estado": "NO_VERIFICABLE_SIN_REGISTRO",
+      "metodo": "M-MEC-1",
+      "vano_mm": 1500.0
+     },
+     "minimo_apto_completo_de_linea": false,
+     "minimo_geometrico_de_linea": true,
+     "minimo_sin_rechazo_de_linea": true,
+     "nombre_familia": "Smarttray Perforada color",
+     "procedencia": {
+      "estado_dato": "transcrito",
+      "fila": 773,
+      "fuente_id": "F-002",
+      "hoja": "PRODUCTOS",
+      "pagina_fuente": "PDF 9 / impr. 16"
+     },
+     "producto_id": "SAM_TRPS-450-20-ZN",
+     "sku": "TRPS-450-20-ZN",
+     "tipo_constructivo": "perforada"
+    },
+    {
+     "acabado_normalizado": "pintado (base no declarada)",
+     "ala_nominal_mm": 50.0,
+     "ancho_nominal_mm": 450.0,
+     "condiciones": [
+      "ANCHO_NOMINAL_NO_UTIL",
+      "ALTURA_ALA_NOMINAL_NO_UTIL",
+      "MECANICA_NO_VERIFICABLE_SIN_REGISTRO"
+     ],
+     "diametro_alambre_mm": null,
+     "espesor_chapa_mm": 0.89,
+     "estado": "PRESELECCION_CONDICIONADA",
+     "familia_id": "SAM-STP-ZN",
+     "geometria": {
+      "advertencias": [
+       "Ancho útil no publicado: se usa el ancho nominal del catálogo (D-04).",
+       "Alto útil no publicado: se compara el diámetro con el ala nominal (D-08)."
+      ],
+      "altura_referencia_mm": 50.0,
+      "ancho_referencia_mm": 450.0,
+      "base_altura": "ala_nominal",
+      "base_ancho": "nominal",
+      "estado": "CUMPLE",
+      "reserva": {
+       "ancho_libre_mm": 393.3,
+       "ancho_max_ocupable_mm": 360.0,
+       "cabe": true,
+       "condicion": "W_ocupado ≤ (1 − r)·W_ref",
+       "criterio": "fraccion_libre_ancho_bandeja",
+       "cumple": true,
+       "denominador_criterio": "ancho de referencia de la bandeja (W_ref)",
+       "metodo": "M-RES-1",
+       "reserva_libre_pct": 87.4,
+       "reserva_solicitada_pct": 20.0,
+       "sobrante_sobre_ocupado_pct": 693.651
+      }
+     },
+     "mecanica": {
+      "alcance": "Compara solo la masa propia de los cables con la CTA publicada para la misma luz. El esquema del ensayo (número de tramos, posición de uniones, tipo de apoyo) NO se contrasta con la instalación (D-12).",
+      "base_evidencia": null,
+      "carga_cables_kg_m": 0.456,
+      "cta_kg_m": null,
+      "detalle": "El catálogo no tiene carga de trabajo admisible para este producto y vano.",
+      "esquema_ensayo_contrastado": false,
+      "estado": "NO_VERIFICABLE_SIN_REGISTRO",
+      "metodo": "M-MEC-1",
+      "vano_mm": 1500.0
+     },
+     "minimo_apto_completo_de_linea": false,
+     "minimo_geometrico_de_linea": false,
+     "minimo_sin_rechazo_de_linea": false,
+     "nombre_familia": "Smarttray Perforada color",
+     "procedencia": {
+      "estado_dato": "transcrito",
+      "fila": 780,
+      "fuente_id": "F-002",
+      "hoja": "PRODUCTOS",
+      "pagina_fuente": "PDF 9 / impr. 16"
+     },
+     "producto_id": "SAM_TRPS-450-20-ZB",
+     "sku": "TRPS-450-20-ZB",
+     "tipo_constructivo": "perforada"
+    },
+    {
+     "acabado_normalizado": "pintado (base no declarada)",
+     "ala_nominal_mm": 50.0,
+     "ancho_nominal_mm": 600.0,
+     "condiciones": [
+      "ANCHO_NOMINAL_NO_UTIL",
+      "ALTURA_ALA_NOMINAL_NO_UTIL",
+      "MECANICA_NO_VERIFICABLE_SIN_REGISTRO"
+     ],
+     "diametro_alambre_mm": null,
+     "espesor_chapa_mm": 0.89,
+     "estado": "PRESELECCION_CONDICIONADA",
+     "familia_id": "SAM-STP-ZN",
+     "geometria": {
+      "advertencias": [
+       "Ancho útil no publicado: se usa el ancho nominal del catálogo (D-04).",
+       "Alto útil no publicado: se compara el diámetro con el ala nominal (D-08)."
+      ],
+      "altura_referencia_mm": 50.0,
+      "ancho_referencia_mm": 600.0,
+      "base_altura": "ala_nominal",
+      "base_ancho": "nominal",
+      "estado": "CUMPLE",
+      "reserva": {
+       "ancho_libre_mm": 543.3,
+       "ancho_max_ocupable_mm": 480.0,
+       "cabe": true,
+       "condicion": "W_ocupado ≤ (1 − r)·W_ref",
+       "criterio": "fraccion_libre_ancho_bandeja",
+       "cumple": true,
+       "denominador_criterio": "ancho de referencia de la bandeja (W_ref)",
+       "metodo": "M-RES-1",
+       "reserva_libre_pct": 90.55,
+       "reserva_solicitada_pct": 20.0,
+       "sobrante_sobre_ocupado_pct": 958.201
+      }
+     },
+     "mecanica": {
+      "alcance": "Compara solo la masa propia de los cables con la CTA publicada para la misma luz. El esquema del ensayo (número de tramos, posición de uniones, tipo de apoyo) NO se contrasta con la instalación (D-12).",
+      "base_evidencia": null,
+      "carga_cables_kg_m": 0.456,
+      "cta_kg_m": null,
+      "detalle": "El catálogo no tiene carga de trabajo admisible para este producto y vano.",
+      "esquema_ensayo_contrastado": false,
+      "estado": "NO_VERIFICABLE_SIN_REGISTRO",
+      "metodo": "M-MEC-1",
+      "vano_mm": 1500.0
+     },
+     "minimo_apto_completo_de_linea": false,
+     "minimo_geometrico_de_linea": false,
+     "minimo_sin_rechazo_de_linea": false,
+     "nombre_familia": "Smarttray Perforada color",
+     "procedencia": {
+      "estado_dato": "transcrito",
+      "fila": 774,
+      "fuente_id": "F-002",
+      "hoja": "PRODUCTOS",
+      "pagina_fuente": "PDF 9 / impr. 16"
+     },
+     "producto_id": "SAM_TRPS-600-20-ZN",
+     "sku": "TRPS-600-20-ZN",
+     "tipo_constructivo": "perforada"
+    },
+    {
+     "acabado_normalizado": "pintado (base no declarada)",
+     "ala_nominal_mm": 50.0,
+     "ancho_nominal_mm": 600.0,
+     "condiciones": [
+      "ANCHO_NOMINAL_NO_UTIL",
+      "ALTURA_ALA_NOMINAL_NO_UTIL",
+      "MECANICA_NO_VERIFICABLE_SIN_REGISTRO"
+     ],
+     "diametro_alambre_mm": null,
+     "espesor_chapa_mm": 0.89,
+     "estado": "PRESELECCION_CONDICIONADA",
+     "familia_id": "SAM-STP-ZN",
+     "geometria": {
+      "advertencias": [
+       "Ancho útil no publicado: se usa el ancho nominal del catálogo (D-04).",
+       "Alto útil no publicado: se compara el diámetro con el ala nominal (D-08)."
+      ],
+      "altura_referencia_mm": 50.0,
+      "ancho_referencia_mm": 600.0,
+      "base_altura": "ala_nominal",
+      "base_ancho": "nominal",
+      "estado": "CUMPLE",
+      "reserva": {
+       "ancho_libre_mm": 543.3,
+       "ancho_max_ocupable_mm": 480.0,
+       "cabe": true,
+       "condicion": "W_ocupado ≤ (1 − r)·W_ref",
+       "criterio": "fraccion_libre_ancho_bandeja",
+       "cumple": true,
+       "denominador_criterio": "ancho de referencia de la bandeja (W_ref)",
+       "metodo": "M-RES-1",
+       "reserva_libre_pct": 90.55,
+       "reserva_solicitada_pct": 20.0,
+       "sobrante_sobre_ocupado_pct": 958.201
+      }
+     },
+     "mecanica": {
+      "alcance": "Compara solo la masa propia de los cables con la CTA publicada para la misma luz. El esquema del ensayo (número de tramos, posición de uniones, tipo de apoyo) NO se contrasta con la instalación (D-12).",
+      "base_evidencia": null,
+      "carga_cables_kg_m": 0.456,
+      "cta_kg_m": null,
+      "detalle": "El catálogo no tiene carga de trabajo admisible para este producto y vano.",
+      "esquema_ensayo_contrastado": false,
+      "estado": "NO_VERIFICABLE_SIN_REGISTRO",
+      "metodo": "M-MEC-1",
+      "vano_mm": 1500.0
+     },
+     "minimo_apto_completo_de_linea": false,
+     "minimo_geometrico_de_linea": false,
+     "minimo_sin_rechazo_de_linea": false,
+     "nombre_familia": "Smarttray Perforada color",
+     "procedencia": {
+      "estado_dato": "transcrito",
+      "fila": 781,
+      "fuente_id": "F-002",
+      "hoja": "PRODUCTOS",
+      "pagina_fuente": "PDF 9 / impr. 16"
+     },
+     "producto_id": "SAM_TRPS-600-20-ZB",
+     "sku": "TRPS-600-20-ZB",
+     "tipo_constructivo": "perforada"
+    },
+    {
+     "acabado_normalizado": "no especificado",
+     "ala_nominal_mm": 25.0,
+     "ancho_nominal_mm": 25.0,
+     "condiciones": [],
+     "diametro_alambre_mm": 4.76,
+     "espesor_chapa_mm": null,
+     "estado": "NO_APTA_GEOMETRIA",
+     "familia_id": "FAMIQ-ALAMBRE-INOX",
+     "geometria": {
+      "advertencias": [
+       "Ancho útil no publicado: se usa el ancho nominal del catálogo (D-04)."
+      ],
+      "altura_referencia_mm": 25.0,
+      "ancho_referencia_mm": 25.0,
+      "base_altura": "ala_nominal",
+      "base_ancho": "nominal",
+      "estado": "NO_CUMPLE_ANCHO",
+      "reserva": {
+       "ancho_libre_mm": -31.7,
+       "ancho_max_ocupable_mm": 20.0,
+       "cabe": false,
+       "condicion": "W_ocupado ≤ (1 − r)·W_ref",
+       "criterio": "fraccion_libre_ancho_bandeja",
+       "cumple": false,
+       "denominador_criterio": "ancho de referencia de la bandeja (W_ref)",
+       "metodo": "M-RES-1",
+       "reserva_libre_pct": -126.8,
+       "reserva_solicitada_pct": 20.0,
+       "sobrante_sobre_ocupado_pct": -55.908
+      }
+     },
+     "mecanica": {
+      "alcance": "Compara solo la masa propia de los cables con la CTA publicada para la misma luz. El esquema del ensayo (número de tramos, posición de uniones, tipo de apoyo) NO se contrasta con la instalación (D-12).",
+      "base_evidencia": null,
+      "carga_cables_kg_m": 0.456,
+      "cta_kg_m": null,
+      "detalle": "El catálogo no tiene carga de trabajo admisible para este producto y vano.",
+      "esquema_ensayo_contrastado": false,
+      "estado": "NO_VERIFICABLE_SIN_REGISTRO",
+      "metodo": "M-MEC-1",
+      "vano_mm": 1500.0
+     },
+     "minimo_apto_completo_de_linea": false,
+     "minimo_geometrico_de_linea": false,
+     "minimo_sin_rechazo_de_linea": false,
+     "nombre_familia": "Bandejas portacables en acero inoxidable AISI 304",
+     "procedencia": {
+      "estado_dato": "transcrito",
+      "fila": 357,
+      "fuente_id": "F-008",
+      "hoja": "PRODUCTOS",
+      "pagina_fuente": "p. 1 – Bandeja tramo recto (ítem 1)"
+     },
+     "producto_id": "FAMIQ_300711",
+     "sku": "300711",
+     "tipo_constructivo": "alambre"
+    },
+    {
+     "acabado_normalizado": "no especificado",
+     "ala_nominal_mm": 50.0,
+     "ancho_nominal_mm": 50.0,
+     "condiciones": [],
+     "diametro_alambre_mm": 4.76,
+     "espesor_chapa_mm": null,
+     "estado": "NO_APTA_GEOMETRIA",
+     "familia_id": "FAMIQ-ALAMBRE-INOX",
+     "geometria": {
+      "advertencias": [
+       "Ancho útil no publicado: se usa el ancho nominal del catálogo (D-04)."
+      ],
+      "altura_referencia_mm": 50.0,
+      "ancho_referencia_mm": 50.0,
+      "base_altura": "ala_nominal",
+      "base_ancho": "nominal",
+      "estado": "NO_CUMPLE_ANCHO",
+      "reserva": {
+       "ancho_libre_mm": -6.7,
+       "ancho_max_ocupable_mm": 40.0,
+       "cabe": false,
+       "condicion": "W_ocupado ≤ (1 − r)·W_ref",
+       "criterio": "fraccion_libre_ancho_bandeja",
+       "cumple": false,
+       "denominador_criterio": "ancho de referencia de la bandeja (W_ref)",
+       "metodo": "M-RES-1",
+       "reserva_libre_pct": -13.4,
+       "reserva_solicitada_pct": 20.0,
+       "sobrante_sobre_ocupado_pct": -11.817
+      }
+     },
+     "mecanica": {
+      "alcance": "Compara solo la masa propia de los cables con la CTA publicada para la misma luz. El esquema del ensayo (número de tramos, posición de uniones, tipo de apoyo) NO se contrasta con la instalación (D-12).",
+      "base_evidencia": null,
+      "carga_cables_kg_m": 0.456,
+      "cta_kg_m": null,
+      "detalle": "El catálogo no tiene carga de trabajo admisible para este producto y vano.",
+      "esquema_ensayo_contrastado": false,
+      "estado": "NO_VERIFICABLE_SIN_REGISTRO",
+      "metodo": "M-MEC-1",
+      "vano_mm": 1500.0
+     },
+     "minimo_apto_completo_de_linea": false,
+     "minimo_geometrico_de_linea": false,
+     "minimo_sin_rechazo_de_linea": false,
+     "nombre_familia": "Bandejas portacables en acero inoxidable AISI 304",
+     "procedencia": {
+      "estado_dato": "transcrito",
+      "fila": 358,
+      "fuente_id": "F-008",
+      "hoja": "PRODUCTOS",
+      "pagina_fuente": "p. 1 – Bandeja tramo recto (ítem 1)"
+     },
+     "producto_id": "FAMIQ_300715",
+     "sku": "300715",
+     "tipo_constructivo": "alambre"
+    },
+    {
+     "acabado_normalizado": "chapa pregalvanizada en origen",
+     "ala_nominal_mm": 50.0,
+     "ancho_nominal_mm": 50.0,
+     "condiciones": [],
+     "diametro_alambre_mm": null,
+     "espesor_chapa_mm": 0.71,
+     "estado": "NO_APTA_GEOMETRIA",
+     "familia_id": "SAM-STP-Z",
+     "geometria": {
+      "advertencias": [
+       "Ancho útil no publicado: se usa el ancho nominal del catálogo (D-04)."
+      ],
+      "altura_referencia_mm": 50.0,
+      "ancho_referencia_mm": 50.0,
+      "base_altura": "ala_nominal",
+      "base_ancho": "nominal",
+      "estado": "NO_CUMPLE_ANCHO",
+      "reserva": {
+       "ancho_libre_mm": -6.7,
+       "ancho_max_ocupable_mm": 40.0,
+       "cabe": false,
+       "condicion": "W_ocupado ≤ (1 − r)·W_ref",
+       "criterio": "fraccion_libre_ancho_bandeja",
+       "cumple": false,
+       "denominador_criterio": "ancho de referencia de la bandeja (W_ref)",
+       "metodo": "M-RES-1",
+       "reserva_libre_pct": -13.4,
+       "reserva_solicitada_pct": 20.0,
+       "sobrante_sobre_ocupado_pct": -11.817
+      }
+     },
+     "mecanica": {
+      "alcance": "Compara solo la masa propia de los cables con la CTA publicada para la misma luz. El esquema del ensayo (número de tramos, posición de uniones, tipo de apoyo) NO se contrasta con la instalación (D-12).",
+      "base_evidencia": null,
+      "carga_cables_kg_m": 0.456,
+      "cta_kg_m": null,
+      "detalle": "El catálogo no tiene carga de trabajo admisible para este producto y vano.",
+      "esquema_ensayo_contrastado": false,
+      "estado": "NO_VERIFICABLE_SIN_REGISTRO",
+      "metodo": "M-MEC-1",
+      "vano_mm": 1500.0
+     },
+     "minimo_apto_completo_de_linea": false,
+     "minimo_geometrico_de_linea": false,
+     "minimo_sin_rechazo_de_linea": false,
+     "nombre_familia": "Smarttray Perforada",
+     "procedencia": {
+      "estado_dato": "transcrito",
+      "fila": 615,
+      "fuente_id": "F-002",
+      "hoja": "PRODUCTOS",
+      "pagina_fuente": "PDF 4 / impr. 7"
+     },
+     "producto_id": "SAM_TRPS-050-22-Z",
+     "sku": "TRPS-050-22-Z",
+     "tipo_constructivo": "perforada"
+    },
+    {
+     "acabado_normalizado": "pintado (base no declarada)",
+     "ala_nominal_mm": 50.0,
+     "ancho_nominal_mm": 50.0,
+     "condiciones": [],
+     "diametro_alambre_mm": null,
+     "espesor_chapa_mm": 0.71,
+     "estado": "NO_APTA_GEOMETRIA",
+     "familia_id": "SAM-STP-ZN",
+     "geometria": {
+      "advertencias": [
+       "Ancho útil no publicado: se usa el ancho nominal del catálogo (D-04)."
+      ],
+      "altura_referencia_mm": 50.0,
+      "ancho_referencia_mm": 50.0,
+      "base_altura": "ala_nominal",
+      "base_ancho": "nominal",
+      "estado": "NO_CUMPLE_ANCHO",
+      "reserva": {
+       "ancho_libre_mm": -6.7,
+       "ancho_max_ocupable_mm": 40.0,
+       "cabe": false,
+       "condicion": "W_ocupado ≤ (1 − r)·W_ref",
+       "criterio": "fraccion_libre_ancho_bandeja",
+       "cumple": false,
+       "denominador_criterio": "ancho de referencia de la bandeja (W_ref)",
+       "metodo": "M-RES-1",
+       "reserva_libre_pct": -13.4,
+       "reserva_solicitada_pct": 20.0,
+       "sobrante_sobre_ocupado_pct": -11.817
+      }
+     },
+     "mecanica": {
+      "alcance": "Compara solo la masa propia de los cables con la CTA publicada para la misma luz. El esquema del ensayo (número de tramos, posición de uniones, tipo de apoyo) NO se contrasta con la instalación (D-12).",
+      "base_evidencia": null,
+      "carga_cables_kg_m": 0.456,
+      "cta_kg_m": null,
+      "detalle": "El catálogo no tiene carga de trabajo admisible para este producto y vano.",
+      "esquema_ensayo_contrastado": false,
+      "estado": "NO_VERIFICABLE_SIN_REGISTRO",
+      "metodo": "M-MEC-1",
+      "vano_mm": 1500.0
+     },
+     "minimo_apto_completo_de_linea": false,
+     "minimo_geometrico_de_linea": false,
+     "minimo_sin_rechazo_de_linea": false,
+     "nombre_familia": "Smarttray Perforada color",
+     "procedencia": {
+      "estado_dato": "transcrito",
+      "fila": 768,
+      "fuente_id": "F-002",
+      "hoja": "PRODUCTOS",
+      "pagina_fuente": "PDF 9 / impr. 16"
+     },
+     "producto_id": "SAM_TRPS-050-22-ZN",
+     "sku": "TRPS-050-22-ZN",
+     "tipo_constructivo": "perforada"
+    },
+    {
+     "acabado_normalizado": "pintado (base no declarada)",
+     "ala_nominal_mm": 50.0,
+     "ancho_nominal_mm": 50.0,
+     "condiciones": [],
+     "diametro_alambre_mm": null,
+     "espesor_chapa_mm": 0.71,
+     "estado": "NO_APTA_GEOMETRIA",
+     "familia_id": "SAM-STP-ZN",
+     "geometria": {
+      "advertencias": [
+       "Ancho útil no publicado: se usa el ancho nominal del catálogo (D-04)."
+      ],
+      "altura_referencia_mm": 50.0,
+      "ancho_referencia_mm": 50.0,
+      "base_altura": "ala_nominal",
+      "base_ancho": "nominal",
+      "estado": "NO_CUMPLE_ANCHO",
+      "reserva": {
+       "ancho_libre_mm": -6.7,
+       "ancho_max_ocupable_mm": 40.0,
+       "cabe": false,
+       "condicion": "W_ocupado ≤ (1 − r)·W_ref",
+       "criterio": "fraccion_libre_ancho_bandeja",
+       "cumple": false,
+       "denominador_criterio": "ancho de referencia de la bandeja (W_ref)",
+       "metodo": "M-RES-1",
+       "reserva_libre_pct": -13.4,
+       "reserva_solicitada_pct": 20.0,
+       "sobrante_sobre_ocupado_pct": -11.817
+      }
+     },
+     "mecanica": {
+      "alcance": "Compara solo la masa propia de los cables con la CTA publicada para la misma luz. El esquema del ensayo (número de tramos, posición de uniones, tipo de apoyo) NO se contrasta con la instalación (D-12).",
+      "base_evidencia": null,
+      "carga_cables_kg_m": 0.456,
+      "cta_kg_m": null,
+      "detalle": "El catálogo no tiene carga de trabajo admisible para este producto y vano.",
+      "esquema_ensayo_contrastado": false,
+      "estado": "NO_VERIFICABLE_SIN_REGISTRO",
+      "metodo": "M-MEC-1",
+      "vano_mm": 1500.0
+     },
+     "minimo_apto_completo_de_linea": false,
+     "minimo_geometrico_de_linea": false,
+     "minimo_sin_rechazo_de_linea": false,
+     "nombre_familia": "Smarttray Perforada color",
+     "procedencia": {
+      "estado_dato": "transcrito",
+      "fila": 775,
+      "fuente_id": "F-002",
+      "hoja": "PRODUCTOS",
+      "pagina_fuente": "PDF 9 / impr. 16"
+     },
+     "producto_id": "SAM_TRPS-050-22-ZB",
+     "sku": "TRPS-050-22-ZB",
+     "tipo_constructivo": "perforada"
+    }
+   ],
+   "datos": {
+    "cables": {
+     "datasets": {
+      "PRY-SINTENAX-VALIO-ED2020": {
+       "sha256_dataset": "43761477818f0448600c72eaa2749262dd9907fb42be811acd08d6ded6a4aa6c",
+       "version_dataset": "2"
+      }
+     },
+     "sha256_contenido": "a4847ef1731ff3a750f7b73b5bd1213775cececb2844bce23597b87e1dbefa94"
+    },
+    "catalogo": {
+     "archivo_origen": "Catalogo_Bandejas_y_Accesorios_2.xlsx",
+     "derivaciones": {
+      "ids": [],
+      "version": "2"
+     },
+     "importado_utc": "2026-11-05T18:00:01+00:00",
+     "sha256_contenido": "820a02c2db44dd271570e01819e74b791dc05612e2bcc09c41f7f4e816013477",
+     "sha256_origen": "7be8b0f91666aa028a1b8f629d2cdd0ec68cf993ec2d504a0179358886a9894c",
+     "sha256_snapshot": "c649e63dd001ec5abbed0c888ac472d68d8cdaf3b23c56b4990eca17988fafb1",
+     "version_formato_snapshot": "3"
+    }
+   },
+   "decisiones": {
+    "criterio_reserva_aplicado": "fraccion_libre_ancho_bandeja",
+    "origen_criterio_reserva": "D-05 (valor por defecto)",
+    "valores": {
+     "D-02_separado_desactivado_equivale_a": "contacto",
+     "D-04_ancho_referencia": "util_si_existe_sino_nominal",
+     "D-05_criterio_reserva": "fraccion_libre_ancho_bandeja",
+     "D-06_evidencias_carga_aceptadas": [
+      "documentada",
+      "validada_por_usuario",
+      "adoptada_por_decision"
+     ],
+     "D-08_altura_referencia": "util_si_existe_sino_ala_nominal",
+     "D-13_equivalencia_extremos_recta": "aplicar_con_condicion",
+     "D-14_tolerancia_angulo_grados": 1.0,
+     "D-14_tolerancia_posicion_mm": 1.0,
+     "D-16_radio_disponible": "borde_interior_peor_caso",
+     "D-19_posicion_pe": "contra_ala_en_contacto",
+     "D-20_seccion_pe_mm2": 16,
+     "D-21_identificacion_pe_requerida": "verde/amarillo",
+     "D-22_tolerancia_luz_mm": 0.0,
+     "D-27_holgura_pe_mm": null,
+     "D-30_tolerancia_union_centro_mm": 10.0,
+     "nota": "Valores por defecto de las decisiones de producto. Cada clave remite a docs/DECISIONES.md. Cambiar un valor cambia la huella de todo resultado.",
+     "nota_D-06": "Solo \"documentada\" produce VERIFICADA_*. Las otras dos producen CUMPLE_CONDICIONADO / NO_CUMPLE_CONDICIONADO. Nombres = evidencia_motor (ver catalogo.py).",
+     "nota_v020": "D-13, D-14, D-16, D-18, D-22, D-24, D-27 son PROPUESTAS activas con condición visible en el resultado. D-19 está PENDIENTE (opción propuesta: contacto_en_extremo_de_fila). Ver docs/DECISIONES.md.",
+     "nota_v021": "D-19 y D-21 (color) aprobadas por el usuario el 2026-11-05. D-12 resuelta: esquema de ensayo en datos/esquemas_ensayo.json (validado por usuario). D-30 propuesta.",
+     "nota_v022": "D-20 pasa a decisiones como valor (16 mm², aprobado por el usuario): la entrada del CAD ya no puede redefinirlo (auditoría H2). D-31 (PROPUESTA): un vano coincide con el esquema de ensayo solo si reproduce una ventana del ensayo: central (unión al centro, vecinos de igual luz a ambos lados, tramos de la longitud ensayada) o lateral (sin unión, dentro de un tramo de la longitud ensayada, contiguo a un central coincidente de igual luz). Lo que hay fuera de esa ventana no se contrasta (auditoría H8).",
+     "tipos_pieza_seleccionables": [
+      "recta"
+     ],
+     "version_decisiones": "2026-11-05.5"
+    },
+    "version": "2026-11-05.5"
+   },
+   "disposicion": {
+    "ancho_ocupado_mm": 56.7,
+    "capas": 1,
+    "decisiones": [
+     "D-01"
+    ],
+    "diametro_max_mm": 8.1,
+    "excluye": "márgenes laterales, separación a las alas, reserva",
+    "formula": "W = n·D + (n−1)·g ; g = D ⇒ W = (2n−1)·D (separado, una fila)",
+    "hueco_libre_entre_superficies_mm": 8.1,
+    "metodo": "M-DISP-1",
+    "modo": "separado",
+    "n_cables": 4,
+    "paso_entre_centros_mm": 16.2
+   },
+   "entrada": {
+    "reserva_solicitada_pct": 20.0,
+    "tipo_circuito": "potencia",
+    "usos_cable": [
+     {
+      "apilado": false,
+      "cable_id": "PRY-SVALIO-CU-1x6",
+      "cantidad": 4,
+      "separado": true
+     }
+    ],
+    "vano_mm": 1500.0
+   },
+   "estado_calculo": "CALCULADO",
+   "huella": "2015a8f4b8340dc13d378d6090aba137f3e4c4274a32a0e8d0283af20daaa25a",
+   "masa_lineal": {
+    "alcance": "Masa propia de los cables. Excluye tapa, accesorios, sobrecargas y cargas puntuales.",
+    "detalle": [
+     {
+      "cable_id": "PRY-SVALIO-CU-1x6",
+      "cantidad": 4,
+      "masa_unitaria_kg_km_fuente": 114.0,
+      "masa_unitaria_kg_m": 0.114,
+      "procedencia": {
+       "archivo": "PRY2020_Sintenax_Valio.pdf",
+       "dataset_id": "PRY-SINTENAX-VALIO-ED2020",
+       "documento": "Cable Sintenax® Valio – Instalaciones Fijas",
+       "edicion": "Edición 2020 (impresa en el margen de cada página)",
+       "estado_evidencia": "documentada (ficha de fabricante, valor aproximado)",
+       "fila": "6",
+       "pagina": "3",
+       "tabla": "Características técnicas (IRAM) - Cables con conductores de cobre – UNIPOLARES (alma de color marrón)"
+      },
+      "subtotal_kg_m": 0.456
+     }
+    ],
+    "formula": "q = Σ nᵢ·mᵢ ; mᵢ[kg/m] = mᵢ[kg/km] / 1000",
+    "metodo": "M-MASA-1",
+    "valor_kg_m": 0.456
+   },
+   "motor": {
+    "metodos": {
+     "disposicion": "M-DISP-1",
+     "masa_lineal": "M-MASA-1",
+     "mecanica": "M-MEC-1",
+     "reserva": "M-RES-1"
+    },
+    "nombre": "motor_bandejas",
+    "version": "0.2.2"
+   },
+   "resumen_por_linea": [
+    {
+     "ala_nominal_mm": 25.0,
+     "condiciones_minimo_sin_rechazo": null,
+     "diametro_alambre_mm": 4.76,
+     "espesor_chapa_mm": null,
+     "estado_minimo_sin_rechazo": null,
+     "familia_id": "FAMIQ-ALAMBRE-INOX",
+     "mecanica_minimo_geometrico": null,
+     "minimo_apto_completo": null,
+     "minimo_geometrico": null,
+     "minimo_sin_rechazo": null
+    },
+    {
+     "ala_nominal_mm": 50.0,
+     "condiciones_minimo_sin_rechazo": [
+      "ANCHO_NOMINAL_NO_UTIL",
+      "ALTURA_ALA_NOMINAL_NO_UTIL",
+      "MECANICA_NO_VERIFICABLE_SIN_REGISTRO"
+     ],
+     "diametro_alambre_mm": 4.76,
+     "espesor_chapa_mm": null,
+     "estado_minimo_sin_rechazo": "PRESELECCION_CONDICIONADA",
+     "familia_id": "FAMIQ-ALAMBRE-INOX",
+     "mecanica_minimo_geometrico": "NO_VERIFICABLE_SIN_REGISTRO",
+     "minimo_apto_completo": null,
+     "minimo_geometrico": "FAMIQ_300708",
+     "minimo_sin_rechazo": "FAMIQ_300708"
+    },
+    {
+     "ala_nominal_mm": 115.0,
+     "condiciones_minimo_sin_rechazo": [
+      "ANCHO_NOMINAL_NO_UTIL",
+      "ALTURA_ALA_NOMINAL_NO_UTIL",
+      "MECANICA_NO_VERIFICABLE_SIN_REGISTRO"
+     ],
+     "diametro_alambre_mm": null,
+     "espesor_chapa_mm": 1.24,
+     "estado_minimo_sin_rechazo": "PRESELECCION_CONDICIONADA",
+     "familia_id": "SAM-STE-G",
+     "mecanica_minimo_geometrico": "NO_VERIFICABLE_SIN_REGISTRO",
+     "minimo_apto_completo": null,
+     "minimo_geometrico": "SAM_TRES-150-115-18-G",
+     "minimo_sin_rechazo": "SAM_TRES-150-115-18-G"
+    },
+    {
+     "ala_nominal_mm": 115.0,
+     "condiciones_minimo_sin_rechazo": [
+      "ANCHO_NOMINAL_NO_UTIL",
+      "ALTURA_ALA_NOMINAL_NO_UTIL",
+      "MECANICA_NO_VERIFICABLE_SIN_REGISTRO"
+     ],
+     "diametro_alambre_mm": null,
+     "espesor_chapa_mm": 2.1,
+     "estado_minimo_sin_rechazo": "PRESELECCION_CONDICIONADA",
+     "familia_id": "SAM-STE-G",
+     "mecanica_minimo_geometrico": "NO_VERIFICABLE_SIN_REGISTRO",
+     "minimo_apto_completo": null,
+     "minimo_geometrico": "SAM_TRES-150-115-14-G",
+     "minimo_sin_rechazo": "SAM_TRES-150-115-14-G"
+    },
+    {
+     "ala_nominal_mm": 150.0,
+     "condiciones_minimo_sin_rechazo": [
+      "ANCHO_NOMINAL_NO_UTIL",
+      "ALTURA_ALA_NOMINAL_NO_UTIL",
+      "MECANICA_NO_VERIFICABLE_SIN_REGISTRO"
+     ],
+     "diametro_alambre_mm": null,
+     "espesor_chapa_mm": 2.1,
+     "estado_minimo_sin_rechazo": "PRESELECCION_CONDICIONADA",
+     "familia_id": "SAM-STE-G",
+     "mecanica_minimo_geometrico": "NO_VERIFICABLE_SIN_REGISTRO",
+     "minimo_apto_completo": null,
+     "minimo_geometrico": "SAM_TRES-150-150-14-G",
+     "minimo_sin_rechazo": "SAM_TRES-150-150-14-G"
+    },
+    {
+     "ala_nominal_mm": 65.0,
+     "condiciones_minimo_sin_rechazo": [
+      "ANCHO_NOMINAL_NO_UTIL",
+      "ALTURA_ALA_NOMINAL_NO_UTIL"
+     ],
+     "diametro_alambre_mm": null,
+     "espesor_chapa_mm": 1.24,
+     "estado_minimo_sin_rechazo": "PRESELECCION_CONDICIONADA",
+     "familia_id": "SAM-STE-G",
+     "mecanica_minimo_geometrico": "VERIFICADA_CUMPLE",
+     "minimo_apto_completo": null,
+     "minimo_geometrico": "SAM_TRES-150-065-18-G",
+     "minimo_sin_rechazo": "SAM_TRES-150-065-18-G"
+    },
+    {
+     "ala_nominal_mm": 65.0,
+     "condiciones_minimo_sin_rechazo": [
+      "ANCHO_NOMINAL_NO_UTIL",
+      "ALTURA_ALA_NOMINAL_NO_UTIL",
+      "MECANICA_NO_VERIFICABLE_SIN_REGISTRO"
+     ],
+     "diametro_alambre_mm": null,
+     "espesor_chapa_mm": 2.1,
+     "estado_minimo_sin_rechazo": "PRESELECCION_CONDICIONADA",
+     "familia_id": "SAM-STE-G",
+     "mecanica_minimo_geometrico": "NO_VERIFICABLE_SIN_REGISTRO",
+     "minimo_apto_completo": null,
+     "minimo_geometrico": "SAM_TRES-150-065-14-G",
+     "minimo_sin_rechazo": "SAM_TRES-150-065-14-G"
+    },
+    {
+     "ala_nominal_mm": 90.0,
+     "condiciones_minimo_sin_rechazo": [
+      "ANCHO_NOMINAL_NO_UTIL",
+      "ALTURA_ALA_NOMINAL_NO_UTIL"
+     ],
+     "diametro_alambre_mm": null,
+     "espesor_chapa_mm": 1.24,
+     "estado_minimo_sin_rechazo": "PRESELECCION_CONDICIONADA",
+     "familia_id": "SAM-STE-G",
+     "mecanica_minimo_geometrico": "VERIFICADA_CUMPLE",
+     "minimo_apto_completo": null,
+     "minimo_geometrico": "SAM_TRES-150-090-18-G",
+     "minimo_sin_rechazo": "SAM_TRES-150-090-18-G"
+    },
+    {
+     "ala_nominal_mm": 90.0,
+     "condiciones_minimo_sin_rechazo": [
+      "ANCHO_NOMINAL_NO_UTIL",
+      "ALTURA_ALA_NOMINAL_NO_UTIL",
+      "MECANICA_NO_VERIFICABLE_SIN_REGISTRO"
+     ],
+     "diametro_alambre_mm": null,
+     "espesor_chapa_mm": 2.1,
+     "estado_minimo_sin_rechazo": "PRESELECCION_CONDICIONADA",
+     "familia_id": "SAM-STE-G",
+     "mecanica_minimo_geometrico": "NO_VERIFICABLE_SIN_REGISTRO",
+     "minimo_apto_completo": null,
+     "minimo_geometrico": "SAM_TRES-150-090-14-G",
+     "minimo_sin_rechazo": "SAM_TRES-150-090-14-G"
+    },
+    {
+     "ala_nominal_mm": 115.0,
+     "condiciones_minimo_sin_rechazo": [
+      "ANCHO_NOMINAL_NO_UTIL",
+      "ALTURA_ALA_NOMINAL_NO_UTIL",
+      "MECANICA_NO_VERIFICABLE_LUZ_NO_DECLARADA"
+     ],
+     "diametro_alambre_mm": null,
+     "espesor_chapa_mm": 1.24,
+     "estado_minimo_sin_rechazo": "PRESELECCION_CONDICIONADA",
+     "familia_id": "SAM-STE-Z",
+     "mecanica_minimo_geometrico": "NO_VERIFICABLE_LUZ_NO_DECLARADA",
+     "minimo_apto_completo": null,
+     "minimo_geometrico": "SAM_TRES-150-115-18-Z",
+     "minimo_sin_rechazo": "SAM_TRES-150-115-18-Z"
+    },
+    {
+     "ala_nominal_mm": 65.0,
+     "condiciones_minimo_sin_rechazo": [
+      "ANCHO_NOMINAL_NO_UTIL",
+      "ALTURA_ALA_NOMINAL_NO_UTIL",
+      "CTA_VALIDADA_POR_USUARIO"
+     ],
+     "diametro_alambre_mm": null,
+     "espesor_chapa_mm": 1.24,
+     "estado_minimo_sin_rechazo": "PRESELECCION_CONDICIONADA",
+     "familia_id": "SAM-STE-Z",
+     "mecanica_minimo_geometrico": "CUMPLE_CONDICIONADO",
+     "minimo_apto_completo": null,
+     "minimo_geometrico": "SAM_TRES-150-065-18-Z",
+     "minimo_sin_rechazo": "SAM_TRES-150-065-18-Z"
+    },
+    {
+     "ala_nominal_mm": 90.0,
+     "condiciones_minimo_sin_rechazo": [
+      "ANCHO_NOMINAL_NO_UTIL",
+      "ALTURA_ALA_NOMINAL_NO_UTIL"
+     ],
+     "diametro_alambre_mm": null,
+     "espesor_chapa_mm": 1.24,
+     "estado_minimo_sin_rechazo": "PRESELECCION_CONDICIONADA",
+     "familia_id": "SAM-STE-Z",
+     "mecanica_minimo_geometrico": "VERIFICADA_CUMPLE",
+     "minimo_apto_completo": null,
+     "minimo_geometrico": "SAM_TRES-150-090-18-Z",
+     "minimo_sin_rechazo": "SAM_TRES-150-090-18-Z"
+    },
+    {
+     "ala_nominal_mm": 50.0,
+     "condiciones_minimo_sin_rechazo": [
+      "ANCHO_NOMINAL_NO_UTIL",
+      "ALTURA_ALA_NOMINAL_NO_UTIL",
+      "MECANICA_NO_VERIFICABLE_SIN_REGISTRO"
+     ],
+     "diametro_alambre_mm": null,
+     "espesor_chapa_mm": 0.71,
+     "estado_minimo_sin_rechazo": "PRESELECCION_CONDICIONADA",
+     "familia_id": "SAM-STP-Z",
+     "mecanica_minimo_geometrico": "NO_VERIFICABLE_SIN_REGISTRO",
+     "minimo_apto_completo": null,
+     "minimo_geometrico": "SAM_TRPS-100-22-Z",
+     "minimo_sin_rechazo": "SAM_TRPS-100-22-Z"
+    },
+    {
+     "ala_nominal_mm": 50.0,
+     "condiciones_minimo_sin_rechazo": [
+      "ANCHO_NOMINAL_NO_UTIL",
+      "ALTURA_ALA_NOMINAL_NO_UTIL",
+      "MECANICA_NO_VERIFICABLE_SIN_REGISTRO"
+     ],
+     "diametro_alambre_mm": null,
+     "espesor_chapa_mm": 0.89,
+     "estado_minimo_sin_rechazo": "PRESELECCION_CONDICIONADA",
+     "familia_id": "SAM-STP-Z",
+     "mecanica_minimo_geometrico": "NO_VERIFICABLE_SIN_REGISTRO",
+     "minimo_apto_completo": null,
+     "minimo_geometrico": "SAM_TRPS-450-20-Z",
+     "minimo_sin_rechazo": "SAM_TRPS-450-20-Z"
+    },
+    {
+     "ala_nominal_mm": 50.0,
+     "condiciones_minimo_sin_rechazo": [
+      "ANCHO_NOMINAL_NO_UTIL",
+      "ALTURA_ALA_NOMINAL_NO_UTIL",
+      "MECANICA_NO_VERIFICABLE_SIN_REGISTRO"
+     ],
+     "diametro_alambre_mm": null,
+     "espesor_chapa_mm": 0.71,
+     "estado_minimo_sin_rechazo": "PRESELECCION_CONDICIONADA",
+     "familia_id": "SAM-STP-ZN",
+     "mecanica_minimo_geometrico": "NO_VERIFICABLE_SIN_REGISTRO",
+     "minimo_apto_completo": null,
+     "minimo_geometrico": "SAM_TRPS-100-22-ZN",
+     "minimo_sin_rechazo": "SAM_TRPS-100-22-ZN"
+    },
+    {
+     "ala_nominal_mm": 50.0,
+     "condiciones_minimo_sin_rechazo": [
+      "ANCHO_NOMINAL_NO_UTIL",
+      "ALTURA_ALA_NOMINAL_NO_UTIL",
+      "MECANICA_NO_VERIFICABLE_SIN_REGISTRO"
+     ],
+     "diametro_alambre_mm": null,
+     "espesor_chapa_mm": 0.89,
+     "estado_minimo_sin_rechazo": "PRESELECCION_CONDICIONADA",
+     "familia_id": "SAM-STP-ZN",
+     "mecanica_minimo_geometrico": "NO_VERIFICABLE_SIN_REGISTRO",
+     "minimo_apto_completo": null,
+     "minimo_geometrico": "SAM_TRPS-450-20-ZN",
+     "minimo_sin_rechazo": "SAM_TRPS-450-20-ZN"
+    }
+   ],
+   "verificacion_electrica": {
+    "aviso": "Selección geométrica y mecánica únicamente. NO verifica intensidad admisible, factores de agrupamiento o temperatura, caída de tensión, cortocircuito ni compatibilidad entre circuitos. La instalación NO está verificada eléctricamente.",
+    "estado": "NO_REALIZADA"
+   },
+   "vigencia": "VIGENTE"
+  },
+  "revision_entrada": 0,
+  "solicitud_id": "v-1",
+  "tipo": "sector",
+  "version_contrato": "1.0",
+  "version_motor": "0.2.2"
+ },
+ "solicitud": {
+  "clave": "SECTOR-1",
+  "entrada": {
+   "reserva_solicitada_pct": 20,
+   "tipo_circuito": "potencia",
+   "usos_cable": [
+    {
+     "apilado": false,
+     "cable_id": "PRY-SVALIO-CU-1x6",
+     "cantidad": 4,
+     "separado": true
+    }
+   ],
+   "vano_mm": 1500
+  },
+  "revision_entrada": 0,
+  "solicitud_id": "v-1",
+  "tipo": "sector",
+  "version_contrato": "1.0"
+ }
+}

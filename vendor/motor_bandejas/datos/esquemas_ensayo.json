@@ -1,0 +1,27 @@
+{
+  "tipo": "esquemas_ensayo",
+  "version": "1",
+  "esquemas": [
+    {
+      "esquema_id": "ESQ-SAMET-TABLA-ENSAYO",
+      "descripcion": "Ensayo de carga de la tabla SAMET: dos tramos de 3 m unidos por un punto de unión (cupling zone), carga repartida uniformemente; vanos de 1,5 / 1,75 / 2 / 2,25 / 2,5 m con el vano central centrado en la unión y vanos vecinos.",
+      "fuente": "Imagen aportada por el usuario (2026-11-05), docs/fuentes/esquema_ensayo_samet.png; coincide con la condición transcripta en TABLAS_CARGA ('dos tramos de 3 m con punto de unión'). D-12: el usuario indica que los ensayos se refieren a este esquema.",
+      "estado_evidencia": "validada por usuario",
+      "aplica_a": {"fuente_id": ["F-001"]},
+      "topologia": {
+        "longitud_tramos_mm": [3000, 3000],
+        "uniones_por_vano_max": 1,
+        "union_en_centro_de_vano": true,
+        "union_sobre_apoyo": false,
+        "vano_con_vecinos": true,
+        "carga": "uniformemente distribuida",
+        "luces_ensayadas_mm": [1500, 1750, 2000, 2250, 2500]
+      },
+      "no_contrastado": [
+        "posición exacta de apoyos externos y longitud de voladizos (no se leen cotas de la imagen)",
+        "tipo de apoyo y fijación del ensayo",
+        "criterio de flecha/rotura de la CTA (IEC 61537 no disponible)"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+{
+  "tipo": "cargas_derivadas",
+  "version": "2",
+  "fecha": "2026-11-05",
+  "proposito": "Curación de registros que combinan fuentes sin estar separados en el Excel. Vacía desde v0.2.1: la combinación de la escalera Z ala 65 (antes DER-001) quedó separada en el catálogo (REV-043: filas A CAR-0090/92/94/96, B CAR-0091/93/95/97, C CAR-0046/51/56/61 validadas por el usuario). El mecanismo se conserva por si aparecen otros casos.",
+  "derivaciones": []
+}

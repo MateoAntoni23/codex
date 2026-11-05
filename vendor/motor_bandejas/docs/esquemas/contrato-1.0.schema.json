@@ -1,0 +1,815 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "https://electrosolucion.local/motor_bandejas/contrato-1.0.schema.json",
+ "title": "Contrato motor_bandejas 1.0",
+ "description": "Esquemas de solicitud, respuesta y entradas. La validación semántica (referencias, ids únicos, catálogos) la hace el motor; este esquema cubre la forma.",
+ "$defs": {
+  "Solicitud": {
+   "type": "object",
+   "additionalProperties": false,
+   "required": [
+    "version_contrato",
+    "tipo",
+    "solicitud_id",
+    "clave",
+    "revision_entrada",
+    "entrada"
+   ],
+   "properties": {
+    "version_contrato": {
+     "const": "1.0"
+    },
+    "tipo": {
+     "enum": [
+      "sector",
+      "trazado"
+     ]
+    },
+    "solicitud_id": {
+     "type": "string",
+     "minLength": 1
+    },
+    "clave": {
+     "type": "string",
+     "minLength": 1
+    },
+    "revision_entrada": {
+     "type": "integer",
+     "minimum": 0
+    },
+    "entrada": {
+     "type": "object"
+    }
+   },
+   "allOf": [
+    {
+     "if": {
+      "properties": {
+       "tipo": {
+        "const": "sector"
+       }
+      }
+     },
+     "then": {
+      "properties": {
+       "entrada": {
+        "$ref": "#/$defs/EntradaSector"
+       }
+      }
+     }
+    },
+    {
+     "if": {
+      "properties": {
+       "tipo": {
+        "const": "trazado"
+       }
+      }
+     },
+     "then": {
+      "properties": {
+       "entrada": {
+        "$ref": "#/$defs/EntradaTrazado"
+       }
+      }
+     }
+    }
+   ]
+  },
+  "Eco": {
+   "type": "object",
+   "required": [
+    "version_contrato",
+    "version_motor",
+    "tipo",
+    "solicitud_id",
+    "clave",
+    "revision_entrada",
+    "estado"
+   ],
+   "properties": {
+    "version_contrato": {
+     "const": "1.0"
+    },
+    "version_motor": {
+     "type": "string"
+    },
+    "tipo": {
+     "enum": [
+      "sector",
+      "trazado",
+      null
+     ]
+    },
+    "solicitud_id": {
+     "type": [
+      "string",
+      "null"
+     ]
+    },
+    "clave": {
+     "type": [
+      "string",
+      "null"
+     ]
+    },
+    "revision_entrada": {
+     "type": [
+      "integer",
+      "null"
+     ]
+    }
+   }
+  },
+  "Respuesta": {
+   "oneOf": [
+    {
+     "allOf": [
+      {
+       "$ref": "#/$defs/Eco"
+      },
+      {
+       "type": "object",
+       "required": [
+        "huella",
+        "resultado"
+       ],
+       "properties": {
+        "estado": {
+         "const": "ok"
+        },
+        "huella": {
+         "type": "string",
+         "pattern": "^[0-9a-f]{64}$"
+        },
+        "resultado": {
+         "type": "object",
+         "required": [
+          "huella",
+          "vigencia",
+          "verificacion_electrica"
+         ],
+         "properties": {
+          "vigencia": {
+           "enum": [
+            "VIGENTE",
+            "DESACTUALIZADO"
+           ]
+          },
+          "verificacion_electrica": {
+           "type": "object",
+           "required": [
+            "estado"
+           ],
+           "properties": {
+            "estado": {
+             "const": "NO_REALIZADA"
+            }
+           }
+          }
+         }
+        }
+       }
+      }
+     ]
+    },
+    {
+     "allOf": [
+      {
+       "$ref": "#/$defs/Eco"
+      },
+      {
+       "type": "object",
+       "required": [
+        "error"
+       ],
+       "properties": {
+        "estado": {
+         "const": "error"
+        },
+        "error": {
+         "$ref": "#/$defs/Error"
+        }
+       }
+      }
+     ]
+    }
+   ]
+  },
+  "Error": {
+   "type": "object",
+   "required": [
+    "codigo",
+    "mensaje",
+    "version_error"
+   ],
+   "properties": {
+    "codigo": {
+     "enum": [
+      "CONTRATO_INVALIDO",
+      "VERSION_CONTRATO_NO_SOPORTADA",
+      "ENTRADA_INVALIDA",
+      "DATO_FALTANTE",
+      "PENDIENTE_DECISION",
+      "NO_SOPORTADO",
+      "CATALOGO_INVALIDO",
+      "ERROR_MOTOR",
+      "JSON_INVALIDO"
+     ]
+    },
+    "mensaje": {
+     "type": "string"
+    },
+    "campo": {
+     "type": [
+      "string",
+      "null"
+     ]
+    },
+    "decision_id": {
+     "type": [
+      "string",
+      "null"
+     ]
+    },
+    "problemas": {
+     "type": "array"
+    },
+    "version_error": {
+     "const": "1"
+    }
+   }
+  },
+  "EntradaSector": {
+   "type": "object",
+   "additionalProperties": false,
+   "required": [
+    "tipo_circuito",
+    "vano_mm",
+    "reserva_solicitada_pct",
+    "usos_cable"
+   ],
+   "properties": {
+    "tipo_circuito": {
+     "enum": [
+      "potencia",
+      "mando_senal"
+     ]
+    },
+    "vano_mm": {
+     "type": "number",
+     "exclusiveMinimum": 0,
+     "description": "Luz entre apoyos (NO longitud del recorrido)."
+    },
+    "reserva_solicitada_pct": {
+     "type": "number",
+     "minimum": 0,
+     "exclusiveMaximum": 100
+    },
+    "usos_cable": {
+     "type": "array",
+     "minItems": 1,
+     "items": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+       "cable_id",
+       "cantidad",
+       "separado"
+      ],
+      "properties": {
+       "cable_id": {
+        "type": "string",
+        "minLength": 1
+       },
+       "cantidad": {
+        "type": "integer",
+        "minimum": 1
+       },
+       "separado": {
+        "type": "boolean"
+       },
+       "apilado": {
+        "type": "boolean"
+       }
+      }
+     }
+    },
+    "familias": {
+     "type": "array",
+     "minItems": 1,
+     "items": {
+      "type": "string",
+      "minLength": 1
+     }
+    },
+    "criterio_reserva": {
+     "enum": [
+      "fraccion_libre_ancho_bandeja",
+      "sobre_ancho_ocupado"
+     ]
+    }
+   }
+  },
+  "EntradaTrazado": {
+   "type": "object",
+   "additionalProperties": false,
+   "required": [
+    "version_contrato",
+    "tipo_circuito",
+    "reserva_solicitada_pct",
+    "piezas",
+    "conexiones",
+    "circuitos"
+   ],
+   "properties": {
+    "version_contrato": {
+     "const": "trazado/1"
+    },
+    "meta": {
+     "type": "object",
+     "description": "Libre; fuera del cálculo y de la huella."
+    },
+    "tipo_circuito": {
+     "const": "potencia"
+    },
+    "reserva_solicitada_pct": {
+     "type": "number",
+     "minimum": 0,
+     "exclusiveMaximum": 100
+    },
+    "eje_vertical": {
+     "type": "array",
+     "items": {
+      "type": "number"
+     },
+     "minItems": 3,
+     "maxItems": 3
+    },
+    "piezas": {
+     "type": "array",
+     "minItems": 1,
+     "items": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+       "instancia_id",
+       "producto_id"
+      ],
+      "properties": {
+       "instancia_id": {
+        "type": "string",
+        "minLength": 1
+       },
+       "producto_id": {
+        "type": "string",
+        "minLength": 1
+       },
+       "longitud_mm": {
+        "type": "number",
+        "exclusiveMinimum": 0,
+        "description": "Solo tramos rectos; ≤ longitud comercial."
+       },
+       "longitud_eje_mm": {
+        "type": "number",
+        "exclusiveMinimum": 0,
+        "description": "Piezas especiales: longitud de eje calculada por el CAD (para el PE)."
+       },
+       "puertos": {
+        "type": "object",
+        "additionalProperties": {
+         "type": "object",
+         "additionalProperties": false,
+         "required": [
+          "posicion_mm",
+          "direccion"
+         ],
+         "properties": {
+          "posicion_mm": {
+           "type": "array",
+           "items": {
+            "type": "number"
+           },
+           "minItems": 3,
+           "maxItems": 3
+          },
+          "direccion": {
+           "type": "array",
+           "items": {
+            "type": "number"
+           },
+           "minItems": 3,
+           "maxItems": 3,
+           "description": "Vector unitario saliente del puerto."
+          }
+         }
+        },
+        "description": "Clave = nombre de puerto del catálogo (P1, P2, …)."
+       }
+      }
+     }
+    },
+    "conexiones": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+       "conexion_id",
+       "a",
+       "b"
+      ],
+      "properties": {
+       "conexion_id": {
+        "type": "string",
+        "minLength": 1
+       },
+       "a": {
+        "type": "array",
+        "items": {
+         "type": "string",
+         "minLength": 1
+        },
+        "minItems": 2,
+        "maxItems": 2
+       },
+       "b": {
+        "type": "array",
+        "items": {
+         "type": "string",
+         "minLength": 1
+        },
+        "minItems": 2,
+        "maxItems": 2
+       }
+      }
+     }
+    },
+    "tapas": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+       "tapa_id",
+       "producto_id",
+       "sobre"
+      ],
+      "properties": {
+       "tapa_id": {
+        "type": "string",
+        "minLength": 1
+       },
+       "producto_id": {
+        "type": "string",
+        "minLength": 1
+       },
+       "sobre": {
+        "type": "string",
+        "minLength": 1
+       }
+      }
+     }
+    },
+    "accesorios": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+       "accesorio_id",
+       "producto_id",
+       "sobre"
+      ],
+      "properties": {
+       "accesorio_id": {
+        "type": "string",
+        "minLength": 1
+       },
+       "producto_id": {
+        "type": "string",
+        "minLength": 1
+       },
+       "sobre": {
+        "type": "string",
+        "minLength": 1
+       }
+      }
+     }
+    },
+    "circuitos": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+       "circuito_id",
+       "funcion",
+       "cable_id",
+       "cantidad",
+       "separado",
+       "recorrido"
+      ],
+      "properties": {
+       "circuito_id": {
+        "type": "string",
+        "minLength": 1
+       },
+       "funcion": {
+        "const": "potencia",
+        "description": "El PE se declara solo en 'pe'."
+       },
+       "cable_id": {
+        "type": "string",
+        "minLength": 1
+       },
+       "cantidad": {
+        "type": "integer",
+        "minimum": 1
+       },
+       "separado": {
+        "type": "boolean"
+       },
+       "recorrido": {
+        "type": "array",
+        "minItems": 1,
+        "items": {
+         "type": "string",
+         "minLength": 1
+        },
+        "description": "Instancias en orden; sin repetir."
+       }
+      }
+     }
+    },
+    "soportes": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+       "soporte_id",
+       "sistema_soporte_id",
+       "producto_id",
+       "instancia_id",
+       "distancia_desde_P1_mm"
+      ],
+      "properties": {
+       "soporte_id": {
+        "type": "string",
+        "minLength": 1
+       },
+       "sistema_soporte_id": {
+        "type": "string",
+        "minLength": 1
+       },
+       "producto_id": {
+        "type": "string",
+        "minLength": 1
+       },
+       "instancia_id": {
+        "type": "string",
+        "minLength": 1
+       },
+       "distancia_desde_P1_mm": {
+        "type": "number",
+        "minimum": 0
+       }
+      }
+     }
+    },
+    "pe": {
+     "type": "object",
+     "additionalProperties": false,
+     "required": [
+      "seccion_requerida_mm2",
+      "cable_id",
+      "conductores"
+     ],
+     "properties": {
+      "seccion_requerida_mm2": {
+       "type": "number",
+       "exclusiveMinimum": 0
+      },
+      "cable_id": {
+       "type": "string",
+       "minLength": 1
+      },
+      "origen_requisito": {
+       "type": "string"
+      },
+      "conductores": {
+       "type": "array",
+       "minItems": 1,
+       "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+         "conductor_id",
+         "recorrido",
+         "inicio",
+         "fin"
+        ],
+        "properties": {
+         "conductor_id": {
+          "type": "string",
+          "minLength": 1
+         },
+         "recorrido": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+           "oneOf": [
+            {
+             "type": "string",
+             "minLength": 1
+            },
+            {
+             "type": "object",
+             "additionalProperties": false,
+             "required": [
+              "instancia"
+             ],
+             "properties": {
+              "instancia": {
+               "type": "string",
+               "minLength": 1
+              },
+              "longitud_mm": {
+               "type": "number",
+               "exclusiveMinimum": 0
+              }
+             }
+            }
+           ]
+          }
+         },
+         "inicio": {
+          "type": [
+           "string",
+           "null"
+          ]
+         },
+         "fin": {
+          "type": [
+           "string",
+           "null"
+          ]
+         }
+        }
+       }
+      }
+     }
+    },
+    "equipotencial": {
+     "type": "object",
+     "additionalProperties": false,
+     "required": [
+      "puntos"
+     ],
+     "properties": {
+      "puntos": {
+       "type": "array",
+       "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+         "punto_id",
+         "tipo"
+        ],
+        "properties": {
+         "punto_id": {
+          "type": "string",
+          "minLength": 1
+         },
+         "tipo": {
+          "enum": [
+           "sistema_proteccion",
+           "derivacion_pe",
+           "conexion_bandeja",
+           "puente"
+          ]
+         },
+         "conductores": {
+          "type": "array",
+          "items": {
+           "type": "string",
+           "minLength": 1
+          }
+         },
+         "instancias": {
+          "type": "array",
+          "items": {
+           "type": "string",
+           "minLength": 1
+          }
+         },
+         "descripcion": {
+          "type": [
+           "string",
+           "null"
+          ]
+         },
+         "conector": {
+          "type": [
+           "object",
+           "null"
+          ],
+          "additionalProperties": false,
+          "properties": {
+           "producto_id": {
+            "type": [
+             "string",
+             "null"
+            ]
+           },
+           "descripcion": {
+            "type": "string"
+           }
+          }
+         },
+         "conductor_puente": {
+          "type": [
+           "object",
+           "null"
+          ],
+          "additionalProperties": false,
+          "required": [
+           "cable_id"
+          ],
+          "properties": {
+           "cable_id": {
+            "type": "string",
+            "minLength": 1
+           },
+           "longitud_mm": {
+            "type": "number",
+            "exclusiveMinimum": 0
+           }
+          }
+         }
+        }
+       }
+      }
+     }
+    },
+    "escenario_reserva": {
+     "type": [
+      "object",
+      "null"
+     ],
+     "additionalProperties": false,
+     "required": [
+      "circuitos"
+     ],
+     "properties": {
+      "descripcion": {
+       "type": "string"
+      },
+      "circuitos": {
+       "type": "array",
+       "minItems": 1,
+       "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+         "circuito_id",
+         "cable_id",
+         "cantidad",
+         "separado",
+         "recorrido"
+        ],
+        "properties": {
+         "circuito_id": {
+          "type": "string",
+          "minLength": 1
+         },
+         "cable_id": {
+          "type": "string",
+          "minLength": 1
+         },
+         "cantidad": {
+          "type": "integer",
+          "minimum": 1
+         },
+         "separado": {
+          "type": "boolean"
+         },
+         "recorrido": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+           "type": "string",
+           "minLength": 1
+          },
+          "description": "Instancias en orden; sin repetir."
+         }
+        }
+       }
+      }
+     }
+    }
+   }
+  }
+ }
+}

@@ -209,3 +209,11 @@ src/
 - Lista de conductores
 - Importación/exportación DXF
 - Backend, cuentas de usuario y sincronización en la nube
+
+## Motor de bandejas experimental
+
+Con Python >=3.10 instalado: `npm run dev:trays`.
+Abrir `http://localhost:5173/?workspace=bandejas`.
+Incluye ejemplo sintético, cálculo Python, visor esquemático y edición con
+invalidación/recalculo. No modifica proyectos guardados.
+Guía completa: [integración del motor](docs/motor-bandejas-integration.md).

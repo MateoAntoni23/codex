@@ -1,0 +1,38 @@
+{
+ "descripcion": "Vector sector_error_cantidad (generado por herramientas/generar_vectores.py)",
+ "respuesta": {
+  "clave": "SECTOR-1",
+  "error": {
+   "campo": "usos_cable[0].cantidad",
+   "codigo": "ENTRADA_INVALIDA",
+   "mensaje": "'usos_cable[0].cantidad' debe ser ≥ 1; se recibió 0.",
+   "version_error": "1"
+  },
+  "estado": "error",
+  "revision_entrada": 1,
+  "solicitud_id": "v-2",
+  "tipo": "sector",
+  "version_contrato": "1.0",
+  "version_motor": "0.2.2"
+ },
+ "solicitud": {
+  "clave": "SECTOR-1",
+  "entrada": {
+   "reserva_solicitada_pct": 20,
+   "tipo_circuito": "potencia",
+   "usos_cable": [
+    {
+     "apilado": false,
+     "cable_id": "PRY-SVALIO-CU-1x6",
+     "cantidad": 0,
+     "separado": true
+    }
+   ],
+   "vano_mm": 1500
+  },
+  "revision_entrada": 1,
+  "solicitud_id": "v-2",
+  "tipo": "sector",
+  "version_contrato": "1.0"
+ }
+}
