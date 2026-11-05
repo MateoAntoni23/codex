@@ -325,6 +325,35 @@ describe('I1: saveV2ProjectToDb — aborto conserva project v1 y metadatos', () 
   });
 });
 
+// ─── I1: onsuccess tardío tras onblocked cierra la conexión ──────────────────
+
+describe('openDatabase — onsuccess tardío tras onblocked cierra la conexión', () => {
+  it('onsuccess tardío cierra la conexión sin usarla', async () => {
+    let closeCount = 0;
+    const fakeResult = {
+      close: () => { closeCount++; },
+      onversionchange: null as (() => void) | null,
+    };
+    const fakeReq = {
+      onupgradeneeded: null as unknown,
+      onsuccess: null as (() => void) | null,
+      onerror: null as unknown,
+      onblocked: null as (() => void) | null,
+      result: fakeResult as unknown as IDBDatabase,
+      error: null,
+    };
+    _setIdbFactory({ open: () => fakeReq } as unknown as IDBFactory);
+
+    const p = loadProjectFromDb();
+    fakeReq.onblocked?.();
+    await expect(p).rejects.toThrow(/bloqueada/);
+
+    // onsuccess llega tarde (conexión abierta por IDB internamente)
+    fakeReq.onsuccess?.();
+    expect(closeCount).toBe(1); // la conexión tardía fue cerrada
+  });
+});
+
 // ─── I1: registerVersionChangeListener ───────────────────────────────────────
 
 describe('I1: versionchange — cierra conexión e invalida caché', () => {

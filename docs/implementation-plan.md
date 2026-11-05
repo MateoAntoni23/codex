@@ -265,10 +265,12 @@ permita a los componentes existentes leer v2 sin regresiones.
 
 1. `_paused` se establece antes de cualquier await; segunda llamada concurrente rechaza inmediatamente.
 2. Cancela el temporizador de debounce sin descartar la memoria.
-3. Espera la escritura de auto-save en vuelo (`_inflightWritePromise`) antes del flush final.
-4. Si falla: conserva memoria en el store; editor queda bloqueado hasta `resumeAutoSave`.
-5. `cancel()` del ciclo de initProject resetea `_paused` y desbloquea el editor para la próxima sesión.
-6. Una sesión cancelada no modifica el estado de la sesión posterior.
+3. Espera TODAS las escrituras en vuelo (`_inflightWrites: Set`) antes del flush final, incluidas escrituras de sesiones previas aún pendientes. El debounce no garantiza exclusividad de escrituras: dos timers independientes pueden producir dos writes simultáneos; el Set rastrea todos.
+4. Rechaza si una recuperación está en curso (`_recovering`) o si la carga inicial no terminó (`saveStatus === 'loading'`).
+5. Si falla: conserva memoria en el store; editor queda bloqueado hasta `resumeAutoSave`.
+6. `resumeAutoSave` lanza si se llama mientras la escritura del flush está en progreso (`_flushing`), evitando desbloqueo prematuro del editor.
+7. `cancel()` del ciclo de initProject resetea `_paused`, `_flushing` y desbloquea el editor para la próxima sesión.
+8. Verifica identidad de sesión (`_sessionVersion`) antes Y después de la escritura del flush; una sesión cancelada durante el flush no modifica el estado de la sesión posterior.
 
 #### Limitaciones conocidas de I1
 

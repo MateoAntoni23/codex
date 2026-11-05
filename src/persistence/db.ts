@@ -107,7 +107,11 @@ function openDatabase(): Promise<IDBDatabase> {
       }
     };
     req.onsuccess = () => {
-      if (settled) return; // onblocked ya rechazó; ignorar esta apertura tardía
+      if (settled) {
+        // onblocked ya rechazó; cerrar la conexión tardía para no bloquear futuros upgrades
+        req.result.close();
+        return;
+      }
       settled = true;
       const db = req.result;
       // Cierra la conexión y notifica si otra pestaña necesita actualizar el esquema

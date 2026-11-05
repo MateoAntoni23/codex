@@ -1091,6 +1091,188 @@ describe('pauseAndFlush — segunda llamada concurrente rechaza inmediatamente',
   });
 });
 
+// ─── pauseAndFlush — múltiples escrituras concurrentes ───────────────────────
+
+describe('pauseAndFlush — espera TODAS las escrituras en vuelo concurrentes', () => {
+  it('flush espera ambas escrituras aunque la segunda resuelva primero', async () => {
+    vi.useFakeTimers();
+    let resolveWrite1!: () => void;
+    let resolveWrite2!: () => void;
+    mockSave
+      .mockReturnValueOnce(new Promise<void>((r) => { resolveWrite1 = r; }))
+      .mockReturnValueOnce(new Promise<void>((r) => { resolveWrite2 = r; }))
+      .mockResolvedValue(undefined);
+
+    mockLoad.mockResolvedValue(null);
+    await init({});
+
+    // Disparar primera escritura de auto-save
+    useSceneStore.getState().updateObjectPosition('panel-1', { x: 1, y: 2, z: 1000 });
+    await vi.advanceTimersByTimeAsync(1100); // timer 1 dispara, write1 en vuelo
+
+    // Disparar segunda escritura de auto-save (timer nuevo durante write1 pendiente)
+    useSceneStore.getState().updateObjectPosition('panel-1', { x: 3, y: 4, z: 1000 });
+    await vi.advanceTimersByTimeAsync(1100); // timer 2 dispara, write2 en vuelo
+
+    expect(mockSave).toHaveBeenCalledTimes(2);
+
+    let flushDone = false;
+    const flushPromise = pauseAndFlush(useSceneStore).then((s) => { flushDone = true; return s; });
+
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(flushDone).toBe(false);
+
+    // Resolvemos write2 primero — write1 sigue pendiente → flush no puede avanzar
+    resolveWrite2();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(flushDone).toBe(false);
+
+    // Resolvemos write1 — ahora todas las escrituras completaron
+    resolveWrite1();
+    await flushPromise;
+    expect(flushDone).toBe(true);
+    expect(mockSave).toHaveBeenCalledTimes(3); // write1 + write2 + flush
+  });
+
+  it('flush de sesión B espera escritura en vuelo iniciada en sesión A', async () => {
+    vi.useFakeTimers();
+    let resolveWriteA!: () => void;
+    mockSave
+      .mockReturnValueOnce(new Promise<void>((r) => { resolveWriteA = r; }))
+      .mockResolvedValue(undefined);
+
+    mockLoad.mockResolvedValue(null);
+    const cancel = await init({});
+
+    // Auto-save de sesión A en vuelo
+    useSceneStore.getState().updateObjectPosition('panel-1', { x: 1, y: 2, z: 1000 });
+    await vi.advanceTimersByTimeAsync(1100);
+    expect(mockSave).toHaveBeenCalledOnce();
+
+    // Cancelar sesión A — writeA permanece en _inflightWrites
+    cancel();
+
+    // Iniciar sesión B
+    mockLoad.mockResolvedValue(null);
+    await init({});
+
+    let flushDone = false;
+    const flushPromise = pauseAndFlush(useSceneStore).then((s) => { flushDone = true; return s; });
+
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(flushDone).toBe(false); // flush B espera writeA
+
+    resolveWriteA(); // writeA completa
+    await flushPromise;
+    expect(flushDone).toBe(true);
+    expect(mockSave).toHaveBeenCalledTimes(2); // writeA + flush B
+  });
+});
+
+// ─── pauseAndFlush — rechazo en operaciones incompatibles ────────────────────
+
+describe('pauseAndFlush — rechazo en operaciones incompatibles', () => {
+  it('rechaza si una recuperación está en curso', async () => {
+    let resolveSave!: () => void;
+    mockSave.mockReturnValue(new Promise<void>((r) => { resolveSave = r; }));
+    mockLoad.mockRejectedValue(new Error('DB rota'));
+    await init({});
+
+    const recoveryPromise = recoverProject(
+      useSceneStore,
+      makeFile(JSON.stringify(SAVED_PROJECT)),
+      () => true,
+    );
+    await Promise.resolve(); // source.text() tick → _recovering = true
+
+    await expect(pauseAndFlush(useSceneStore)).rejects.toThrow(/recuperación/);
+
+    resolveSave();
+    await recoveryPromise;
+  });
+
+  it('rechaza si la carga inicial aún no terminó (saveStatus=loading)', async () => {
+    let resolveLoad!: (v: ProjectData | null) => void;
+    mockLoad.mockReturnValue(new Promise<ProjectData | null>((r) => { resolveLoad = r; }));
+
+    initProject(useSceneStore); // sin await — carga en curso
+
+    await expect(pauseAndFlush(useSceneStore)).rejects.toThrow(/carga/);
+
+    resolveLoad(null);
+    _resetInitialized();
+  });
+});
+
+// ─── resumeAutoSave — rechazo si flush en progreso ───────────────────────────
+
+describe('resumeAutoSave — lanza si pauseAndFlush está escribiendo', () => {
+  it('lanza si se llama mientras la escritura del flush está pendiente', async () => {
+    let resolveFlush!: () => void;
+    mockLoad.mockResolvedValue(null);
+    mockSave
+      .mockReturnValueOnce(new Promise<void>((r) => { resolveFlush = r; }))
+      .mockResolvedValue(undefined);
+
+    await init({});
+    // Sin cambios → _inflightWrites vacío → pauseAndFlush llega a _flushing=true sincrónicamente
+
+    const flushPromise = pauseAndFlush(useSceneStore);
+    // _flushing = true (todo el código sync hasta await flushWrite ya ejecutó)
+
+    expect(() => resumeAutoSave(useSceneStore)).toThrow(/progreso/);
+
+    resolveFlush();
+    await flushPromise;
+    // Tras el flush, _flushing = false → resume ya funciona
+    resumeAutoSave(useSceneStore);
+  });
+});
+
+// ─── recoverProject — no reactiva auto-save si pausa vigente ─────────────────
+
+describe('recoverProject — no instala auto-save si pauseAndFlush está activo', () => {
+  it('recuperación iniciada antes de la pausa no reactiva el auto-save', async () => {
+    vi.useFakeTimers();
+    let resolveRecoverSave!: () => void;
+    mockLoad.mockRejectedValue(new Error('DB rota'));
+    // Primera llamada (escritura de recover): queda pendiente
+    // Segunda llamada (flush): resuelve rápido
+    mockSave
+      .mockReturnValueOnce(new Promise<void>((r) => { resolveRecoverSave = r; }))
+      .mockResolvedValue(undefined);
+
+    await init({});
+
+    // Iniciamos recuperación — _recovering=true, llega a fase de escritura
+    const recoveryPromise = recoverProject(
+      useSceneStore,
+      makeFile(JSON.stringify(SAVED_PROJECT)),
+      () => true,
+    );
+    await Promise.resolve(); // source.text() tick → llega a setSaveStatus('recovering')
+    expect(useSceneStore.getState().saveStatus).toBe('recovering');
+
+    // Intentamos pausar — debe rechazar porque _recovering=true
+    await expect(pauseAndFlush(useSceneStore)).rejects.toThrow(/recuperación/);
+
+    // Completamos la recuperación
+    resolveRecoverSave();
+    const result = await recoveryPromise;
+    expect(result.ok).toBe(true);
+
+    // Tras recuperación exitosa, auto-save debe estar activo (no hubo pausa vigente)
+    _resetSaveGeneration();
+    mockSave.mockClear();
+    useSceneStore.getState().updateObjectPosition('motor-1', { x: 1, y: 1, z: 1 });
+    await vi.advanceTimersByTimeAsync(1100);
+    expect(mockSave).toHaveBeenCalledOnce();
+  });
+});
+
 // ─── resumeAutoSave — reanuda auto-save normalmente ──────────────────────────
 
 describe('resumeAutoSave — reanuda el auto-save y desbloquea el editor', () => {
