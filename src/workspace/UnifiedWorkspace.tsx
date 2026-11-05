@@ -6,7 +6,7 @@ import { useWorkspaceStore } from './useWorkspaceStore';
 import { WorkspaceScene } from './WorkspaceScene';
 import { WorkspaceTree } from './WorkspaceTree';
 import { WorkspaceInspector } from './WorkspaceInspector';
-import { exportWorkspace, importWorkspace } from './workspaceFile';
+import { exportWorkspace, importWorkspace, extractMeta } from './workspaceFile';
 
 function StatusBar() {
   const status   = useTrayStore((s) => s.status);
@@ -35,7 +35,7 @@ function Toolbar() {
       alert('No hay trazado cargado para exportar.');
       return;
     }
-    const json = exportWorkspace(ws.elements, ws.evidence, tray.entrada);
+    const json = exportWorkspace(ws.elements, ws.evidence, ws.projectMeta, tray.entrada);
     const blob = new Blob([json], { type: 'application/json' });
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement('a');
@@ -74,7 +74,7 @@ function Toolbar() {
       }
       // All validation passed — now update both stores atomically
       const { elements, evidence } = ws.projectV2;
-      useWorkspaceStore.getState().loadFile(elements, evidence, file.name);
+      useWorkspaceStore.getState().loadFile(elements, evidence, extractMeta(ws.projectV2), file.name);
       // Load tray input; useTrayStore.edit discards previous result
       useTrayStore.getState().edit(ws.trayInput);
       e.target.value = '';

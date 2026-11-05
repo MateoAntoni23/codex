@@ -27,6 +27,8 @@ export interface EquipmentEditorPanelProps {
   elements: EquipmentElement[];
   updateElement: (el: EquipmentElement) => void;
   addEvidence: (ev: FieldEvidence) => void;
+  /** Project origin in mm (domain space). Positions are displayed relative to this. Default: (0,0,0). */
+  projectOrigin?: Vec3;
 }
 
 const CATEGORY_LABEL: Record<Category, string> = {
@@ -290,7 +292,8 @@ function PanelTechSection({ tech, draft, errors, setDraft, setErrors }: {
   );
 }
 
-export function EquipmentEditorPanel({ element, elements, updateElement, addEvidence }: EquipmentEditorPanelProps) {
+export function EquipmentEditorPanel({ element, elements, updateElement, addEvidence, projectOrigin }: EquipmentEditorPanelProps) {
+  const origin: Vec3 = projectOrigin ?? { x: 0, y: 0, z: 0 };
   const renderProps = element != null ? elementToRenderProps(element, elements) : null;
   const editable    = element != null && canEdit(element);
 
@@ -308,7 +311,7 @@ export function EquipmentEditorPanel({ element, elements, updateElement, addEvid
   const [panelDraft,  setPanelDraft]  = useState<PanelTechnicalDraft>({ ipRating: '', ratedCurrent: '' });
   const [techErrors,  setTechErrors]  = useState<TechDraftErrors>({});
 
-  const syncDraft = useCallback((el: EquipmentElement, allElements: EquipmentElement[]) => {
+  const syncDraft = useCallback((el: EquipmentElement, allElements: EquipmentElement[], syncOrigin: Vec3 = origin) => {
     setNameDraft(el.name);
     setNameError(undefined);
     setPosErrors({}); setBoxErrors({}); setCylErrors({}); setTechErrors({});
@@ -317,7 +320,11 @@ export function EquipmentEditorPanel({ element, elements, updateElement, addEvid
     else if (el.category === 'sensor') setSensorDraft(syncSensorDraft(el.technical));
     else if (el.category === 'electrical_panel') setPanelDraft(syncPanelDraft(el.technical));
     const gt = resolveGlobalTransform(el.id, allElements);
-    if (gt) setPosDraft({ x: String(gt.positionMm.x), y: String(gt.positionMm.y), z: String(gt.positionMm.z) });
+    if (gt) setPosDraft({
+      x: String(gt.positionMm.x - syncOrigin.x),
+      y: String(gt.positionMm.y - syncOrigin.y),
+      z: String(gt.positionMm.z - syncOrigin.z),
+    });
     if (el.geometry?.kind === 'box') setBoxDraft({ width: String(el.geometry.widthMm), depth: String(el.geometry.depthMm), height: String(el.geometry.heightMm) });
     else if (el.geometry?.kind === 'cylinder') setCylDraft({ diameter: String(el.geometry.diameterMm), length: String(el.geometry.lengthMm) });
   }, []);
@@ -329,7 +336,7 @@ export function EquipmentEditorPanel({ element, elements, updateElement, addEvid
 
   const handleCancel = () => {
     if (element == null || !canEdit(element)) return;
-    syncDraft(element, elements);
+    syncDraft(element, elements, origin);
   };
 
   const handleSnapToFloor = () => {
@@ -337,7 +344,7 @@ export function EquipmentEditorPanel({ element, elements, updateElement, addEvid
     let h = 0;
     if (element.geometry?.kind === 'box') h = element.geometry.heightMm;
     else if (element.geometry?.kind === 'cylinder') h = element.geometry.lengthMm;
-    setPosDraft((d) => ({ ...d, z: String(h / 2) }));
+    setPosDraft((d) => ({ ...d, z: String(h / 2 - origin.z) }));
     setPosErrors((e) => ({ ...e, z: undefined }));
   };
 
@@ -368,7 +375,13 @@ export function EquipmentEditorPanel({ element, elements, updateElement, addEvid
     if (!nameResult.ok || !posResult.ok || !sizeOk || !techOk) return;
 
     const parentTransform = element.parentId != null ? resolveGlobalTransform(element.parentId, elements) : null;
-    let updated = applyPositionEdit(element, posResult.value as Vec3, parentTransform);
+    // posResult.value is relative to projectOrigin — convert to absolute global mm
+    const absolutePos: Vec3 = {
+      x: (posResult.value as Vec3).x + origin.x,
+      y: (posResult.value as Vec3).y + origin.y,
+      z: (posResult.value as Vec3).z + origin.z,
+    };
+    let updated = applyPositionEdit(element, absolutePos, parentTransform);
 
     let childDeltaZ = 0;
     if (boxResult?.ok) { const r = applyBoxSizeEdit(updated, boxResult.value.width, boxResult.value.depth, boxResult.value.height); updated = r.element; childDeltaZ = r.childDeltaZ; }
@@ -400,7 +413,7 @@ export function EquipmentEditorPanel({ element, elements, updateElement, addEvid
     }
 
     const updatedElements = elements.map((e) => (e.id === updated.id ? updated : e));
-    syncDraft(updated, updatedElements);
+    syncDraft(updated, updatedElements, origin);
   };
 
   if (element == null) {
@@ -459,7 +472,10 @@ export function EquipmentEditorPanel({ element, elements, updateElement, addEvid
       <ReadField label="Geometría" value={GEOMETRY_LABEL[renderProps?.geometryKind ?? 'unknown']} />
       <ReadField label="Versión"   value={String(element.version)} />
 
-      <div className="inspector-section">Posición en mm (global, respecto al origen)</div>
+      <div className="inspector-section">
+        Posición en mm (relativa al origen{origin.x !== 0 || origin.y !== 0 || origin.z !== 0
+          ? ` ${origin.x}, ${origin.y}, ${origin.z}` : ''})
+      </div>
       <EditField id="pi-pos-x" label="X" value={posDraft.x} error={posErrors.x}
         onChange={(v) => { setPosDraft((d) => ({ ...d, x: v })); setPosErrors((e) => ({ ...e, x: undefined })); }} />
       <EditField id="pi-pos-y" label="Y" value={posDraft.y} error={posErrors.y}

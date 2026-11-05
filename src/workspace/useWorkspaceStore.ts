@@ -1,17 +1,21 @@
 import { create } from 'zustand';
 import { PREVIEW_ELEMENTS, PREVIEW_EVIDENCE } from '../preview/previewData';
 import { evidenceToRemoveOnDelete, duplicateElement } from '../preview/previewCrud';
+import { DEFAULT_PROJECT_META, type ProjectMeta } from './workspaceFile';
 import type { EquipmentElement, FieldEvidence } from '../types/domain-v2';
 
 export type LayerKey = 'infrastructure' | 'equipment' | 'trays' | 'supports' | 'pe';
 
 export interface WorkspaceState {
-  // Equipment state (mirrors usePreviewStore but isolated)
+  // Equipment state
   elements: EquipmentElement[];
   evidence: FieldEvidence[];
-  selectedEquipId: string | null;
 
-  // Tray selection (instancia_id)
+  // Full ProjectDataV2 metadata (origin, factories, etc.) — persisted across edits
+  projectMeta: ProjectMeta;
+
+  // Selection
+  selectedEquipId: string | null;
   selectedTrayId: string | null;
 
   // Layer visibility
@@ -36,7 +40,7 @@ export interface WorkspaceState {
   toggleLayer: (key: LayerKey) => void;
 
   // Import/reset
-  loadFile: (elements: EquipmentElement[], evidence: FieldEvidence[], fileName: string) => void;
+  loadFile: (elements: EquipmentElement[], evidence: FieldEvidence[], meta: ProjectMeta, fileName: string) => void;
   markDirty: () => void;
   markSaved: (fileName: string) => void;
   reset: () => void;
@@ -57,6 +61,7 @@ const DEFAULT_LAYERS: Record<LayerKey, boolean> = {
 export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   elements: copyElements(PREVIEW_ELEMENTS),
   evidence: [...PREVIEW_EVIDENCE],
+  projectMeta: { ...DEFAULT_PROJECT_META },
   selectedEquipId: null,
   selectedTrayId: null,
   layers: { ...DEFAULT_LAYERS },
@@ -108,14 +113,15 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   toggleLayer: (key) =>
     set((s) => ({ layers: { ...s.layers, [key]: !s.layers[key] } })),
 
-  loadFile: (elements, evidence, fileName) =>
+  loadFile: (elements, evidence, meta, fileName) =>
     set({
-      elements: copyElements(elements),
-      evidence: [...evidence],
+      elements:        copyElements(elements),
+      evidence:        [...evidence],
+      projectMeta:     { ...meta },
       fileName,
-      dirty: false,
+      dirty:           false,
       selectedEquipId: null,
-      selectedTrayId: null,
+      selectedTrayId:  null,
     }),
 
   markDirty: () => set({ dirty: true }),
@@ -125,6 +131,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     set({
       elements:        copyElements(PREVIEW_ELEMENTS),
       evidence:        [...PREVIEW_EVIDENCE],
+      projectMeta:     { ...DEFAULT_PROJECT_META },
       selectedEquipId: null,
       selectedTrayId:  null,
       layers:          { ...DEFAULT_LAYERS },

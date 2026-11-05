@@ -135,6 +135,7 @@ function EquipmentCard() {
   const updateElement   = useWorkspaceStore((s) => s.updateElement);
   const addEvidence     = useWorkspaceStore((s) => s.addEvidence);
   const removeElement   = useWorkspaceStore((s) => s.removeElement);
+  const projectOrigin   = useWorkspaceStore((s) => s.projectMeta.projectOrigin);
 
   const element = selectedEquipId ? elements.find((e) => e.id === selectedEquipId) ?? null : null;
 
@@ -178,6 +179,7 @@ function EquipmentCard() {
         elements={elements}
         updateElement={updateElement}
         addEvidence={addEvidence}
+        projectOrigin={projectOrigin}
       />
     </div>
   );
