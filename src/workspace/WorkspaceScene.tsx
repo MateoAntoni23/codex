@@ -9,6 +9,7 @@ import type { ThreeEvent } from '@react-three/fiber';
 import { elementToRenderProps } from '../scene/v2-adapter';
 import { useWorkspaceStore } from './useWorkspaceStore';
 import { TrayObjects } from './TrayObjects';
+import { RoutingObjects } from './RoutingObjects';
 import type { ElementRenderProps } from '../scene/v2-adapter';
 
 type Q4 = [number, number, number, number];
@@ -129,6 +130,9 @@ export function WorkspaceScene() {
 
       {/* Tray objects — TrayObjects reads useTrayStore and useWorkspaceStore for layers/selection */}
       <TrayObjects />
+
+      {/* Routing objects — port markers + preview mesh when routing tool is active */}
+      <RoutingObjects />
     </>
   );
 }

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useWorkspaceStore, type LayerKey } from './useWorkspaceStore';
 import { useTrayStore } from '../tray/store';
+import { useRoutingStore } from './useRoutingStore';
 import { WorkspaceLegend } from './WorkspaceLegend';
 import { computeGuideSteps } from './workspaceGuide';
 import { AddTraySegmentForm } from './AddTraySegmentForm';
@@ -179,6 +180,11 @@ export function WorkspaceTree() {
   const [addingSegment, setAddingSegment] = useState(false);
   const [addingSupport, setAddingSupport] = useState(false);
 
+  const routingActive      = useRoutingStore((s) => s.active);
+  const activateRouting    = useRoutingStore((s) => s.activate);
+  const deactivateRouting  = useRoutingStore((s) => s.deactivate);
+  const deactivateConnTool = useWorkspaceStore((s) => s.deactivateConnectionTool);
+
   const categories = [...new Set(elements.map((e) => e.category as Category))].sort();
 
   const editTray = (fn: (inp: typeof entrada) => void) => {
@@ -234,6 +240,32 @@ export function WorkspaceTree() {
       {/* Tray pieces list + add segment */}
       <section className="workspace-tree-section">
         <h4>Trazado — piezas</h4>
+
+        {/* Routing tool button */}
+        {entrada && (
+          routingActive ? (
+            <button
+              className="workspace-tree-item"
+              style={{ marginBottom: 4, background: '#3a2200', border: '1px solid #aa6600', width: '100%', textAlign: 'left', color: '#ff9900', fontWeight: 600 }}
+              onClick={deactivateRouting}
+            >
+              ● Continuando trazado — Cancelar
+            </button>
+          ) : (
+            <button
+              className="workspace-tree-item"
+              style={{ marginBottom: 4, background: '#2a1f10', border: '1px solid #886633', width: '100%', textAlign: 'left' }}
+              onClick={() => {
+                deactivateConnTool();
+                activateRouting();
+              }}
+              disabled={!context || entrada.piezas.length === 0}
+              title={!context ? 'Motor no conectado' : entrada.piezas.length === 0 ? 'Agregá piezas primero' : undefined}
+            >
+              ↗ Continuar trazado
+            </button>
+          )
+        )}
 
         {addingSegment ? (
           <AddTraySegmentForm onClose={() => setAddingSegment(false)} />

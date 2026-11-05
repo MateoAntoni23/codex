@@ -8,6 +8,8 @@
  */
 import { useWorkspaceStore } from './useWorkspaceStore';
 import { useTrayStore } from '../tray/store';
+import { useRoutingStore } from './useRoutingStore';
+import { RoutingPanel } from './RoutingPanel';
 import { EquipmentEditorPanel } from '../preview/EquipmentEditorPanel';
 import { TrayResults } from './TrayResults';
 import { checkDeleteDependencies, duplicateElement } from '../preview/previewCrud';
@@ -364,6 +366,7 @@ export function WorkspaceInspector() {
   const selectedTrayId    = useWorkspaceStore((s) => s.selectedTrayId);
   const selectedSupportId = useWorkspaceStore((s) => s.selectedSupportId);
   const entrada           = useTrayStore((s) => s.entrada);
+  const routingActive     = useRoutingStore((s) => s.active);
 
   const piece   = selectedTrayId    ? entrada?.piezas.find((p) => p.instancia_id === selectedTrayId)        : null;
   const support = selectedSupportId ? entrada?.soportes.find((s) => s.soporte_id === selectedSupportId)    : null;
@@ -372,7 +375,9 @@ export function WorkspaceInspector() {
     <div className="panel panel-right" style={{ overflow: 'auto' }}>
       <div className="panel-title">Inspector</div>
 
-      {selectedEquipId ? (
+      {routingActive ? (
+        <RoutingPanel />
+      ) : selectedEquipId ? (
         <EquipmentCard />
       ) : piece ? (
         <PieceCard piece={piece} />

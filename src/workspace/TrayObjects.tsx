@@ -16,6 +16,7 @@ import { Html, Line } from '@react-three/drei';
 import * as THREE from 'three';
 import { useTrayStore } from '../tray/store';
 import { useWorkspaceStore } from './useWorkspaceStore';
+import { useRoutingStore } from './useRoutingStore';
 import type { Product } from '../tray/model';
 
 type V3 = [number, number, number];
@@ -152,6 +153,8 @@ export function TrayObjects() {
   const deactivateConnectionTool = useWorkspaceStore((s) => s.deactivateConnectionTool);
   const trayEdit             = useTrayStore((s) => s.edit);
   const markDirty            = useWorkspaceStore((s) => s.markDirty);
+  const routingActive        = useRoutingStore((s) => s.active);
+  const routingHoverPiece    = useRoutingStore((s) => s.hoverPiece);
 
   const productMap = useMemo(() => {
     const m = new Map<string, Product>();
@@ -199,12 +202,22 @@ export function TrayObjects() {
         const tipo      = product?.tipo_pieza ?? 'recta';
         const isSelected = traySelected === piece.instancia_id;
         const onClick   = () => {
-          if (connectionToolActive) return;
+          if (connectionToolActive || routingActive) return;
           selectTray(piece.instancia_id);
         };
+        const onOver = routingActive
+          ? (e: { stopPropagation: () => void }) => { e.stopPropagation(); routingHoverPiece(piece.instancia_id); }
+          : undefined;
+        const onOut = routingActive
+          ? (e: { stopPropagation: () => void }) => { e.stopPropagation(); routingHoverPiece(null); }
+          : undefined;
 
         return (
-          <group key={piece.instancia_id}>
+          <group
+            key={piece.instancia_id}
+            onPointerOver={onOver}
+            onPointerOut={onOut}
+          >
             {tipo === 'recta' ? (
               <RectoPiece
                 p1mm={p1}

@@ -3,10 +3,12 @@ import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import { useTrayStore } from '../tray/store';
 import { useWorkspaceStore } from './useWorkspaceStore';
+import { useRoutingStore } from './useRoutingStore';
 import { WorkspaceScene } from './WorkspaceScene';
 import { WorkspaceTree } from './WorkspaceTree';
 import { WorkspaceInspector } from './WorkspaceInspector';
 import { exportWorkspace, importWorkspace, extractMeta } from './workspaceFile';
+import { RoutingStatusBadge } from './RoutingPanel';
 
 function StatusBar() {
   const status               = useTrayStore((s) => s.status);
@@ -26,6 +28,7 @@ function StatusBar() {
           {' '}● Herramienta de conexión activa — {connectionPortA ? `A: ${connectionPortA[0]}.${connectionPortA[1]} → hacé clic en puerto B` : 'Hacé clic en un puerto (esferas)'}
         </span>
       )}
+      <RoutingStatusBadge />
       {dirty && <span className="workspace-dirty"> ● cambios sin guardar</span>}
       {error && <span className="workspace-error"> ⚠ {error}</span>}
     </div>
@@ -131,13 +134,24 @@ export function UnifiedWorkspace() {
   const deactivateConnectionTool = useWorkspaceStore((s) => s.deactivateConnectionTool);
   const selectSupport            = useWorkspaceStore((s) => s.selectSupport);
   const selectedSupportId        = useWorkspaceStore((s) => s.selectedSupportId);
+  const routingActive            = useRoutingStore((s) => s.active);
+  const deactivateRouting        = useRoutingStore((s) => s.deactivate);
 
   const clearAll = () => {
+    if (routingActive) { deactivateRouting(); return; }
     if (connectionToolActive) { deactivateConnectionTool(); return; }
     if (selectedEquipId) selectEquip(null);
     else if (selectedSupportId) selectSupport(null);
     else selectTray(null);
   };
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') clearAll();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  });
 
   return (
     <div className="unified-workspace">
