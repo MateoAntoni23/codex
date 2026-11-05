@@ -33,7 +33,8 @@
 
 | Entrega | Commit | Tests | Descripción |
 |---|---|---|---|
-| I2 | pendiente | 374 | Adaptador v2→visor: resolución de transform global, conversión mm/Z-up→m/Y-up, geometrías, ciclos |
+| I2-base | `fefb59e` | 374 | Adaptador v2→visor: resolución de transform global, conversión mm/Z-up→m/Y-up, geometrías, ciclos |
+| I2-audit | pendiente | 380 | Rotación por conjugación (Q_BASE×Q×Q_BASE_INV), isFloor migrado, 5 pruebas de geometría combinada |
 
 ### M1b — Respaldo transaccional y recuperación para migración v1→v2
 
@@ -309,7 +310,7 @@ permita a los componentes existentes leer v2 sin regresiones.
 #### Conversiones
 
 - **Posición:** `[x/1000, z/1000, -y/1000]` (mm Z-arriba → metros Y-arriba)
-- **Rotación:** `Q_viewer = Q_base × Q_domain_global` donde `Q_base = {x:-√2/2, y:0, z:0, w:√2/2}` (rotación -90° alrededor de X)
+- **Rotación:** `Q_viewer = Q_BASE × Q_domain_global × Q_BASE_INV` (conjugación). `Q_BASE = {x:-√2/2, y:0, z:0, w:√2/2}` (rotación -90° X). La simple multiplicación izquierda doble-aplica el cambio de base; la conjugación conserva las dimensiones ya orientadas al visor.
 - **Jerarquía:** `pos_global = pos_padre + rotate(rot_padre, pos_local)`, `rot_global = rot_padre × rot_local`
 - **Geometrías:**
   - `box` → `[w/1000, h/1000, d/1000]`
@@ -317,7 +318,12 @@ permita a los componentes existentes leer v2 sin regresiones.
   - `plane` → `[w/1000, 0, d/1000]`
   - `asset` → `[bounds.x/1000, bounds.z/1000, bounds.y/1000]`
   - `null` → `geometryKind:'unknown'`, `sizeViewer:null`
-- `isFloor`: `geometry.kind === 'plane' && mounting === 'floor'`
+- `isFloor`: `geometry.kind === 'plane'` y (`mounting === 'floor'` OR `category === 'infrastructure' && technical.role.value === 'floor'`). El segundo caso cubre elementos migrados de v1, que tienen `mounting:'unknown'` porque v1 no almacenaba ese dato.
+
+#### Notas de implementación para el renderer (PlaneGeometry y assets)
+
+- **PlaneGeometry:** por defecto queda en el plano XY con normal = +Z. Para que un piso quede horizontal (normal = +Y visor) el renderer debe pre-componer una rotación -90° alrededor de X (Q_BASE) sobre el mesh, antes de combinar con `rotationViewer`.
+- **Asset geometry:** si el modelo 3-D usa ejes de dominio (Z-arriba), el renderer debe pre-componer Q_BASE igual que con PlaneGeometry.
 
 #### Limitaciones conocidas de I2
 

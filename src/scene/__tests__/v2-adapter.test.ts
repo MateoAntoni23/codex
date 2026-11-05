@@ -171,14 +171,16 @@ describe('elementToRenderProps — conversión de posición', () => {
 });
 
 describe('elementToRenderProps — conversión de rotación', () => {
-  it('identidad en dominio → rotationViewer = Q_base = {x:-√2/2, y:0, z:0, w:√2/2}', () => {
+  it('identidad en dominio → rotationViewer = identidad (ninguna inclinación adicional)', () => {
+    // Conjugation Q_BASE × IDENTITY × Q_BASE_INV = IDENTITY.
+    // Dimensiones ya orientadas al visor; sin rotación de dominio el objeto queda erguido.
     const el = makePlacedPanel('a', { x: 0, y: 0, z: 0 });
     const props = elementToRenderProps(el, [el]);
     expect(props.rotationViewer).not.toBeNull();
-    expectClose(props.rotationViewer![0], -SQRT2_OVER_2, 'x');
+    expectClose(props.rotationViewer![0], 0, 'x');
     expectClose(props.rotationViewer![1], 0, 'y');
     expectClose(props.rotationViewer![2], 0, 'z');
-    expectClose(props.rotationViewer![3], SQRT2_OVER_2, 'w');
+    expectClose(props.rotationViewer![3], 1, 'w (identity)');
   });
 
   it('rotación de padre 90° Z transforma posición del hijo y compone la rotación', () => {
@@ -191,12 +193,11 @@ describe('elementToRenderProps — conversión de rotación', () => {
     expectClose(props.positionViewer![0], 0, 'viewer x');
     expectClose(props.positionViewer![1], 0, 'viewer y');
     expectClose(props.positionViewer![2], -1, 'viewer z');
-    // Rotación global del hijo = q90z × identity = q90z
-    // Rotación viewer = Q_base × q90z = {x:-0.5, y:0.5, z:0.5, w:0.5}
-    expectClose(props.rotationViewer![0], -0.5, 'rot x');
-    expectClose(props.rotationViewer![1], 0.5, 'rot y');
-    expectClose(props.rotationViewer![2], 0.5, 'rot z');
-    expectClose(props.rotationViewer![3], 0.5, 'rot w');
+    // Conjugation: 90° Z dominio → 90° Y visor = {x:0, y:√2/2, z:0, w:√2/2}
+    expectClose(props.rotationViewer![0], 0, 'rot x');
+    expectClose(props.rotationViewer![1], SQRT2_OVER_2, 'rot y');
+    expectClose(props.rotationViewer![2], 0, 'rot z');
+    expectClose(props.rotationViewer![3], SQRT2_OVER_2, 'rot w');
   });
 });
 
@@ -320,5 +321,187 @@ describe('elementToRenderProps — campos id, name, category', () => {
     expect(props.id).toBe('panel-1');
     expect(props.name).toBe('Panel panel-1');
     expect(props.category).toBe('electrical_panel');
+  });
+});
+
+// ─── Pruebas de geometría combinada ──────────────────────────────────────────
+
+describe('geometría combinada — tablero asimétrico sin rotación', () => {
+  it('conserva altura vertical (Y visor) y apoyo en piso (z_dominio = altura/2)', () => {
+    // Panel 600mm ancho × 200mm profundo × 1800mm alto, apoyado en piso (z = 900mm)
+    const el: EquipmentElement = {
+      ...makePlacedPanel('p', { x: 0, y: 0, z: 900 }),
+      geometry: { kind: 'box', widthMm: 600, depthMm: 200, heightMm: 1800 },
+    } as EquipmentElement;
+    const props = elementToRenderProps(el, [el]);
+
+    expect(props.placed).toBe(true);
+    expect(props.geometryKind).toBe('box');
+
+    // Altura en sizeViewer[1] = eje Y del visor (vertical)
+    expectClose(props.sizeViewer![0], 0.6, 'ancho');
+    expectClose(props.sizeViewer![1], 1.8, 'altura (Y visor)');
+    expectClose(props.sizeViewer![2], 0.2, 'profundidad');
+
+    // Sin rotación de dominio → rotación visor = identidad; objeto erguido
+    expectClose(props.rotationViewer![0], 0, 'rot x');
+    expectClose(props.rotationViewer![1], 0, 'rot y');
+    expectClose(props.rotationViewer![2], 0, 'rot z');
+    expectClose(props.rotationViewer![3], 1, 'rot w (identity)');
+
+    // Centro en z_dominio=900mm → positionViewer[1]=0.9m = sizeViewer[1]/2 → apoya en y=0
+    expectClose(props.positionViewer![1], 0.9, 'centro a mitad de altura sobre el piso');
+  });
+});
+
+describe('geometría combinada — cilindro sin rotación', () => {
+  it('conserva eje vertical (longitud en Y visor) sin inclinación', () => {
+    const el: EquipmentElement = {
+      ...makePlacedPanel('c', { x: 0, y: 0, z: 750 }),
+      geometry: { kind: 'cylinder', diameterMm: 300, lengthMm: 1500 },
+    } as EquipmentElement;
+    const props = elementToRenderProps(el, [el]);
+
+    expect(props.geometryKind).toBe('cylinder');
+
+    // Longitud en sizeViewer[1] = eje Y (vertical); diámetro en X y Z
+    expectClose(props.sizeViewer![0], 0.3, 'diámetro x');
+    expectClose(props.sizeViewer![1], 1.5, 'longitud (Y visor, eje axial vertical)');
+    expectClose(props.sizeViewer![2], 0.3, 'diámetro z');
+
+    // Sin rotación de dominio → eje vertical sin inclinación
+    expectClose(props.rotationViewer![0], 0, 'rot x');
+    expectClose(props.rotationViewer![1], 0, 'rot y');
+    expectClose(props.rotationViewer![2], 0, 'rot z');
+    expectClose(props.rotationViewer![3], 1, 'rot w (identity)');
+  });
+});
+
+describe('geometría combinada — giro 90° alrededor de Z dominio', () => {
+  it('gira en planta: 90° Z dominio (arriba) → 90° Y visor (arriba)', () => {
+    // Rotación 90° alrededor del eje Z del dominio (vertical)
+    const q90z: Quaternion = { x: 0, y: 0, z: SQRT2_OVER_2, w: SQRT2_OVER_2 };
+    const el = makePlacedPanel('p', { x: 0, y: 0, z: 0 }, { rotation: q90z });
+    const props = elementToRenderProps(el, [el]);
+
+    // 90° alrededor del eje vertical del dominio → 90° alrededor del eje Y del visor
+    expectClose(props.rotationViewer![0], 0, 'rot x (sin componente)');
+    expectClose(props.rotationViewer![1], SQRT2_OVER_2, 'rot y (eje vertical visor)');
+    expectClose(props.rotationViewer![2], 0, 'rot z (sin componente)');
+    expectClose(props.rotationViewer![3], SQRT2_OVER_2, 'rot w');
+
+    // La rotación en planta no modifica la altura
+    expectClose(props.sizeViewer![1], 2.0, 'altura no afectada por giro en planta');
+  });
+});
+
+describe('geometría combinada — padre rotado transforma al hijo', () => {
+  it('posición y rotación del hijo se transforman correctamente juntas', () => {
+    // Padre en origen, girado 90° alrededor de Z (vertical de dominio)
+    const q90z: Quaternion = { x: 0, y: 0, z: SQRT2_OVER_2, w: SQRT2_OVER_2 };
+    const parent = makePlacedPanel('p', { x: 0, y: 0, z: 0 }, { rotation: q90z });
+    // Hijo en local X=1000mm, identidad propia
+    const child: EquipmentElement = {
+      ...makePlacedPanel('c', { x: 1000, y: 0, z: 1000 }, { parentId: 'p' }),
+      geometry: { kind: 'box', widthMm: 400, depthMm: 300, heightMm: 2000 },
+    } as EquipmentElement;
+
+    const props = elementToRenderProps(child, [parent, child]);
+    expect(props.placed).toBe(true);
+
+    // Posición global dominio: padre rota (1000,0,1000) → (0,1000,1000)
+    // Viewer: [x/1000, z/1000, -y/1000] = [0, 1, -1]
+    expectClose(props.positionViewer![0], 0, 'x visor');
+    expectClose(props.positionViewer![1], 1, 'y visor (z dominio)');
+    expectClose(props.positionViewer![2], -1, 'z visor (-y dominio)');
+
+    // Rotación del hijo = padre(90°Z) × hijo(identity) → 90°Z en dominio → 90°Y en visor
+    expectClose(props.rotationViewer![0], 0, 'rot x');
+    expectClose(props.rotationViewer![1], SQRT2_OVER_2, 'rot y (giro en planta heredado)');
+    expectClose(props.rotationViewer![2], 0, 'rot z');
+    expectClose(props.rotationViewer![3], SQRT2_OVER_2, 'rot w');
+
+    // Dimensiones del hijo no se ven afectadas por la rotación del padre
+    expectClose(props.sizeViewer![1], 2.0, 'altura del hijo sin modificar');
+  });
+});
+
+describe('geometría combinada — piso migrado', () => {
+  it('infrastructure plane con mounting unknown y role floor: isFloor=true, plano horizontal', () => {
+    // Elemento migrado desde v1: mounting viene como 'unknown' porque v1 no guardaba ese dato.
+    // El rol 'floor' en technical.role identifica el piso.
+    const el: EquipmentElement = {
+      id: 'floor-1',
+      name: 'Piso principal',
+      tag: null,
+      aliases: [],
+      physicalLocation: DEFAULT_LOCATION,
+      condition: 'unknown',
+      lifecycle: 'active',
+      parentId: null,
+      geometry: { kind: 'plane', widthMm: 10000, depthMm: 8000 },
+      mounting: 'unknown',
+      manufacturer: UNKNOWN_DATUM,
+      model: UNKNOWN_DATUM,
+      version: 1,
+      placementStatus: 'placed',
+      transform: {
+        positionMm: { x: 5000, y: 4000, z: 0 },
+        rotation: IDENTITY_QUATERNION,
+      },
+      category: 'infrastructure',
+      technical: {
+        role: { value: 'floor', status: 'provided', evidenceIds: [] },
+      },
+    } as EquipmentElement;
+
+    const props = elementToRenderProps(el, [el]);
+
+    // isFloor detectado por categoría+rol, no por mounting
+    expect(props.isFloor).toBe(true);
+    expect(props.geometryKind).toBe('plane');
+
+    // Dimensiones correctas
+    expectClose(props.sizeViewer![0], 10.0, 'ancho');
+    expectClose(props.sizeViewer![1], 0, 'altura (plano)');
+    expectClose(props.sizeViewer![2], 8.0, 'profundidad');
+
+    // Identidad en dominio → identidad en visor; plano en posición correcta
+    // (el renderer aplica -90° X sobre el mesh de PlaneGeometry según convención)
+    expectClose(props.rotationViewer![0], 0, 'rot x');
+    expectClose(props.rotationViewer![1], 0, 'rot y');
+    expectClose(props.rotationViewer![2], 0, 'rot z');
+    expectClose(props.rotationViewer![3], 1, 'rot w (identity)');
+
+    // Posición en visor: [5000/1000, 0/1000, -4000/1000] = [5, 0, -4]
+    expectClose(props.positionViewer![0], 5, 'x visor');
+    expectClose(props.positionViewer![1], 0, 'y visor (z=0)');
+    expectClose(props.positionViewer![2], -4, 'z visor');
+  });
+
+  it('infrastructure plane con mounting floor también es detectado como piso', () => {
+    const el: EquipmentElement = {
+      id: 'floor-2',
+      name: 'Piso secundario',
+      tag: null,
+      aliases: [],
+      physicalLocation: DEFAULT_LOCATION,
+      condition: 'unknown',
+      lifecycle: 'active',
+      parentId: null,
+      geometry: { kind: 'plane', widthMm: 5000, depthMm: 3000 },
+      mounting: 'floor',
+      manufacturer: UNKNOWN_DATUM,
+      model: UNKNOWN_DATUM,
+      version: 1,
+      placementStatus: 'placed',
+      transform: { positionMm: { x: 0, y: 0, z: 0 }, rotation: IDENTITY_QUATERNION },
+      category: 'infrastructure',
+      technical: {
+        role: { value: 'building', status: 'provided', evidenceIds: [] },
+      },
+    } as EquipmentElement;
+
+    expect(elementToRenderProps(el, [el]).isFloor).toBe(true);
   });
 });
