@@ -1,10 +1,11 @@
 /**
  * previewCrud.ts — Funciones puras para agregar, duplicar y eliminar equipos.
- * No importa stores, React ni IndexedDB.
+ * No importa stores ni React.
  */
 
-import type { EquipmentElement, FieldEvidence, Datum } from '../types/domain-v2';
+import type { EquipmentElement, FieldEvidence, Datum, Placement } from '../types/domain-v2';
 import { IDENTITY_QUATERNION } from '../types/domain-v2';
+import { resolveGlobalTransform } from '../scene/v2-adapter';
 import { createManualEvidence } from './technicalEditor';
 
 // ─── Generador de IDs ─────────────────────────────────────────────────────────
@@ -49,16 +50,16 @@ const DEFAULT_LOCATION = {
 export function createNewElement(spec: AddElementSpec): EquipmentElement {
   const id = generateId(spec.category);
 
-  const basePlacement =
+  const basePlacement: Placement =
     spec.placement.placementStatus === 'unplaced'
-      ? ({ placementStatus: 'unplaced', transform: null } as const)
-      : ({
+      ? { placementStatus: 'unplaced', transform: null }
+      : {
           placementStatus: 'placed',
           transform: {
             positionMm: spec.placement.positionMm,
             rotation: { ...IDENTITY_QUATERNION },
           },
-        } as const);
+        };
 
   const common = {
     id,
@@ -82,13 +83,13 @@ export function createNewElement(spec: AddElementSpec): EquipmentElement {
       ...common,
       category: 'motor' as const,
       technical: {
-        power:       unknownDatum(),
-        voltage:     unknownDatum(),
-        phases:      unknownDatum(),
+        power:        unknownDatum(),
+        voltage:      unknownDatum(),
+        phases:       unknownDatum(),
         plateCurrent: unknownDatum(),
-        efficiency:  unknownDatum(),
-        powerFactor: unknownDatum(),
-        start:       unknownDatum(),
+        efficiency:   unknownDatum(),
+        powerFactor:  unknownDatum(),
+        start:        unknownDatum(),
       },
     } as EquipmentElement;
   }
@@ -133,19 +134,48 @@ function downgradeTechnicalVerified(el: EquipmentElement): EquipmentElement['tec
   return result as EquipmentElement['technical'];
 }
 
+/**
+ * Duplica un elemento con ID único y sin herencia de jerarquía.
+ * Si el original es hijo de otro elemento, resuelve su posición y orientación
+ * globales para que la copia mantenga la misma transformación en el mundo.
+ * Si algún ancestro está sin ubicar, la copia también queda sin ubicar.
+ */
 export function duplicateElement(
   original: EquipmentElement,
+  allElements: EquipmentElement[],
 ): { duplicate: EquipmentElement; provenance: FieldEvidence } {
   const newId = generateId(`dup-${original.category}`);
 
+  // Determinar placement global para la copia
+  let resolvedPlacement: Placement;
+  if (original.parentId !== null) {
+    // Elemento hijo: convertir transform local → global.
+    // Si el ancestro está sin ubicar, la copia también queda sin ubicar.
+    const globalTransform = resolveGlobalTransform(original.id, allElements);
+    resolvedPlacement = globalTransform !== null
+      ? { placementStatus: 'placed', transform: globalTransform }
+      : { placementStatus: 'unplaced', transform: null };
+  } else if (original.placementStatus === 'placed') {
+    resolvedPlacement = {
+      placementStatus: 'placed',
+      transform: {
+        positionMm: { ...original.transform.positionMm },
+        rotation:   { ...original.transform.rotation },
+      },
+    };
+  } else {
+    resolvedPlacement = { placementStatus: 'unplaced', transform: null };
+  }
+
   const provenance = createManualEvidence(newId, '_provenance', {
-    action: 'duplicated_from',
-    sourceId: original.id,
+    action:     'duplicated_from',
+    sourceId:   original.id,
     sourceName: original.name,
   });
 
   const duplicate: EquipmentElement = {
     ...original,
+    ...resolvedPlacement,
     id:           newId,
     tag:          null,
     aliases:      [],
@@ -180,4 +210,100 @@ export function checkDeleteDependencies(
     );
   }
   return { canDelete: blockers.length === 0, blockers };
+}
+
+// ─── Integridad de evidencia ──────────────────────────────────────────────────
+
+/**
+ * Reúne todos los evidenceIds referenciados por los datums de un elemento
+ * (manufacturer, model y todos los campos de technical).
+ */
+export function collectAllEvidenceIds(el: EquipmentElement): string[] {
+  const ids: string[] = [
+    ...el.manufacturer.evidenceIds,
+    ...el.model.evidenceIds,
+  ];
+  const tech = el.technical as Record<string, { evidenceIds: string[] }>;
+  for (const datum of Object.values(tech)) {
+    ids.push(...datum.evidenceIds);
+  }
+  return ids;
+}
+
+/**
+ * Devuelve los IDs de evidencia que pueden retirarse cuando se elimina el
+ * elemento `id`. Solo se retiran registros cuyo elementOrConnectionId sea `id`
+ * y que ningún otro elemento referencia en sus evidenceIds.
+ */
+export function evidenceToRemoveOnDelete(
+  id: string,
+  elements: EquipmentElement[],
+  evidence: FieldEvidence[],
+): string[] {
+  // IDs de evidencia referenciados por OTROS elementos
+  const referencedByOthers = new Set<string>();
+  for (const el of elements) {
+    if (el.id === id) continue;
+    for (const eid of collectAllEvidenceIds(el)) {
+      referencedByOthers.add(eid);
+    }
+  }
+  return evidence
+    .filter((ev) => ev.elementOrConnectionId === id && !referencedByOthers.has(ev.id))
+    .map((ev) => ev.id);
+}
+
+// ─── Validación de proyecto ───────────────────────────────────────────────────
+
+export interface ValidationResult {
+  valid: boolean;
+  errors: string[];
+}
+
+/**
+ * Valida la consistencia interna del snapshot de preview:
+ * - Sin IDs de elemento duplicados.
+ * - Todos los parentId referencian elementos existentes.
+ * - Todos los evidenceIds en datums referencian evidencias en el array.
+ * - Todas las evidencias tienen elementOrConnectionId en un elemento existente.
+ */
+export function validatePreviewData(
+  elements: EquipmentElement[],
+  evidence: FieldEvidence[],
+): ValidationResult {
+  const errors: string[] = [];
+  const elementIds = new Set(elements.map((e) => e.id));
+  const evidenceIds = new Set(evidence.map((e) => e.id));
+
+  // Duplicados
+  if (elementIds.size < elements.length) {
+    errors.push('IDs de elementos duplicados detectados');
+  }
+
+  // parentId colgante
+  for (const el of elements) {
+    if (el.parentId !== null && !elementIds.has(el.parentId)) {
+      errors.push(`"${el.id}" referencia parentId "${el.parentId}" inexistente`);
+    }
+  }
+
+  // evidenceIds en datums que no existen en el array de evidencia
+  for (const el of elements) {
+    for (const eid of collectAllEvidenceIds(el)) {
+      if (!evidenceIds.has(eid)) {
+        errors.push(`"${el.id}" referencia evidencia "${eid}" inexistente en el array`);
+      }
+    }
+  }
+
+  // Evidencia con propietario inexistente
+  for (const ev of evidence) {
+    if (!elementIds.has(ev.elementOrConnectionId)) {
+      errors.push(
+        `Evidencia "${ev.id}" referencia elemento "${ev.elementOrConnectionId}" inexistente`,
+      );
+    }
+  }
+
+  return { valid: errors.length === 0, errors };
 }

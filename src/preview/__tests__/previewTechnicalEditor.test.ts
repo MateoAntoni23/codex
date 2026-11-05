@@ -526,14 +526,14 @@ describe('PreviewInspector — evidencia se agrega al store', () => {
     // No modify anything
     await userEvent.click(screen.getByRole('button', { name: 'Aplicar' }));
 
-    expect(usePreviewStore.getState().evidence).toHaveLength(0);
+    expect(usePreviewStore.getState().evidence.every((e) => e.source === 'migration')).toBe(true);
   });
 });
 
 // ─── Componente: resetElements limpia evidencia ───────────────────────────────
 
 describe('usePreviewStore — resetElements limpia evidence', () => {
-  it('después de Apply y resetElements, evidence vuelve a []', async () => {
+  it('después de Apply y resetElements, evidence vuelve solo a registros de migración', async () => {
     usePreviewStore.getState().select('panel-1');
     render(React.createElement(PreviewInspector));
 
@@ -542,10 +542,10 @@ describe('usePreviewStore — resetElements limpia evidence', () => {
     await userEvent.type(ipInput, 'IP66');
     await userEvent.click(screen.getByRole('button', { name: 'Aplicar' }));
 
-    expect(usePreviewStore.getState().evidence.length).toBeGreaterThan(0);
+    expect(usePreviewStore.getState().evidence.some((e) => e.source !== 'migration')).toBe(true);
 
     usePreviewStore.getState().resetElements();
-    expect(usePreviewStore.getState().evidence).toHaveLength(0);
+    expect(usePreviewStore.getState().evidence.every((e) => e.source === 'migration')).toBe(true);
   });
 });
 

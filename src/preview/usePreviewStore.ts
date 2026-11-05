@@ -8,7 +8,8 @@
  */
 
 import { create } from 'zustand';
-import { PREVIEW_ELEMENTS } from './previewData';
+import { PREVIEW_ELEMENTS, PREVIEW_EVIDENCE } from './previewData';
+import { evidenceToRemoveOnDelete } from './previewCrud';
 import type { EquipmentElement, FieldEvidence } from '../types/domain-v2';
 
 function copyElements(elements: EquipmentElement[]): EquipmentElement[] {
@@ -32,7 +33,7 @@ interface PreviewState {
 
 export const usePreviewStore = create<PreviewState>((set) => ({
   elements: copyElements(PREVIEW_ELEMENTS),
-  evidence: [],
+  evidence: [...PREVIEW_EVIDENCE],
   selectedId: null,
   select: (id) => set({ selectedId: id }),
   clearSelection: () => set({ selectedId: null }),
@@ -43,12 +44,16 @@ export const usePreviewStore = create<PreviewState>((set) => ({
   addElement: (el) =>
     set((s) => ({ elements: [...s.elements, el], selectedId: el.id })),
   removeElement: (id) =>
-    set((s) => ({
-      elements:   s.elements.filter((e) => e.id !== id),
-      selectedId: s.selectedId === id ? null : s.selectedId,
-    })),
+    set((s) => {
+      const toRemove = new Set(evidenceToRemoveOnDelete(id, s.elements, s.evidence));
+      return {
+        elements:   s.elements.filter((e) => e.id !== id),
+        evidence:   s.evidence.filter((ev) => !toRemove.has(ev.id)),
+        selectedId: s.selectedId === id ? null : s.selectedId,
+      };
+    }),
   addEvidence: (ev) =>
     set((s) => ({ evidence: [...s.evidence, ev] })),
   resetElements: () =>
-    set({ elements: copyElements(PREVIEW_ELEMENTS), evidence: [], selectedId: null }),
+    set({ elements: copyElements(PREVIEW_ELEMENTS), evidence: [...PREVIEW_EVIDENCE], selectedId: null }),
 }));

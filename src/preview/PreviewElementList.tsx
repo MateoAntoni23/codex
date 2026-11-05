@@ -52,7 +52,7 @@ export function PreviewElementList() {
   function handleDuplicate(el: EquipmentElement) {
     setConfirmDeleteId(null);
     setDeleteBlocker(null);
-    const { duplicate, provenance } = duplicateElement(el);
+    const { duplicate, provenance } = duplicateElement(el, elements);
     addElement(duplicate);
     addEvidence(provenance);
     // Auto-expand the category group of the duplicate

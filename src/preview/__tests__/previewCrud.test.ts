@@ -7,10 +7,13 @@ import { usePreviewStore } from '../usePreviewStore';
 import { PREVIEW_ELEMENTS } from '../previewData';
 import {
   generateId, createNewElement, duplicateElement, checkDeleteDependencies,
+  evidenceToRemoveOnDelete, validatePreviewData,
   type AddElementSpec,
 } from '../previewCrud';
+import { resolveGlobalTransform } from '../../scene/v2-adapter';
+import { PREVIEW_EVIDENCE } from '../previewData';
 import { PreviewElementList } from '../PreviewElementList';
-import type { EquipmentElement } from '../../types/domain-v2';
+import type { EquipmentElement, FieldEvidence } from '../../types/domain-v2';
 
 beforeEach(() => {
   usePreviewStore.getState().resetElements();
@@ -123,33 +126,33 @@ describe('createNewElement — IDs únicos para creaciones consecutivas', () => 
 describe('duplicateElement', () => {
   it('nuevo ID distinto al original', () => {
     const original = PREVIEW_ELEMENTS.find((e) => e.id === 'panel-1')!;
-    const { duplicate } = duplicateElement(original);
+    const { duplicate } = duplicateElement(original, PREVIEW_ELEMENTS);
     expect(duplicate.id).not.toBe(original.id);
   });
 
   it('nombre identificable como copia', () => {
     const original = PREVIEW_ELEMENTS.find((e) => e.id === 'motor-1')!;
-    const { duplicate } = duplicateElement(original);
+    const { duplicate } = duplicateElement(original, PREVIEW_ELEMENTS);
     expect(duplicate.name).toContain('Copia');
     expect(duplicate.name).toContain(original.name);
   });
 
   it('tag es null en la copia', () => {
     const original = PREVIEW_ELEMENTS.find((e) => e.id === 'sensor-flow-1')!;
-    const { duplicate } = duplicateElement(original);
+    const { duplicate } = duplicateElement(original, PREVIEW_ELEMENTS);
     expect(duplicate.tag).toBeNull();
   });
 
   it('parentId es null — no hereda jerarquía', () => {
     const child = PREVIEW_ELEMENTS.find((e) => e.id === 'child-motor-1')!;
     expect(child.parentId).not.toBeNull(); // precondición
-    const { duplicate } = duplicateElement(child);
+    const { duplicate } = duplicateElement(child, PREVIEW_ELEMENTS);
     expect(duplicate.parentId).toBeNull();
   });
 
   it('versión es 1', () => {
     const original = PREVIEW_ELEMENTS.find((e) => e.id === 'panel-1')!;
-    const { duplicate } = duplicateElement(original);
+    const { duplicate } = duplicateElement(original, PREVIEW_ELEMENTS);
     expect(duplicate.version).toBe(1);
   });
 
@@ -157,7 +160,7 @@ describe('duplicateElement', () => {
     const original = PREVIEW_ELEMENTS.find((e) => e.id === 'sensor-flow-1')!;
     if (original.category !== 'sensor') return;
     expect(original.technical.measuredVariable.status).toBe('provided'); // precondición
-    const { duplicate } = duplicateElement(original);
+    const { duplicate } = duplicateElement(original, PREVIEW_ELEMENTS);
     if (duplicate.category !== 'sensor') return;
     expect(duplicate.technical.measuredVariable.status).toBe('provided');
   });
@@ -166,7 +169,7 @@ describe('duplicateElement', () => {
     const original = PREVIEW_ELEMENTS.find((e) => e.id === 'sensor-flow-1')!;
     if (original.category !== 'sensor') return;
     expect(original.technical.range.status).toBe('estimated'); // precondición
-    const { duplicate } = duplicateElement(original);
+    const { duplicate } = duplicateElement(original, PREVIEW_ELEMENTS);
     if (duplicate.category !== 'sensor') return;
     expect(duplicate.technical.range.status).toBe('estimated');
   });
@@ -181,7 +184,7 @@ describe('duplicateElement', () => {
         signal: { value: '4_20mA' as const, status: 'verified', evidenceIds: [] },
       },
     } as EquipmentElement;
-    const { duplicate } = duplicateElement(withVerified);
+    const { duplicate } = duplicateElement(withVerified, []);
     if (duplicate.category !== 'sensor') return;
     expect(duplicate.technical.signal.status).toBe('provided');
   });
@@ -196,14 +199,14 @@ describe('duplicateElement', () => {
         measuredVariable: { value: 'Presión', status: 'provided', evidenceIds: ['ev-001', 'ev-002'] },
       },
     } as EquipmentElement;
-    const { duplicate } = duplicateElement(original);
+    const { duplicate } = duplicateElement(original, []);
     if (duplicate.category !== 'sensor') return;
     expect(duplicate.technical.measuredVariable.evidenceIds).toEqual(['ev-001', 'ev-002']);
   });
 
   it('provenance registra la procedencia', () => {
     const original = PREVIEW_ELEMENTS.find((e) => e.id === 'motor-1')!;
-    const { provenance } = duplicateElement(original);
+    const { provenance } = duplicateElement(original, PREVIEW_ELEMENTS);
     expect(provenance.source).toBe('manual');
     expect(provenance.fieldPath).toBe('_provenance');
     const raw = provenance.rawValue as Record<string, unknown>;
@@ -213,9 +216,40 @@ describe('duplicateElement', () => {
 
   it('dos duplicaciones del mismo elemento generan IDs distintos', () => {
     const original = PREVIEW_ELEMENTS.find((e) => e.id === 'panel-1')!;
-    const { duplicate: d1 } = duplicateElement(original);
-    const { duplicate: d2 } = duplicateElement(original);
+    const { duplicate: d1 } = duplicateElement(original, PREVIEW_ELEMENTS);
+    const { duplicate: d2 } = duplicateElement(original, PREVIEW_ELEMENTS);
     expect(d1.id).not.toBe(d2.id);
+  });
+
+  it('hijo de padre rotado: posición global difiere de la local', () => {
+    const child = PREVIEW_ELEMENTS.find((e) => e.id === 'child-motor-1')!;
+    const { duplicate } = duplicateElement(child, PREVIEW_ELEMENTS);
+    const globalTransform = resolveGlobalTransform('child-motor-1', PREVIEW_ELEMENTS)!;
+
+    expect(duplicate.placementStatus).toBe('placed');
+    if (duplicate.placementStatus !== 'placed') return;
+    expect(duplicate.transform.positionMm.x).toBeCloseTo(globalTransform.positionMm.x, 5);
+    expect(duplicate.transform.positionMm.y).toBeCloseTo(globalTransform.positionMm.y, 5);
+    expect(duplicate.transform.positionMm.z).toBeCloseTo(globalTransform.positionMm.z, 5);
+
+    // La posición global difiere del offset local (0, 800, 0) del hijo
+    const child_ = child as Extract<typeof child, { placementStatus: 'placed' }>;
+    expect(duplicate.transform.positionMm.x).not.toBeCloseTo(child_.transform.positionMm.x, 1);
+  });
+
+  it('hijo con ancestro sin ubicar → copia queda sin ubicar', () => {
+    const unplaced = PREVIEW_ELEMENTS.find((e) => e.id === 'sensor-unplaced-1')!;
+    const fakeChild: EquipmentElement = {
+      ...PREVIEW_ELEMENTS.find((e) => e.id === 'motor-1')!,
+      id: 'fake-child',
+      parentId: unplaced.id,
+      placementStatus: 'placed',
+      transform: { positionMm: { x: 0, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: 0, w: 1 } },
+    } as EquipmentElement;
+    const allWithChild = [...PREVIEW_ELEMENTS, fakeChild];
+    const { duplicate } = duplicateElement(fakeChild, allWithChild);
+    expect(duplicate.placementStatus).toBe('unplaced');
+    expect(duplicate.transform).toBeNull();
   });
 });
 
@@ -482,7 +516,7 @@ describe('usePreviewStore — reset tras operaciones CRUD', () => {
       category: 'motor', name: 'Extra', placement: { placementStatus: 'unplaced' }, geometry: null,
     }));
     // Duplicar uno existente
-    const { duplicate, provenance } = duplicateElement(PREVIEW_ELEMENTS[0]);
+    const { duplicate, provenance } = duplicateElement(PREVIEW_ELEMENTS[0], PREVIEW_ELEMENTS);
     gs().addElement(duplicate);
     gs().addEvidence(provenance);
 
@@ -492,7 +526,110 @@ describe('usePreviewStore — reset tras operaciones CRUD', () => {
 
     expect(gs().elements.map((e) => e.id).sort())
       .toEqual(PREVIEW_ELEMENTS.map((e) => e.id).sort());
-    expect(gs().evidence).toHaveLength(0);
+    expect(gs().evidence.every((e) => e.source === 'migration')).toBe(true);
     expect(gs().selectedId).toBeNull();
+  });
+});
+
+// ─── validatePreviewData ──────────────────────────────────────────────────────
+
+describe('validatePreviewData', () => {
+  it('estado inicial de preview es válido', () => {
+    const result = validatePreviewData(PREVIEW_ELEMENTS, PREVIEW_EVIDENCE);
+    expect(result.valid).toBe(true);
+    expect(result.errors).toHaveLength(0);
+  });
+
+  it('detecta IDs de elementos duplicados', () => {
+    const dup = { ...PREVIEW_ELEMENTS[0] };
+    const result = validatePreviewData([...PREVIEW_ELEMENTS, dup], PREVIEW_EVIDENCE);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => /duplicados/i.test(e))).toBe(true);
+  });
+
+  it('detecta parentId colgante', () => {
+    const orphan: EquipmentElement = {
+      ...PREVIEW_ELEMENTS.find((e) => e.id === 'motor-1')!,
+      id: 'orphan-1',
+      parentId: 'non-existent-parent',
+    } as EquipmentElement;
+    const result = validatePreviewData([...PREVIEW_ELEMENTS, orphan], PREVIEW_EVIDENCE);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.includes('orphan-1') && e.includes('non-existent-parent'))).toBe(true);
+  });
+
+  it('detecta evidencia con elementOrConnectionId inexistente', () => {
+    const orphanEvidence: FieldEvidence = {
+      id: 'ev-orphan',
+      elementOrConnectionId: 'ghost-element',
+      fieldPath: 'technical.power',
+      source: 'manual',
+      rawValue: '5 kW',
+      fileChecksum: null, sheet: null, row: null, cell: null, formula: null,
+      author: null, recordedAt: new Date().toISOString(),
+    };
+    const result = validatePreviewData(PREVIEW_ELEMENTS, [...PREVIEW_EVIDENCE, orphanEvidence]);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.includes('ev-orphan'))).toBe(true);
+  });
+
+  it('detecta evidenceId en datum que no existe en el array', () => {
+    const panelOriginal = PREVIEW_ELEMENTS.find((e) => e.id === 'panel-1')!;
+    const panelWithDanglingRef: EquipmentElement = {
+      ...panelOriginal,
+      manufacturer: { value: 'ABB', status: 'provided', evidenceIds: ['ev-missing-999'] },
+    } as EquipmentElement;
+    const elements = PREVIEW_ELEMENTS.map((e) => e.id === 'panel-1' ? panelWithDanglingRef : e);
+    const result = validatePreviewData(elements, PREVIEW_EVIDENCE);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.includes('ev-missing-999'))).toBe(true);
+  });
+
+  it('eliminar elemento limpia su evidencia → estado válido', () => {
+    // Crear elemento con evidencia propia
+    const el: EquipmentElement = {
+      ...PREVIEW_ELEMENTS.find((e) => e.id === 'motor-1')!,
+      id: 'temp-motor',
+      parentId: null,
+      manufacturer: { value: 'Siemens', status: 'provided', evidenceIds: ['ev-temp-1'] },
+    } as EquipmentElement;
+    const ev: FieldEvidence = {
+      id: 'ev-temp-1',
+      elementOrConnectionId: 'temp-motor',
+      fieldPath: 'manufacturer',
+      source: 'manual',
+      rawValue: 'Siemens',
+      fileChecksum: null, sheet: null, row: null, cell: null, formula: null,
+      author: null, recordedAt: new Date().toISOString(),
+    };
+    const elements = [...PREVIEW_ELEMENTS, el];
+    const evidence = [...PREVIEW_EVIDENCE, ev];
+
+    const toRemove = new Set(evidenceToRemoveOnDelete('temp-motor', elements, evidence));
+    const elementsAfter = elements.filter((e) => e.id !== 'temp-motor');
+    const evidenceAfter = evidence.filter((e) => !toRemove.has(e.id));
+
+    expect(toRemove.has('ev-temp-1')).toBe(true);
+    const result = validatePreviewData(elementsAfter, evidenceAfter);
+    expect(result.valid).toBe(true);
+  });
+
+  it('duplicar → eliminar original → evidencia compartida se preserva, estado válido', () => {
+    // panel-1 no tiene evidenceIds en sus datums técnicos (solo migración sin referencia)
+    const original = PREVIEW_ELEMENTS.find((e) => e.id === 'panel-1')!;
+    const { duplicate, provenance } = duplicateElement(original, PREVIEW_ELEMENTS);
+
+    const elements = [...PREVIEW_ELEMENTS, duplicate];
+    const evidence = [...PREVIEW_EVIDENCE, provenance];
+
+    const toRemove = new Set(evidenceToRemoveOnDelete('panel-1', elements, evidence));
+    const elementsAfter = elements.filter((e) => e.id !== 'panel-1');
+    const evidenceAfter = evidence.filter((e) => !toRemove.has(e.id));
+
+    const result = validatePreviewData(elementsAfter, evidenceAfter);
+    expect(result.valid).toBe(true);
+    // El duplicado y su provenance persisten
+    expect(elementsAfter.find((e) => e.id === duplicate.id)).toBeDefined();
+    expect(evidenceAfter.find((e) => e.id === provenance.id)).toBeDefined();
   });
 });

@@ -20,7 +20,7 @@ import { INITIAL_OBJECTS } from '../store/initialObjects';
 import { SCHEMA_VERSION } from '../persistence/schema';
 import { migrateV1ToV2 } from '../persistence/migrate-v1-to-v2';
 import { IDENTITY_QUATERNION } from '../types/domain-v2';
-import type { EquipmentElement, Vec3 } from '../types/domain-v2';
+import type { EquipmentElement, FieldEvidence, Vec3 } from '../types/domain-v2';
 
 const UNKNOWN_DATUM = { value: null, status: 'unknown' as const, evidenceIds: [] as string[] };
 const DEFAULT_LOCATION = {
@@ -203,3 +203,6 @@ export const PREVIEW_ELEMENTS: EquipmentElement[] = [
 ];
 
 export const PREVIEW_PROJECT_ORIGIN = migratedData.projectOrigin;
+
+/** Evidencia de migración para los 4 elementos migrados desde v1. */
+export const PREVIEW_EVIDENCE: FieldEvidence[] = migratedData.evidence;
