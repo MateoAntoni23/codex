@@ -17,6 +17,7 @@ import {
   snapDirectionToAxis,
 } from './routingRules';
 import type { Point3 } from './routingRules';
+import { computeTurnPerp } from './addCurvePiece';
 
 function toViewer(mm: Point3): Point3 {
   return [mm[0] / 1000, mm[2] / 1000, -mm[1] / 1000];
@@ -112,6 +113,23 @@ function PreviewMesh({
   );
 }
 
+// ─── Curve arc preview ────────────────────────────────────────────────────────
+
+function CurvePreviewMesh({ arcPoints, widthMm }: { arcPoints: THREE.Vector3[]; widthMm: number }) {
+  const geometry = useMemo(() => {
+    if (arcPoints.length < 2) return null;
+    const curve = new THREE.CatmullRomCurve3(arcPoints);
+    return new THREE.TubeGeometry(curve, arcPoints.length * 2, (widthMm / 2) / 1000, 6, false);
+  }, [arcPoints, widthMm]);
+
+  if (!geometry) return null;
+  return (
+    <mesh geometry={geometry}>
+      <meshStandardMaterial color="#ff9900" transparent opacity={0.35} depthWrite={false} side={THREE.DoubleSide} />
+    </mesh>
+  );
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function RoutingObjects() {
@@ -123,6 +141,7 @@ export function RoutingObjects() {
   const startPort       = useRoutingStore((s) => s.startPort);
   const previewLengthMm = useRoutingStore((s) => s.previewLengthMm);
   const snapToAxis      = useRoutingStore((s) => s.snapToAxis);
+  const turnDirection   = useRoutingStore((s) => s.turnDirection);
   const selectedProductId = useRoutingStore((s) => s.selectedProductId);
   const hoverPiece      = useRoutingStore((s) => s.hoverPiece);
   const selectStartPort = useRoutingStore((s) => s.selectStartPort);
@@ -133,8 +152,39 @@ export function RoutingObjects() {
     return getFreePorts(entrada.piezas, entrada.conexiones);
   }, [entrada, active, entrada?.conexiones, entrada?.piezas]);
 
+  const selectedProduct = useMemo(
+    () => context?.productos.find((p) => p.producto_id === selectedProductId),
+    [context?.productos, selectedProductId],
+  );
+
   const previewData = useMemo(() => {
-    if (!startPort || step === 'selectingPort' || previewLengthMm <= 0) return null;
+    if (!startPort || step === 'selectingPort') return null;
+
+    if (selectedProduct?.tipo_pieza === 'curva') {
+      const angleDeg = (selectedProduct as Record<string, unknown>).angulo_grados as number | undefined;
+      const radioInterior = (selectedProduct as Record<string, unknown>).radio_mm as number | undefined ?? 300;
+      if (!angleDeg || angleDeg <= 0) return null;
+      const radiusMm = radioInterior + (selectedProduct.ancho_nominal_mm ?? 150) / 2;
+      const entryDir = startPort.dir;
+      const turnPerp = computeTurnPerp(entryDir, turnDirection);
+      const θTotal = (angleDeg * Math.PI) / 180;
+      const segments = 20;
+      const arcPoints: THREE.Vector3[] = [];
+      for (let i = 0; i <= segments; i++) {
+        const θ = (i / segments) * θTotal;
+        const pt: Point3 = [
+          startPort.pos[0] + radiusMm * Math.sin(θ) * entryDir[0] + radiusMm * (1 - Math.cos(θ)) * turnPerp[0],
+          startPort.pos[1] + radiusMm * Math.sin(θ) * entryDir[1] + radiusMm * (1 - Math.cos(θ)) * turnPerp[1],
+          startPort.pos[2] + radiusMm * Math.sin(θ) * entryDir[2] + radiusMm * (1 - Math.cos(θ)) * turnPerp[2],
+        ];
+        const v = toViewer(pt);
+        arcPoints.push(new THREE.Vector3(v[0], v[1], v[2]));
+      }
+      return { type: 'curve' as const, arcPoints, widthMm: selectedProduct.ancho_nominal_mm ?? 150 };
+    }
+
+    // Straight preview
+    if (previewLengthMm <= 0) return null;
     const dir = snapToAxis ? snapDirectionToAxis(startPort.dir) : startPort.dir;
     const endMm = computeEndpoint(startPort.pos, dir, previewLengthMm);
     const startV = toViewer(startPort.pos);
@@ -151,13 +201,8 @@ export function RoutingObjects() {
       (endV[1] - startV[1]) / len,
       (endV[2] - startV[2]) / len,
     ];
-    return { center, dirV, len };
-  }, [startPort, step, previewLengthMm, snapToAxis]);
-
-  const selectedProduct = useMemo(
-    () => context?.productos.find((p) => p.producto_id === selectedProductId),
-    [context?.productos, selectedProductId],
-  );
+    return { type: 'straight' as const, center, dirV, len };
+  }, [startPort, step, previewLengthMm, snapToAxis, selectedProduct, turnDirection]);
 
   if (!active || !entrada) return null;
 
@@ -197,7 +242,7 @@ export function RoutingObjects() {
       )}
 
       {/* Preview mesh */}
-      {previewData && (
+      {previewData?.type === 'straight' && (
         <PreviewMesh
           center={previewData.center}
           dirV={previewData.dirV}
@@ -205,6 +250,9 @@ export function RoutingObjects() {
           widthMm={selectedProduct?.ancho_nominal_mm ?? 150}
           alaMm={(selectedProduct as Record<string, unknown> | undefined)?.ala_nominal_mm as number ?? 65}
         />
+      )}
+      {previewData?.type === 'curve' && (
+        <CurvePreviewMesh arcPoints={previewData.arcPoints} widthMm={previewData.widthMm} />
       )}
     </group>
   );

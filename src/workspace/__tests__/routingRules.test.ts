@@ -643,3 +643,47 @@ describe('getCompatibleProductIds', () => {
     expect(getCompatibleProductIds([c1, c2, c3], 'PROD-Z', 'P1').size).toBe(0);
   });
 });
+
+// ─── checkDirectCompatibility — symmetric fallback for curves ─────────────────
+
+describe('checkDirectCompatibility — symmetric port fallback (curva)', () => {
+  // Catalog has: straight.P2 → curve.P1 only (curve only documented at P1)
+  const straightP2CurveP1 = makeCompat('C-SYM-1', 'STRAIGHT', 'STRAIGHT-P2', 'CURVE', 'CURVE-P1');
+  const straight = makeProduct('STRAIGHT', 150, 'FAM-A', 'recta');
+  const curve = makeProduct('CURVE', 150, 'FAM-A', 'curva');
+  const context = {
+    compatibilidades: [straightP2CurveP1],
+    componentesUnion: [] as import('../../tray/model').CatalogUnionComponent[],
+  };
+
+  it('straight.P2 → curve.P1 found directly', () => {
+    const r = checkDirectCompatibility(context, straight, 'P2', curve, 'P1');
+    expect(r.ok).toBe(true);
+  });
+
+  it('curve.P2 → straight found via symmetric fallback (tipo_pieza=curva)', () => {
+    const r = checkDirectCompatibility(context, curve, 'P2', straight, 'P1');
+    expect(r.ok).toBe(true);
+    expect(r.reason).toContain('simetría de puerto');
+    // Catalog has STRAIGHT-P2 ↔ CURVE-P1, so newPiecePort is 'P2' (straight connects at P2)
+    expect(r.newPiecePort).toBe('P2');
+  });
+
+  it('curve.P1 → straight.P1 also found (direct match)', () => {
+    const r = checkDirectCompatibility(context, curve, 'P1', straight, 'P1');
+    // The catalog entry has CURVE-P1 as puerto_b, so it matches directly
+    expect(r.ok).toBe(true);
+  });
+
+  it('symmetric fallback NOT applied for tipo_pieza=recta (preserves existing behavior)', () => {
+    // A straight with P2 entry only — querying P1 should return not-ok, no fallback
+    const entryP2only = makeCompat('C-SYM-2', 'RED-A', 'RED-A-P2', 'RED-B', 'RED-B-P1');
+    const red = makeProduct('RED-A', 150, null, 'recta');
+    const other = makeProduct('RED-B', 100, null, 'recta');
+    const r = checkDirectCompatibility(
+      { compatibilidades: [entryP2only], componentesUnion: [] },
+      red, 'P1', other, 'P1',
+    );
+    expect(r.ok).toBe(false);
+  });
+});

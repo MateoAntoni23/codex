@@ -27,6 +27,9 @@ export interface RoutingState {
   /** Which port of the chosen reduction connects to the existing piece ('P1' or 'P2') */
   reductionPortToExisting: string;
 
+  /** Turn direction for horizontal curve insertion. */
+  turnDirection: 'left' | 'right';
+
   activate(): void;
   deactivate(): void;
   hoverPiece(id: string | null): void;
@@ -38,6 +41,7 @@ export interface RoutingState {
   setReductionProduct(id: string): void;
   setReductionLength(mm: number): void;
   setReductionPortToExisting(port: string): void;
+  setTurnDirection(dir: 'left' | 'right'): void;
   back(): void;
 }
 
@@ -52,6 +56,7 @@ export const useRoutingStore = create<RoutingState>((set) => ({
   reductionProductId: null,
   reductionLengthMm: 300,
   reductionPortToExisting: '',
+  turnDirection: 'left',
 
   activate: () =>
     set({ active: true, step: 'selectingPort', startPort: null, hoveredPieceId: null, selectedProductId: '' }),
@@ -83,6 +88,8 @@ export const useRoutingStore = create<RoutingState>((set) => ({
   setReductionLength: (mm) => set({ reductionLengthMm: mm }),
 
   setReductionPortToExisting: (port) => set({ reductionPortToExisting: port }),
+
+  setTurnDirection: (dir) => set({ turnDirection: dir }),
 
   back: () =>
     set((s) => {

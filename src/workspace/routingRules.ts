@@ -263,6 +263,52 @@ export function checkDirectCompatibility(
     };
   }
 
+  // Symmetric fallback: only for curve pieces whose P1 and P2 share the same interface.
+  // Catalog entries for curves only document P1 — after inserting a curve, continuing from
+  // its P2 would otherwise return no compatible products.
+  if (existingProduct.tipo_pieza === 'curva') {
+    const altExistPortName = existingPortName === 'P1' ? 'P2' : 'P1';
+    const symEntry = findCompatEntryPortLevel(
+      compatibilidades,
+      existingProduct.producto_id, altExistPortName,
+      newProduct.producto_id, newPortName,
+    );
+    if (symEntry) {
+      const union = getUnionComponents(componentesUnion, symEntry.compatibilidad_id);
+      return {
+        ok: true,
+        needsReduction: false,
+        reason: `Compatible según catálogo (${symEntry.compatibilidad_id}) — simetría de puerto.`,
+        compatibilidadId: symEntry.compatibilidad_id,
+        requiredUnion: union,
+        evidence: symEntry.estado_evidencia ?? '',
+        newPiecePort: newPortName,
+      };
+    }
+    const symAltEntry = findCompatEntryPortLevel(
+      compatibilidades,
+      existingProduct.producto_id, altExistPortName,
+      newProduct.producto_id, altNewPortName,
+    );
+    if (symAltEntry) {
+      const d13 = isD13Equivalent(existingProduct, newProduct);
+      const resolvedPort = d13 ? newPortName : altNewPortName;
+      const union = getUnionComponents(componentesUnion, symAltEntry.compatibilidad_id);
+      const reason = d13
+        ? `Compatible según catálogo (${symAltEntry.compatibilidad_id}) — equivalencia D-13, simetría de puerto.`
+        : `Compatible según catálogo (${symAltEntry.compatibilidad_id}) — conectar por puerto ${altNewPortName}, simetría de puerto.`;
+      return {
+        ok: true,
+        needsReduction: false,
+        reason,
+        compatibilidadId: symAltEntry.compatibilidad_id,
+        requiredUnion: union,
+        evidence: symAltEntry.estado_evidencia ?? '',
+        newPiecePort: resolvedPort,
+      };
+    }
+  }
+
   // No compatible entry found — check for explicit 'no compatible' entry
   const noComp = compatibilidades.find(
     (c) =>

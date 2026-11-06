@@ -28,7 +28,7 @@ import {
   generateConnectionId,
 } from './routingRules';
 import { buildSegmentPiece, generateSegmentId } from './addTraySegment';
-import { planAddSegment, applyOperation, type PeExtensionProposal } from './workspaceOperation';
+import { planAddSegment, planAddCurve, applyOperation, type PeExtensionProposal } from './workspaceOperation';
 
 // ─── PE extension proposal widget ────────────────────────────────────────────
 
@@ -168,9 +168,11 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
   const selectedProductId = useRoutingStore((s) => s.selectedProductId);
   const previewLengthMm   = useRoutingStore((s) => s.previewLengthMm);
   const snapToAxis        = useRoutingStore((s) => s.snapToAxis);
+  const turnDirection     = useRoutingStore((s) => s.turnDirection);
   const setProduct        = useRoutingStore((s) => s.setProduct);
   const setLength         = useRoutingStore((s) => s.setLength);
   const toggleSnap        = useRoutingStore((s) => s.toggleSnap);
+  const setTurnDirection  = useRoutingStore((s) => s.setTurnDirection);
 
   const [error, setError] = useState<string | null>(null);
   const [peDecision, setPeDecision] = useState<'accept' | 'reject'>('accept');
@@ -199,22 +201,30 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
     [context?.familias, existingProduct],
   );
 
-  // Compatible product IDs for the existing port (port-level catalog lookup)
+  // Compatible product IDs for the existing port (port-level catalog lookup).
+  // For curves: catalog only documents P1 entries, so if P2 returns nothing, fall back to P1.
   const compatibleIds = useMemo(() => {
     if (!existingProduct || !startPort || !context?.compatibilidades) return new Set<string>();
-    return getCompatibleProductIds(context.compatibilidades, existingProduct.producto_id, startPort.portName);
+    const ids = getCompatibleProductIds(context.compatibilidades, existingProduct.producto_id, startPort.portName);
+    if (ids.size === 0 && existingProduct.tipo_pieza === 'curva') {
+      const altPort = startPort.portName === 'P1' ? 'P2' : 'P1';
+      return getCompatibleProductIds(context.compatibilidades, existingProduct.producto_id, altPort);
+    }
+    return ids;
   }, [context?.compatibilidades, existingProduct, startPort]);
 
-  // Filter to recta products that are documented as compatible with this port
-  const compatibleRectaProducts = useMemo(
-    () => (context?.productos ?? []).filter((p) => p.tipo_pieza === 'recta' && compatibleIds.has(p.producto_id)),
+  // Filter to recta and curva products that are documented as compatible with this port
+  const compatibleProducts = useMemo(
+    () => (context?.productos ?? []).filter(
+      (p) => (p.tipo_pieza === 'recta' || p.tipo_pieza === 'curva') && compatibleIds.has(p.producto_id),
+    ),
     [context?.productos, compatibleIds],
   );
 
   // Group compatible products by family for <optgroup> display
   const familyGroups = useMemo(() => {
-    const groups = new Map<string, { name: string; acabado: string | null; products: typeof compatibleRectaProducts }>();
-    for (const p of compatibleRectaProducts) {
+    const groups = new Map<string, { name: string; acabado: string | null; products: typeof compatibleProducts }>();
+    for (const p of compatibleProducts) {
       const famId = (p as Record<string, unknown>).familia_id as string | undefined ?? '__other__';
       if (!groups.has(famId)) {
         const fam = context?.familias?.find((f) => f.familia_id === famId);
@@ -223,12 +233,14 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
       groups.get(famId)!.products.push(p);
     }
     return groups;
-  }, [compatibleRectaProducts, context?.familias]);
+  }, [compatibleProducts, context?.familias]);
 
   const selectedProduct = useMemo(
-    () => compatibleRectaProducts.find((p) => p.producto_id === selectedProductId) ?? null,
-    [compatibleRectaProducts, selectedProductId],
+    () => compatibleProducts.find((p) => p.producto_id === selectedProductId) ?? null,
+    [compatibleProducts, selectedProductId],
   );
+
+  const isCurve = selectedProduct?.tipo_pieza === 'curva';
 
   const compat = useMemo(() => {
     if (!existingProduct || !selectedProduct || !context || !startPort) return null;
@@ -255,22 +267,32 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
 
   // Plan the pending operation for PE proposal preview (only when all inputs valid)
   const pendingOp = useMemo(() => {
-    if (!compat?.ok || !selectedProduct || !entrada || !startPort || !effectiveDir) return null;
-    if (previewLengthMm <= 0) return null;
+    if (!compat?.ok || !selectedProduct || !entrada || !startPort) return null;
+    if (isCurve) {
+      try {
+        return planAddCurve(entrada, startPort, selectedProduct, compat, turnDirection);
+      } catch {
+        return null;
+      }
+    }
+    if (!effectiveDir || previewLengthMm <= 0) return null;
     try {
       return planAddSegment(entrada, startPort, selectedProduct, compat, previewLengthMm, effectiveDir);
     } catch {
       return null;
     }
-  }, [compat, selectedProduct, entrada, startPort, effectiveDir, previewLengthMm]);
+  }, [compat, selectedProduct, entrada, startPort, effectiveDir, previewLengthMm, isCurve, turnDirection]);
 
   const handleConfirm = () => {
     setError(null);
     if (!selectedProduct) { setError('Seleccioná un producto compatible.'); return; }
     if (!compat?.ok) { setError(compat?.reason ?? 'Sin compatibilidad documentada.'); return; }
-    if (snapToAxis && snapWarnAngle !== null) {
-      setError('La dirección del puerto no coincide con el eje más cercano — desactivá el ajuste al eje para continuar.');
-      return;
+    if (!isCurve) {
+      if (snapToAxis && snapWarnAngle !== null) {
+        setError('La dirección del puerto no coincide con el eje más cercano — desactivá el ajuste al eje para continuar.');
+        return;
+      }
+      if (previewLengthMm <= 0) { setError('La longitud debe ser mayor que 0.'); return; }
     }
     if (pendingOp?.peExtension?.ambiguous && peDecision === 'accept' && peChosenConductorIdx === null) {
       setError('Elegí un conductor PE o seleccioná "No extender".');
@@ -324,9 +346,9 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
       {/* Compatible product selector */}
       <div style={{ marginBottom: 8 }}>
         <label style={{ color: '#8888aa', display: 'block', marginBottom: 3 }}>
-          Continuación ({compatibleRectaProducts.length} compatible{compatibleRectaProducts.length !== 1 ? 's' : ''})
+          Continuación ({compatibleProducts.length} compatible{compatibleProducts.length !== 1 ? 's' : ''})
         </label>
-        {compatibleRectaProducts.length === 0 ? (
+        {compatibleProducts.length === 0 ? (
           <div style={{ padding: '6px 8px', background: '#2a1a1a', borderRadius: 3, color: '#ff9955', fontSize: 10 }}>
             Sin continuaciones documentadas para este puerto en COMPATIBILIDADES.
             {!context?.compatibilidades?.length && ' (Catálogo no disponible)'}
@@ -343,11 +365,9 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
               <optgroup key={famId} label={acabado ? `${name} (${acabado})` : name}>
                 {products.map((p) => (
                   <option key={p.producto_id} value={p.producto_id}>
-                    {p.ancho_nominal_mm ?? '?'} mm
-                    {(p as Record<string, unknown>).ala_nominal_mm != null
-                      ? ` × ${(p as Record<string, unknown>).ala_nominal_mm} mm ala`
-                      : ''}
-                    {' — '}{p.sku}
+                    {p.tipo_pieza === 'curva'
+                      ? `Curva ${(p as Record<string, unknown>).angulo_grados ?? '?'}° R${(p as Record<string, unknown>).radio_mm ?? '?'} — ${p.sku}`
+                      : `${p.ancho_nominal_mm ?? '?'} mm${(p as Record<string, unknown>).ala_nominal_mm != null ? ` × ${(p as Record<string, unknown>).ala_nominal_mm} mm ala` : ''} — ${p.sku}`}
                   </option>
                 ))}
               </optgroup>
@@ -384,37 +404,66 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
         />
       )}
 
-      {/* Length input */}
-      <div style={{ marginBottom: 8 }}>
-        <label style={{ color: '#8888aa', display: 'block', marginBottom: 3 }}>
-          Longitud del tramo (mm)
-        </label>
-        <input
-          type="number"
-          className="inspector-input"
-          style={{ width: '100%' }}
-          min={1}
-          step={100}
-          value={previewLengthMm}
-          onChange={(e) => setLength(Number(e.target.value))}
-        />
-      </div>
-
-      {/* Axis snap */}
-      <label style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: snapWarnAngle ? 4 : 10, cursor: 'pointer', fontSize: 11, color: '#8888aa' }}>
-        <input type="checkbox" checked={snapToAxis} onChange={toggleSnap} />
-        Ajustar al eje dominante
-        {effectiveDir && snapToAxis && (
-          <span style={{ color: '#99aadd', fontSize: 10 }}>
-            ({effectiveDir.map(v => v.toFixed(0)).join(', ')})
-          </span>
-        )}
-      </label>
-
-      {snapWarnAngle !== null && (
-        <div style={{ marginBottom: 10, padding: '5px 8px', borderRadius: 3, fontSize: 10, background: '#2a2211', color: '#ddaa44', borderLeft: '2px solid #aa8822' }}>
-          La dirección del puerto ({snapWarnAngle}°) no coincide con el eje más cercano — ajustar a eje crearía una unión angular que requiere una curva, aún no soportada en este flujo.
+      {/* Turn direction (curves only) */}
+      {isCurve && (
+        <div style={{ marginBottom: 10 }}>
+          <div style={{ color: '#8888aa', marginBottom: 4 }}>Dirección de giro</div>
+          <div style={{ display: 'flex', gap: 5 }}>
+            {(['left', 'right'] as const).map((d) => (
+              <button
+                key={d}
+                onClick={() => setTurnDirection(d)}
+                style={{
+                  flex: 1, padding: '4px 0', fontSize: 11, borderRadius: 3, cursor: 'pointer',
+                  background: turnDirection === d ? '#1a2235' : '#222233',
+                  color: turnDirection === d ? '#99ccff' : '#556677',
+                  border: `1px solid ${turnDirection === d ? '#3355aa' : '#334455'}`,
+                }}
+              >
+                {d === 'left' ? '↰ Izquierda' : '↱ Derecha'}
+              </button>
+            ))}
+          </div>
         </div>
+      )}
+
+      {/* Length input (straight segments only) */}
+      {!isCurve && (
+        <div style={{ marginBottom: 8 }}>
+          <label style={{ color: '#8888aa', display: 'block', marginBottom: 3 }}>
+            Longitud del tramo (mm)
+          </label>
+          <input
+            type="number"
+            className="inspector-input"
+            style={{ width: '100%' }}
+            min={1}
+            step={100}
+            value={previewLengthMm}
+            onChange={(e) => setLength(Number(e.target.value))}
+          />
+        </div>
+      )}
+
+      {/* Axis snap (straight segments only) */}
+      {!isCurve && (
+        <>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: snapWarnAngle ? 4 : 10, cursor: 'pointer', fontSize: 11, color: '#8888aa' }}>
+            <input type="checkbox" checked={snapToAxis} onChange={toggleSnap} />
+            Ajustar al eje dominante
+            {effectiveDir && snapToAxis && (
+              <span style={{ color: '#99aadd', fontSize: 10 }}>
+                ({effectiveDir.map(v => v.toFixed(0)).join(', ')})
+              </span>
+            )}
+          </label>
+
+          {snapWarnAngle !== null && (
+            <div style={{ marginBottom: 10, padding: '5px 8px', borderRadius: 3, fontSize: 10, background: '#2a2211', color: '#ddaa44', borderLeft: '2px solid #aa8822' }}>
+              La dirección del puerto ({snapWarnAngle}°) no coincide con el eje más cercano.
+            </div>
+          )}
+        </>
       )}
 
       {error && (
@@ -426,10 +475,10 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
           style={{
             flex: 1, padding: '5px 0', fontSize: 12, background: '#1f3322',
             color: 'white', border: '1px solid #336644', borderRadius: 3, cursor: 'pointer',
-            opacity: (snapToAxis && snapWarnAngle !== null) ? 0.5 : 1,
+            opacity: (!isCurve && snapToAxis && snapWarnAngle !== null) ? 0.5 : 1,
           }}
           onClick={handleConfirm}
-          disabled={!selectedProduct || (snapToAxis && snapWarnAngle !== null)}
+          disabled={!selectedProduct || (!isCurve && snapToAxis && snapWarnAngle !== null)}
         >
           Confirmar continuación
         </button>
@@ -643,6 +692,7 @@ export function RoutingPanel() {
   const selectedProductId = useRoutingStore((s) => s.selectedProductId);
   const previewLengthMm   = useRoutingStore((s) => s.previewLengthMm);
   const snapToAxis        = useRoutingStore((s) => s.snapToAxis);
+  const turnDirection     = useRoutingStore((s) => s.turnDirection);
   const reductionProductId = useRoutingStore((s) => s.reductionProductId);
   const reductionLengthMm = useRoutingStore((s) => s.reductionLengthMm);
   const reductionPortToExisting = useRoutingStore((s) => s.reductionPortToExisting);
@@ -689,9 +739,17 @@ export function RoutingPanel() {
     );
     if (!compat.ok) { setCommitError(compat.reason); return; }
 
+    const isSelectedCurve = selectedProductForComp.tipo_pieza === 'curva';
+
     try {
       // Plan the operation (pure, no side effects)
-      const op = planAddSegment(entrada, startPort, selectedProductForComp, compat, previewLengthMm, effDir);
+      let op;
+      if (isSelectedCurve) {
+        op = planAddCurve(entrada, startPort, selectedProductForComp, compat, turnDirection);
+      } else {
+        if (previewLengthMm <= 0) { setCommitError('La longitud debe ser mayor que 0.'); return; }
+        op = planAddSegment(entrada, startPort, selectedProductForComp, compat, previewLengthMm, effDir);
+      }
 
       // Revalidate PE choice against the freshly planned operation
       if (peDecision === 'accept' && op.peExtension) {

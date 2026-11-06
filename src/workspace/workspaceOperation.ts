@@ -14,6 +14,7 @@ import type { Piece, TrayInput } from '../tray/model';
 import type { Product } from '../tray/model';
 import type { DirectCompatResult, StartPort, Point3 } from './routingRules';
 import { buildSegmentPiece, generateSegmentId } from './addTraySegment';
+import { buildCurvePiece, generateCurveId, computeTurnPerp } from './addCurvePiece';
 import { computeEndpoint, generateConnectionId } from './routingRules';
 
 // ─── PE extension ─────────────────────────────────────────────────────────────
@@ -237,6 +238,61 @@ export function planAddSegment(
   const newPiece = newPiecePort === 'P2'
     ? buildSegmentPiece(newId, newProduct.producto_id, endPos, startPos)
     : buildSegmentPiece(newId, newProduct.producto_id, startPos, endPos);
+
+  const connId = generateConnectionId(connIds);
+  const newConnection = {
+    conexion_id: connId,
+    a: [startPort.pieceId, startPort.portName] as [string, string],
+    b: [newId, newPiecePort] as [string, string],
+  };
+
+  const peExtension = findPeExtensionProposal(
+    entrada, startPort.pieceId, startPort.portName, newId,
+  );
+
+  return { kind: 'add_segment', newPiece, newConnection, resolution: compat, peExtension };
+}
+
+/**
+ * Plans a horizontal curve addition from a free port.
+ * Does NOT modify entrada. Returns a PendingOperation for preview and commit.
+ *
+ * radiusMm is the INTERIOR radius from the catalog; centerline radius is computed
+ * internally as radio_mm + ancho_nominal_mm / 2.
+ *
+ * Throws if compat.ok is false or if angulo_grados is missing on the product.
+ */
+export function planAddCurve(
+  entrada: TrayInput,
+  startPort: StartPort,
+  newProduct: Product,
+  compat: DirectCompatResult,
+  turnDirection: 'left' | 'right',
+): PendingSegmentAddition {
+  if (!compat.ok) throw new Error('planAddCurve: compat.ok must be true');
+
+  const angleDeg = (newProduct as Record<string, unknown>).angulo_grados as number | undefined;
+  if (!angleDeg || angleDeg <= 0) throw new Error('planAddCurve: angulo_grados must be > 0');
+
+  const radioInterior = ((newProduct as Record<string, unknown>).radio_mm as number | undefined) ?? 300;
+  const radiusMm = radioInterior + (newProduct.ancho_nominal_mm ?? 0) / 2;
+
+  const pieceIds = new Set(entrada.piezas.map((p) => p.instancia_id));
+  const connIds  = new Set(entrada.conexiones.map((c) => c.conexion_id));
+
+  const newId = generateCurveId(pieceIds);
+  const entryDir = startPort.pos === startPort.pos ? startPort.dir : startPort.dir; // identity, keeps type
+  const turnPerp = computeTurnPerp(entryDir, turnDirection);
+
+  // newPiecePort tells which port of the new curve connects to the existing piece.
+  // Catalog entries for curves use P1 as the entry port; compat.newPiecePort reflects this.
+  const newPiecePort = compat.newPiecePort;
+  if (newPiecePort !== 'P1') {
+    // P2-entry curves are not documented in the current catalog — guard defensively.
+    throw new Error(`planAddCurve: unexpected newPiecePort '${newPiecePort}'; only P1 entry is supported`);
+  }
+
+  const newPiece = buildCurvePiece(newId, newProduct.producto_id, startPort.pos, entryDir, turnPerp, angleDeg, radiusMm);
 
   const connId = generateConnectionId(connIds);
   const newConnection = {
