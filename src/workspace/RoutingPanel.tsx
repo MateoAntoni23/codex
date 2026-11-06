@@ -29,6 +29,13 @@ import {
 } from './routingRules';
 import { buildSegmentPiece, generateSegmentId } from './addTraySegment';
 import { planAddSegment, planAddCurve, applyOperation, type PeExtensionProposal } from './workspaceOperation';
+import {
+  isHorizontalCurve,
+  isInteractivelyInsertable,
+  isWalkable,
+  getLimitationReason,
+  formatProductOption,
+} from './pieceClassification';
 
 // ─── PE extension proposal widget ────────────────────────────────────────────
 
@@ -202,23 +209,33 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
   );
 
   // Compatible product IDs for the existing port (port-level catalog lookup).
-  // For curves: catalog only documents P1 entries, so if P2 returns nothing, fall back to P1.
+  // For horizontal curves: catalog only documents P1 entries, so if P2 returns nothing, fall back to P1.
   const compatibleIds = useMemo(() => {
     if (!existingProduct || !startPort || !context?.compatibilidades) return new Set<string>();
     const ids = getCompatibleProductIds(context.compatibilidades, existingProduct.producto_id, startPort.portName);
-    if (ids.size === 0 && existingProduct.tipo_pieza === 'curva') {
+    if (ids.size === 0 && isHorizontalCurve(existingProduct)) {
       const altPort = startPort.portName === 'P1' ? 'P2' : 'P1';
       return getCompatibleProductIds(context.compatibilidades, existingProduct.producto_id, altPort);
     }
     return ids;
   }, [context?.compatibilidades, existingProduct, startPort]);
 
-  // Filter to recta and curva products that are documented as compatible with this port
-  const compatibleProducts = useMemo(
+  // All catalog products declared compatible with this port, regardless of whether
+  // the current flow can insert them. Non-insertable ones are shown as disabled
+  // options with an explicit limitation message rather than being hidden silently.
+  const compatibleWalkable = useMemo(
     () => (context?.productos ?? []).filter(
-      (p) => (p.tipo_pieza === 'recta' || p.tipo_pieza === 'curva') && compatibleIds.has(p.producto_id),
+      (p) => isWalkable(p) && compatibleIds.has(p.producto_id),
     ),
     [context?.productos, compatibleIds],
+  );
+  const compatibleProducts = useMemo(
+    () => compatibleWalkable.filter(isInteractivelyInsertable),
+    [compatibleWalkable],
+  );
+  const nonInsertableCompatible = useMemo(
+    () => compatibleWalkable.filter((p) => !isInteractivelyInsertable(p)),
+    [compatibleWalkable],
   );
 
   // Group compatible products by family for <optgroup> display
@@ -240,7 +257,7 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
     [compatibleProducts, selectedProductId],
   );
 
-  const isCurve = selectedProduct?.tipo_pieza === 'curva';
+  const isCurve = isHorizontalCurve(selectedProduct);
 
   const compat = useMemo(() => {
     if (!existingProduct || !selectedProduct || !context || !startPort) return null;
@@ -347,10 +364,15 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
       <div style={{ marginBottom: 8 }}>
         <label style={{ color: '#8888aa', display: 'block', marginBottom: 3 }}>
           Continuación ({compatibleProducts.length} compatible{compatibleProducts.length !== 1 ? 's' : ''})
+          {nonInsertableCompatible.length > 0 && (
+            <span style={{ color: '#ddaa44', marginLeft: 6 }}>
+              · {nonInsertableCompatible.length} aún no soportado{nonInsertableCompatible.length !== 1 ? 's' : ''}
+            </span>
+          )}
         </label>
         {compatibleProducts.length === 0 ? (
           <div style={{ padding: '6px 8px', background: '#2a1a1a', borderRadius: 3, color: '#ff9955', fontSize: 10 }}>
-            Sin continuaciones documentadas para este puerto en COMPATIBILIDADES.
+            Sin continuaciones insertables para este puerto en el trazado interactivo.
             {!context?.compatibilidades?.length && ' (Catálogo no disponible)'}
           </div>
         ) : (
@@ -365,14 +387,30 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
               <optgroup key={famId} label={acabado ? `${name} (${acabado})` : name}>
                 {products.map((p) => (
                   <option key={p.producto_id} value={p.producto_id}>
-                    {p.tipo_pieza === 'curva'
-                      ? `Curva ${(p as Record<string, unknown>).angulo_grados ?? '?'}° R${(p as Record<string, unknown>).radio_mm ?? '?'} — ${p.sku}`
-                      : `${p.ancho_nominal_mm ?? '?'} mm${(p as Record<string, unknown>).ala_nominal_mm != null ? ` × ${(p as Record<string, unknown>).ala_nominal_mm} mm ala` : ''} — ${p.sku}`}
+                    {formatProductOption(p)}
                   </option>
                 ))}
               </optgroup>
             ))}
           </select>
+        )}
+        {nonInsertableCompatible.length > 0 && (
+          <details style={{ marginTop: 6, padding: '5px 8px', background: '#2a2211', borderRadius: 3, fontSize: 10, color: '#ddaa44', borderLeft: '2px solid #aa8822' }}>
+            <summary style={{ cursor: 'pointer', color: '#ddaa44' }}>
+              {nonInsertableCompatible.length} producto{nonInsertableCompatible.length !== 1 ? 's' : ''} compatible{nonInsertableCompatible.length !== 1 ? 's' : ''} aún no soportado{nonInsertableCompatible.length !== 1 ? 's' : ''} en este flujo
+            </summary>
+            <ul style={{ margin: '4px 0 0', paddingLeft: 16, color: '#ccbb99' }}>
+              {Array.from(new Map(nonInsertableCompatible.map(p => [p.tipo_pieza, p])).values()).map((p) => (
+                <li key={p.tipo_pieza}>
+                  <strong style={{ color: '#ddaa44' }}>{p.tipo_pieza}</strong>
+                  {' · '}
+                  <span style={{ color: '#aaaa88' }}>{nonInsertableCompatible.filter(q => q.tipo_pieza === p.tipo_pieza).length} candidato{nonInsertableCompatible.filter(q => q.tipo_pieza === p.tipo_pieza).length !== 1 ? 's' : ''}</span>
+                  {' — '}
+                  <span style={{ color: '#aa9977' }}>{getLimitationReason(p)}</span>
+                </li>
+              ))}
+            </ul>
+          </details>
         )}
       </div>
 
@@ -739,7 +777,7 @@ export function RoutingPanel() {
     );
     if (!compat.ok) { setCommitError(compat.reason); return; }
 
-    const isSelectedCurve = selectedProductForComp.tipo_pieza === 'curva';
+    const isSelectedCurve = isHorizontalCurve(selectedProductForComp);
 
     try {
       // Plan the operation (pure, no side effects)

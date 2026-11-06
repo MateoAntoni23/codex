@@ -18,6 +18,7 @@ import {
 } from './routingRules';
 import type { Point3 } from './routingRules';
 import { computeTurnPerp } from './addCurvePiece';
+import { isHorizontalCurve } from './pieceClassification';
 
 function toViewer(mm: Point3): Point3 {
   return [mm[0] / 1000, mm[2] / 1000, -mm[1] / 1000];
@@ -160,7 +161,7 @@ export function RoutingObjects() {
   const previewData = useMemo(() => {
     if (!startPort || step === 'selectingPort') return null;
 
-    if (selectedProduct?.tipo_pieza === 'curva') {
+    if (selectedProduct && isHorizontalCurve(selectedProduct)) {
       const angleDeg = (selectedProduct as Record<string, unknown>).angulo_grados as number | undefined;
       const radioInterior = (selectedProduct as Record<string, unknown>).radio_mm as number | undefined ?? 300;
       if (!angleDeg || angleDeg <= 0) return null;

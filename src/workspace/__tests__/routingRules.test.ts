@@ -646,11 +646,12 @@ describe('getCompatibleProductIds', () => {
 
 // ─── checkDirectCompatibility — symmetric fallback for curves ─────────────────
 
-describe('checkDirectCompatibility — symmetric port fallback (curva)', () => {
+describe('checkDirectCompatibility — symmetric port fallback (curva horizontal)', () => {
   // Catalog has: straight.P2 → curve.P1 only (curve only documented at P1)
+  // Uses the real catalog string 'curva horizontal' (not the alias 'curva').
   const straightP2CurveP1 = makeCompat('C-SYM-1', 'STRAIGHT', 'STRAIGHT-P2', 'CURVE', 'CURVE-P1');
   const straight = makeProduct('STRAIGHT', 150, 'FAM-A', 'recta');
-  const curve = makeProduct('CURVE', 150, 'FAM-A', 'curva');
+  const curve = makeProduct('CURVE', 150, 'FAM-A', 'curva horizontal');
   const context = {
     compatibilidades: [straightP2CurveP1],
     componentesUnion: [] as import('../../tray/model').CatalogUnionComponent[],
@@ -661,7 +662,7 @@ describe('checkDirectCompatibility — symmetric port fallback (curva)', () => {
     expect(r.ok).toBe(true);
   });
 
-  it('curve.P2 → straight found via symmetric fallback (tipo_pieza=curva)', () => {
+  it('curve.P2 → straight found via symmetric fallback (tipo_pieza=curva horizontal)', () => {
     const r = checkDirectCompatibility(context, curve, 'P2', straight, 'P1');
     expect(r.ok).toBe(true);
     expect(r.reason).toContain('simetría de puerto');
@@ -685,5 +686,55 @@ describe('checkDirectCompatibility — symmetric port fallback (curva)', () => {
       red, 'P1', other, 'P1',
     );
     expect(r.ok).toBe(false);
+  });
+
+  it('symmetric fallback NOT applied for the alias string "curva" (must match real catalog value)', () => {
+    // Guard against regression: the old code used 'curva' as a textual alias,
+    // which never matches the catalog. The predicate must require 'curva horizontal' exactly.
+    const aliased = makeProduct('CURVE', 150, 'FAM-A', 'curva');
+    const r = checkDirectCompatibility(context, aliased, 'P2', straight, 'P1');
+    expect(r.ok).toBe(false);
+  });
+});
+
+// ─── pieceClassification: catalog-string contract ────────────────────────────
+
+describe('pieceClassification predicates (catalog-string contract)', () => {
+  it('isHorizontalCurve matches the real catalog value, not aliases', async () => {
+    const { isHorizontalCurve, isCurve, isStraight, isWalkable, isInteractivelyInsertable, getLimitationReason } =
+      await import('../pieceClassification');
+    const real = makeProduct('A', 150, 'F', 'curva horizontal');
+    const alias = makeProduct('A', 150, 'F', 'curva');
+    expect(isHorizontalCurve(real)).toBe(true);
+    expect(isHorizontalCurve(alias)).toBe(false);
+    expect(isCurve(real)).toBe(true);
+    expect(isStraight(makeProduct('S', 150, 'F', 'recta'))).toBe(true);
+
+    // Walkable but not insertable types must be recognized and have a limitation reason
+    const t = makeProduct('T', 150, 'F', 'T');
+    expect(isWalkable(t)).toBe(true);
+    expect(isInteractivelyInsertable(t)).toBe(false);
+    expect(getLimitationReason(t)).toContain('T');
+
+    // Non-walkable catalog types
+    const tapa = makeProduct('TP', 150, 'F', 'tapa');
+    expect(isWalkable(tapa)).toBe(false);
+    expect(getLimitationReason(tapa)).toMatch(/no forma parte del trazado/);
+
+    // Unknown types
+    const unknown = makeProduct('U', 150, 'F', 'invented');
+    expect(getLimitationReason(unknown)).toMatch(/no reconocido/);
+  });
+
+  it('vertical-curve variants are recognized as curves but not insertable', async () => {
+    const { isCurve, isVerticalCurve, isInteractivelyInsertable, getLimitationReason } =
+      await import('../pieceClassification');
+    for (const t of ['curva vertical articulada', 'curva vertical exterior', 'curva vertical interior']) {
+      const p = makeProduct('V', 150, 'F', t);
+      expect(isCurve(p)).toBe(true);
+      expect(isVerticalCurve(p)).toBe(true);
+      expect(isInteractivelyInsertable(p)).toBe(false);
+      expect(getLimitationReason(p)).toMatch(/vertical/);
+    }
   });
 });

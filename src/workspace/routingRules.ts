@@ -3,6 +3,7 @@
  * No side effects — all functions are deterministic and testable.
  */
 import type { Piece, Product, Context, CatalogCompatibility, CatalogUnionComponent } from '../tray/model';
+import { isHorizontalCurve, isStraight } from './pieceClassification';
 
 export type Point3 = [number, number, number];
 
@@ -165,11 +166,12 @@ function findCompatEntryPortLevel(
 }
 
 /**
- * D-13: straight pieces with equal ancho, ala, and tipo_pieza='recta' have
- * equivalent extremes — the motor accepts any P1/P2 combination between them.
+ * D-13: straight pieces with equal ancho, ala have equivalent extremes — the
+ * motor accepts any P1/P2 combination between them. Checks `isStraight` from
+ * the centralized classification (uses the raw catalog tipo_pieza='recta').
  */
 function isD13Equivalent(a: Product, b: Product): boolean {
-  if (a.tipo_pieza !== 'recta' || b.tipo_pieza !== 'recta') return false;
+  if (!isStraight(a) || !isStraight(b)) return false;
   if (a.ancho_nominal_mm == null || a.ancho_nominal_mm !== b.ancho_nominal_mm) return false;
   const alaA = (a as Record<string, unknown>).ala_nominal_mm as number | null | undefined;
   const alaB = (b as Record<string, unknown>).ala_nominal_mm as number | null | undefined;
@@ -263,10 +265,10 @@ export function checkDirectCompatibility(
     };
   }
 
-  // Symmetric fallback: only for curve pieces whose P1 and P2 share the same interface.
+  // Symmetric fallback: only for horizontal-curve pieces whose P1 and P2 share the same interface.
   // Catalog entries for curves only document P1 — after inserting a curve, continuing from
   // its P2 would otherwise return no compatible products.
-  if (existingProduct.tipo_pieza === 'curva') {
+  if (isHorizontalCurve(existingProduct)) {
     const altExistPortName = existingPortName === 'P1' ? 'P2' : 'P1';
     const symEntry = findCompatEntryPortLevel(
       compatibilidades,
