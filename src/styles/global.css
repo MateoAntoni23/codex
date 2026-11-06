@@ -667,6 +667,80 @@ html, body, #root {
   line-height: 1.5;
 }
 
+/* ── Vista experimental piloto ─────────────────────────────────────────────── */
+.pilot-banner { background: #0a1a2a; border-bottom-color: #335577; color: #88bbdd; }
+
+.pilot-list { display: flex; flex-direction: column; overflow: auto; }
+.pilot-list-title {
+  padding: 10px 12px 6px; font-size: 10px; font-weight: 700; letter-spacing: 0.08em;
+  text-transform: uppercase; color: #6677aa;
+}
+.pilot-list-ul { list-style: none; padding: 0; margin: 0; }
+.pilot-list-item {
+  display: flex; flex-direction: column; gap: 2px;
+  width: 100%; text-align: left; background: none; border: none; cursor: pointer;
+  padding: 8px 12px; border-left: 3px solid transparent; color: #c0c0e0;
+  font-family: inherit;
+}
+.pilot-list-item:hover { background: #22223a; }
+.pilot-list-item--selected { background: #1a2a44; border-left-color: #6688cc; color: #ffffff; }
+.pilot-list-name { font-size: 12px; font-weight: 600; }
+.pilot-list-sku  { font-size: 10px; color: #7788aa; font-family: monospace; }
+.pilot-list-meta { display: flex; align-items: center; gap: 8px; margin-top: 2px; }
+.pilot-list-valid { font-size: 10px; color: #55aa77; }
+
+.pilot-badge {
+  font-size: 9px; font-weight: 700; letter-spacing: 0.06em;
+  padding: 1px 6px; border-radius: 2px; text-transform: uppercase;
+}
+.pilot-badge--med  { color: #aadd88; background: #1a2a1a; border: 1px solid #335533; }
+.pilot-badge--nom  { color: #99aacc; background: #18202c; border: 1px solid #334455; }
+.pilot-badge--prov { color: #eebb66; background: #2a1e08; border: 1px solid #664400; }
+
+.pilot-inspector { overflow: auto; padding: 0; }
+.pilot-empty { padding: 20px; color: #7788aa; font-style: italic; }
+.pilot-ins-header {
+  padding: 10px 12px; border-bottom: 1px solid #2a2a44; background: #171727;
+}
+.pilot-ins-title { font-size: 13px; font-weight: 700; color: #ffffff; }
+.pilot-ins-sku   { font-size: 10px; font-family: monospace; color: #7788aa; margin-top: 2px; }
+.pilot-ins-state { font-size: 10px; color: #eebb66; margin-top: 2px; }
+.pilot-ins-section { padding: 10px 12px; border-bottom: 1px solid #2a2a44; }
+.pilot-ins-section h4 {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+  color: #6677aa; margin-bottom: 6px;
+}
+.pilot-dl { display: grid; grid-template-columns: 1fr; gap: 4px 10px; font-size: 11px; }
+.pilot-dl dt { color: #99aacc; display: flex; justify-content: space-between; gap: 6px; }
+.pilot-dl dd { color: #e0e0f0; font-family: monospace; margin-bottom: 4px; margin-left: 0; }
+.pilot-note {
+  margin-top: 6px; padding: 6px 8px; background: #141425; border-left: 2px solid #334466;
+  font-size: 10px; color: #99aabb; line-height: 1.5;
+}
+.pilot-provisional-box {
+  margin-top: 6px; padding: 8px 10px; background: #2a1e08; border: 1px solid #664400;
+  border-radius: 3px; font-size: 11px; color: #eebb66; line-height: 1.5;
+}
+.pilot-controls { display: flex; flex-direction: column; gap: 6px; }
+.pilot-controls-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+.pilot-controls button { font-size: 11px; }
+
+.pilot-dim-label {
+  background: #0a0a18cc; color: #ccddee; padding: 2px 7px; font-size: 10px;
+  font-family: monospace; border-radius: 3px; white-space: nowrap;
+  border: 1px solid #22334c; backdrop-filter: blur(2px);
+}
+.pilot-boca-label {
+  background: #0a2a1a; color: #88ffdd; padding: 1px 5px; font-size: 10px;
+  font-family: monospace; border-radius: 2px; border: 1px solid #335544;
+}
+.pilot-boca-label--sel { background: #0a4a2a; color: #ccffee; border-color: #55aa77; }
+.pilot-provisional-chip {
+  background: #2a1800cc; color: #ffcc44; padding: 2px 8px; font-size: 10px;
+  font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+  border: 1px solid #996600; border-radius: 3px;
+}
+
 /* Experimental tray workspace: independent of persisted equipment editor. */
 .tray-workspace{height:100vh;display:grid;grid-template-columns:300px minmax(300px,1fr) 370px;grid-template-rows:auto minmax(0,1fr);gap:8px;padding:8px;background:#171b27}
 .tray-workspace header{grid-column:1/-1;max-height:190px;overflow:auto}

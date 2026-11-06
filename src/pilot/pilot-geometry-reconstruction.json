@@ -1,0 +1,856 @@
+{
+  "schema_version": "4",
+  "generado_por": "_build_reconstruction.py",
+  "entradas": {
+    "mediciones": "pilot-bocas-measured.json",
+    "dxf_para_contorno_cs": "dxf-pilot/CS-300-90-065-18-Z_Planta.dxf"
+  },
+  "convenciones": {
+    "marco_local": "Por pieza. X_local = eje longitudinal principal; Y_local = eje transversal; Z_local = altura de perfil.",
+    "regla_origen": "origen_dxf = centro de boca P1; P1.center_local = (0, 0, 0).",
+    "regla_P1_normal": "normal_saliente_local de P1 se alinea con -X_local (saliendo de la pieza).",
+    "unidades": "mm"
+  },
+  "piezas": {
+    "recto": {
+      "producto_id": "SAM_TRES-300-065-18-Z",
+      "tipo": "recto",
+      "fuentes_dxf": [
+        "TRES-300-065-18-Z_Planta.dxf"
+      ],
+      "catalogo": {
+        "ancho_nominal_mm": 300,
+        "altura_nominal_mm": 65,
+        "longitud_comercial_mm": 3000,
+        "longitud_fuente": "DOCUMENTADO en snapshot (PRODUCTOS_BANDEJA.longitud_comercial_mm=3000)"
+      },
+      "mediciones_fuente": {
+        "bbox_dxf": {
+          "xmin": -1.3642e-12,
+          "xmax": 2999.999766952967,
+          "ymin": -0.8652062134525522,
+          "ymax": 299.7577422984788
+        },
+        "ancho_en_plano_xmin_mm": 297.5464466094756,
+        "ancho_en_plano_xmax_mm": 297.5464466093341,
+        "center_P1_y_dxf": 148.76949134726758,
+        "center_P2_y_dxf": 150.12304473778914
+      },
+      "marco_local": {
+        "origen_dxf": [
+          -1.3642e-12,
+          148.76949134726758
+        ],
+        "rotacion_z_rad": 0.0,
+        "rotacion_z_deg": 0.0,
+        "R_3x3": [
+          [
+            1.0,
+            -0.0,
+            0.0
+          ],
+          [
+            0.0,
+            1.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "mapping_doc": "x_local = R @ (x_dxf - origen_dxf)"
+      },
+      "bocas": {
+        "P1": {
+          "ancho_medido_mm": 297.5464466094756,
+          "center_dxf": [
+            -1.3642e-12,
+            148.76949134726758
+          ],
+          "center_local": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "normal_saliente_dxf": [
+            -1.0,
+            0.0,
+            0.0
+          ],
+          "normal_saliente_local": [
+            -1.0,
+            0.0,
+            0.0
+          ]
+        },
+        "P2": {
+          "ancho_medido_mm": 297.5464466093341,
+          "center_dxf": [
+            2999.999766952967,
+            150.12304473778914
+          ],
+          "center_local": [
+            2999.9997669529685,
+            1.3535533905215686,
+            0.0
+          ],
+          "normal_saliente_dxf": [
+            1.0,
+            0.0,
+            0.0
+          ],
+          "normal_saliente_local": [
+            1.0,
+            0.0,
+            0.0
+          ]
+        }
+      },
+      "recorrido_central_local": [
+        [
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          2999.9997669529685,
+          1.3535533905215686,
+          0.0
+        ]
+      ],
+      "normalizacion_geometrica": {
+        "desplazamiento_lateral_mm": 1.3535533905215686,
+        "tolerancia_plegado_mm": 2.0,
+        "nota": "P1 y P2 difieren en Y_dxf por los pliegues del perfil Z. Se conserva la medicion; no se fuerza Y_local=0 en P2."
+      },
+      "cotas_derivadas_local": {
+        "P1_a_P2_recta_local_mm": 3000.0000723041067,
+        "P1_a_P2_axial_X_local_mm": 2999.9997669529685,
+        "lateral_offset_Y_local_mm": 1.3535533905215686
+      },
+      "envelope_dxf": {
+        "xmin": -1.3642e-12,
+        "xmax": 2999.999766952967,
+        "ymin": -0.8652062134525522,
+        "ymax": 299.7577422984788
+      },
+      "validaciones": {
+        "V1": true,
+        "V2": true,
+        "V3": true,
+        "V4": true,
+        "V5": true,
+        "V6": true
+      },
+      "estado": "VALIDADO"
+    },
+    "curva_90": {
+      "producto_id": "SAM_CS-300-90-065-18-Z",
+      "tipo": "curva",
+      "fuentes_dxf": [
+        "CS-300-90-065-18-Z_Planta.dxf"
+      ],
+      "catalogo": {
+        "ancho_nominal_mm": 300,
+        "altura_nominal_mm": 65,
+        "radio_declarado_mm": 300,
+        "referencia_radio_declarada": "interior",
+        "angulo_declarado_deg": 90
+      },
+      "mediciones_fuente": {
+        "bbox_dxf": {
+          "xmin": -2.215027646511146,
+          "xmax": 742.7662981696534,
+          "ymin": -5.68e-14,
+          "ymax": 744.8923626062959
+        },
+        "south_boca": {
+          "left_rail_endpoint_dxf": [
+            -1.35,
+            26.99976695297295
+          ],
+          "right_rail_endpoint_dxf": [
+            297.55,
+            0.5684932712557043
+          ],
+          "outer_to_outer_span_mm": 298.90000000000003,
+          "inner_to_inner_span_mm": 270.84000000000003,
+          "tilt_dy_right_to_left_mm": 26.431273681717247,
+          "tilt_deg_from_horizontal": 5.053434301491552,
+          "midpoint_dxf": [
+            148.1,
+            13.784130112114328
+          ],
+          "outgoing_normal_dxf": [
+            -0.08808476036395116,
+            -0.9961129830454101
+          ]
+        },
+        "east_boca": {
+          "top_rail_endpoint_dxf": [
+            742.7662981696484,
+            744.03
+          ],
+          "bot_rail_endpoint_dxf": [
+            715.0201115257281,
+            445.13
+          ],
+          "outer_to_outer_span_mm": 298.9,
+          "inner_to_inner_span_mm": 270.84,
+          "tilt_dx_top_to_bot_mm": 27.746186643920282,
+          "tilt_deg_from_vertical": 5.303434622518089,
+          "midpoint_dxf": [
+            728.8932048476883,
+            594.5799999999999
+          ],
+          "outgoing_normal_dxf": [
+            0.9957191591971196,
+            -0.09243027646708149
+          ]
+        },
+        "kink_dxf": [
+          148.1,
+          594.5799999999999
+        ]
+      },
+      "marco_local": {
+        "origen_dxf": [
+          148.1,
+          13.784130112114328
+        ],
+        "rotacion_z_rad": 4.8005880474789375,
+        "rotacion_z_deg": 275.05343430149156,
+        "R_3x3": [
+          [
+            0.08808476036395145,
+            0.99611298304541,
+            0.0
+          ],
+          [
+            -0.99611298304541,
+            0.08808476036395145,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "mapping_doc": "x_local = R @ (x_dxf - origen_dxf)"
+      },
+      "bocas": {
+        "P1": {
+          "nombre_catalogo": "south (asignado tentativo)",
+          "ancho_outer_outer_mm": 300.06636304064114,
+          "inclinacion_cara_deg_vs_perpendicular_al_eje": 5.053434301491552,
+          "endpoints_cara_dxf": [
+            [
+              -1.35,
+              26.99976695297295
+            ],
+            [
+              297.55,
+              0.5684932712557043
+            ]
+          ],
+          "center_dxf": [
+            148.1,
+            13.784130112114328
+          ],
+          "center_local": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "normal_saliente_dxf": [
+            -0.08808476036395116,
+            -0.9961129830454101,
+            0.0
+          ],
+          "normal_saliente_local": [
+            -1.0,
+            -3.0478895752265767e-16,
+            0.0
+          ]
+        },
+        "P2": {
+          "nombre_catalogo": "east (asignado tentativo)",
+          "ancho_outer_outer_mm": 300.18504438642384,
+          "inclinacion_cara_deg_vs_perpendicular_al_eje": 5.303434622518089,
+          "endpoints_cara_dxf": [
+            [
+              715.0201115257281,
+              445.13
+            ],
+            [
+              742.7662981696484,
+              744.03
+            ]
+          ],
+          "center_dxf": [
+            728.8932048476883,
+            594.5799999999999
+          ],
+          "center_local": [
+            629.6973367644955,
+            -527.3763867938875,
+            0.0
+          ],
+          "normal_saliente_dxf": [
+            0.9957191591971196,
+            -0.09243027646708149,
+            0.0
+          ],
+          "normal_saliente_local": [
+            -0.004363314887662996,
+            -0.9999904806962869,
+            0.0
+          ]
+        }
+      },
+      "contorno_facetado_dxf_evidencia": {
+        "n_segmentos": 335,
+        "segmentos_muestra_primeras_5": [
+          [
+            [
+              416.1775680067742,
+              734.1718786080115
+            ],
+            [
+              416.1775680067778,
+              730.9718786080099
+            ]
+          ],
+          [
+            [
+              414.4669601360248,
+              730.2633216280864
+            ],
+            [
+              412.2042184362243,
+              732.5260633278848
+            ]
+          ],
+          [
+            [
+              10.15127163187196,
+              330.4731165235346
+            ],
+            [
+              12.41401333167295,
+              328.2103748237356
+            ]
+          ],
+          [
+            [
+              11.70545635170851,
+              326.4997669529808
+            ],
+            [
+              8.505456351704993,
+              326.4997669529826
+            ]
+          ],
+          [
+            [
+              422.2110512201981,
+              729.0308883503388
+            ],
+            [
+              416.628936925421,
+              729.030888350337
+            ]
+          ]
+        ],
+        "nota": "Contenido completo de LINE no-SAMET del DXF (perforaciones r<=3.5 mm no incluidas; todas las LINE estructurales si)."
+      },
+      "geometria_curva_provisional": {
+        "estado": "PROVISIONAL - construida desde tangencias supuestas, NO medida",
+        "nota": "Se declara PROVISIONAL porque las bocas estan inclinadas (~5deg) y el contorno es facetado. Los parametros a, b, c se pueden editar para reconciliar con cualquier documentacion del fabricante sin alterar la medicion.",
+        "parametros_configurables": {
+          "centro_outer_dxf": [
+            416.1775680067742,
+            326.4997669529827
+          ],
+          "radio_outer_mm": 417.52890052689577,
+          "centro_inner_dxf": [
+            539.0201115257219,
+            203.2430098717909
+          ],
+          "radio_inner_mm": 241.67855082696548
+        },
+        "residuo_vs_contorno_facetado": {
+          "metodo": "|dist(punto, centro) - radio| sobre endpoints de LINE no-SAMET con angulo en [85, 185] deg desde el centro, filtrando por ancho de pared (ventana radial). Se reportan dos ventanas: tight=5mm (puntos sobre la pared principal) y loose=20mm (incluye chamfers/perforaciones proximas a la pared)",
+          "outer_tight_5mm": {
+            "n_points": 35,
+            "mean_mm": 2.066338861281955,
+            "max_mm": 4.388943494072578,
+            "wall_half_width_filter_mm": 5.0,
+            "angle_range_deg": [
+              85.0,
+              185.0
+            ]
+          },
+          "outer_loose_20mm": {
+            "n_points": 90,
+            "mean_mm": 9.072784022849108,
+            "max_mm": 19.377525129868843,
+            "wall_half_width_filter_mm": 20.0,
+            "angle_range_deg": [
+              85.0,
+              185.0
+            ]
+          },
+          "inner_tight_5mm": {
+            "n_points": 73,
+            "mean_mm": 2.2820848756806638,
+            "max_mm": 4.433659772924358,
+            "wall_half_width_filter_mm": 5.0,
+            "angle_range_deg": [
+              85.0,
+              185.0
+            ]
+          },
+          "inner_loose_20mm": {
+            "n_points": 136,
+            "mean_mm": 6.4879075162136814,
+            "max_mm": 17.326279051551467,
+            "wall_half_width_filter_mm": 20.0,
+            "angle_range_deg": [
+              85.0,
+              185.0
+            ]
+          }
+        },
+        "advertencia": "No se concluye que el fabricante declare un radio incorrecto. La geometria provisional sirve para visualizar; cualquier conciliacion con el catalogo requiere documentacion adicional."
+      },
+      "recorrido_central_local": {
+        "estado": "PROVISIONAL - polilinea P1 -> kink -> P2; en geometria real es un arco",
+        "puntos": [
+          [
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            578.5383064944755,
+            51.159265019447126,
+            0.0
+          ],
+          [
+            629.6973367644955,
+            -527.3763867938875,
+            0.0
+          ]
+        ],
+        "kink_local": [
+          578.5383064944755,
+          51.159265019447126,
+          0.0
+        ]
+      },
+      "cotas_derivadas_local": {
+        "ancho_boca_outer_outer_P1_mm": 300.06636304064114,
+        "ancho_boca_outer_outer_P2_mm": 300.18504438642384,
+        "distancia_entre_centros_P1_P2_local_mm": 821.3675116998934,
+        "inclinacion_P1_vs_perpendicular_eje_deg": 5.053434301491552,
+        "inclinacion_P2_vs_perpendicular_eje_deg": 5.303434622518089
+      },
+      "envelope_dxf": {
+        "xmin": -2.215027646511146,
+        "xmax": 742.7662981696534,
+        "ymin": -5.68e-14,
+        "ymax": 744.8923626062959
+      },
+      "validaciones": {
+        "V1": true,
+        "V2": true,
+        "V3": true,
+        "V4": true,
+        "V5": true,
+        "V6": true
+      },
+      "estado": "VALIDADO (bocas y marco); CURVA PROVISIONAL"
+    },
+    "te": {
+      "producto_id": "SAM_TS-300-065-18-Z",
+      "tipo": "te",
+      "fuentes_dxf": [
+        "TS-300-065-18-Z_Planta.dxf"
+      ],
+      "catalogo": {
+        "ancho_nominal_mm": 300,
+        "altura_nominal_mm": 65
+      },
+      "mediciones_fuente": {
+        "bbox_dxf": {
+          "xmin": -2.215027646654448,
+          "xmax": 742.1088416884535,
+          "ymin": 0.0,
+          "ymax": 1188.999766952994
+        },
+        "tronco_largueros": {
+          "outer_left_x_dxf": 3.284500556741566,
+          "outer_right_x_dxf": 292.31578653190786,
+          "axis_x_dxf": 147.80014354432473,
+          "width_outer_to_outer_mm": 289.03128597516627,
+          "y_min": 2.84e-14,
+          "y_max": 1188.999766952993
+        },
+        "ramal_bordes": {
+          "outer_bot_y_dxf": 450.67574751221696,
+          "outer_top_y_dxf": 737.1139459887705,
+          "axis_y_dxf": 593.8948467504938,
+          "height_outer_to_outer_mm": 286.43819847655357,
+          "x_extreme_dxf": 742.1088416884535
+        },
+        "cruce_dxf": [
+          147.80014354432473,
+          593.8948467504938
+        ]
+      },
+      "marco_local": {
+        "origen_dxf": [
+          147.80014354432473,
+          1188.999766952993
+        ],
+        "rotacion_z_rad": 1.5707963267948966,
+        "rotacion_z_deg": 90.0,
+        "R_3x3": [
+          [
+            6.123233995736766e-17,
+            -1.0,
+            0.0
+          ],
+          [
+            1.0,
+            6.123233995736766e-17,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "mapping_doc": "x_local = R @ (x_dxf - origen_dxf)"
+      },
+      "bocas": {
+        "P1": {
+          "nombre_catalogo": "tronco extremo +Y_dxf",
+          "center_dxf": [
+            147.80014354432473,
+            1188.999766952993
+          ],
+          "center_local": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "normal_saliente_dxf": [
+            0.0,
+            1.0,
+            0.0
+          ],
+          "normal_saliente_local": [
+            -1.0,
+            6.123233995736766e-17,
+            0.0
+          ]
+        },
+        "P2": {
+          "nombre_catalogo": "tronco extremo -Y_dxf",
+          "center_dxf": [
+            147.80014354432473,
+            2.84e-14
+          ],
+          "center_local": [
+            1188.999766952993,
+            -7.280523793929659e-14,
+            0.0
+          ],
+          "normal_saliente_dxf": [
+            0.0,
+            -1.0,
+            0.0
+          ],
+          "normal_saliente_local": [
+            1.0,
+            -6.123233995736766e-17,
+            0.0
+          ]
+        },
+        "P3": {
+          "nombre_catalogo": "ramal +X_dxf",
+          "center_dxf": [
+            742.1088416884535,
+            593.8948467504938
+          ],
+          "center_local": [
+            595.1049202024992,
+            594.3086981441288,
+            0.0
+          ],
+          "normal_saliente_dxf": [
+            1.0,
+            0.0,
+            0.0
+          ],
+          "normal_saliente_local": [
+            6.123233995736766e-17,
+            1.0,
+            0.0
+          ]
+        }
+      },
+      "cruce_local": [
+        595.1049202024992,
+        -3.6439666784141583e-14,
+        0.0
+      ],
+      "recorrido_central_local": {
+        "tronco": [
+          [
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            595.1049202024992,
+            -3.6439666784141583e-14,
+            0.0
+          ],
+          [
+            1188.999766952993,
+            -7.280523793929659e-14,
+            0.0
+          ]
+        ],
+        "ramal": [
+          [
+            595.1049202024992,
+            -3.6439666784141583e-14,
+            0.0
+          ],
+          [
+            595.1049202024992,
+            594.3086981441288,
+            0.0
+          ]
+        ]
+      },
+      "cotas_derivadas_local": {
+        "envolvente_dx_mm": 744.3238693351079,
+        "envolvente_dy_mm": 1188.999766952994,
+        "cruce_a_P1_mm": 595.1049202024992,
+        "cruce_a_P2_mm": 593.8948467504938,
+        "cruce_a_P3_mm": 594.3086981441288,
+        "P1_a_P2_tronco_mm": 1188.999766952993,
+        "asimetria_tronco_mm": 1.2100734520054175,
+        "nota_separacion": "envolvente_dx/dy son medidas del bbox; cruce_a_P* son distancias en el marco local calculadas desde la misma reconstruccion."
+      },
+      "envelope_dxf": {
+        "xmin": -2.215027646654448,
+        "xmax": 742.1088416884535,
+        "ymin": 0.0,
+        "ymax": 1188.999766952994
+      },
+      "validaciones": {
+        "V1": true,
+        "V2": true,
+        "V3": true,
+        "V4": true,
+        "V5": true,
+        "V6": true
+      },
+      "estado": "VALIDADO"
+    },
+    "reduccion": {
+      "producto_id": "SAM_RCS-30_15-065-18-Z",
+      "tipo": "reduccion",
+      "fuentes_dxf": [
+        "RCS-3015-065-18-Z_Planta.dxf"
+      ],
+      "catalogo": {
+        "ancho_mayor_nominal_mm": 300,
+        "ancho_menor_nominal_mm": 150,
+        "altura_nominal_mm": 65
+      },
+      "mediciones_fuente": {
+        "bbox_dxf": {
+          "xmin": -2.215027646560173,
+          "xmax": 298.4079208653721,
+          "ymin": -2.84e-14,
+          "ymax": 449.9997669529764
+        },
+        "width_at_ymin_plane": {
+          "min": 0.0,
+          "max": 297.5464466094107,
+          "span": 297.5464466094107,
+          "n_pts": 21
+        },
+        "width_at_ymax_plane": {
+          "min": 73.64644660938893,
+          "max": 221.1928932187919,
+          "span": 147.54644660940298,
+          "n_pts": 21
+        },
+        "center_at_ymin_dxf": [
+          148.77322330470534,
+          -2.84e-14
+        ],
+        "center_at_ymax_dxf": [
+          147.41966991409043,
+          449.9997669529764
+        ],
+        "asignacion": "P1 (nominal 300) <-> plano con ancho medido mas cercano a 300; P2 (nominal 150) <-> plano con ancho mas cercano a 150"
+      },
+      "marco_local": {
+        "origen_dxf": [
+          148.77322330470534,
+          -2.84e-14
+        ],
+        "rotacion_z_rad": 4.71238898038469,
+        "rotacion_z_deg": 270.0,
+        "R_3x3": [
+          [
+            -1.8369701987210297e-16,
+            1.0,
+            0.0
+          ],
+          [
+            -1.0,
+            -1.8369701987210297e-16,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "mapping_doc": "x_local = R @ (x_dxf - origen_dxf)"
+      },
+      "bocas": {
+        "P1": {
+          "nombre_catalogo": "boca mayor",
+          "ancho_nominal_mm": 300,
+          "ancho_medido_mm": 297.5464466094107,
+          "center_dxf": [
+            148.77322330470534,
+            -2.84e-14
+          ],
+          "center_local": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "normal_saliente_dxf": [
+            0.0,
+            -1.0,
+            0.0
+          ],
+          "normal_saliente_local": [
+            -1.0,
+            1.8369701987210297e-16,
+            0.0
+          ]
+        },
+        "P2": {
+          "nombre_catalogo": "boca menor",
+          "ancho_nominal_mm": 150,
+          "ancho_medido_mm": 147.54644660940298,
+          "center_dxf": [
+            147.41966991409043,
+            449.9997669529764
+          ],
+          "center_local": [
+            449.9997669529764,
+            1.353553390614823,
+            0.0
+          ],
+          "normal_saliente_dxf": [
+            0.0,
+            1.0,
+            0.0
+          ],
+          "normal_saliente_local": [
+            1.0,
+            -1.8369701987210297e-16,
+            0.0
+          ]
+        }
+      },
+      "recorrido_central_local": [
+        [
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          449.9997669529764,
+          1.353553390614823,
+          0.0
+        ]
+      ],
+      "cotas_derivadas_local": {
+        "P1_a_P2_recta_local_mm": 450.00180262362767,
+        "P1_a_P2_axial_X_local_mm": 449.9997669529764,
+        "lateral_offset_Y_local_mm": 1.353553390614823,
+        "transicion_ancho_mm": 150.0000000000077
+      },
+      "envelope_dxf": {
+        "xmin": -2.215027646560173,
+        "xmax": 298.4079208653721,
+        "ymin": -2.84e-14,
+        "ymax": 449.9997669529764
+      },
+      "validaciones": {
+        "V1": true,
+        "V2": true,
+        "V3": true,
+        "V4": true,
+        "V5": true,
+        "V6": true
+      },
+      "estado": "VALIDADO"
+    }
+  },
+  "validaciones_resumen": {
+    "recto": {
+      "V1": true,
+      "V2": true,
+      "V3": true,
+      "V4": true,
+      "V5": true,
+      "V6": true
+    },
+    "curva_90": {
+      "V1": true,
+      "V2": true,
+      "V3": true,
+      "V4": true,
+      "V5": true,
+      "V6": true
+    },
+    "te": {
+      "V1": true,
+      "V2": true,
+      "V3": true,
+      "V4": true,
+      "V5": true,
+      "V6": true
+    },
+    "reduccion": {
+      "V1": true,
+      "V2": true,
+      "V3": true,
+      "V4": true,
+      "V5": true,
+      "V6": true
+    }
+  }
+}

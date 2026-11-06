@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import './styles/global.css';
 import { Layout } from './ui/Layout';
 import { PreviewLayout } from './preview/PreviewLayout';
+import { PilotLayout } from './pilot/PilotLayout';
 import { initProject } from './persistence/projectManager';
 import { useSceneStore } from './store/sceneStore';
 
@@ -23,12 +24,15 @@ function PreviewApp() {
 }
 
 export function App() {
-  const ws = new URLSearchParams(window.location.search).get("workspace");
-  if (ws === "bandejas") return <UnifiedWorkspace />;
-  if (ws === "bandejas-legacy") return <TrayWorkspace />;
-  const isPreview =
-    typeof window !== 'undefined' &&
-    new URLSearchParams(window.location.search).get('preview') === 'v2';
+  const params = new URLSearchParams(window.location.search);
+  const ws = params.get('workspace');
+  if (ws === 'bandejas') return <UnifiedWorkspace />;
+  if (ws === 'bandejas-legacy') return <TrayWorkspace />;
 
+  // Vista experimental de geometría piloto. Aislada: no sustituye geometría
+  // de proyectos existentes ni toca el catálogo.
+  if (params.get('pilot') === 'v1') return <PilotLayout />;
+
+  const isPreview = params.get('preview') === 'v2';
   return isPreview ? <PreviewApp /> : <EditorApp />;
 }
