@@ -131,6 +131,7 @@ describe('findPeExtensionProposal', () => {
 
   it('returns append proposal for single-piece recorrido when P2 selected', () => {
     const entrada = makeTrayInput({
+      piezas: [makePiece('SEG-1')], // must be present so port count (2) can be verified
       pe: { seccion_requerida_mm2: 16, cable_id: 'T', origen_requisito: 't', conductores: [
         { conductor_id: 'PE-1', recorrido: ['SEG-1'] },
       ]},
@@ -146,6 +147,7 @@ describe('findPeExtensionProposal', () => {
 
   it('returns prepend proposal for single-piece recorrido when P1 selected', () => {
     const entrada = makeTrayInput({
+      piezas: [makePiece('SEG-1')],
       pe: { seccion_requerida_mm2: 16, cable_id: 'T', origen_requisito: 't', conductores: [
         { conductor_id: 'PE-1', recorrido: ['SEG-1'] },
       ]},
@@ -239,8 +241,7 @@ describe('findPeExtensionProposal', () => {
 
   it('marks ambiguous and uses real conductor_id when multiple conductors have endpoint at port', () => {
     const entrada = makeTrayInput({
-      piezas: [makePiece('SEG-1')],
-      conexiones: [],
+      piezas: [makePiece('SEG-1')], // 2-port piece → both candidates 'ready'
       pe: { seccion_requerida_mm2: 16, cable_id: 'T', origen_requisito: 't', conductores: [
         { conductor_id: 'COND-A', recorrido: ['SEG-1'] },
         { conductor_id: 'COND-B', recorrido: ['SEG-1'] },
@@ -519,6 +520,106 @@ describe('applyOperation', () => {
     expect((result as Record<string,unknown>).excepciones_conexion).toEqual(
       (entrada as Record<string,unknown>).excepciones_conexion,
     );
+  });
+});
+
+// ─── Pending candidates — blocked from application ───────────────────────────
+
+describe('pending candidate blocking', () => {
+  /** T-piece with P1, P2, P3 — 3 ports. */
+  function makeTpiece(id: string): Piece {
+    return {
+      instancia_id: id,
+      producto_id: 'PROD-T',
+      longitud_mm: 500,
+      puertos: {
+        P1: { posicion_mm: [0,0,0],    direccion: [-1,0,0] },
+        P2: { posicion_mm: [500,0,0],  direccion: [1,0,0]  },
+        P3: { posicion_mm: [250,250,0], direccion: [0,1,0] },
+      },
+    };
+  }
+
+  it('single-piece T-piece recorrido → status pending (cannot infer free ports)', () => {
+    const entrada = makeTrayInput({
+      piezas: [makeTpiece('T-1')],
+      pe: { seccion_requerida_mm2: 16, cable_id: 'T', origen_requisito: 't', conductores: [
+        { conductor_id: 'COND-X', recorrido: ['T-1'] },
+      ]},
+    });
+    const result = findPeExtensionProposal(entrada, 'T-1', 'P2', 'SEG-NEW');
+    expect(result).not.toBeNull();
+    expect(result!.primary.status).toBe('pending');
+  });
+
+  it('multi-piece recorrido with T-piece endpoint → status pending even with connection', () => {
+    // T-1.P1 is connected to SEG-1.P2 (inner). T-1.P2 is not inner, but T-piece has 3 ports.
+    const entrada = makeTrayInput({
+      piezas: [makePiece('SEG-1'), makeTpiece('T-1')],
+      conexiones: [makeConn('CON-1', 'SEG-1', 'P2', 'T-1', 'P1')],
+      pe: { seccion_requerida_mm2: 16, cable_id: 'T', origen_requisito: 't', conductores: [
+        { conductor_id: 'COND-X', recorrido: ['SEG-1', 'T-1'] },
+      ]},
+    });
+    // User clicks T-1.P2 (not inner port P1)
+    const result = findPeExtensionProposal(entrada, 'T-1', 'P2', 'SEG-NEW');
+    expect(result).not.toBeNull();
+    expect(result!.primary.status).toBe('pending');
+  });
+
+  it('applyOperation with accept + pending primary leaves PE unchanged', () => {
+    // No connection → pending
+    const entrada = makeTrayInput({
+      piezas: [makePiece('SEG-1'), makePiece('SEG-2')],
+      conexiones: [],
+      pe: { seccion_requerida_mm2: 16, cable_id: 'T', origen_requisito: 't', conductores: [
+        { conductor_id: 'COND-X', recorrido: ['SEG-1', 'SEG-2'] },
+      ]},
+    });
+    const op = planAddSegment(entrada, START_PORT, PRODUCT, COMPAT_OK, 3000, DIR);
+    expect(op.peExtension).not.toBeNull();
+    expect(op.peExtension!.primary.status).toBe('pending');
+
+    const result = applyOperation(entrada, op, 'accept');
+    // PE unchanged — pending candidates are never applied
+    const cond = result.pe.conductores[0] as Record<string,unknown>;
+    expect(cond.recorrido).toEqual(['SEG-1', 'SEG-2']);
+  });
+
+  it('applyOperation with reject + pending primary leaves PE unchanged (normal path)', () => {
+    const entrada = makeTrayInput({
+      piezas: [makePiece('SEG-1'), makePiece('SEG-2')],
+      conexiones: [],
+      pe: { seccion_requerida_mm2: 16, cable_id: 'T', origen_requisito: 't', conductores: [
+        { conductor_id: 'COND-X', recorrido: ['SEG-1', 'SEG-2'] },
+      ]},
+    });
+    const op = planAddSegment(entrada, START_PORT, PRODUCT, COMPAT_OK, 3000, DIR);
+    const result = applyOperation(entrada, op, 'reject');
+    const cond = result.pe.conductores[0] as Record<string,unknown>;
+    expect(cond.recorrido).toEqual(['SEG-1', 'SEG-2']);
+    // New piece is still added despite PE not extended
+    expect(result.piezas).toHaveLength(3);
+    expect(result.conexiones).toHaveLength(1);
+  });
+
+  it('confirming the tray with reject on a pending proposal keeps PE and adds piece', () => {
+    // Verifies the "No extender" path: piece is committed, PE is untouched
+    const entrada = makeTrayInput({
+      piezas: [makePiece('SEG-1')],
+      pe: { seccion_requerida_mm2: 16, cable_id: 'T', origen_requisito: 't', conductores: [
+        { conductor_id: 'COND-X', recorrido: ['SEG-1'] },
+      ]},
+    });
+    const op = planAddSegment(entrada, START_PORT, PRODUCT, COMPAT_OK, 3000, DIR);
+    const result = applyOperation(entrada, op, 'reject');
+
+    // Piece added
+    expect(result.piezas).toHaveLength(2);
+    expect(result.conexiones).toHaveLength(1);
+    // PE unchanged
+    const cond = result.pe.conductores[0] as Record<string,unknown>;
+    expect(cond.recorrido).toEqual(['SEG-1']);
   });
 });
 

@@ -52,6 +52,7 @@ function PeExtensionWidget({
 
   const isPending = displayPrimary.status === 'pending';
   const isAmbiguousAndUnchosen = proposal.ambiguous && decision === 'accept' && chosenConductorIdx === null;
+  const isExtendBlocked = isAmbiguousAndUnchosen || (decision === 'accept' && isPending);
 
   return (
     <div style={{ marginBottom: 8, padding: '6px 8px', borderRadius: 3, background: '#1a2235', border: '1px solid #2a3a55', fontSize: 10 }}>
@@ -59,7 +60,8 @@ function PeExtensionWidget({
 
       {isPending && (
         <div style={{ color: '#ddaa44', marginBottom: 4, borderLeft: '2px solid #aa8822', paddingLeft: 6 }}>
-          No se pudo verificar el extremo desde las conexiones — extensión pendiente de verificación.
+          Verificación pendiente — el extremo no pudo confirmarse desde las conexiones o la pieza tiene más de 2 puertos.
+          Usá "No extender" para confirmar el tramo sin modificar el PE.
         </div>
       )}
 
@@ -104,14 +106,14 @@ function PeExtensionWidget({
         <button
           style={{
             flex: 1, padding: '3px 0', fontSize: 11, borderRadius: 3,
-            cursor: isAmbiguousAndUnchosen ? 'default' : 'pointer',
+            cursor: isExtendBlocked ? 'default' : 'pointer',
             background: decision === 'accept' ? '#1f3322' : '#222233',
             color: decision === 'accept' ? '#77cc77' : '#556677',
             border: `1px solid ${decision === 'accept' ? '#336644' : '#334455'}`,
-            opacity: isAmbiguousAndUnchosen ? 0.5 : 1,
+            opacity: isExtendBlocked ? 0.5 : 1,
           }}
-          onClick={() => !isAmbiguousAndUnchosen && onChange('accept')}
-          disabled={isAmbiguousAndUnchosen}
+          onClick={() => !isExtendBlocked && onChange('accept')}
+          disabled={isExtendBlocked}
         >
           ✓ Extender
         </button>
@@ -690,11 +692,28 @@ export function RoutingPanel() {
     try {
       // Plan the operation (pure, no side effects)
       const op = planAddSegment(entrada, startPort, selectedProductForComp, compat, previewLengthMm, effDir);
-      // Override PE primary with user's explicit conductor choice when ambiguous
-      if (peDecision === 'accept' && op.peExtension && peChosenConductorIdx !== null) {
-        const chosen = op.peExtension.candidates.find(c => c.conductorIdx === peChosenConductorIdx);
-        if (chosen) op.peExtension = { ...op.peExtension, primary: chosen };
+
+      // Revalidate PE choice against the freshly planned operation
+      if (peDecision === 'accept' && op.peExtension) {
+        // Determine target candidate: explicit choice or default primary
+        const targetCandidate = peChosenConductorIdx !== null
+          ? op.peExtension.candidates.find(c => c.conductorIdx === peChosenConductorIdx)
+          : op.peExtension.primary;
+
+        if (peChosenConductorIdx !== null && !targetCandidate) {
+          setCommitError('El conductor PE elegido ya no es válido — elegí de nuevo antes de confirmar.');
+          return;
+        }
+        const resolvedCandidate = targetCandidate ?? op.peExtension.primary;
+        if (resolvedCandidate.status === 'pending') {
+          setCommitError('La extensión PE está pendiente de verificación — usá "No extender" para continuar.');
+          return;
+        }
+        if (peChosenConductorIdx !== null) {
+          op.peExtension = { ...op.peExtension, primary: resolvedCandidate };
+        }
       }
+
       // Apply all-or-nothing
       const nextEntrada = applyOperation(entrada, op, peDecision);
       // Single atomic write to store (pushes to history, clears future)

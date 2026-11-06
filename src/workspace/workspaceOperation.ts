@@ -44,26 +44,55 @@ export interface PeExtensionProposal {
 }
 
 /**
- * Finds the connection that links endpointPieceId to neighborPieceId,
- * and returns the outer port of endpointPiece (the free end, not connected to neighbor).
+ * Finds the connection that links endpointPieceId to neighborPieceId and returns
+ * the inner port of endpointPiece (the port connected toward the rest of the recorrido).
  * Returns null when no such connection exists in conexiones.
+ *
+ * Intentionally does NOT infer the outer port via "if P1 then P2" — that assumption
+ * is only valid for 2-port pieces and must be checked separately.
  */
-function resolveOuterPort(
+function resolveInnerPort(
   conexiones: Array<{ conexion_id: string; a: [string, string]; b: [string, string] }>,
   endpointPieceId: string,
   neighborPieceId: string,
-): { outerPort: string } | null {
+): { innerPort: string } | null {
   for (const conn of conexiones) {
     const [aId, aPort] = conn.a;
     const [bId, bPort] = conn.b;
     if (aId === endpointPieceId && bId === neighborPieceId) {
-      return { outerPort: aPort === 'P1' ? 'P2' : 'P1' };
+      return { innerPort: aPort };
     }
     if (bId === endpointPieceId && aId === neighborPieceId) {
-      return { outerPort: bPort === 'P1' ? 'P2' : 'P1' };
+      return { innerPort: bPort };
     }
   }
   return null;
+}
+
+/**
+ * Determines whether startPortName is the outer (free) endpoint port.
+ *
+ * Returns:
+ *   'ready'          — confirmed: startPortName is the outer port of a 2-port piece.
+ *   'pending'        — inner port found but piece has >2 ports (T/X), or piece missing.
+ *   'not_applicable' — startPortName is the inner port (connects toward the recorrido).
+ *   'no_connection'  — no connection in conexiones links endpointPiece to neighbor.
+ */
+function classifyEndpoint(
+  entrada: TrayInput,
+  startPieceId: string,
+  startPortName: string,
+  neighborPieceId: string,
+): 'ready' | 'pending' | 'not_applicable' | 'no_connection' {
+  const resolved = resolveInnerPort(entrada.conexiones, startPieceId, neighborPieceId);
+  if (resolved === null) return 'no_connection';
+  if (resolved.innerPort === startPortName) return 'not_applicable';
+
+  // startPortName is not the inner port.
+  // Safe to call 'ready' only for exactly-2-port pieces where the other port is unambiguously the outer.
+  const piece = entrada.piezas.find((p) => p.instancia_id === startPieceId);
+  if (!piece) return 'pending';
+  return Object.keys(piece.puertos).length === 2 ? 'ready' : 'pending';
 }
 
 /**
@@ -73,11 +102,12 @@ function resolveOuterPort(
  *
  * Rules enforced here:
  * - Checks both ends (recorrido[0] and recorrido[last]) of each conductor.
- * - For length-1 recorrido: both ports are outer; uses startPortName directly.
- * - For multi-piece: finds the connection linking the endpoint to its neighbor to
- *   derive the outer port. If no connection found → status 'pending' (speculative).
- * - If startPortName is the inner port → that endpoint is not applicable.
+ * - For length-1 recorrido: both ports are free; 2-port piece → 'ready', T/X → 'pending'.
+ * - For multi-piece: uses classifyEndpoint to find the inner port and confirm piece is
+ *   exactly 2-port before marking 'ready'. T/X pieces or missing connections → 'pending'.
+ * - If startPortName is the inner port → not applicable (not an extension point).
  * - Pieces in the middle of a recorrido are never proposed.
+ * - Candidates with status 'pending' are shown but cannot be applied.
  * - Returns all candidates; ambiguous when candidates.length > 1.
  */
 export function findPeExtensionProposal(
@@ -102,8 +132,11 @@ export function findPeExtensionProposal(
         ? (cond as Record<string, unknown>).conductor_id as string
         : `cond-${i}`;
 
-    // Length-1 recorrido: both ports are free — determine extensionEnd from startPortName
+    // Length-1 recorrido: no neighbor to look up — both ports are potentially outer.
+    // 2-port piece: safe to call 'ready'. T/X (3+ ports): can't confirm all ports are free.
     if (rec.length === 1 && rec[0] === startPieceId) {
+      const piece = entrada.piezas.find((p) => p.instancia_id === startPieceId);
+      const portCount = piece ? Object.keys(piece.puertos).length : 0;
       const extensionEnd: 'start' | 'end' = startPortName === 'P1' ? 'start' : 'end';
       candidates.push({
         conductorIdx: i,
@@ -111,49 +144,37 @@ export function findPeExtensionProposal(
         extensionEnd,
         currentRecorrido: [...rec],
         proposedRecorrido: extensionEnd === 'end' ? [...rec, newPieceId] : [newPieceId, ...rec],
-        status: 'ready',
+        status: portCount === 2 ? 'ready' : 'pending',
       });
       continue;
     }
 
     // End endpoint: recorrido[last]
     if (rec[rec.length - 1] === startPieceId) {
-      const resolved = resolveOuterPort(entrada.conexiones, startPieceId, rec[rec.length - 2]);
-      if (resolved === null) {
-        // Can't confirm from conexiones — speculative pending proposal
+      const cls = classifyEndpoint(entrada, startPieceId, startPortName, rec[rec.length - 2]);
+      if (cls === 'not_applicable') {
+        // startPortName is the inner port — not an extension point
+      } else {
         candidates.push({
           conductorIdx: i, conductorId, extensionEnd: 'end',
           currentRecorrido: [...rec],
           proposedRecorrido: [...rec, newPieceId],
-          status: 'pending',
-        });
-      } else if (resolved.outerPort === startPortName) {
-        candidates.push({
-          conductorIdx: i, conductorId, extensionEnd: 'end',
-          currentRecorrido: [...rec],
-          proposedRecorrido: [...rec, newPieceId],
-          status: 'ready',
+          status: cls === 'ready' ? 'ready' : 'pending',
         });
       }
-      // else: startPortName is the inner port — not an endpoint for extension
     }
 
     // Start endpoint: recorrido[0] (length > 1, so it's distinct from the end)
     if (rec[0] === startPieceId && rec.length > 1) {
-      const resolved = resolveOuterPort(entrada.conexiones, startPieceId, rec[1]);
-      if (resolved === null) {
+      const cls = classifyEndpoint(entrada, startPieceId, startPortName, rec[1]);
+      if (cls === 'not_applicable') {
+        // startPortName is the inner port — not an extension point
+      } else {
         candidates.push({
           conductorIdx: i, conductorId, extensionEnd: 'start',
           currentRecorrido: [...rec],
           proposedRecorrido: [newPieceId, ...rec],
-          status: 'pending',
-        });
-      } else if (resolved.outerPort === startPortName) {
-        candidates.push({
-          conductorIdx: i, conductorId, extensionEnd: 'start',
-          currentRecorrido: [...rec],
-          proposedRecorrido: [newPieceId, ...rec],
-          status: 'ready',
+          status: cls === 'ready' ? 'ready' : 'pending',
         });
       }
     }
@@ -256,9 +277,12 @@ export function applyOperation(
 
     if (peDecision === 'accept' && op.peExtension !== null && Array.isArray(next.pe?.conductores)) {
       const primary = op.peExtension.primary;
-      const conductor = next.pe.conductores[primary.conductorIdx];
-      if (conductor && Array.isArray(conductor.recorrido)) {
-        (conductor as Record<string, unknown>).recorrido = primary.proposedRecorrido;
+      // Pending candidates cannot be applied — they were not verified from conexiones.
+      if (primary.status !== 'pending') {
+        const conductor = next.pe.conductores[primary.conductorIdx];
+        if (conductor && Array.isArray(conductor.recorrido)) {
+          (conductor as Record<string, unknown>).recorrido = primary.proposedRecorrido;
+        }
       }
     }
   }
