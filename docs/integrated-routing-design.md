@@ -1,403 +1,489 @@
 # Diseño integrado de trazado — codex
 
-**Rama base:** `feat/routing-smart-recommendation` · commit `723892c`
+**Rama base:** `feat/routing-smart-recommendation`
 **Fecha:** 2026-11-05
-**Alcance:** arquitectura, no código funcional
+**Alcance:** arquitectura OBJETIVO — incluye capacidades pendientes de implementar
 
 ---
 
-## 1. Flujo de usuario y estados
+## 1. Capas de la arquitectura
 
-### 1.1 Flujo principal
+### 1.1 Separación conceptual
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│  RED FÍSICA                                                              │
+│  Piezas de bandeja y sus conexiones físicas                             │
+│  rectos · curvas · T · X · reducciones · finales · tapas · soportes    │
+│  Entidades: Pieza + Conexión + Soporte + Tapa                           │
+│  Unidades: mm, Z-up                                                     │
+└──────────────────────────┬──────────────────────────────────────────────┘
+                           │ define dónde van los servicios
+┌──────────────────────────▼──────────────────────────────────────────────┐
+│  RECORRIDOS                                                              │
+│  Qué servicio pasa por qué secuencia de piezas físicas                  │
+│  Entidades: Circuito + ConductorPE + PuntoEquipotencial                 │
+│  Cambio en red física que afecta un recorrido → actualizar recorrido    │
+└──────────────────────────┬──────────────────────────────────────────────┘
+                           │ declara qué recorren
+┌──────────────────────────▼──────────────────────────────────────────────┐
+│  CONEXIONES DE SERVICIO                                                  │
+│  El cable/manguera como entidad de proyecto (origen, destino, función)  │
+│  medium: 'power' | 'control' | 'signal' | 'pneumatic'                  │
+│  Entidades: Connection + Element + Port (ProjectDataV2)                 │
+│  Verificación: habilitada (potencia) · pendiente (control/señal/neumát) │
+└──────────────────────────┬──────────────────────────────────────────────┘
+                           │ envía a
+┌──────────────────────────▼──────────────────────────────────────────────┐
+│  ADAPTADOR PYTHON                                                        │
+│  Traduce el modelo CAD al protocolo del motor (trazado/1)               │
+│  Gestiona solicitudes: vigencia, revisión, sobre                        │
+│  Presenta resultado: conexiones, ocupación, corridas, computo, PE       │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+**Principio de separación:** cada capa tiene su propio ciclo de invalidación. Un cambio en la red física invalida el resultado del motor. Un cambio en conexiones de servicio (ProjectDataV2) no invalida la red física. Los recorridos vinculan ambas capas.
+
+### 1.2 Qué vive en cada capa
+
+| Capa | Almacenamiento | Contrato | Invalidación |
+|---|---|---|---|
+| Red física | `TrayInput.piezas + conexiones + soportes + tapas` | `trazado/1` | `trayEdit()` → `revision++` |
+| Recorridos | `TrayInput.circuitos + pe + equipotencial` | `trazado/1` | `trayEdit()` → `revision++` |
+| Conexiones de servicio | `ProjectDataV2.connections + elements + ports` | workspace v1 | edición de proyecto |
+| Adaptador Python | `gestorSolicitudes`, `client.ts`, resultado | HTTP REST | resultado se descarta al desactualizar |
+
+### 1.3 Control, señal y mangueras — modelables, verificación pendiente
+
+El CAD puede modelar recorridos de control/señal y neumáticos **en la capa de conexiones de servicio** (`ProjectDataV2.connections` con `medium: 'control' | 'signal' | 'pneumatic'`). Son datos de proyecto válidos aunque el motor aún no los verifique.
+
+**Lo que el motor no hace todavía** (entrega de ampliación E-CTL, no exclusión de función):
+- `tipo_circuito` solo acepta `'potencia'` (D-11 pendiente para mando/señal)
+- `EntradaTrazado` no tiene campo para mangueras (R-MAN)
+- Verificación de ocupación conjunta potencia+control: pendiente (D-11)
+
+**Regla:** no declarar `tipo_circuito: 'mando'` ni incluir mangueras en `circuitos[]` hasta que el motor amplíe el contrato. Registrarlos en la capa de conexiones de servicio no contamina el trazado.
+
+---
+
+## 2. Inventario del catálogo
+
+### 2.1 Productos por familia — 896 en total
+
+| Familia | Rectos | Curvas H | Curvas V | T / X | Reducciones | Finales | Notas |
+|---|---|---|---|---|---|---|---|
+| SAM-STE-G (escalera G) | 28 | ✓ | ✓ | ✓ | ✓ | ✓ | CTA G65 disponible |
+| SAM-STE-Z (escalera Z) | 12 | ✓ | ✓ | ✓ | ✓ | ✓ | CTA Z65 condicional |
+| SAM-STP-Z (perforada Z) | 7 | ✓ | ✓ | ✓ | **0 cargadas** | ✓ | Sin reducciones en catálogo |
+| SAM-STP-ZN (perforada color) | 14 | — | — | — | Escasa | — | Sin entradas cross-family |
+| FAMIQ-ALAMBRE-INOX | 9 | **✓** | — | **✓** | — | — | Curvas H y T disponibles |
+| GEN-FERR / SAM-SMT-ACC / SAM-ESC-TRL | — | — | — | — | — | — | Accesorios y herrajes |
+
+**Correcciones respecto a versión anterior del documento:**
+- **Total real: 896 productos** (no ~850)
+- **FAMIQ-ALAMBRE-INOX tiene curvas horizontales y T** (no solo rectos)
+- **SAM-STP-Z (perforada Z): 0 reducciones** — sin entradas en COMPATIBILIDADES para reducción entre productos Z; `longitud_comercial_mm: null` en candidatos
+
+### 2.2 Tablas del catálogo
+
+| Tabla | Registros | Uso en routing |
+|---|---|---|
+| PRODUCTOS | 896 | Selector, tipo, familia, dimensiones |
+| PUERTOS_PRODUCTO | ~1 400 | Puerto-level compat, dimensiones por boca |
+| COMPATIBILIDADES | 4 373 | `getCompatibleProductIds`, `checkDirectCompatibility` |
+| COMPONENTES_UNION | ~400 | Accesorios de unión por conexión (D-24) |
+| FAMILIAS | 9 | Agrupamiento visual en selector |
+| cables | 2 datasets | Masa, diámetro, radio mínimo de curvatura |
+
+### 2.3 Restricciones de catálogo conocidas
+
+| Restricción | Efecto concreto |
+|---|---|
+| `longitud_comercial_mm: null` en reducciones | Inserción bloqueada (geometría no documentada) — E-RED |
+| 0 reducciones SAM-STP-Z | No es posible reducir dentro de familia perforada Z |
+| G↔Z: 0 entradas directas en COMPATIBILIDADES | Solo vía elección excepcional con motivo — E4 |
+| `tipo_circuito: 'potencia'` único | Control/señal: no verificable en motor actual — E-CTL |
+| CTA solo para G65 y Z65 | Perforada, alambre FAMIQ, G115, Z115: NO_VERIFICABLE_CTA |
+| Sin masa de tapas (F13) | Vanos con tapa: NO_VERIFICABLE_CARGA_TAPA_DESCONOCIDA |
+
+---
+
+## 3. Contrato de resolución de continuación
+
+Una sola función — `resolveContinuation` — es la fuente de verdad para todo lo que el CAD decide al agregar una pieza desde un puerto existente. Las implementaciones actuales (`getCompatibleProductIds` + `checkDirectCompatibility`) son la aproximación parcial correcta; `resolveContinuation` las agrupa.
+
+### 3.1 Interfaz objetivo
+
+```typescript
+interface ContinuationQuery {
+  existingProduct: Product;
+  existingPortName: string;
+  newProduct: Product;
+  requestedNewPortName: 'P1'; // solicitud inicial siempre P1
+}
+
+interface ContinuationResult {
+  ok: boolean;
+
+  // Si ok: qué agregar
+  newPiecePort: string;          // 'P1' | 'P2' — qué puerto de la pieza nueva conectar
+  orientation: 'direct' | 'reversed'; // si 'reversed': buildSegmentPiece(id, prod, endPos, startPos)
+  compatibilidadId: string | null;
+  accessories: string[];         // product_ids de COMPONENTES_UNION para esta conexión
+
+  // Siempre presente
+  evidence: {
+    catalogMatch: boolean;       // hay entrada en COMPATIBILIDADES
+    d13Applied: boolean;         // se aplicó equivalencia D-13
+    d13Conditions: string | null; // "ancho 150mm, ala null" si d13Applied
+  };
+  pending: string[];             // IDs de decisiones del motor pendientes que afectan esta unión
+  reason: string;                // mensaje legible para el usuario
+
+  // Si !ok: qué proponer
+  candidates: string[];          // product_ids compatibles (alternativas sugeridas)
+}
+```
+
+### 3.2 Implementación actual vs. objetivo
+
+| Función actual | Responsabilidad cubierta | Estado |
+|---|---|---|
+| `getCompatibleProductIds` | `candidates` y filtro del selector | Implementado (commit 51ca581) |
+| `checkDirectCompatibility` | `ok`, `newPiecePort`, `orientation`, `reason` | Implementado (commit 723892c) |
+| `getUnionComponents` | `accessories` | **No implementado** |
+| `getPendingDecisions` | `pending` | **No implementado** |
+
+Mientras `resolveContinuation` no esté unificado, las dos funciones separadas son la implementación correcta. Toda llamada en el panel y en `commitDirect` usa **la misma función** con los mismos argumentos.
+
+### 3.3 D-13 — condiciones exactas
+
+**Decisión del motor (propuesta activa, pendiente confirmación usuario):** dos piezas de tipo `recta` con igual `ancho_nominal_mm` e igual `ala_nominal_mm` tienen extremos P1/P2 equivalentes. El motor acepta P1↔P1 aunque el catálogo solo registre P1↔P2.
+
+**Condiciones en `isD13Equivalent(a, b)` (`routingRules.ts`):**
+- `a.tipo_pieza === 'recta'` y `b.tipo_pieza === 'recta'`
+- `a.ancho_nominal_mm != null && a.ancho_nominal_mm === b.ancho_nominal_mm`
+- `alaA === alaB` (si ambos `undefined`: igual → D-13 aplica; uno número y otro undefined: distinto → D-13 no aplica)
+
+**Lo que D-13 no hace:**
+- No aplica a curvas, T, reducciones (solo rectas)
+- No aplica si los anchos difieren
+- Interfaz de conexión: pendiente confirmar si debe agregarse como condición adicional
+
+### 3.4 Dónde se llama (actualmente `checkDirectCompatibility`)
+
+| Momento | Por qué | Regla |
+|---|---|---|
+| Al seleccionar producto en panel | Mostrar evidencia en tiempo real | Solo UI, no escribe |
+| Al confirmar (`commitDirect`) | Re-verificar antes de escribir | Fuente única; si cambió → error |
+| Al pre-filtrar selector | Eliminar candidatos inválidos | Puede usar `getCompatibleProductIds` (más rápido) |
+
+### 3.5 Puerto y orientación de la pieza nueva
+
+```
+checkDirectCompatibility(ctx, existingProd, existingPort, newProd, 'P1')
+
+Paso 1 — match exacto:
+  findCompatEntryPortLevel(existingPort ↔ 'P1')
+  → ok=true, newPiecePort='P1', orientation='direct'
+
+Paso 2 — puerto alterno:
+  findCompatEntryPortLevel(existingPort ↔ 'P2')
+  → si D-13 aplica: ok=true, newPiecePort='P1', orientation='direct'
+      (el motor acepta P1↔P1; no hay reversión de geometría)
+  → si D-13 no aplica: ok=true, newPiecePort='P2', orientation='reversed'
+      (buildSegmentPiece recibe endPos, startPos invertidos)
+
+Paso 3 — sin entrada: ok=false, candidates=getCompatibleProductIds(...)
+```
+
+**Cuando `orientation='reversed'`:**
+```typescript
+const newPiece = newPiecePort === 'P2'
+  ? buildSegmentPiece(newId, productId, endPos, startPos)   // P1 queda en endPos
+  : buildSegmentPiece(newId, productId, startPos, endPos);  // normal
+```
+
+---
+
+## 4. Escenario A–B–C–D completo
+
+El escenario de aceptación del producto cubre el trazado desde un tablero principal (A) hasta una máquina (D) con derivación (B) y equipo de campo (C). Todos los pasos son requisito del producto aunque la implementación sea progresiva.
+
+### 4.1 Topología del escenario
+
+```
+A. Tablero principal (origen)
+   │
+   ├─ SEG-1: tramo recto (3000 mm, escalera G150×65)
+   │
+   ├─ CRV-1: curva horizontal 90° (G150×65)
+   │
+   ├─ SEG-2: tramo recto (continúa)
+   │
+   ├─ DER-1: T 300/150/300 ← deriva hacia B
+   │  │
+   │  └─ SEG-3: tramo recto 150 mm
+   │       RED-1: reducción 150→100 mm
+   │       CRV-2: bajada vertical
+   │       FIN-1: final de tramo
+   │
+   │       Circuito K1 (potencia, 3×1×35 mm² Prysmian)
+   │       Soportes STS cada 1500 mm
+   │
+   │   B. Máquina / variador
+   │
+   ├─ RED-2: reducción 300→150 (tramo a C)
+   │
+   ├─ CRV-3: curva vertical + bajada
+   │
+   ├─ SEG-4: tramo recto (150 mm, sala de máquinas)
+   │
+   └─ FIN-2: final de tramo
+        C. Sensor de campo / actuador
+        Circuito control/señal (conexión de servicio, medium:'control')
+        Manguera neumática hacia actuador (medium:'pneumatic')
+
+D. Circuito K2: mismo trazado en sentido D→A
+   recorrido: [SEG-4, CRV-3, RED-2, SEG-2, DER-1, CRV-1, SEG-1]
+
+Infraestructura transversal:
+   Conductor PE a lo largo del trazado
+   3 puntos equipotenciales (tablero, T, máquina)
+   Tapas en SEG-4 (sala de máquinas)
+   Pared: abertura 155×70 mm a 2100 mm de altura (entre A y C)
+```
+
+### 4.2 Estado de implementación por paso
+
+| Paso | Capacidad | Estado actual | Entrega |
+|---|---|---|---|
+| Rectos escalera G potencia | Tramos rectos, confirmación sin ambigüedad | **Disponible** | — |
+| Curva horizontal (CRV-1, CRV-3) | `buildCurvePiece`, UI de inserción | **Pendiente** | E2 |
+| `eje_vertical` editable | Campo en UI | **Pendiente** | E2 |
+| Curva vertical (CRV-2) | `buildCurvePiece` vertical | **Pendiente** | E2+ |
+| T 300/150/300 (DER-1) | `splitSegment` + UI derivación | **Pendiente** | E3 |
+| Reducción 300→150 (RED-1, RED-2) | UI existe; geometría bloqueada (F12) | **Incompleto** | E-RED |
+| Final de tramo (FIN-1, FIN-2) | UI colocación + `buildEndPiece` | **Pendiente** | E-FIN |
+| Circuito potencia K1 | UI formulario circuito | **Pendiente** | E5 |
+| Soportes STS | UI formulario soporte | **Pendiente** | E5 |
+| Circuito K2 — recorrido inverso | Motor acepta orden inverso | **Motor acepta** | E5 (UI) |
+| Circuito control/señal | `medium:'control'` en ProjectDataV2 | **Parcial (tipo)** | E-CTL |
+| Manguera neumática | `medium:'pneumatic'` en ProjectDataV2 | **Parcial (tipo)** | E-CTL |
+| Control verificado motor | D-11 pendiente | **Pendiente (motor)** | E-CTL |
+| Conductor PE | UI formulario PE | **Pendiente** | E5 |
+| Puntos equipotenciales | UI formulario PE | **Pendiente** | E5 |
+| Tapas | UI colocación | **Pendiente** | E5 |
+| Pared — detección colisión | Geometría 3D edificio + OBB/AABB | **No planificado** | E-COL |
+| Pared — UI abertura | Diálogo holgura + registro | **No planificado** | E-COL |
+| Elección excepcional G↔Z | Modal de motivo, `excepciones_conexion` | **Pendiente** | E4 |
+
+### 4.3 Recorrido inverso — modelo
+
+Un circuito que va de D hacia A usando las mismas piezas se modela con `recorrido[]` en orden inverso:
+
+```json
+{
+  "circuito_id": "CIR-K2",
+  "funcion": "potencia",
+  "cable_id": "SINTENAX_35",
+  "cantidad": 3,
+  "separado": false,
+  "recorrido": ["SEG-4", "CRV-3", "RED-2", "SEG-2", "DER-1", "CRV-1", "SEG-1"]
+}
+```
+
+El motor acepta recorridos en orden inverso sin restricción de dirección. La UI de circuitos (E5) debe permitir definir el orden explícitamente.
+
+---
+
+## 5. Contrato de operación global
+
+### 5.1 Ciclo planificar → validar → previsualizar → confirmar → deshacer
+
+```
+PLANIFICAR
+  Usuario indica intención (puerto, tipo de pieza, producto, posición, longitud)
+  FSM transiciona al paso correspondiente
+  Nada se escribe en TrayInput
+
+VALIDAR (síncrono, antes de preview)
+  resolveContinuation() — o checkDirectCompatibility() en la implementación actual
+  verifyStartPortValid()
+  Si !ok y sin excepción registrada → mostrar razón, bloquear confirmación
+  Resultado mostrado en panel: evidencia, accesorios, decisiones pendientes
+
+PREVISUALIZAR (R3F)
+  PreviewMesh en escena: posición, dirección, longitud editables
+  Transparente, sin interacción
+  Panel: SKU, familia, dimensiones, compatibilidad, accesorios que Python calculará
+
+CONFIRMAR (atómico — un solo trayEdit())
+  resolveContinuation() ← re-verificar al momento del commit
+  verifyStartPortValid() ← re-verificar
+  Si ok:
+    buildPiece(newId, productId, geometry)   ← geometría según orientation
+    next.piezas.push(newPiece)
+    next.conexiones.push(connection)
+    trayEdit(structuredClone(next))          ← invalida motor, revision++, push historial
+    deactivate()
+  Si !ok (concurrent change): mostrar error, no escribir
+
+DESHACER (historial de TrayInput — E3)
+  array de TrayInput snapshots, índice actual
+  Límite inicial: 10 pasos
+  undo() → índice-- → restaurar sin push al historial
+  redo() → índice++ → restaurar sin push al historial
+  Cancelar antes del commit: sin costo (nada fue escrito)
+```
+
+### 5.2 Atomicidad
+
+Toda operación que escribe en `TrayInput` lo hace en un solo `trayEdit(structuredClone(next))`. Garantiza:
+- El motor siempre ve un estado coherente.
+- Un error antes del commit no deja el trazado parcialmente modificado.
+- La revisión se incrementa una sola vez por operación.
+- El historial recibe un snapshot completo.
+
+### 5.3 Invalidación por capa
+
+| Cambio | Red física | Recorridos | Motor |
+|---|---|---|---|
+| Agregar/quitar pieza | Modifica | Puede afectar | Desactualiza |
+| Cambiar longitud | Modifica | Puede afectar longitud PE | Desactualiza |
+| Agregar/quitar circuito | — | Modifica | Desactualiza |
+| Cambiar PE | — | Modifica | Desactualiza |
+| Registrar excepción | workspace metadata | — | No afecta |
+| Cambiar ProjectDataV2 | — | — | No afecta |
+| Nueva versión catálogo | — | — | Resultado = null |
+
+**Campo `meta`:** libre, fuera del cálculo y de la huella. Notas de trazado van en `EntradaTrazado.meta` sin invalidar.
+
+### 5.4 Qué calcula Python (el CAD no replica)
+
+| Cálculo | Acceso desde CAD |
+|---|---|
+| Ocupación por sección/boca | `resultado.ocupacion` |
+| Verificación mecánica por vano | `resultado.vanos` |
+| Componentes de unión (cantidad) | `resultado.computo` |
+| Longitud del PE (suma de ejes) | `resultado.pe.conductores[].longitud_mm` |
+| Cobertura equipotencial | `resultado.equipotencial` |
+| Cargas por pieza | `resultado.cargas_por_pieza` |
+| Estado global del trazado | `resultado.estado_trazado` |
+| Corridas y vanos | `resultado.corridas` |
+| Cómputo BOM | `resultado.computo` |
+
+### 5.5 Qué decide el CAD
+
+| Responsabilidad | Función/módulo |
+|---|---|
+| Productos compatibles con un puerto | `getCompatibleProductIds` |
+| Puerto de la pieza nueva + orientación | `checkDirectCompatibility` → `newPiecePort` |
+| Geometría de posición P1/P2 | `buildSegmentPiece`, `buildCurvePiece` (pendiente) |
+| Generación de IDs únicos | `generateSegmentId`, `generateConnectionId` |
+| Verificación del puerto antes del commit | `verifyStartPortValid` |
+| Recomendación mismo producto como origen | preselección en `RoutingObjects.onClick` |
+| Atomicidad del commit | `trayEdit(structuredClone(next))` |
+| Excepción de conexión (motivo, fecha) | `excepciones_conexion` en workspace |
+
+---
+
+## 6. Adaptador Python
+
+### 6.1 Qué recibe el motor
+
+```
+Solicitud {
+  version_contrato: '1.0',
+  tipo: 'trazado',
+  solicitud_id: string,
+  clave: string,
+  revision_entrada: number,
+  entrada: EntradaTrazado        ← red física + recorridos
+}
+```
+
+**Campos de `EntradaTrazado` (contrato `trazado/1`):**
+- Requeridos: `version_contrato`, `tipo_circuito`, `reserva_solicitada_pct`, `piezas`, `conexiones`, `circuitos`
+- Opcionales: `meta`, `eje_vertical`, `tapas`, `accesorios`, `soportes`, `pe`, `equipotencial`, `escenario_reserva`
+- `additionalProperties: false` — campo no declarado → ENTRADA_INVALIDA
+
+**Lo que nunca va en Solicitud al motor:**
+- `excepciones_conexion` (workspace metadata, no en contrato)
+- Datos de ProjectDataV2 (conexiones de servicio)
+- Notas de proyecto (pueden ir en `meta`)
+
+### 6.2 Restricciones actuales del motor — entregas de ampliación, no exclusiones
+
+| Restricción | Decisión pendiente | Entrega |
+|---|---|---|
+| `tipo_circuito: 'potencia'` único | D-11 (mando/señal) | E-CTL |
+| Sin mangueras en circuitos | R-MAN | E-CTL |
+| CTA solo G65 y Z65 | F1–F9 (otras familias) | Motor v0.3+ |
+| Sin verificación de curvaturas | F10, F11 | Motor v0.3+ |
+| Sin capacidad de soportes | D-29 | Motor v0.3+ |
+| Sin masa de tapas | F13 | Motor v0.3+ |
+
+### 6.3 Estados de compatibilidad que produce el motor
+
+```
+COMPATIBLE_DOCUMENTADA
+COMPATIBLE_DOCUMENTADA + EQUIVALENCIA_EXTREMOS_RECTA_D-13
+COMPATIBLE_DOCUMENTADA + REGLA_DE_FAMILIA_REV-032  (propuesta)
+PENDIENTE_DECISION (bloqueos activos: D-03, D-07, D-09, D-11)
+SIN_EVIDENCIA_CATALOGO
+```
+
+El CAD añade antes: **SIN_EVIDENCIA_LOCAL** — `checkDirectCompatibility` no encontró entrada ni por match exacto ni por D-13. Impide confirmar salvo elección excepcional (E4).
+
+---
+
+## 7. Flujos del usuario
+
+### 7.1 Continuar trazado (recto)
 
 ```
 IDLE
   │  Activar "Continuar trazado"
   ▼
 SELECTING_PORT
-  │  Clic en esfera naranja (puerto libre de cualquier pieza)
+  │  Clic en esfera naranja (puerto libre)
   ▼
-CONFIGURING_SEGMENT          ← back() → SELECTING_PORT
-  │  Producto recomendado pre-seleccionado (mismo producto origen, si es recta)
-  │  Solo productos compatibles según COMPATIBILIDADES + D-13
-  │  Preview en escena: posición, dirección, longitud editables
+CONFIGURING_SEGMENT                    ← back() → SELECTING_PORT
+  │  Mismo producto origen pre-seleccionado
+  │  Selector: solo productos compatibles (getCompatibleProductIds)
+  │  Panel: evidencia, accesorios, decisiones pendientes
+  │  Preview 3D en escena
   │  Confirmar →
   ├─ compat.ok → COMMIT_DIRECT → IDLE
-  └─ !compat.ok (elección excepcional) → CONFIRMING_EXCEPTION → COMMIT_DIRECT → IDLE
+  └─ !compat.ok → CONFIRMING_EXCEPTION (E4) → COMMIT_DIRECT → IDLE
 ```
 
-### 1.2 Derivación intermedia (pendiente de implementar)
+### 7.2 Derivación intermedia (E3)
 
 ```
 IDLE → clic en tramo recto → SPLITTING_SEGMENT
-  │  Deslizador: distancia desde P1 (mm), editable
-  │  Preview: SEG-1a (acortado) + T (nuevo) + SEG-1b (nuevo)
-  │  Confirmar: COMMIT_SPLIT (atómico)
-  │  Luego: CONFIGURING_SEGMENT desde el puerto libre de la T
+  │  Deslizador: distancia desde P1 (mm)
+  │  Preview: SEG-1a + T + SEG-1b
+  │  Confirmar: COMMIT_SPLIT (atómico, actualiza circuitos + soportes + PE)
+  │  → CONFIGURING_SEGMENT desde puerto libre de T
 ```
 
-### 1.3 Estados del store de trazado
+### 7.3 Estados del store de trazado
 
 ```
 sin_calcular → calculando → vigente
                           → error
-vigente → desactualizado  (cualquier edit() invalida)
+vigente → desactualizado  (cualquier trayEdit() invalida)
 ```
 
 Regla: ningún resultado se muestra a partir de un estado `desactualizado` sin recalcular.
 
-### 1.4 Estados de compatibilidad de una conexión (producidos por el motor)
-
-```
-COMPATIBLE_DOCUMENTADA
-COMPATIBLE_DOCUMENTADA + condición EQUIVALENCIA_EXTREMOS_RECTA_D-13
-COMPATIBLE_DOCUMENTADA + condición REGLA_DE_FAMILIA_REV-032  (propuesta)
-PENDIENTE_DECISION (bloqueos activos: D-03, D-07, D-09, D-11)
-```
-
-La UI local añade un estado previo al motor: **SIN_EVIDENCIA_CATALOGO** (lo que hoy muestra `checkDirectCompatibility` antes del commit). Este estado impide confirmar a menos que se aplique el flujo de elección excepcional.
-
 ---
 
-## 2. Modelo de entidades, relaciones y unidades
+## 8. Conservación de archivos y contratos
 
-### 2.1 Entidades del trazado (contrato `trazado/1`, motor v0.2.2)
-
-| Entidad | ID | Campos clave | Unidades |
-|---|---|---|---|
-| Pieza | `instancia_id` | `producto_id`, `longitud_mm?`, `longitud_eje_mm?`, `puertos{}` | mm |
-| Conexión | `conexion_id` | `a:[instancia_id, puerto]`, `b:[instancia_id, puerto]` | — |
-| Circuito | `circuito_id` | `funcion:'potencia'`, `cable_id`, `cantidad`, `separado`, `recorrido[]` | — |
-| Soporte | `soporte_id` | `sistema_soporte_id`, `producto_id`, `instancia_id`, `distancia_desde_P1_mm` | mm |
-| Tapa | `tapa_id` | `producto_id`, `sobre:instancia_id` | — |
-| Accesorio | `accesorio_id` | `producto_id`, `sobre:instancia_id` | — |
-| Conductor PE | `conductor_id` | `recorrido[]`, `inicio:punto_id\|null`, `fin:punto_id\|null` | — |
-| Punto equipotencial | `punto_id` | `tipo`, `conductores[]`, `instancias[]`, `conector?`, `conductor_puente?` | — |
-| Escenario reserva | — | `circuitos[]` (igual esquema que circuitos) | — |
-
-**Campos globales del `EntradaTrazado`:**
-- `tipo_circuito: 'potencia'` (único valor admitido; mando/señal → D-11 pendiente)
-- `reserva_solicitada_pct`: número en [0, 100)
-- `eje_vertical`: vector unitario 3D (default implícito [0,0,1])
-
-**Nota F12:** el motor no conoce las dimensiones físicas de piezas especiales (T, curvas, reducciones). Solo verifica la coherencia del modelo del CAD: ports coincidentes dentro de 1 mm y enfrentados dentro de 1° (D-14). Las dimensiones físicas reales están pendientes de planos SAMET (F12).
-
-### 2.2 Puerto (TrayPort)
-
-```typescript
-{ posicion_mm: [x,y,z],  // mm, sistema Z-up
-  direccion: [dx,dy,dz]  // vector unitario, apunta hacia afuera de la pieza }
-```
-
-La dirección es el vector **saliente**. Dos puertos que se conectan tienen direcciones opuestas (d₁ · d₂ ≈ −1).
-
-### 2.3 Entidades de servicio (ProjectDataV2 / workspaceFile)
-
-Estas entidades existen en el modelo v2 del workspace pero aún **no** alimentan el trazado. Son la infraestructura hacia la que el trazado eventualmente se vinculará:
-
-| Entidad | Estado | Relevancia futura |
-|---|---|---|
-| `Element` (13 categorías) | Tipos definidos, no implementados en UI | Orígenes y destinos del trazado |
-| `Port` del elemento | Tipos definidos | Puerto de salida del trazado (inicio/fin de circuito) |
-| `Connection` cable/manguera | Tipos definidos | Declara que el cable existe, el trazado define por dónde pasa |
-| `CableCore` | Tipos definidos | Conductor individual dentro de un circuito |
-| `FunctionalRelation` | Tipos definidos | A controla B: define qué conexiones van juntas |
-
-### 2.4 Entidades del catálogo (Context)
-
-| Tabla | Registros actuales | Uso en routing |
-|---|---|---|
-| PRODUCTOS | ~850 | Selector, tipo, familia, dimensiones |
-| PUERTOS_PRODUCTO | ~1 400 | Puerto-level compat, dimensiones por boca |
-| COMPATIBILIDADES | 4 373 | `getCompatibleProductIds`, `checkDirectCompatibility` |
-| COMPONENTES_UNION | ~400 | Accesorios de unión por conexión (D-24: 1 juego/conexión) |
-| FAMILIAS | 9 | Agrupamiento visual en selector |
-| cables | 2 datasets | Masa, diámetro, radio mínimo de curvatura |
-
-### 2.5 Unidades explícitas
-
-| Magnitud | Unidad | Notas |
-|---|---|---|
-| Posiciones | mm | Dominio CAD (Z-up). Visor: m (Y-up), conversión en `toViewer()` |
-| Longitudes de piezas | mm | `longitud_mm` (rectos), `longitud_eje_mm` (especiales, solo para PE) |
-| Masa de cable | kg/m | Dato de ficha; suma sobre los cables del vano |
-| Masa de tapa | kg/m o kg/ud | No publicada aún (F13) → vano NO_VERIFICABLE_CARGA_TAPA_DESCONOCIDA |
-| Capacidad de soporte | kg/vano | STS-300-Z: 379 kg. Modelo de reparto: pendiente (D-29) |
-| Ocupación | mm de ancho | W_ocup por sección; comparación con W_ref según D-04/D-05 |
-| Reserva | % | `reserva_solicitada_pct`, criterio D-05 (configurable) |
-| PE longitud | mm | Suma eje sin holgura (D-27); holgura = null hasta decisión |
-
-**Principio:** desconocido ≠ cero. Los campos sin dato publican su estado (`NO_VERIFICABLE`, `MODELO_A_CONFIRMAR`) en vez de suponer un valor favorable.
-
----
-
-## 3. Contrato de una operación
-
-### 3.1 Esquema genérico: planificar → validar → previsualizar → confirmar → deshacer
-
-```
-PLANIFICAR
-  Usuario indica intención (selecciona puerto, tipo de pieza, longitud)
-  → El store transiciona al paso correspondiente del FSM
-  → No escribe nada en TrayInput todavía
-
-VALIDAR (síncrono, antes de preview)
-  checkDirectCompatibility() → DirectCompatResult { ok, newPiecePort, reason }
-  verifyStartPortValid()      → { valid, reason }
-  Si !ok y no hay excepción registrada → mostrar razón, bloquear confirmación
-
-PREVISUALIZAR
-  PreviewMesh en escena (R3F):
-    - Posición = startPort.pos + effDir * length / 2
-    - Rotación = alignToDir(effDir)
-    - Transparente, sin interacción
-  Panel:
-    - Producto seleccionado (SKU, familia, dimensiones)
-    - Longitud editable
-    - Resultado de compatibilidad (compat ID, D-13 si aplica)
-    - Accesorios de unión que Python calculará
-
-CONFIRMAR (atómico — un solo trayEdit())
-  verifyStartPortValid()      ← re-verificar al momento del commit
-  checkDirectCompatibility()  ← re-verificar (fuente única de verdad)
-  Si ok:
-    buildSegmentPiece(newId, productId, p1, p2)
-      p1/p2 dependen de newPiecePort (ver §4)
-    next.piezas.push(newPiece)
-    next.conexiones.push({ conexion_id, a:[existente, portName], b:[newId, newPiecePort] })
-    trayEdit(next)   ← invalida resultado del motor, bump revision
-    deactivate()
-  Si !ok (concurrent change): mostrar error, no escribir
-
-DESHACER
-  Todavía no implementado. Requisito: historial de TrayInput con índice.
-  Mientras tanto: cancelar antes del commit es sin costo (nada fue escrito).
-```
-
-### 3.2 Atomicidad
-
-Toda operación que escribe en `TrayInput` lo hace en **un solo** `trayEdit(next)` con un `structuredClone` del estado anterior. Esto garantiza que:
-- El motor siempre ve un estado coherente.
-- Un error antes del commit no deja el trazado parcialmente modificado.
-- La revisión se incrementa una sola vez por operación.
-
-### 3.3 Invalidación
-
-`trayEdit()` → `revision++` → `status = 'desactualizado'` → el resultado anterior se descarta. El motor devuelve `vigencia: 'DESACTUALIZADO'` si detecta que la `revision_entrada` del resultado no coincide con la actual; el store también lo detecta por sí mismo.
-
----
-
-## 4. Resolución única de compatibilidad y relación con Python
-
-### 4.1 El problema actual (resuelto en 723892c)
-
-Había tres resoluciones independientes:
-
-| Punto | Función | Puerto new piece |
-|---|---|---|
-| Selector de productos | `getCompatibleProductIds` | — (no determina puerto) |
-| Panel (UI) | `checkDirectCompatibility(_, _, 'P1')` | hardcoded 'P1' |
-| Commit | mismo `checkDirectCompatibility` hardcoded 'P1' | hardcoded 'P1' |
-
-Resultado: `getCompatibleProductIds` encontraba CMP-01535 (P1↔P2) correctamente, pero `checkDirectCompatibility` buscaba P1↔P1 → no encontraba → "Sin evidencia".
-
-### 4.2 Solución implementada: una sola función, una sola llamada
-
-```
-getCompatibleProductIds(compatibilidades, existingProductId, portName)
-  → Set<productId>  (filtro del selector)
-  
-checkDirectCompatibility(ctx, existingProduct, existingPort, newProduct, 'P1')
-  → DirectCompatResult { ok, newPiecePort, reason, compatibilidadId, ... }
-  
-  Lógica interna:
-  1. Exacta: findCompatEntryPortLevel(existingPort ↔ 'P1')   → newPiecePort='P1'
-  2. Alterna: findCompatEntryPortLevel(existingPort ↔ 'P2')  → si D-13: newPiecePort='P1'
-                                                               → si no D-13: newPiecePort='P2'
-  3. Sin entrada: fallback con motivo (familia, ancho distinto, sin evidencia)
-```
-
-**D-13** (decisión del motor, propuesta activa): si ambas piezas son `recta` con igual `ancho_nominal_mm` e igual `ala_nominal_mm`, los extremos P1/P2 son equivalentes. El motor aceptará P1↔P1 aunque el catálogo solo registre P1↔P2. `isD13Equivalent()` en `routingRules.ts` implementa la misma condición.
-
-**El motor es la autoridad sobre fórmulas.** `checkDirectCompatibility` replica la lógica de *selección de entrada* (¿puedo generar esta conexión?), no la lógica de *cálculo* (ocupación, cargas, PE, cómputo). Toda divergencia entre la validación local y el motor debe resolverse actualizando la función local para que coincida.
-
-### 4.3 Qué calcula Python que el CAD no debe replicar
-
-| Cálculo | Dónde vive | Acceso desde CAD |
-|---|---|---|
-| Ocupación por sección/boca | motor Python | `resultado.ocupacion` |
-| Verificación mecánica por vano | motor Python | `resultado.vanos` (dentro de corridas) |
-| Componentes de unión (cantidad) | motor Python | `resultado.computo` |
-| Longitud del PE (suma de ejes) | motor Python | `resultado.pe.conductores[].longitud_mm` |
-| Cobertura equipotencial | motor Python | `resultado.equipotencial` |
-| Carga por pieza (vano con tapa) | motor Python | `resultado.cargas_por_pieza` |
-| Estado del trazado | motor Python | `resultado.estado_trazado` |
-| Corridas y vanos | motor Python | `resultado.corridas` |
-| Cómputo BOM | motor Python | `resultado.computo` |
-
-**El CAD no duplica estas fórmulas.** Solo construye la `EntradaTrazado` correcta y presenta el resultado.
-
-### 4.4 Qué calcula/decide el CAD
-
-| Responsabilidad | Función/módulo |
-|---|---|
-| Qué productos son compatibles con este puerto | `getCompatibleProductIds` |
-| Qué puerto de la nueva pieza usar | `checkDirectCompatibility` → `newPiecePort` |
-| Geometría de la nueva pieza (posición P1/P2) | `buildSegmentPiece` |
-| Generación de IDs únicos | `generateSegmentId`, `generateConnectionId` |
-| Verificación del puerto antes del commit | `verifyStartPortValid` |
-| Recomendación del mismo producto como origen | `RoutingObjects.onClick` |
-| Atomicidad del commit | `trayEdit(structuredClone(next))` |
-
-### 4.5 Elección excepcional (pendiente de implementar — diseño en docs/design-exceptional-product-choice.md)
-
-Cuando `checkDirectCompatibility` devuelve `ok: false`, el usuario puede registrar una excepción:
-
-```typescript
-// En TrayInput (workspace-side, no en Solicitud al motor):
-excepciones_conexion?: Record<string, {
-  motivo: string;
-  confirmado_por: string;
-  fecha_iso: string;
-}>
-```
-
-El motor **sigue recibiendo la misma entrada** sin el campo de excepción (no forma parte del contrato). El motor seguirá reportando incompatibilidad. La UI muestra ambos: diagnóstico del motor + motivo del usuario. El campo no afecta la `huella` del motor ni ninguna fórmula.
-
----
-
-## 5. Dependencias e invalidación de cálculos
-
-### 5.1 Grafo de dependencias
-
-```
-TrayInput (piezas, conexiones, circuitos, soportes, tapas, pe, equipotencial)
-  │
-  │ trayEdit() → revision++
-  ▼
-Motor Python (resultado vigente)
-  ├─ estado_trazado
-  ├─ conexiones (compat + encaje)
-  ├─ ocupacion (por pieza/boca)
-  ├─ corridas → vanos → verificación mecánica
-  ├─ computo (BOM con cantidades)
-  ├─ pe (longitudes, cobertura)
-  ├─ equipotencial
-  └─ cargas_por_pieza
-
-Catálogo (Context) ─── cargado en initialize() ────────────────────┐
-  PRODUCTOS, COMPATIBILIDADES, PUERTOS_PRODUCTO,                    │
-  COMPONENTES_UNION, FAMILIAS, cables                               │
-                                                                    │
-  Cambio de catálogo (nueva versión del motor) → result = null ◄────┘
-```
-
-### 5.2 Reglas de invalidación
-
-| Cambio | Efecto en CAD | Efecto en resultado motor |
-|---|---|---|
-| Agregar/quitar pieza | `trayEdit()` → `revision++` | Desactualizado; recalcular |
-| Cambiar longitud de tramo | `trayEdit()` | Desactualizado |
-| Agregar/quitar conexión | `trayEdit()` | Desactualizado |
-| Agregar/quitar circuito | `trayEdit()` | Desactualizado |
-| Agregar/quitar soporte | `trayEdit()` | Desactualizado |
-| Agregar/quitar tapa | `trayEdit()` | Desactualizado |
-| Cambiar PE | `trayEdit()` | Desactualizado |
-| Nueva versión del catálogo | `context` cambia, resultado = null | Recalcular completo |
-| Registrar excepción de conexión | workspace metadata | No afecta motor (no en Solicitud) |
-
-### 5.3 Lo que el motor NO invalida automáticamente desde el CAD
-
-El campo `meta` del `EntradaTrazado` está declarado como "libre; fuera del cálculo y de la huella". Futuras anotaciones de trazado (nombre del trazado, notas) pueden ir en `meta` sin invalidar el cálculo.
-
----
-
-## 6. Matriz de capacidades: disponible / incompleto / pendiente
-
-### 6.1 Infraestructura
-
-| Capacidad | Estado | Notas |
-|---|---|---|
-| Tipos TrayInput + contrato motor | **Disponible** | `src/tray/model.ts`, `contrato-1.0.schema.json` |
-| Motor Python v0.2.2 | **Disponible** | 190 tests, 78 archivos verificados |
-| Cliente HTTP (gestorSolicitudes) | **Disponible** | Vigencia, revisión, validación de sobre |
-| Catálogo snapshot (3,9 MB) | **Disponible** | SAMET escalera G/Z/perforada + alambre FAMIQ |
-| Datos de cables (Prysmian) | **Disponible** | 2 datasets (Sintenax Valio, Superastic Flex) |
-| Export/import workspace | **Disponible** | fileVersion=1, round-trip probado |
-| IndexedDB v3 + autosave | **Disponible** | Proyecto y backup de migración |
-
-### 6.2 Routing (trazado)
-
-| Capacidad | Estado | Notas |
-|---|---|---|
-| Tramos rectos con 2 puertos | **Disponible** | `buildSegmentPiece`, `addTraySegment.ts` |
-| Selección de puerto libre | **Disponible** | `getFreePorts`, esferas naranjas |
-| Recomendación mismo producto | **Disponible** | `RoutingObjects.tsx` preselección |
-| Selector por compatibilidad (port-level) | **Disponible** | `getCompatibleProductIds` |
-| D-13 en validación local | **Disponible** | `isD13Equivalent` en `routingRules.ts` |
-| `newPiecePort` correcto en commit | **Disponible** | `commitDirect` usa `compat.newPiecePort` |
-| Reducción entre anchos distintos | **Disponible (parcial)** | UI existe; geometría bloqueada (F12 pendiente) |
-| Curvas horizontales | **Incompleto** | Tipo existe en catálogo (171 productos); UI de creación no implementada |
-| Curvas verticales | **Incompleto** | Tipo existe (47); UI no implementada. F11 pendiente (referencia de radio) |
-| T y X (derivación) | **Incompleto** | Tipos en catálogo (110 T, 47 X); inserción UI pendiente. Prerequisito: `design-intermediate-derivation.md` |
-| Final de tramo | **Incompleto** | 51 productos en catálogo; UI de colocación no implementada |
-| Snap al eje | **Disponible** | `snapToAxis` en store + advertencia de ángulo |
-| Preview 3D de nuevo tramo | **Disponible** | `RoutingObjects.tsx` → `PreviewMesh` |
-| Deshacer operación | **Pendiente** | No implementado. Ver §8 entrega E3 |
-| Derivación intermedia (split) | **Pendiente** | Diseñado en `design-intermediate-derivation.md` |
-| Elección excepcional | **Pendiente** | Diseñado en `design-exceptional-product-choice.md` |
-| Orientación editable de sección | **Pendiente** | `eje_vertical` no expuesto en UI |
-
-### 6.3 Motor Python — lo que calcula actualmente
-
-| Cálculo | Estado | Condiciones / Pendientes |
-|---|---|---|
-| Compatibilidad de conexiones | **Disponible** | D-13 propuesta, D-13b propuesta, REV-032 |
-| Ocupación por sección/boca | **Disponible** | Solo potencia (D-11 pendiente para mando/señal) |
-| Cables iguales separados | **Disponible** | D-01 |
-| Cables distintos separados | **Bloqueado** | D-03 pendiente |
-| Cables en contacto | **Disponible** | D-02 |
-| Cables apilados | **Bloqueado** | D-09 pendiente |
-| Mezcla separado/contacto | **Bloqueado** | D-07 pendiente |
-| Verificación mecánica por vano | **Disponible (parcial)** | Solo luz tabulada exacta (D-22); tapa bloquea (D-25); sin CTA para G115/Z115/perforadas (F1–F9) |
-| CTA escalera G65 | **Disponible** | F-001, fila A. Verificación condicionada (D-06b, D-31) |
-| CTA escalera Z65 | **Disponible (parcial)** | Fila C "validada por usuario" (REV-043). Sin esquema declarado → CUMPLE_CONDICIONADO |
-| CTA perforada / FAMIQ / otros | **No disponible** | F1–F9 pendientes |
-| Verificación de curvaturas | **No disponible** | F10 pendiente (radios de cables), F11 (curvas verticales) |
-| Componentes de unión (BOM) | **Disponible** | D-24: 1 juego por conexión |
-| Cómputo por pieza | **Disponible** | D-18: 1 pieza por instancia |
-| PE longitud y cobertura | **Disponible** | D-27: sin holgura |
-| PE modelo concreto | **Condicionado** | D-21: modelo a confirmar. Solo Superastic Flex declara verde/amarillo |
-| PE posición (D-19) | **Condicionado** | Aprobado por usuario. Hueco PE–potencia sin definir (P-D19c) |
-| Equipotencialidad diseño | **Disponible (parcial)** | F17/F18 pendientes (continuidad declarada de uniones, conectores de derivación) |
-| Capacidad de soportes | **No disponible** | D-29 pendiente (modelo de reparto) |
-| Anclajes | **Fuera de alcance** | REV-016, F16 |
-| Cargas con tapa | **No verificable** | F13 pendiente (masa de tapas) |
-| Mando/señal/instrumentación | **Bloqueado** | D-11 pendiente |
-| Neumática | **Fuera de alcance** | No previsto en contrato v0.2.2 |
-
-### 6.4 Catálogo — cobertura
-
-| Familia | Rectos | Reducciones | T | Curvas | Otros |
-|---|---|---|---|---|---|
-| SAM-STE-G (escalera G) | 28 | ✓ | ✓ | ✓ | ✓ |
-| SAM-STE-Z (escalera Z) | 12 | ✓ | ✓ | ✓ | ✓ |
-| SAM-STP-Z (perforada Z) | 7 | ✓ | ✓ | ✓ | ✓ |
-| SAM-STP-ZN (perforada color) | 14 | Escasa | — | — | — |
-| FAMIQ-ALAMBRE-INOX (alambre inox) | 9 | — | — | — | — |
-| G↔Z cross-family | 0 entradas directas | — | — | — | compat. excepcional |
-
-**Inconsistencias conocidas:**
-- G↔Z: misma `interfaz_conexion`; 0 entradas directas en COMPATIBILIDADES (REV-032: familias no compatibles por decisión de usuario).
-- SAM-STP-ZN: sin entradas cross-family.
-- Reducciones: `longitud_comercial_mm: null` en los 126 productos → `geometryDocumented: false` → inserción bloqueada.
-- 3 familias con `acabado_normalizado: null`: GEN-FERR, SAM-ESC-TRL, SAM-SMT-ACC.
-
----
-
-## 7. Plan de migración y conservación de archivos existentes
-
-### 7.1 Lo que se preserva incondicionalmente
+### 8.1 Qué se preserva incondicionalmente
 
 | Qué | Dónde | Por qué |
 |---|---|---|
@@ -409,21 +495,16 @@ El campo `meta` del `EntradaTrazado` está declarado como "libre; fuera del cál
 | DB_VERSION=3, stores IndexedDB | `db.ts` | Backups de migración ya escritos en campo |
 | Motor vendor (78 archivos verificados) | `vendor/motor_bandejas/` | SHA-256 en manifest; no se modifica |
 
-### 7.2 Extensiones compatibles hacia atrás
-
-Estas adiciones **no rompen** archivos existentes porque los campos son opcionales o están en `meta`:
+### 8.2 Extensiones compatibles hacia atrás
 
 | Extensión | Ubicación | Compatible hacia atrás |
 |---|---|---|
-| `excepciones_conexion` en workspace | TrayInput (opcional) | Sí; import ignora si falta |
+| `excepciones_conexion` | TrayInput (opcional) | Sí; import ignora si falta |
 | Notas de trazado | `EntradaTrazado.meta` | Sí; motor ignora `meta` |
-| `eje_vertical` en EntradaTrazado | Campo opcional (default [0,0,1]) | Sí |
+| `eje_vertical` | Campo opcional | Sí; default [0,0,1] |
+| `medium` en Connection (ProjectDataV2) | ProjectDataV2 (opcional) | Sí; import ignora si falta |
 
-### 7.3 Cambios que requieren incrementar fileVersion
-
-Ninguno en las entregas E1–E4 del §8. Se incrementará cuando se agreguen entidades al formato de archivo que archivos viejos no puedan leer sin migración.
-
-### 7.4 Nomenclatura de IDs en nuevas entidades
+### 8.3 Nomenclatura de IDs
 
 | Entidad | Prefijo | Ejemplo |
 |---|---|---|
@@ -442,156 +523,240 @@ Ninguno en las entregas E1–E4 del §8. Se incrementará cuando se agreguen ent
 
 ---
 
-## 8. Entregas funcionales
+## 9. Entregas como recorridos utilizables
 
-Cada entrega: un recorrido completo observable, pruebas de aceptación, sin mezclar con main.
-
-### E1 — Selector y confirmación sin ambigüedad (commit 723892c — ENTREGADO)
-
-**Recorrido:** R1.P1 de SAM_TRES-300-065-18-Z → selector muestra 1 compatible pre-seleccionado → confirmación dice "Compatible según catálogo (CMP-01535) — equivalencia D-13" → Python acepta.
-
-**Pruebas de aceptación (observables):**
-1. `npx vitest run src/workspace/__tests__/routingRules.test.ts` → 64/64.
-2. Con motor activo: `npx vitest run routing.integration` → tests Z-product pasan.
-3. En navegador: activar trazado en R1.P1 → panel muestra "1 compatible", no "Sin evidencia".
+Cada entrega agrega un recorrido completo que el usuario puede observar y validar desde el primer commit. Formato: **Resultado visible → Datos necesarios → Cambios de contrato → Conservación → Prueba de aceptación**.
 
 ---
 
-### E2 — Curvas planas y orientación de sección (siguiente)
+### E1 — Recto con confirmación sin ambigüedad (ENTREGADO — commit 723892c)
 
-**Qué agrega:** herramienta para insertar curva horizontal (90°, 45°, 30°) desde un puerto libre, con elección del producto de catálogo (171 disponibles).
+**Resultado visible:** R1.P1 de SAM_TRES-300-065-18-Z → selector "1 compatible" → confirmación "Compatible (CMP-01535) — equivalencia D-13" → Python acepta → estado_trazado visible.
 
-**Recorrido completo:** A.puerto → tramo recto → curva H 90° → tramo recto → Python calcula ocupación + corridas.
+**Datos necesarios:** Catálogo cargado (COMPATIBILIDADES, PUERTOS_PRODUCTO). Motor activo para test de integración.
 
-**Prerequisito técnico:**
-- Geometría de curva: el CAD construye la pieza con `longitud_eje_mm` (para PE). El motor solo necesita el ID de producto, posición de puertos y conexiones. No se requieren F12 (dimensiones físicas de piezas especiales) para insertar; solo para verificar encaje real.
-- `tipo_circuito: 'potencia'`; mando/señal bloqueado (D-11).
+**Cambios de contrato:** ninguno. `newPiecePort` y `orientation` son campos internos de `DirectCompatResult` (CAD).
 
-**Pruebas de aceptación:**
-1. Test unitario: `buildCurvePiece(id, productId, p1Pos, p1Dir, p2Dir, lonEje)` → Piece con 2 puertos y `longitud_eje_mm`.
-2. Test de integración: trazado con 1 curva → Python no devuelve ENTRADA_INVALIDA.
-3. En navegador: tramo + curva + tramo → estado_trazado visible.
+**Conservación:** `trazado/1`, workspace v1 y archivos existentes intactos.
+
+**Prueba de aceptación:**
+1. `npx vitest run src/workspace/__tests__/routingRules.test.ts` → 64/64 ✓
+2. Con motor: `npx vitest run routing.integration` → tests Z-product pasan ✓
+3. Navegador: activar desde R1.P1 → panel "1 compatible", no "Sin evidencia" ✓
 
 ---
 
-### E3 — Derivación intermedia con T (implementar design-intermediate-derivation.md)
+### E2 — Curvas planas y orientación de sección
 
-**Qué agrega:** clic en tramo recto → deslizador de punto → preview SEG-1a + T + SEG-1b → commit atómico que actualiza circuitos, soportes y conexiones.
+**Resultado visible:** trazado A.recto → curva H 90° → A.recto → Python calcula ocupación + corridas. Campo `eje_vertical` editable en panel (orienta la sección transversal).
 
-**Recorrido completo:** trazado con K1 en R1→R2→R3 → insertar T en R2 a 1500 mm desde P1 → ramal K2 → Python calcula ocupación por boca de T.
+**Datos necesarios:**
+- Nueva función `buildCurvePiece(id, productId, p1Pos, p1Dir, p2Dir, lonEje)` → Pieza con 2 puertos y `longitud_eje_mm`
+- Productos disponibles: 171 curvas H en escaleras G/Z; 47 V. FAMIQ-ALAMBRE-INOX tiene curvas H.
+- Geometría: posiciones P1/P2 se calculan desde `angulo_curva` del producto. F12 no requerida para insertar; solo para verificar encaje real (F12 bloquea solo la exactitud del encaje, no la inserción).
 
-**Prerequisito técnico:**
-- Función `splitSegment(entrada, instanciaId, distanciaMm, tProductId)` → TrayInput. Pura, sin efectos.
-- Debe actualizar: `piezas` (SEG-1a, T, SEG-1b), `conexiones` (reconectar), `circuitos[].recorrido` (sustituir SEG-1 por [SEG-1a, T, SEG-1b] en cada circuito que lo contenga), `soportes` (reubicar por posición), `tapas` (reubicar por posición).
-- **No actualiza automáticamente:** `pe.conductores[].recorrido` si el recorrido del PE no incluye la pieza partida. Si sí la incluye, debe actualizarse; si no puede resolverse automáticamente, bloquear con mensaje.
-- Deshacer: primera implementación de historial (array de TrayInput, índice). Límite: 10 pasos.
+**Cambios de contrato:** ninguno. `longitud_eje_mm` ya es campo de Pieza en `trazado/1`.
 
-**Pruebas de aceptación:**
-1. Test unitario: `splitSegment` con 1 circuito → array `recorrido` actualizado; soportes reubicados.
+**Conservación:** no agregar campos no declarados (`additionalProperties: false`). Archivos sin curvas importan sin error.
+
+**Prueba de aceptación:**
+1. Test unitario: `buildCurvePiece(...)` → Pieza con 2 puertos y `longitud_eje_mm`.
+2. Test integración: trazado con 1 curva → Python no devuelve ENTRADA_INVALIDA.
+3. Navegador: tramo + curva + tramo → estado_trazado visible + corridas calculadas.
+
+---
+
+### E3 — Derivación intermedia con T
+
+**Resultado visible:** trazado R1→R2→R3, insertar T en R2 a 1500 mm → preview SEG-2a + T + SEG-2b → confirmar → ramal K2 desde T → Python produce ocupación por boca de T. Deshacer disponible (10 pasos).
+
+**Datos necesarios:**
+- Función pura `splitSegment(entrada, instanciaId, distanciaMm, tProductId) → TrayInput`
+  - Actualiza: `piezas` (SEG-1a, T, SEG-1b), `conexiones` (reconectar), `circuitos[].recorrido` (sustituir SEG-1 por [SEG-1a, T, SEG-1b] en cada circuito que lo contenga), `soportes` (reubicar por posición), `tapas` (reubicar por posición)
+  - Si PE incluye la pieza partida y no puede resolverse automáticamente: bloquear con mensaje
+- UI: modo SPLITTING_SEGMENT con deslizador de distancia
+- Historial de TrayInput: array de snapshots + índice, límite 10 pasos
+
+**Cambios de contrato:** ninguno. Las entidades T ya están en `trazado/1`.
+
+**Conservación:** IDs SEG-1a/SEG-1b son piezas nuevas; archivos previos sin T importan sin error.
+
+**Prueba de aceptación:**
+1. Test unitario: `splitSegment` con 1 circuito → `recorrido` actualizado a [SEG-1a, T-1, SEG-1b].
 2. Test unitario: `splitSegment` con soporte a 800 mm → soporte queda en SEG-1a a 800 mm.
-3. Test de integración: trazado dividido → Python acepta y produce ocupación por boca.
-4. En navegador: seleccionar tramo → aparece botón "Insertar derivación" → preview visible → confirmar → 3 piezas en escena.
+3. Test integración: trazado dividido → Python acepta y produce ocupación por boca.
+4. Navegador: seleccionar tramo → "Insertar derivación" → preview → confirmar → 3 piezas en escena → deshacer → 1 pieza restaurada.
 
 ---
 
-### E4 — Elección excepcional con motivo (implementar design-exceptional-product-choice.md)
+### E4 — Elección excepcional con motivo
 
-**Qué agrega:** "Ver otros productos" en el selector → selector expandido con marcas ⚠ → modal de confirmación con motivo obligatorio → `excepciones_conexion` en archivo exportado.
+**Resultado visible:** R1.P1 de SAM_TRES-150-065-18-G → elegir SAM_TRES-150-065-18-Z (familia distinta, 0 entradas) → modal con "Motivo (requerido)" → confirmar → Python reporta incompatibilidad → UI muestra diagnóstico Python + motivo registrado con badge ⚠.
 
-**Recorrido completo:** R1.P1 de SAM_TRES-150-065-18-G → elegir SAM_TRES-150-065-18-Z (familia distinta, 0 entradas) → modal con "Motivo: cambio de familia aprobado por cliente REF-2026-04" → confirmar → Python reporta incompatibilidad en resultado → UI muestra diagnóstico del motor + motivo registrado.
+**Datos necesarios:**
+- `exceptionalConnection` en `useRoutingStore` (motivo, fecha, confirmado_por)
+- En `commitDirect`: si `compat.ok === false && excepcion.motivo`: escribir `excepciones_conexion[conexion_id]`
+- UI `TrayResults`: badge ⚠ en conexiones con excepción → tooltip con motivo
+- Export/import preserva `excepciones_conexion` en archivo
 
-**Prerequisito técnico:**
-- `exceptionalConnection` en `useRoutingStore` (motivo, fecha, confirmado_por).
-- En `commitDirect`: si `compat.ok === false && excepcion.motivo`: escribir en `excepciones_conexion`; enviar la misma entrada al motor.
-- UI de `TrayResults`: badge ⚠ en conexiones con excepción → tooltip con motivo.
-- Export: `excepciones_conexion` en `trayInput` del archivo.
-- Import: `excepciones_conexion` restaurado; badge visible sin recalcular.
+**Cambios de contrato:** campo `excepciones_conexion` en workspace (`TrayInput`, fuera de `entrada` al motor). No cambia `trazado/1`.
 
-**Pruebas de aceptación:**
+**Conservación:** campo opcional; archivos sin él importan sin error. Badge no requiere recalcular.
+
+**Prueba de aceptación:**
 1. Test unitario: `commitDirect` con excepción → conexión en trazado + entrada en `excepciones_conexion`.
-2. Round-trip: export con excepción → import → badge ⚠ visible.
-3. En navegador: modal visible, confirmación sin motivo bloqueada, motor reporta incompatibilidad visible junto al motivo.
+2. Round-trip: export con excepción → import → badge ⚠ visible sin recalcular.
+3. Navegador: modal visible → confirmación sin motivo bloqueada → motor reporta incompatibilidad visible junto al motivo.
 
 ---
 
-### E5 — Circuitos, PE y soportes desde la UI (cubre pasos 7 y 8 del escenario)
+### E5 — Circuitos, PE y soportes desde la UI
 
-**Qué agrega:** formularios para agregar circuitos (cable, cantidad, recorrido sobre piezas existentes), conductor PE (recorrido, puntos equipotenciales), soportes (sistema, producto, posición en tramo).
+**Resultado visible:** trazado de 3 piezas → circuito K1 (3 × 1×35 mm² Prysmian) → conductor PE → 3 soportes a 1500 mm → Python: ocupación, vanos, cobertura PE, cómputo BOM completo. Circuito K2 en sentido inverso incluido.
 
-**Recorrido completo:** trazado de 3 piezas → agregar circuito K1 con 3 × 1×35 → agregar PE → agregar 3 soportes a 1500 mm → Python calcula ocupación, vanos, cobertura PE.
+**Datos necesarios:**
+- Formularios de circuito (cable, cantidad, separado, recorrido sobre piezas)
+- Formulario PE (recorrido, puntos equipotenciales, conductor_puente)
+- Formulario soporte (sistema, producto, instancia, distancia_desde_P1_mm)
+- `pe.conductores` requiere al menos 1 conductor; se crea automáticamente al declarar PE
+- UI de recorrido: selección de piezas en orden (incluyendo orden inverso para K2)
 
-**Prerequisito técnico:**
-- Los formularios existen parcialmente en `AddTraySegmentForm.tsx`; necesitan extensión.
-- `pe.conductores` requiere al menos 1 conductor (contrato); el primer conductor se crea automáticamente al declarar el PE.
+**Cambios de contrato:** ninguno. `pe`, `circuitos`, `soportes` ya están en `trazado/1`.
+
+**Conservación:** todos los campos son opcionales; archivos sin ellos importan sin error.
+
+**Prueba de aceptación:**
+1. Test unitario: `trayEdit` con circuito válido → motor devuelve `estado_trazado: 'ok'`.
+2. Test integración: entrada con K1 + PE → `resultado.pe.conductores[0].longitud_mm > 0`.
+3. Navegador: formulario circuito → PE → soportes → Python calcula → cómputo BOM visible.
 
 ---
 
-## 9. Decisiones pendientes y riesgos concretos
+### E-CTL — Modelado de control, señal y neumática
 
-### 9.1 Decisiones del motor que afectan el CAD
+**Resultado visible:** ProjectDataV2 permite registrar conexiones de control/señal/neumática. Visible en vista de proyecto como líneas de servicio separadas de la potencia (color distinto). Verificación por motor: pendiente (D-11 y ampliación de contrato).
+
+**Datos necesarios:**
+- `Connection.medium: 'power' | 'control' | 'signal' | 'pneumatic'` en ProjectDataV2 (campo nuevo opcional)
+- UI de edición de conexiones de servicio en vista de proyecto
+- Motor (ampliación): D-11 soporte de `tipo_circuito: 'mando'`; nuevo campo o entidad para mangueras en `EntradaTrazado`
+
+**Cambios de contrato (fase 1 — solo CAD):** campo `medium` en `Connection` de ProjectDataV2. No cambia `trazado/1`.
+**Cambios de contrato (fase 2 — motor):** cuando el motor amplíe, nuevo valor `tipo_circuito` y posiblemente nueva entidad en `EntradaTrazado`.
+
+**Conservación:** `Connection.medium` es campo nuevo opcional; archivos sin él importan sin error. Regla: nunca falsificar `tipo_circuito: 'potencia'` para un circuito de control.
+
+**Prueba de aceptación:**
+1. Navegador (fase 1): agregar conexión de control → visible como línea de color diferente en vista de proyecto.
+2. Con motor ampliado (fase 2): circuito de mando → Python no devuelve ENTRADA_INVALIDA.
+3. Navegador (fase 2): manguera neumática registrada → aparece en cómputo de proyecto (no de bandeja).
+
+---
+
+### E-RED — Reducciones (desbloqueada cuando F12 disponible)
+
+**Resultado visible:** trazado con reducción 300→150 → Python calcula cambio de ocupación. Geometría real de la reducción en 3D.
+
+**Datos necesarios:**
+- F12: dimensiones físicas de reducciones (longitud real, posiciones de puertos)
+- Actualmente: `longitud_comercial_mm: null` en los 126 productos de reducción → inserción bloqueada
+- **SAM-STP-Z (perforada Z): 0 reducciones cargadas en catálogo** — sin reducción posible dentro de familia Z perforada hasta que se carguen datos
+
+**Cambios de contrato:** ninguno (piezas de reducción son Pieza estándar).
+
+**Conservación:** inserción bloqueada en UI hasta recibir F12; archivos existentes sin reducciones importan sin error.
+
+**Prueba de aceptación:**
+1. Con F12: `buildReductionPiece(...)` → puertos en posiciones reales según datos F12.
+2. Test integración: recto + reducción + recto → Python acepta sin ENTRADA_INVALIDA.
+3. Navegador: seleccionar reducción → pieza 3D con geometría real visible.
+
+---
+
+### E-FIN — Final de tramo
+
+**Resultado visible:** tramo con final de tramo en extremo libre → Python incluye el final en cómputo BOM.
+
+**Datos necesarios:**
+- Nueva función `buildEndPiece(id, productId, portPos, portDir)` → Pieza con 1 puerto
+- 51 productos de tipo `final` disponibles en catálogo
+
+**Cambios de contrato:** ninguno (tipo `final` ya existe en PRODUCTOS).
+
+**Prueba de aceptación:**
+1. Test unitario: `buildEndPiece(...)` → Pieza con 1 puerto.
+2. Test integración: trazado con final → Python incluye en cómputo.
+3. Navegador: colocar final en puerto libre → pieza visible en escena.
+
+---
+
+### E-COL — Detección de interferencia con paredes
+
+**Resultado visible:** tramo que atraviesa pared → alerta de interferencia → diálogo "Registrar abertura 155×70 mm a 2100 mm de altura" → confirmación → abertura registrada en archivo exportado.
+
+**Datos necesarios:**
+- Edificio con geometría 3D (caras y normales) — hoy solo dimensiones escalares en ProjectDataV2
+- Algoritmo OBB/AABB para intersección trazado–edificio en CAD
+- UI de diálogo de abertura con dimensiones y altura editables
+
+**Cambios de contrato:** nueva entidad `abertura` en workspace (opcional).
+
+**Conservación:** archivos sin aberturas importan sin error.
+
+**Prueba de aceptación:**
+1. Test unitario: intersección OBB con pared → devuelve punto, dimensiones, vector normal.
+2. Navegador: tramo que atraviesa pared → alerta visible → confirmar abertura → registrada en export.
+
+---
+
+## 10. Decisiones pendientes y datos faltantes
+
+### 10.1 Decisiones del motor que afectan el CAD
 
 | ID | Qué decide | Efecto si no se decide |
 |---|---|---|
-| D-13 (confirmación usuario) | P1/P2 equivalentes en rectos con igual ancho/ala | Condición visible en resultado; no bloquea; nuestra validación local ya implementa |
-| D-21 (modelo PE) | Qué cable PE usar | `MODELO_A_CONFIRMAR` en resultado; Superastic Flex es el único candidato con verde/amarillo |
-| P-D19c | Hueco PE–potencia | Condición permanente en resultados hasta que se defina |
-| D-03 | Cables separados distintos diámetros | Motor devuelve PENDIENTE_DECISION para ese par; bloquea ese circuito |
-| D-11 | Mando/señal en trazado | `tipo_circuito` solo acepta `'potencia'`; bloquea todo el trazado si se declara otro |
-| D-23 | Reglas de colocación de soportes | `SIN_REGLA_ACREDITADA` en resultado; no bloquea |
-| D-29 | Modelo de reparto de cargas | Capacidad del soporte `NO_VERIFICABLE_SIN_MODELO_DE_REPARTO` |
+| D-13 (confirmación usuario) | P1/P2 equivalentes en rectos con igual ancho/ala | Condición visible en resultado; CAD ya implementa |
+| D-21 (modelo PE) | Qué cable PE usar | MODELO_A_CONFIRMAR en resultado |
+| P-D19c | Hueco PE–potencia | Condición permanente en resultados |
+| D-03 | Cables separados distintos diámetros | Motor devuelve PENDIENTE_DECISION para ese par |
+| D-11 | Mando/señal en trazado | Bloquea E-CTL fase 2 |
+| D-23 | Reglas de colocación de soportes | SIN_REGLA_ACREDITADA |
+| D-29 | Modelo de reparto de cargas | NO_VERIFICABLE_SIN_MODELO_DE_REPARTO |
 
-### 9.2 Datos faltantes que bloquean verificaciones específicas
+### 10.2 Datos faltantes que bloquean verificaciones específicas
 
 | Dato | Bloqueo concreto |
 |---|---|
-| F10: radio de curvatura de cables | Toda verificación de curvatura → NO_VERIFICABLE |
-| F12: dimensiones físicas de piezas especiales | Encaje geométrico real de T, curvas, reducciones |
+| F10: radio de curvatura de cables | Verificación de curvaturas → NO_VERIFICABLE |
+| F12: dimensiones físicas de piezas especiales | E-RED bloqueada; encaje real de T y curvas |
 | F13: masa de tapas | Vanos con tapa → NO_VERIFICABLE_CARGA_TAPA_DESCONOCIDA |
-| F14: luz máxima, voladizos, uniones | Colocación de soportes → SIN_REGLA_ACREDITADA |
-| F15: capacidad de soportes y modelo de reparto | NO_VERIFICABLE_SIN_MODELO_DE_REPARTO |
-| F17/F18: continuidad declarada de uniones | Equipotencialidad condicionada |
+| F14: luz máxima, voladizos, uniones | SIN_REGLA_ACREDITADA para soportes |
+| F15: capacidad de soportes | NO_VERIFICABLE_SIN_MODELO_DE_REPARTO |
+| F17/F18: continuidad de uniones | Equipotencialidad condicionada |
 | CTA perforada, G115, Z115 | No verificable para esas familias (F1–F9) |
 
-### 9.3 Riesgos de arquitectura
+### 10.3 Riesgos de arquitectura
 
 **R1 — Divergencia CAD–motor en compatibilidad**
-Riesgo: `checkDirectCompatibility` local acepta una conexión que Python rechaza (o viceversa). Mitigación: test de integración en `routing.integration.test.ts`; toda divergencia detectada actualiza la función local.
+Riesgo: `checkDirectCompatibility` local acepta una conexión que Python rechaza (o viceversa).
+Mitigación: `routing.integration.test.ts`; toda divergencia detectada actualiza la función local.
 
 **R2 — Contrato motor sin mando/señal**
-Riesgo: escenario de aceptación paso 1 incluye circuitos de control hacia sensores y actuadores. `tipo_circuito: 'potencia'` es el único valor aceptado; D-11 (mando/señal) está pendiente. Mitigación: separar físicamente las bandejas de potencia vs. control/señal y registrarlas como trazados separados hasta que el motor soporte D-11. No falsificar el tipo.
+Riesgo: escenario incluye circuitos de control hacia sensores y actuadores.
+Mitigación: modelar como `Connection.medium:'control'` en ProjectDataV2 (no en `circuitos[]`). No falsificar `tipo_circuito: 'potencia'`.
 
-**R3 — Mangueras neumáticas fuera del contrato**
-Riesgo: escenario de aceptación paso 6 (neumática hacia actuador) requiere mangueras como entidad separada del cable. El contrato `trazado/1` no tiene campo para mangueras; los circuitos solo aceptan `cable_id` de los datasets Prysmian. Mitigación: modelar recorrido neumático como metadato del workspace (`Connection` con `medium: 'pneumatic'` en el modelo v2 de equipos), no en la `EntradaTrazado`. La coexistencia neumática en bandeja no tiene cobertura de verificación en el motor actual.
+**R3 — Mangueras fuera del contrato**
+Riesgo: escenario incluye manguera neumática hacia actuador.
+Mitigación: `medium: 'pneumatic'` en `Connection` de ProjectDataV2. No incluir en `circuitos[]` hasta E-CTL fase 2.
 
 **R4 — Geometría de reducciones bloqueada**
-`longitud_comercial_mm: null` en los 126 productos de reducción → `geometryDocumented: false`. Inserción bloqueada en UI. No es un bug: es dato faltante real. No estimar longitudes sin fuente documental.
+`longitud_comercial_mm: null` en los 126 productos de reducción. No estimar longitudes sin F12. E-RED bloqueada explícitamente hasta disponer del dato.
 
-**R5 — Interferencia con paredes (paso 5 del escenario)**
-Detección de colisiones entre el trazado y la geometría del edificio requiere:
-1. Que el edificio tenga geometría 3D con caras y normales (hoy solo tiene dimensiones escalares en el modelo v2).
-2. Un algoritmo de intersección OBB/AABB en el CAD.
-3. Una UI para proponer abertura con holgura.
-Ninguno de los tres está implementado ni en el plan de entregas actual. Es capacidad nueva que requiere un plan de entrega propio antes de E5.
+**R5 — Interferencia con paredes sin geometría 3D**
+Detección requiere edificio con caras y normales (hoy solo escalares), algoritmo OBB/AABB, y UI de abertura. Capacidad nueva; plan propio en E-COL.
 
 **R6 — Deshacer**
-No existe historial de TrayInput. Cancelar antes del commit es sin costo, pero una vez confirmado no hay deshacer. E3 agrega historial básico (10 pasos). Hasta entonces, la única mitigación es el export previo al edit.
+Cancelar antes del commit: sin costo. E3 agrega historial de 10 pasos. Hasta entonces: export previo al edit como única mitigación.
 
-**R7 — Multi-trazado y sentido inverso (paso 6 del escenario)**
-Reutilizar bandejas en sentido inverso (un circuito que va de D hacia A usando las mismas piezas) se modela como un circuito con `recorrido` en orden inverso. El motor acepta esto. No hay restricción de dirección en los recorridos. Sin embargo, el CAD actualmente no tiene UI para agregar circuitos a un trazado existente (pendiente E5).
-
-### 9.4 Capacidades del escenario de aceptación — cobertura actual
-
-| Paso | Capacidad requerida | Estado |
-|---|---|---|
-| 1. Principal con rectos | Rectos, `tipo: 'potencia'`, 3000 mm comercial | **Disponible** |
-| 1. Curvas planas | Inserción de curva H | **Pendiente (E2)** |
-| 1. Curvas ascendentes/descendentes | Curva vertical | **Pendiente (E2+)** |
-| 1. Orientación de sección editable | `eje_vertical` en UI | **Pendiente** |
-| 2. T 300/300/300 | Derivación intermedia | **Pendiente (E3)** |
-| 2. Reducción 300/150 | UI existe; geometría bloqueada (F12/F14) | **Incompleto** |
-| 3. Salida de tablero y bajada al motor | Final de tramo, metraje | **Pendiente** |
-| 4. Alambre inox vía excepción | Elección excepcional | **Pendiente (E4)** |
-| 5. Atravesar pared — detección | Colisión CAD–edificio | **No planificado (R5)** |
-| 6. Circuito neumático | Mangueras en contrato | **No planificado (R3)** |
-| 7. PE con el trazado | UI de PE | **Pendiente (E5)** |
-| 8. Soportes editables | UI de soportes | **Pendiente (E5)** |
+**R7 — Recorrido inverso sin UI**
+El motor acepta `recorrido[]` en orden inverso. La UI de circuitos (E5) debe permitir definir el orden explícitamente, no inferirlo.
