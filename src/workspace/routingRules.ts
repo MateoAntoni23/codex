@@ -104,6 +104,12 @@ export interface DirectCompatResult {
   compatibilidadId: string | null | undefined;
   requiredUnion: UnionRequirement[];
   evidence: string; // estado_evidencia or empty
+  /**
+   * Port on the new piece to use in the connection.
+   * Usually 'P1'; may be 'P2' when the catalog documents the reversed orientation
+   * and D-13 (straight-piece equivalence) does not apply.
+   */
+  newPiecePort: string;
 }
 
 /**
@@ -158,6 +164,20 @@ function findCompatEntryPortLevel(
   return null;
 }
 
+/**
+ * D-13: straight pieces with equal ancho, ala, and tipo_pieza='recta' have
+ * equivalent extremes — the motor accepts any P1/P2 combination between them.
+ */
+function isD13Equivalent(a: Product, b: Product): boolean {
+  if (a.tipo_pieza !== 'recta' || b.tipo_pieza !== 'recta') return false;
+  if (a.ancho_nominal_mm == null || a.ancho_nominal_mm !== b.ancho_nominal_mm) return false;
+  const alaA = (a as Record<string, unknown>).ala_nominal_mm as number | null | undefined;
+  const alaB = (b as Record<string, unknown>).ala_nominal_mm as number | null | undefined;
+  // Both must be equal (including both absent)
+  if (alaA !== alaB) return false;
+  return true;
+}
+
 function getUnionComponents(
   componentesUnion: CatalogUnionComponent[],
   compatibilidadId: string,
@@ -190,79 +210,118 @@ export function checkDirectCompatibility(
       compatibilidadId: undefined,
       requiredUnion: [],
       evidence: '',
+      newPiecePort: newPortName,
     };
   }
 
-  const entry = findCompatEntryPortLevel(compatibilidades, existingProduct.producto_id, existingPortName, newProduct.producto_id, newPortName);
+  // Try exact port match first
+  const entry = findCompatEntryPortLevel(
+    compatibilidades,
+    existingProduct.producto_id, existingPortName,
+    newProduct.producto_id, newPortName,
+  );
 
-  if (!entry) {
-    // No direct entry found — check if there's a 'no compatible' entry
-    const noComp = compatibilidades.find(
-      (c) =>
-        c.estado_compatibilidad === 'no compatible' &&
-        (
-          (c.producto_a_id === existingProduct.producto_id && c.producto_b_id === newProduct.producto_id) ||
-          (c.producto_a_id === newProduct.producto_id && c.producto_b_id === existingProduct.producto_id)
-        ),
-    );
-    if (noComp) {
-      return {
-        ok: false,
-        needsReduction: false,
-        reason: `Incompatibles según catálogo (${noComp.compatibilidad_id}).`,
-        compatibilidadId: noComp.compatibilidad_id,
-        requiredUnion: [],
-        evidence: noComp.estado_evidencia ?? '',
-      };
-    }
+  if (entry) {
+    const union = getUnionComponents(componentesUnion, entry.compatibilidad_id);
+    return {
+      ok: true,
+      needsReduction: false,
+      reason: `Compatible según catálogo (${entry.compatibilidad_id}).`,
+      compatibilidadId: entry.compatibilidad_id,
+      requiredUnion: union,
+      evidence: entry.estado_evidencia ?? '',
+      newPiecePort: newPortName,
+    };
+  }
 
-    // No entry at all — might need reduction or simply not documented
-    const famA = (existingProduct as Record<string, unknown>).familia_id as string | undefined;
-    const famB = (newProduct as Record<string, unknown>).familia_id as string | undefined;
-    const wA = existingProduct.ancho_nominal_mm;
-    const wB = newProduct.ancho_nominal_mm;
+  // Try the other port of the new piece (P1↔P2 or P2↔P1)
+  const altNewPortName = newPortName === 'P1' ? 'P2' : 'P1';
+  const altEntry = findCompatEntryPortLevel(
+    compatibilidades,
+    existingProduct.producto_id, existingPortName,
+    newProduct.producto_id, altNewPortName,
+  );
 
-    if (famA && famB && famA !== famB) {
-      return {
-        ok: false,
-        needsReduction: false,
-        reason: `Sin evidencia de compatibilidad en el catálogo. Familias distintas (${famA} ≠ ${famB}).`,
-        compatibilidadId: null,
-        requiredUnion: [],
-        evidence: '',
-      };
-    }
+  if (altEntry) {
+    // D-13: straight pieces with equal dimensions have equivalent extremes.
+    // The motor accepts any P1/P2 combo → keep the originally requested port.
+    // Without D-13 (accessories, different sizes), the catalog orientation is authoritative.
+    const d13 = isD13Equivalent(existingProduct, newProduct);
+    const resolvedPort = d13 ? newPortName : altNewPortName;
+    const union = getUnionComponents(componentesUnion, altEntry.compatibilidad_id);
+    const reason = d13
+      ? `Compatible según catálogo (${altEntry.compatibilidad_id}) — equivalencia D-13.`
+      : `Compatible según catálogo (${altEntry.compatibilidad_id}) — conectar por puerto ${altNewPortName}.`;
+    return {
+      ok: true,
+      needsReduction: false,
+      reason,
+      compatibilidadId: altEntry.compatibilidad_id,
+      requiredUnion: union,
+      evidence: altEntry.estado_evidencia ?? '',
+      newPiecePort: resolvedPort,
+    };
+  }
 
-    if (wA != null && wB != null && wA !== wB) {
-      return {
-        ok: false,
-        needsReduction: true,
-        reason: `Sin conexión directa en el catálogo. Anchos distintos (${wA} ≠ ${wB} mm) — puede requerir reducción.`,
-        compatibilidadId: null,
-        requiredUnion: [],
-        evidence: '',
-      };
-    }
-
+  // No compatible entry found — check for explicit 'no compatible' entry
+  const noComp = compatibilidades.find(
+    (c) =>
+      c.estado_compatibilidad === 'no compatible' &&
+      (
+        (c.producto_a_id === existingProduct.producto_id && c.producto_b_id === newProduct.producto_id) ||
+        (c.producto_a_id === newProduct.producto_id && c.producto_b_id === existingProduct.producto_id)
+      ),
+  );
+  if (noComp) {
     return {
       ok: false,
       needsReduction: false,
-      reason: `Sin evidencia de compatibilidad directa en el catálogo para estos productos.`,
-      compatibilidadId: null,
+      reason: `Incompatibles según catálogo (${noComp.compatibilidad_id}).`,
+      compatibilidadId: noComp.compatibilidad_id,
       requiredUnion: [],
-      evidence: '',
+      evidence: noComp.estado_evidencia ?? '',
+      newPiecePort: newPortName,
     };
   }
 
-  const union = getUnionComponents(componentesUnion, entry.compatibilidad_id);
+  // No entry at all — might need reduction or simply not documented
+  const famA = (existingProduct as Record<string, unknown>).familia_id as string | undefined;
+  const famB = (newProduct as Record<string, unknown>).familia_id as string | undefined;
+  const wA = existingProduct.ancho_nominal_mm;
+  const wB = newProduct.ancho_nominal_mm;
+
+  if (famA && famB && famA !== famB) {
+    return {
+      ok: false,
+      needsReduction: false,
+      reason: `Sin evidencia de compatibilidad en el catálogo. Familias distintas (${famA} ≠ ${famB}).`,
+      compatibilidadId: null,
+      requiredUnion: [],
+      evidence: '',
+      newPiecePort: newPortName,
+    };
+  }
+
+  if (wA != null && wB != null && wA !== wB) {
+    return {
+      ok: false,
+      needsReduction: true,
+      reason: `Sin conexión directa en el catálogo. Anchos distintos (${wA} ≠ ${wB} mm) — puede requerir reducción.`,
+      compatibilidadId: null,
+      requiredUnion: [],
+      evidence: '',
+      newPiecePort: newPortName,
+    };
+  }
 
   return {
-    ok: true,
+    ok: false,
     needsReduction: false,
-    reason: 'Compatible según catálogo.',
-    compatibilidadId: entry.compatibilidad_id,
-    requiredUnion: union,
-    evidence: entry.estado_evidencia ?? '',
+    reason: `Sin evidencia de compatibilidad directa en el catálogo para estos productos.`,
+    compatibilidadId: null,
+    requiredUnion: [],
+    evidence: '',
+    newPiecePort: newPortName,
   };
 }
 

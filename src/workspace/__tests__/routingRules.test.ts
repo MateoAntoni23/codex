@@ -269,6 +269,74 @@ describe('checkDirectCompatibility with catalog data', () => {
     expect(r.ok).toBe(true);
     expect(r.compatibilidadId).toBe('CMP-001');
   });
+
+  it('exact match returns newPiecePort matching the requested port', () => {
+    const ctx = { compatibilidades: [compatDirecta], componentesUnion: [] };
+    const r = checkDirectCompatibility(ctx, prodA, 'P1', prodB, 'P1');
+    expect(r.ok).toBe(true);
+    expect(r.newPiecePort).toBe('P1');
+  });
+});
+
+// ─── checkDirectCompatibility — D-13 and alternate-port resolution ────────────
+
+describe('checkDirectCompatibility — D-13 and alternate-port resolution', () => {
+  // Same product connects to itself; catalog only documents P1↔P2 (not P1↔P1)
+  const sameProd = makeProduct('TRES-300-Z', 300, 'FAM-Z', 'recta');
+  // Simulate CMP-01535: SAM_TRES-300-065-18-Z-P1 ↔ SAM_TRES-300-065-18-Z-P2
+  const cmpP1P2 = makeCompat('CMP-01535', 'TRES-300-Z', 'TRES-300-Z-P1', 'TRES-300-Z', 'TRES-300-Z-P2');
+
+  // Different-width products for non-D13 case
+  const prodNarrow = makeProduct('TRES-150-Z', 150, 'FAM-Z', 'recta');
+  const cmpNarrow = makeCompat('CMP-AUX', 'TRES-300-Z', 'TRES-300-Z-P1', 'TRES-150-Z', 'TRES-150-Z-P2');
+
+  // Accessory (not recta) for non-D13 case
+  const accessory = makeProduct('ACC-X', 300, 'FAM-Z', 'accesorio');
+  const cmpAcc = makeCompat('CMP-ACC', 'TRES-300-Z', 'TRES-300-Z-P1', 'ACC-X', 'ACC-X-P2');
+
+  it('D-13: same-product P1↔P1 accepted via P1↔P2 catalog entry, newPiecePort stays P1', () => {
+    const ctx = { compatibilidades: [cmpP1P2], componentesUnion: [] };
+    const r = checkDirectCompatibility(ctx, sameProd, 'P1', sameProd, 'P1');
+    expect(r.ok).toBe(true);
+    expect(r.compatibilidadId).toBe('CMP-01535');
+    expect(r.newPiecePort).toBe('P1'); // D-13 keeps original port
+    expect(r.reason).toMatch(/D-13/i);
+  });
+
+  it('D-13: from P2 of same product, P2↔P1 found directly (exact match), newPiecePort=P1', () => {
+    // existing.P2 → new.P1: findCompatEntryPortLevel checks (P2 portId, P1 portId) in both orientations
+    // CMP-01535 has P1↔P2; reversed check: portA=P2 portB=P1 → pairFwd=true → (P2===P1?)no; (P2===P2 && P1===P1)? yes for reversed
+    const ctx = { compatibilidades: [cmpP1P2], componentesUnion: [] };
+    const r = checkDirectCompatibility(ctx, sameProd, 'P2', sameProd, 'P1');
+    expect(r.ok).toBe(true);
+    expect(r.compatibilidadId).toBe('CMP-01535');
+    expect(r.newPiecePort).toBe('P1'); // exact match (reverse orientation of P1↔P2)
+  });
+
+  it('non-D-13: different widths → catalog P1↔P2 → newPiecePort=P2', () => {
+    // TRES-300-Z.P1 → TRES-150-Z.P1: catalog only has P1↔P2 and D-13 does not apply (different widths)
+    const ctx = { compatibilidades: [cmpNarrow], componentesUnion: [] };
+    const r = checkDirectCompatibility(ctx, sameProd, 'P1', prodNarrow, 'P1');
+    expect(r.ok).toBe(true);
+    expect(r.compatibilidadId).toBe('CMP-AUX');
+    expect(r.newPiecePort).toBe('P2'); // must use documented port
+    expect(r.reason).not.toMatch(/D-13/i);
+  });
+
+  it('non-D-13: accessory → catalog P1↔P2 → newPiecePort=P2', () => {
+    const ctx = { compatibilidades: [cmpAcc], componentesUnion: [] };
+    const r = checkDirectCompatibility(ctx, sameProd, 'P1', accessory, 'P1');
+    expect(r.ok).toBe(true);
+    expect(r.newPiecePort).toBe('P2');
+    expect(r.reason).not.toMatch(/D-13/i);
+  });
+
+  it('no match even after alt-port attempt → ok=false', () => {
+    const ctx = { compatibilidades: [cmpP1P2], componentesUnion: [] };
+    // Asking P2(existing)↔P1(new) for sameProd↔prodNarrow — no entry
+    const r = checkDirectCompatibility(ctx, sameProd, 'P1', prodNarrow, 'P1');
+    expect(r.ok).toBe(false);
+  });
 });
 
 // ─── findReductionCandidates (legacy — empty catalog) ────────────────────────

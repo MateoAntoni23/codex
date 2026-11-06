@@ -495,6 +495,7 @@ function StepConfirmingReduction({ onConfirm, onBack }: {
 // ─── Main panel ───────────────────────────────────────────────────────────────
 
 export function RoutingPanel() {
+  const context          = useTrayStore((s) => s.context);
   const entrada          = useTrayStore((s) => s.entrada);
   const trayEdit         = useTrayStore((s) => s.edit);
   const markDirty        = useWorkspaceStore((s) => s.markDirty);
@@ -537,6 +538,24 @@ export function RoutingPanel() {
     const effProductId = selectedProductId;
     if (!effProductId) { setCommitError('Sin producto seleccionado.'); return; }
 
+    // Re-verify compatibility at commit time (single source of truth)
+    const existingPiece = entrada.piezas.find((p) => p.instancia_id === startPort.pieceId);
+    const existingProductForComp = context?.productos.find((p) => p.producto_id === existingPiece?.producto_id);
+    const selectedProductForComp = context?.productos.find((p) => p.producto_id === effProductId);
+    if (!existingProductForComp || !selectedProductForComp) {
+      setCommitError('Producto no encontrado en catálogo. Recargá el contexto.');
+      return;
+    }
+    const compat = checkDirectCompatibility(
+      { compatibilidades: context?.compatibilidades ?? [], componentesUnion: context?.componentesUnion ?? [] },
+      existingProductForComp,
+      startPort.portName,
+      selectedProductForComp,
+      'P1',
+    );
+    if (!compat.ok) { setCommitError(compat.reason); return; }
+    const newPiecePort = compat.newPiecePort;
+
     if (previewLengthMm <= 0) { setCommitError('La longitud debe ser mayor que 0.'); return; }
 
     try {
@@ -547,13 +566,16 @@ export function RoutingPanel() {
       const newId = getNewPieceId(pieceIds);
       const startPos = startPort.pos;
       const endPos = computeEndpoint(startPos, effDir, previewLengthMm);
-      const newPiece = buildSegmentPiece(newId, effProductId, startPos, endPos);
+      // If newPiecePort is 'P2', the piece is built reversed so P2 sits at the connection point
+      const newPiece = newPiecePort === 'P2'
+        ? buildSegmentPiece(newId, effProductId, endPos, startPos)
+        : buildSegmentPiece(newId, effProductId, startPos, endPos);
 
       const connId = generateConnectionId(connIds);
       const conn = {
         conexion_id: connId,
         a: [startPort.pieceId, startPort.portName] as [string, string],
-        b: [newId, 'P1'] as [string, string],
+        b: [newId, newPiecePort] as [string, string],
       };
 
       next.piezas.push(newPiece);
