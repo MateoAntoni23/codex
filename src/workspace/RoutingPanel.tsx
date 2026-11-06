@@ -2,11 +2,14 @@
  * RoutingPanel — right-panel UI for interactive tray routing.
  *
  * Step 1 — selectingPort:   instructions; user clicks a port in the scene.
- * Step 2 — configuringSegment: pick product, length, snap; compatibility check.
+ * Step 2 — configuringSegment: pick product, length, snap; compatibility check;
+ *           PE extension proposal if applicable.
  * Step 3 — confirmingReduction: pick reduction candidate, set reduction length.
  *
- * Atomic commit: ALL new pieces + connections written to tray store in one edit() call.
- * Cancel at any step leaves the tray unchanged.
+ * Atomic commit: ALL new pieces + connections (+ optional PE extension) written
+ * to tray store in one edit() call. Cancel at any step leaves the tray unchanged.
+ *
+ * Undo/redo: exposed in the panel header; both invalidate motor results.
  */
 import { useMemo, useState } from 'react';
 import { useTrayStore } from '../tray/store';
@@ -25,6 +28,60 @@ import {
   generateConnectionId,
 } from './routingRules';
 import { buildSegmentPiece, generateSegmentId } from './addTraySegment';
+import { planAddSegment, applyOperation, type PeExtensionProposal } from './workspaceOperation';
+
+// ─── PE extension proposal widget ────────────────────────────────────────────
+
+function PeExtensionWidget({
+  proposal,
+  decision,
+  onChange,
+}: {
+  proposal: PeExtensionProposal;
+  decision: 'accept' | 'reject';
+  onChange: (d: 'accept' | 'reject') => void;
+}) {
+  const lastPiece = proposal.currentRecorrido[proposal.currentRecorrido.length - 1] ?? '—';
+  return (
+    <div style={{ marginBottom: 8, padding: '6px 8px', borderRadius: 3, background: '#1a2235', border: '1px solid #2a3a55', fontSize: 10 }}>
+      <div style={{ color: '#99aadd', marginBottom: 4, fontWeight: 600 }}>Recorrido PE</div>
+      {proposal.ambiguous && (
+        <div style={{ color: '#ddaa44', marginBottom: 4, borderLeft: '2px solid #aa8822', paddingLeft: 6 }}>
+          {proposal.matchingIndices.length} conductores terminan en este tramo — se extiende el primero ({`PE-${proposal.conductorIdx + 1}`}). Si querés extender otro, confirmá y editá manualmente.
+        </div>
+      )}
+      <div style={{ color: '#8899bb', marginBottom: 6, lineHeight: 1.5 }}>
+        Termina en <span style={{ color: '#ffaa44', fontFamily: 'monospace' }}>{lastPiece}</span>
+        {' '}({proposal.currentRecorrido.length} pieza{proposal.currentRecorrido.length !== 1 ? 's' : ''}).
+        ¿Extender para incluir el nuevo tramo?
+      </div>
+      <div style={{ display: 'flex', gap: 5 }}>
+        <button
+          style={{
+            flex: 1, padding: '3px 0', fontSize: 11, borderRadius: 3, cursor: 'pointer',
+            background: decision === 'accept' ? '#1f3322' : '#222233',
+            color: decision === 'accept' ? '#77cc77' : '#556677',
+            border: `1px solid ${decision === 'accept' ? '#336644' : '#334455'}`,
+          }}
+          onClick={() => onChange('accept')}
+        >
+          ✓ Extender
+        </button>
+        <button
+          style={{
+            flex: 1, padding: '3px 0', fontSize: 11, borderRadius: 3, cursor: 'pointer',
+            background: decision === 'reject' ? '#2a1a1a' : '#222233',
+            color: decision === 'reject' ? '#ff9955' : '#556677',
+            border: `1px solid ${decision === 'reject' ? '#664444' : '#334455'}`,
+          }}
+          onClick={() => onChange('reject')}
+        >
+          ✗ No extender
+        </button>
+      </div>
+    </div>
+  );
+}
 
 // ─── Step 1: selecting port ───────────────────────────────────────────────────
 
@@ -52,7 +109,7 @@ function StepSelectingPort() {
 // ─── Step 2: configuring segment ─────────────────────────────────────────────
 
 function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
-  onConfirmDirect: () => void;
+  onConfirmDirect: (peDecision: 'accept' | 'reject') => void;
   onCancel: () => void;
 }) {
   const context           = useTrayStore((s) => s.context);
@@ -66,6 +123,7 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
   const toggleSnap        = useRoutingStore((s) => s.toggleSnap);
 
   const [error, setError] = useState<string | null>(null);
+  const [peDecision, setPeDecision] = useState<'accept' | 'reject'>('accept');
 
   // Existing piece / product at the selected port
   const existingPiece = useMemo(
@@ -144,6 +202,17 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
     return angleBetweenDirs(startPort.dir, snapped).toFixed(1);
   }, [startPort]);
 
+  // Plan the pending operation for PE proposal preview (only when all inputs valid)
+  const pendingOp = useMemo(() => {
+    if (!compat?.ok || !selectedProduct || !entrada || !startPort || !effectiveDir) return null;
+    if (previewLengthMm <= 0) return null;
+    try {
+      return planAddSegment(entrada, startPort, selectedProduct, compat, previewLengthMm, effectiveDir);
+    } catch {
+      return null;
+    }
+  }, [compat, selectedProduct, entrada, startPort, effectiveDir, previewLengthMm]);
+
   const handleConfirm = () => {
     setError(null);
     if (!selectedProduct) { setError('Seleccioná un producto compatible.'); return; }
@@ -152,7 +221,7 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
       setError('La dirección del puerto no coincide con el eje más cercano — desactivá el ajuste al eje para continuar.');
       return;
     }
-    onConfirmDirect();
+    onConfirmDirect(peDecision);
   };
 
   if (!startPort) return null;
@@ -247,6 +316,15 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
             </div>
           )}
         </div>
+      )}
+
+      {/* PE extension proposal (only when operation is fully planned) */}
+      {pendingOp?.peExtension && (
+        <PeExtensionWidget
+          proposal={pendingOp.peExtension}
+          decision={peDecision}
+          onChange={setPeDecision}
+        />
       )}
 
       {/* Length input */}
@@ -351,7 +429,6 @@ function StepConfirmingReduction({ onConfirm, onBack }: {
     );
   }, [context, existingProduct, newProduct]);
 
-  // No fallback: only use explicitly set reductionProductId
   const effectiveReductionId = reductionProductId || '';
 
   const selectedCandidate = useMemo(
@@ -420,7 +497,6 @@ function StepConfirmingReduction({ onConfirm, onBack }: {
             )}
           </div>
 
-          {/* Port orientation info */}
           {selectedCandidate && (
             <div style={{ marginBottom: 8, padding: '5px 8px', borderRadius: 3, fontSize: 10, background: '#1a2235', color: '#8899bb', lineHeight: 1.5 }}>
               Puerto {selectedCandidate.reductionPortToExisting} conecta al tramo existente ·
@@ -498,6 +574,10 @@ export function RoutingPanel() {
   const context          = useTrayStore((s) => s.context);
   const entrada          = useTrayStore((s) => s.entrada);
   const trayEdit         = useTrayStore((s) => s.edit);
+  const trayUndo         = useTrayStore((s) => s.undo);
+  const trayRedo         = useTrayStore((s) => s.redo);
+  const history          = useTrayStore((s) => s.history);
+  const future           = useTrayStore((s) => s.future);
   const markDirty        = useWorkspaceStore((s) => s.markDirty);
   const selectTray       = useWorkspaceStore((s) => s.selectTray);
 
@@ -519,69 +599,47 @@ export function RoutingPanel() {
     return snapToAxis ? snapDirectionToAxis(startPort.dir) : startPort.dir;
   };
 
-  const getNewPieceId = (existingIds: Set<string>) => generateSegmentId(existingIds);
-
-  const commitDirect = () => {
+  /**
+   * Direct commit: validates, plans the operation (planAddSegment), applies it
+   * (applyOperation) atomically, and writes the result via a single trayEdit().
+   * The peDecision parameter comes from the user's explicit choice in step 2.
+   */
+  const commitDirect = (peDecision: 'accept' | 'reject') => {
     setCommitError(null);
     if (!entrada || !startPort) return;
 
     // Pre-commit validation
     const portCheck = verifyStartPortValid(entrada.piezas, entrada.conexiones, startPort);
-    if (!portCheck.valid) {
-      setCommitError(portCheck.reason);
-      return;
-    }
+    if (!portCheck.valid) { setCommitError(portCheck.reason); return; }
 
     const effDir = getEffectiveDir();
     if (!effDir) return;
 
-    const effProductId = selectedProductId;
-    if (!effProductId) { setCommitError('Sin producto seleccionado.'); return; }
+    if (!selectedProductId) { setCommitError('Sin producto seleccionado.'); return; }
+    if (previewLengthMm <= 0) { setCommitError('La longitud debe ser mayor que 0.'); return; }
 
     // Re-verify compatibility at commit time (single source of truth)
     const existingPiece = entrada.piezas.find((p) => p.instancia_id === startPort.pieceId);
     const existingProductForComp = context?.productos.find((p) => p.producto_id === existingPiece?.producto_id);
-    const selectedProductForComp = context?.productos.find((p) => p.producto_id === effProductId);
+    const selectedProductForComp = context?.productos.find((p) => p.producto_id === selectedProductId);
     if (!existingProductForComp || !selectedProductForComp) {
       setCommitError('Producto no encontrado en catálogo. Recargá el contexto.');
       return;
     }
     const compat = checkDirectCompatibility(
       { compatibilidades: context?.compatibilidades ?? [], componentesUnion: context?.componentesUnion ?? [] },
-      existingProductForComp,
-      startPort.portName,
-      selectedProductForComp,
-      'P1',
+      existingProductForComp, startPort.portName, selectedProductForComp, 'P1',
     );
     if (!compat.ok) { setCommitError(compat.reason); return; }
-    const newPiecePort = compat.newPiecePort;
-
-    if (previewLengthMm <= 0) { setCommitError('La longitud debe ser mayor que 0.'); return; }
 
     try {
-      const next = structuredClone(entrada);
-      const pieceIds = new Set(next.piezas.map((p) => p.instancia_id));
-      const connIds = new Set(next.conexiones.map((c) => c.conexion_id));
-
-      const newId = getNewPieceId(pieceIds);
-      const startPos = startPort.pos;
-      const endPos = computeEndpoint(startPos, effDir, previewLengthMm);
-      // If newPiecePort is 'P2', the piece is built reversed so P2 sits at the connection point
-      const newPiece = newPiecePort === 'P2'
-        ? buildSegmentPiece(newId, effProductId, endPos, startPos)
-        : buildSegmentPiece(newId, effProductId, startPos, endPos);
-
-      const connId = generateConnectionId(connIds);
-      const conn = {
-        conexion_id: connId,
-        a: [startPort.pieceId, startPort.portName] as [string, string],
-        b: [newId, newPiecePort] as [string, string],
-      };
-
-      next.piezas.push(newPiece);
-      next.conexiones.push(conn);
-      trayEdit(next);
-      selectTray(newId);
+      // Plan the operation (pure, no side effects)
+      const op = planAddSegment(entrada, startPort, selectedProductForComp, compat, previewLengthMm, effDir);
+      // Apply all-or-nothing
+      const nextEntrada = applyOperation(entrada, op, peDecision);
+      // Single atomic write to store (pushes to history, clears future)
+      trayEdit(nextEntrada);
+      selectTray(op.newPiece.instancia_id);
       markDirty();
       deactivate();
     } catch (e) {
@@ -593,40 +651,23 @@ export function RoutingPanel() {
     setCommitError(null);
     if (!entrada || !startPort) return;
 
-    // Pre-commit validation
     const portCheck = verifyStartPortValid(entrada.piezas, entrada.conexiones, startPort);
-    if (!portCheck.valid) {
-      setCommitError(portCheck.reason);
-      return;
-    }
+    if (!portCheck.valid) { setCommitError(portCheck.reason); return; }
 
     const effDir = getEffectiveDir();
     if (!effDir) return;
 
     const effProductId = selectedProductId;
-
-    // Strict: no fallback to first reduction in catalog
-    if (!reductionProductId) {
-      setCommitError('Seleccioná una reducción antes de confirmar.');
-      return;
-    }
-    const effReductionId = reductionProductId;
-
-    if (!effProductId) {
-      setCommitError('Seleccioná producto y reducción.');
-      return;
-    }
-    if (reductionLengthMm <= 0 || previewLengthMm <= 0) {
-      setCommitError('Las longitudes deben ser mayores que 0.');
-      return;
-    }
+    if (!reductionProductId) { setCommitError('Seleccioná una reducción antes de confirmar.'); return; }
+    if (!effProductId) { setCommitError('Seleccioná producto y reducción.'); return; }
+    if (reductionLengthMm <= 0 || previewLengthMm <= 0) { setCommitError('Las longitudes deben ser mayores que 0.'); return; }
 
     try {
       const next = structuredClone(entrada);
       const pieceIds = new Set(next.piezas.map((p) => p.instancia_id));
-      const connIds = new Set(next.conexiones.map((c) => c.conexion_id));
+      const connIds  = new Set(next.conexiones.map((c) => c.conexion_id));
 
-      const redId = getNewPieceId(pieceIds);
+      const redId = generateSegmentId(pieceIds);
       pieceIds.add(redId);
 
       const existingPortPos = startPort.pos;
@@ -636,37 +677,24 @@ export function RoutingPanel() {
       let conn1b: [string, string];
 
       if (reductionPortToExisting === 'P2') {
-        // P2 connects to existing, P1 is at redEnd
-        redPiece = buildSegmentPiece(redId, effReductionId, redEnd, existingPortPos);
+        redPiece = buildSegmentPiece(redId, reductionProductId, redEnd, existingPortPos);
         conn1b = [redId, 'P2'];
       } else {
-        // Default: P1 connects to existing, P2 is at redEnd
-        redPiece = buildSegmentPiece(redId, effReductionId, existingPortPos, redEnd);
+        redPiece = buildSegmentPiece(redId, reductionProductId, existingPortPos, redEnd);
         conn1b = [redId, 'P1'];
       }
 
-      // Continuation piece starts at redEnd (which is P2 of reduction when P1→existing)
-      const newId = getNewPieceId(pieceIds);
+      const newId  = generateSegmentId(pieceIds);
       const contEnd = computeEndpoint(redEnd, effDir, previewLengthMm);
       const newPiece = buildSegmentPiece(newId, effProductId, redEnd, contEnd);
 
-      // Connection 1: existing piece → reduction
       const conn1Id = generateConnectionId(connIds);
       connIds.add(conn1Id);
-      const conn1 = {
-        conexion_id: conn1Id,
-        a: [startPort.pieceId, startPort.portName] as [string, string],
-        b: conn1b,
-      };
+      const conn1 = { conexion_id: conn1Id, a: [startPort.pieceId, startPort.portName] as [string, string], b: conn1b };
 
-      // Connection 2: reduction → new piece
       const conn2Id = generateConnectionId(connIds);
       const redPortToNew = reductionPortToExisting === 'P2' ? 'P1' : 'P2';
-      const conn2 = {
-        conexion_id: conn2Id,
-        a: [redId, redPortToNew] as [string, string],
-        b: [newId, 'P1'] as [string, string],
-      };
+      const conn2 = { conexion_id: conn2Id, a: [redId, redPortToNew] as [string, string], b: [newId, 'P1'] as [string, string] };
 
       next.piezas.push(redPiece, newPiece);
       next.conexiones.push(conn1, conn2);
@@ -679,18 +707,36 @@ export function RoutingPanel() {
     }
   };
 
+  const canUndo = history.length > 0;
+  const canRedo = future.length > 0;
+
   return (
     <div className="inspector-panel" style={{ padding: 0 }}>
       <div className="inspector-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <span style={{ fontSize: 11, fontWeight: 600, color: '#ff9900' }}>
           ● Continuando trazado
         </span>
-        <button
-          style={{ fontSize: 10, padding: '2px 8px', background: '#3a2200', color: '#cc8844', border: '1px solid #664422', borderRadius: 2, cursor: 'pointer' }}
-          onClick={deactivate}
-        >
-          Cancelar
-        </button>
+        <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+          {/* Undo / Redo */}
+          <button
+            title={canUndo ? `Deshacer (${history.length})` : 'Sin operaciones para deshacer'}
+            style={{ fontSize: 11, padding: '1px 6px', background: canUndo ? '#2a3344' : '#1e2233', color: canUndo ? '#99aadd' : '#445566', border: '1px solid #334455', borderRadius: 2, cursor: canUndo ? 'pointer' : 'default' }}
+            onClick={() => { if (canUndo) { trayUndo(); markDirty(); } }}
+            disabled={!canUndo}
+          >↩</button>
+          <button
+            title={canRedo ? `Rehacer (${future.length})` : 'Sin operaciones para rehacer'}
+            style={{ fontSize: 11, padding: '1px 6px', background: canRedo ? '#2a3344' : '#1e2233', color: canRedo ? '#99aadd' : '#445566', border: '1px solid #334455', borderRadius: 2, cursor: canRedo ? 'pointer' : 'default' }}
+            onClick={() => { if (canRedo) { trayRedo(); markDirty(); } }}
+            disabled={!canRedo}
+          >↪</button>
+          <button
+            style={{ fontSize: 10, padding: '2px 8px', background: '#3a2200', color: '#cc8844', border: '1px solid #664422', borderRadius: 2, cursor: 'pointer' }}
+            onClick={deactivate}
+          >
+            Cancelar
+          </button>
+        </div>
       </div>
 
       <div style={{ padding: '4px 12px 2px', fontSize: 10, color: '#556677' }}>

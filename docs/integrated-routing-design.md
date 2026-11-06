@@ -1,6 +1,6 @@
 # Diseño integrado de trazado — codex
 
-**Rama base:** `feat/routing-smart-recommendation`
+**Rama base:** `feat/workspace-routing-operations`
 **Fecha:** 2026-11-05
 **Alcance:** arquitectura OBJETIVO — incluye capacidades pendientes de implementar
 
@@ -526,6 +526,50 @@ Regla: ningún resultado se muestra a partir de un estado `desactualizado` sin r
 ## 9. Entregas como recorridos utilizables
 
 Cada entrega agrega un recorrido completo que el usuario puede observar y validar desde el primer commit. Formato: **Resultado visible → Datos necesarios → Cambios de contrato → Conservación → Prueba de aceptación**.
+
+---
+
+### E0 — Operaciones integradas del workspace (ENTREGADO — rama feat/workspace-routing-operations)
+
+**Resultado visible:** continuar un recto desde P1 o P2 → previsualizar cambios → confirmar pieza + conexión en un solo commit → deshacer/rehacer la operación. Si hay un conductor PE cuyo recorrido termina en el extremo seleccionado, el panel propone "✓ Extender / ✗ No extender" antes de confirmar.
+
+**Decisiones de implementación:**
+
+| Decisión | Elección | Alternativa descartada |
+|---|---|---|
+| Historial de deshacer | `history: TrayInput[]` + `future: TrayInput[]` en `useTrayStore` | Store separado de historial |
+| Límite de historial | 20 pasos | Ilimitado (riesgo de memoria con trazados grandes) |
+| Invalidación al deshacer | `undo()`/`redo()` llaman a `manager.invalidar('trazado')` y `revision++` | Dejar resultado vigente (incoherente con estado anterior) |
+| Adaptador Python | `toMotorEntrada(trayInput)`: itera entradas y omite campos en `WS_ONLY` | Strip antes de serializar en `calculate()` directamente |
+| Campos WS-only actuales | `excepciones_conexion` (futuro E4); ninguno en E0 | — |
+| PE — detección de extensión | Solo el **último** elemento del `recorrido[]` se compara con `startPieceId` | Buscar en toda la secuencia (provocaría extensiones incorrectas) |
+| PE — conductor principal | El primero con match (conductorIdx); `ambiguous=true` si hay más de uno | Bloquear si es ambiguo (demasiado restrictivo para E0) |
+| PE — decisión por defecto | `'accept'` (extender); el usuario puede cambiar a `'reject'` | `'reject'` por defecto (omite la extensión silenciosamente) |
+| Operación planificada | `planAddSegment()` pura → `PendingSegmentAddition` → `applyOperation()` | Mezclar plan y escritura en `commitDirect` |
+| Atomicidad | Un único `trayEdit()` recibe la TrayInput ya completa (piezas + conexiones + PE) | Múltiples `trayEdit()` para pieza, conexión y PE por separado |
+| `excepciones_conexion` | Preservado por `structuredClone` en `applyOperation`; nunca enviado al motor | — |
+
+**Nuevos módulos:**
+- `src/workspace/workspaceOperation.ts` — `findPeExtensionProposal`, `planAddSegment`, `applyOperation`, `PendingOperation`
+- `src/workspace/__tests__/workspaceOperation.test.ts` — 32 pruebas de las funciones puras
+
+**Funciones modificadas:**
+- `useTrayStore.edit()` — push a `history`, clear `future`
+- `useTrayStore.undo()` / `undo()` — restauran TrayInput anterior/siguiente e invalidan el motor
+- `toMotorEntrada()` — exportado desde `store.ts`; usado en `calculate()`
+- `RoutingPanel.commitDirect()` — usa `planAddSegment` + `applyOperation` + `peDecision`
+
+**Datos necesarios:** ninguno adicional. Funciona con catálogo actual.
+
+**Cambios de contrato:** ninguno en `trazado/1`. `excepciones_conexion` sigue siendo workspace-only.
+
+**Conservación:** workspace v1 y `trazado/1` intactos. `TrayInput extends Record<string,unknown>` preserva campos desconocidos en `structuredClone`. Archivos exportados antes de E0 importan sin error.
+
+**Prueba de aceptación:**
+1. `npx vitest run src/workspace/__tests__/workspaceOperation.test.ts` → 32/32 ✓
+2. `npx vitest run` → 727/727 (todos los tests del proyecto) ✓
+3. `npx tsc --noEmit` → 0 errores ✓
+4. Con catálogo real: desde P1 y P2 de un recto, confirmar → pieza aparece en escena; deshacer → desaparece; rehacer → reaparece; PE extendido al aceptar, no duplicado; motor recibe `version_contrato:'trazado/1'` sin `excepciones_conexion`.
 
 ---
 
