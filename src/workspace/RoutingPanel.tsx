@@ -26,6 +26,7 @@ import {
   angleBetweenDirs,
   verifyStartPortValid,
   generateConnectionId,
+  hasSelfPortEquivalence,
 } from './routingRules';
 import { buildSegmentPiece, generateSegmentId } from './addTraySegment';
 import { planAddSegment, planAddCurve, applyOperation, type PeExtensionProposal } from './workspaceOperation';
@@ -209,13 +210,16 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
   );
 
   // Compatible product IDs for the existing port (port-level catalog lookup).
-  // For horizontal curves: catalog only documents P1 entries, so if P2 returns nothing, fall back to P1.
+  // When the catalog declares the existing product's two ports as interchangeable
+  // (self-compat P1↔P2 entry, or horizontal curve by construction), union both
+  // port queries — the catalog typically documents one port only.
   const compatibleIds = useMemo(() => {
     if (!existingProduct || !startPort || !context?.compatibilidades) return new Set<string>();
     const ids = getCompatibleProductIds(context.compatibilidades, existingProduct.producto_id, startPort.portName);
-    if (ids.size === 0 && isHorizontalCurve(existingProduct)) {
+    if (hasSelfPortEquivalence(context.compatibilidades, existingProduct)) {
       const altPort = startPort.portName === 'P1' ? 'P2' : 'P1';
-      return getCompatibleProductIds(context.compatibilidades, existingProduct.producto_id, altPort);
+      const altIds = getCompatibleProductIds(context.compatibilidades, existingProduct.producto_id, altPort);
+      for (const id of altIds) ids.add(id);
     }
     return ids;
   }, [context?.compatibilidades, existingProduct, startPort]);

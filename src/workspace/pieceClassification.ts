@@ -105,9 +105,30 @@ export function isWalkable(product: Pick<Product, 'tipo_pieza'> | null | undefin
   return product != null && WALKABLE_TIPO_PIEZA.has(product.tipo_pieza);
 }
 
+/**
+ * True when a horizontal curve carries the geometric data (radio_mm and
+ * angulo_grados, both finite numbers) that `planAddCurve` needs to place it.
+ *
+ * Some catalog entries classified as 'curva horizontal' are articulable
+ * accessories without a fixed radius or angle (e.g. SAM_CAS-300-065-18-Z
+ * has radio_mm=null, angulo_grados=null). These cannot be inserted by the
+ * interactive flow and must be surfaced as a limitation, not placed blindly.
+ */
+export function hasHorizontalCurveGeometry(product: Product | null | undefined): boolean {
+  if (!isHorizontalCurve(product)) return false;
+  const radio = (product as Record<string, unknown>).radio_mm;
+  const angulo = (product as Record<string, unknown>).angulo_grados;
+  return typeof radio === 'number' && Number.isFinite(radio) && radio > 0
+      && typeof angulo === 'number' && Number.isFinite(angulo) && angulo > 0;
+}
+
 /** True when the interactive routing flow can place this product directly. */
-export function isInteractivelyInsertable(product: Pick<Product, 'tipo_pieza'> | null | undefined): boolean {
-  return product != null && INSERTABLE_TIPO_PIEZA.has(product.tipo_pieza);
+export function isInteractivelyInsertable(product: Product | null | undefined): boolean {
+  if (product == null) return false;
+  if (!INSERTABLE_TIPO_PIEZA.has(product.tipo_pieza)) return false;
+  // Horizontal curves additionally require geometric data to be placed.
+  if (isHorizontalCurve(product) && !hasHorizontalCurveGeometry(product)) return false;
+  return true;
 }
 
 /**
@@ -121,7 +142,13 @@ export function getLimitationReason(product: Pick<Product, 'tipo_pieza'> | null 
   if (!KNOWN_TIPO_PIEZA.has(t)) {
     return `Tipo de pieza "${t}" no reconocido por el catálogo cargado.`;
   }
-  if (INSERTABLE_TIPO_PIEZA.has(t)) return null;
+  if (INSERTABLE_TIPO_PIEZA.has(t)) {
+    // Fully supported tipo, but check horizontal-curve geometry completeness.
+    if (isHorizontalCurve(product) && !hasHorizontalCurveGeometry(product as Product)) {
+      return 'Curva horizontal sin geometría fija (radio/ángulo nulos en catálogo) — accesorio articulable, geometría no determinada por el archivo.';
+    }
+    return null;
+  }
   if (t === 'reducción') {
     return 'Las reducciones se insertan automáticamente cuando el ancho cambia — no se eligen como continuación directa.';
   }

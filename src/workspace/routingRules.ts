@@ -190,6 +190,38 @@ function getUnionComponents(
 }
 
 /**
+ * True when the catalog explicitly documents a self-compatibility entry that
+ * joins P1 to P2 (or vice-versa) of the same product. This is the catalog's
+ * declaration that the two ports are interchangeable for lookup purposes.
+ *
+ * Example: SAM_TRES-300-065-18-Z has CMP-01535 (producto_a==producto_b,
+ * puerto_a=P1, puerto_b=P2), so queries documented against P1 are also valid
+ * for P2 and vice-versa.
+ *
+ * Also returns true for horizontal curves — their two ports share the same
+ * interface by construction and the catalog documents only P1 entries.
+ */
+export function hasSelfPortEquivalence(
+  compatibilidades: CatalogCompatibility[],
+  product: Product,
+): boolean {
+  if (isHorizontalCurve(product)) return true;
+  const pid = product.producto_id;
+  const p1 = `${pid}-P1`;
+  const p2 = `${pid}-P2`;
+  for (const c of compatibilidades) {
+    if (c.tipo_conexion !== 'directa') continue;
+    if (c.estado_compatibilidad === 'no compatible') continue;
+    if (c.producto_a_id !== pid || c.producto_b_id !== pid) continue;
+    if ((c.puerto_a_id === p1 && c.puerto_b_id === p2) ||
+        (c.puerto_a_id === p2 && c.puerto_b_id === p1)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
  * Checks if `existingProduct` and `newProduct` can be connected directly.
  * Uses COMPATIBILIDADES as the authoritative source; falls back to a heuristic
  * message if the tables are empty (motor didn't return them).
@@ -265,10 +297,11 @@ export function checkDirectCompatibility(
     };
   }
 
-  // Symmetric fallback: only for horizontal-curve pieces whose P1 and P2 share the same interface.
-  // Catalog entries for curves only document P1 — after inserting a curve, continuing from
-  // its P2 would otherwise return no compatible products.
-  if (isHorizontalCurve(existingProduct)) {
+  // Symmetric fallback: fires when the catalog declares the existing product's
+  // two ports as interchangeable (self-compat P1↔P2 entry, or horizontal curve
+  // by construction). Required because the catalog typically documents only
+  // one port per product; queries against the other port must be matched too.
+  if (hasSelfPortEquivalence(compatibilidades, existingProduct)) {
     const altExistPortName = existingPortName === 'P1' ? 'P2' : 'P1';
     const symEntry = findCompatEntryPortLevel(
       compatibilidades,
