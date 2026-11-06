@@ -38,12 +38,21 @@ export interface CatalogUnionComponent {
   cantidad: number;
 }
 
+export interface CatalogFamily {
+  familia_id: string;
+  nombre_familia: string;
+  acabado_normalizado: string | null;
+  material: string | null;
+  fabricante: string | null;
+}
+
 export interface Context {
   productos: Product[];
   cables: string[];
   puertos: CatalogPort[];
   compatibilidades: CatalogCompatibility[];
   componentesUnion: CatalogUnionComponent[];
+  familias: CatalogFamily[];
   ejemplos: Record<string, Record<string, unknown>>;
   versions: string;
 }

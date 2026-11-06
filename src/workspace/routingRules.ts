@@ -356,6 +356,44 @@ export function findReductionCandidates(
   return candidates;
 }
 
+// ─── Compatible product lookup ───────────────────────────────────────────────
+
+/**
+ * Returns the set of product IDs that have at least one documented direct
+ * compatibility entry connecting to the given port of the existing product.
+ *
+ * Uses port-level matching when catalog entries carry port IDs; falls back to
+ * product-level for the 626 entries with null puerto_a_id/puerto_b_id.
+ *
+ * Does NOT filter by tipo_pieza — the caller decides which product types to show.
+ */
+export function getCompatibleProductIds(
+  compatibilidades: CatalogCompatibility[],
+  existingProductId: string,
+  existingPortName: string,
+): Set<string> {
+  const portId = `${existingProductId}-${existingPortName}`;
+  const result = new Set<string>();
+
+  for (const c of compatibilidades) {
+    if (c.tipo_conexion !== 'directa') continue;
+    if (c.estado_compatibilidad === 'no compatible') continue;
+
+    const isA = c.producto_a_id === existingProductId;
+    const isB = c.producto_b_id === existingProductId;
+    if (!isA && !isB) continue;
+
+    const hasPortData = c.puerto_a_id != null || c.puerto_b_id != null;
+    const portMatches = !hasPortData || c.puerto_a_id === portId || c.puerto_b_id === portId;
+
+    if (portMatches) {
+      result.add(isA ? c.producto_b_id : c.producto_a_id);
+    }
+  }
+
+  return result;
+}
+
 // ─── Port validity check ──────────────────────────────────────────────────────
 
 export interface StartPort {

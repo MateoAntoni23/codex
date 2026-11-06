@@ -10,6 +10,7 @@ import {
   findReductionCandidates,
   verifyStartPortValid,
   generateConnectionId,
+  getCompatibleProductIds,
 } from '../routingRules';
 import type { FreePort, Point3 } from '../routingRules';
 import type { Piece, Product, CatalogCompatibility, CatalogUnionComponent, CatalogPort } from '../../tray/model';
@@ -525,5 +526,52 @@ describe('generateConnectionId', () => {
 
   it('is not confused by IDs from other namespaces', () => {
     expect(generateConnectionId(new Set(['SUP-1', 'SEG-1']))).toBe('CON-001');
+  });
+});
+
+// ─── getCompatibleProductIds ──────────────────────────────────────────────────
+
+describe('getCompatibleProductIds', () => {
+  const c1 = makeCompat('C1', 'PROD-A', 'PROD-A-P2', 'PROD-B', 'PROD-B-P1');
+  const c2 = makeCompat('C2', 'PROD-A', null, 'PROD-C', null);
+  const c3 = makeCompat('C3', 'PROD-B', null, 'PROD-D', null, 'reduccion');
+  const c4 = makeCompat('C4', 'PROD-E', 'PROD-E-P1', 'PROD-A', 'PROD-A-P2', 'directa', 'no compatible');
+
+  it('finds direct compatible product via port-level entry', () => {
+    const result = getCompatibleProductIds([c1], 'PROD-A', 'P2');
+    expect(result.has('PROD-B')).toBe(true);
+    expect(result.size).toBe(1);
+  });
+
+  it('excludes result when port does not match a port-level entry', () => {
+    const result = getCompatibleProductIds([c1], 'PROD-A', 'P1');
+    expect(result.size).toBe(0);
+  });
+
+  it('includes product from null-port entry regardless of port name queried', () => {
+    const result = getCompatibleProductIds([c2], 'PROD-A', 'P1');
+    expect(result.has('PROD-C')).toBe(true);
+  });
+
+  it('excludes non-directa connection types', () => {
+    const result = getCompatibleProductIds([c3], 'PROD-B', 'P1');
+    expect(result.size).toBe(0);
+  });
+
+  it('excludes "no compatible" entries', () => {
+    const result = getCompatibleProductIds([c4], 'PROD-A', 'P2');
+    expect(result.size).toBe(0);
+  });
+
+  it('returns ids for both directions (A→B and B→A)', () => {
+    const sym = makeCompat('C5', 'PROD-X', null, 'PROD-Y', null);
+    const fromX = getCompatibleProductIds([sym], 'PROD-X', 'P1');
+    const fromY = getCompatibleProductIds([sym], 'PROD-Y', 'P1');
+    expect(fromX.has('PROD-Y')).toBe(true);
+    expect(fromY.has('PROD-X')).toBe(true);
+  });
+
+  it('returns empty set when no entries match', () => {
+    expect(getCompatibleProductIds([c1, c2, c3], 'PROD-Z', 'P1').size).toBe(0);
   });
 });

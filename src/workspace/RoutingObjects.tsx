@@ -126,6 +126,7 @@ export function RoutingObjects() {
   const selectedProductId = useRoutingStore((s) => s.selectedProductId);
   const hoverPiece      = useRoutingStore((s) => s.hoverPiece);
   const selectStartPort = useRoutingStore((s) => s.selectStartPort);
+  const setProduct      = useRoutingStore((s) => s.setProduct);
 
   const freePorts = useMemo(() => {
     if (!entrada || !active) return [];
@@ -174,7 +175,11 @@ export function RoutingObjects() {
             label={`${fp.pieceId}.${fp.portName}`}
             dimmed={hasHover && !isHovered}
             hovered={isHovered}
-            onClick={() => selectStartPort(fp)}
+            onClick={() => {
+              const srcPiece = entrada.piezas.find((p) => p.instancia_id === fp.pieceId);
+              if (srcPiece) setProduct(srcPiece.producto_id);
+              selectStartPort(fp);
+            }}
             onOver={() => hoverPiece(fp.pieceId)}
             onOut={() => hoverPiece(null)}
           />

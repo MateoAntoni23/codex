@@ -54,7 +54,7 @@ export const useRoutingStore = create<RoutingState>((set) => ({
   reductionPortToExisting: '',
 
   activate: () =>
-    set({ active: true, step: 'selectingPort', startPort: null, hoveredPieceId: null }),
+    set({ active: true, step: 'selectingPort', startPort: null, hoveredPieceId: null, selectedProductId: '' }),
 
   deactivate: () =>
     set({
@@ -89,6 +89,6 @@ export const useRoutingStore = create<RoutingState>((set) => ({
       if (s.step === 'confirmingReduction') {
         return { step: 'configuringSegment' as RoutingStep };
       }
-      return { step: 'selectingPort' as RoutingStep, startPort: null };
+      return { step: 'selectingPort' as RoutingStep, startPort: null, selectedProductId: '' };
     }),
 }));

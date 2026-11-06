@@ -14,6 +14,7 @@ import { useWorkspaceStore } from './useWorkspaceStore';
 import { useRoutingStore } from './useRoutingStore';
 import {
   getFreePorts,
+  getCompatibleProductIds,
   checkDirectCompatibility,
   findReductionCandidates,
   computeEndpoint,
@@ -50,37 +51,23 @@ function StepSelectingPort() {
 
 // ─── Step 2: configuring segment ─────────────────────────────────────────────
 
-function StepConfiguringSegment({ onConfirmDirect, onNeedsReduction, onCancel }: {
+function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
   onConfirmDirect: () => void;
-  onNeedsReduction: () => void;
   onCancel: () => void;
 }) {
-  const context          = useTrayStore((s) => s.context);
-  const entrada          = useTrayStore((s) => s.entrada);
-  const startPort        = useRoutingStore((s) => s.startPort);
+  const context           = useTrayStore((s) => s.context);
+  const entrada           = useTrayStore((s) => s.entrada);
+  const startPort         = useRoutingStore((s) => s.startPort);
   const selectedProductId = useRoutingStore((s) => s.selectedProductId);
-  const previewLengthMm  = useRoutingStore((s) => s.previewLengthMm);
-  const snapToAxis       = useRoutingStore((s) => s.snapToAxis);
-  const setProduct       = useRoutingStore((s) => s.setProduct);
-  const setLength        = useRoutingStore((s) => s.setLength);
-  const toggleSnap       = useRoutingStore((s) => s.toggleSnap);
+  const previewLengthMm   = useRoutingStore((s) => s.previewLengthMm);
+  const snapToAxis        = useRoutingStore((s) => s.snapToAxis);
+  const setProduct        = useRoutingStore((s) => s.setProduct);
+  const setLength         = useRoutingStore((s) => s.setLength);
+  const toggleSnap        = useRoutingStore((s) => s.toggleSnap);
 
   const [error, setError] = useState<string | null>(null);
 
-  const rectaProducts = useMemo(
-    () => context?.productos.filter((p) => p.tipo_pieza === 'recta') ?? [],
-    [context?.productos],
-  );
-
-  // Auto-select first product if none selected
-  const effectiveProductId = selectedProductId || rectaProducts[0]?.producto_id || '';
-
-  const selectedProduct = useMemo(
-    () => context?.productos.find((p) => p.producto_id === effectiveProductId),
-    [context?.productos, effectiveProductId],
-  );
-
-  // Find the product of the existing piece at the start port
+  // Existing piece / product at the selected port
   const existingPiece = useMemo(
     () => entrada?.piezas.find((p) => p.instancia_id === startPort?.pieceId),
     [entrada?.piezas, startPort?.pieceId],
@@ -88,6 +75,50 @@ function StepConfiguringSegment({ onConfirmDirect, onNeedsReduction, onCancel }:
   const existingProduct = useMemo(
     () => context?.productos.find((p) => p.producto_id === existingPiece?.producto_id),
     [context?.productos, existingPiece?.producto_id],
+  );
+
+  // Port info from PUERTOS_PRODUCTO (port-level dimensions and interface)
+  const existingPortInfo = useMemo(() => {
+    if (!startPort || !context?.puertos || !existingPiece) return null;
+    const portId = `${existingPiece.producto_id}-${startPort.portName}`;
+    return context.puertos.find((p) => p.puerto_id === portId) ?? null;
+  }, [context?.puertos, existingPiece, startPort]);
+
+  // Family info for the existing product
+  const existingFamily = useMemo(
+    () => context?.familias?.find((f) => f.familia_id === (existingProduct as Record<string, unknown>)?.familia_id),
+    [context?.familias, existingProduct],
+  );
+
+  // Compatible product IDs for the existing port (port-level catalog lookup)
+  const compatibleIds = useMemo(() => {
+    if (!existingProduct || !startPort || !context?.compatibilidades) return new Set<string>();
+    return getCompatibleProductIds(context.compatibilidades, existingProduct.producto_id, startPort.portName);
+  }, [context?.compatibilidades, existingProduct, startPort]);
+
+  // Filter to recta products that are documented as compatible with this port
+  const compatibleRectaProducts = useMemo(
+    () => (context?.productos ?? []).filter((p) => p.tipo_pieza === 'recta' && compatibleIds.has(p.producto_id)),
+    [context?.productos, compatibleIds],
+  );
+
+  // Group compatible products by family for <optgroup> display
+  const familyGroups = useMemo(() => {
+    const groups = new Map<string, { name: string; acabado: string | null; products: typeof compatibleRectaProducts }>();
+    for (const p of compatibleRectaProducts) {
+      const famId = (p as Record<string, unknown>).familia_id as string | undefined ?? '__other__';
+      if (!groups.has(famId)) {
+        const fam = context?.familias?.find((f) => f.familia_id === famId);
+        groups.set(famId, { name: fam?.nombre_familia ?? famId, acabado: fam?.acabado_normalizado ?? null, products: [] });
+      }
+      groups.get(famId)!.products.push(p);
+    }
+    return groups;
+  }, [compatibleRectaProducts, context?.familias]);
+
+  const selectedProduct = useMemo(
+    () => compatibleRectaProducts.find((p) => p.producto_id === selectedProductId) ?? null,
+    [compatibleRectaProducts, selectedProductId],
   );
 
   const compat = useMemo(() => {
@@ -106,7 +137,6 @@ function StepConfiguringSegment({ onConfirmDirect, onNeedsReduction, onCancel }:
     return snapToAxis ? snapDirectionToAxis(startPort.dir) : startPort.dir;
   }, [startPort, snapToAxis]);
 
-  // Snap warning: check if snapping changes direction by more than 1 degree
   const snapWarnAngle = useMemo(() => {
     if (!startPort) return null;
     if (!snapChangesDirection(startPort.dir)) return null;
@@ -116,71 +146,99 @@ function StepConfiguringSegment({ onConfirmDirect, onNeedsReduction, onCancel }:
 
   const handleConfirm = () => {
     setError(null);
-    if (!compat) { setError('Seleccioná un producto.'); return; }
+    if (!selectedProduct) { setError('Seleccioná un producto compatible.'); return; }
+    if (!compat?.ok) { setError(compat?.reason ?? 'Sin compatibilidad documentada.'); return; }
     if (snapToAxis && snapWarnAngle !== null) {
       setError('La dirección del puerto no coincide con el eje más cercano — desactivá el ajuste al eje para continuar.');
       return;
     }
-    if (!compat.ok && !compat.needsReduction) { setError(compat.reason); return; }
-    if (compat.needsReduction) { onNeedsReduction(); return; }
     onConfirmDirect();
   };
 
   if (!startPort) return null;
 
+  // Dimensions to display: prefer port-level data, fall back to product-level
+  const displayAncho = existingPortInfo?.ancho_nominal_mm ?? existingProduct?.ancho_nominal_mm;
+  const displayAla = existingPortInfo?.ala_nominal_mm ?? (existingProduct as Record<string, unknown> | undefined)?.ala_nominal_mm as number | null | undefined;
+
   return (
     <div style={{ padding: '10px 12px', fontSize: 11 }}>
-      {/* Start port info */}
-      <div style={{ marginBottom: 10, padding: '6px 8px', background: '#1a1e30', borderRadius: 3 }}>
-        <div style={{ color: '#8888aa', marginBottom: 2 }}>Puerto de inicio</div>
-        <div style={{ color: '#ffaa44', fontFamily: 'monospace' }}>
+      {/* Port origin info */}
+      <div style={{ marginBottom: 10, padding: '6px 8px', background: '#1a1e30', borderRadius: 3, lineHeight: 1.6 }}>
+        <div style={{ color: '#8888aa', marginBottom: 2, fontSize: 10 }}>Puerto de origen</div>
+        <div style={{ color: '#ffaa44', fontFamily: 'monospace', fontSize: 11 }}>
           {startPort.pieceId}.{startPort.portName}
         </div>
-        {existingPiece && (
-          <div style={{ color: '#556677', fontSize: 10, marginTop: 2 }}>
-            {existingPiece.producto_id}
-            {existingProduct?.ancho_nominal_mm != null &&
-              ` · ${existingProduct.ancho_nominal_mm} mm`}
+        {existingProduct && (
+          <div style={{ color: '#99aadd', fontSize: 10, marginTop: 2 }}>
+            <span style={{ color: '#8888aa' }}>Tipo:</span> {existingProduct.tipo_pieza}
+            {existingFamily && (
+              <> · <span style={{ color: '#8888aa' }}>Familia:</span> {existingFamily.nombre_familia}</>
+            )}
+          </div>
+        )}
+        {(displayAncho != null || displayAla != null) && (
+          <div style={{ color: '#99aadd', fontSize: 10 }}>
+            <span style={{ color: '#8888aa' }}>Dimensiones:</span>{' '}
+            {displayAncho != null ? `${displayAncho} mm ancho` : ''}
+            {displayAncho != null && displayAla != null ? ' × ' : ''}
+            {displayAla != null ? `${displayAla} mm ala` : ''}
+          </div>
+        )}
+        {existingPortInfo?.interfaz_conexion && (
+          <div style={{ color: '#556677', fontSize: 10 }}>
+            <span style={{ color: '#8888aa' }}>Interfaz:</span> {existingPortInfo.interfaz_conexion}
+          </div>
+        )}
+        {existingFamily?.acabado_normalizado && (
+          <div style={{ color: '#556677', fontSize: 10 }}>
+            <span style={{ color: '#8888aa' }}>Acabado:</span> {existingFamily.acabado_normalizado}
           </div>
         )}
       </div>
 
-      {/* Product selector */}
+      {/* Compatible product selector */}
       <div style={{ marginBottom: 8 }}>
         <label style={{ color: '#8888aa', display: 'block', marginBottom: 3 }}>
-          Producto a continuar
+          Continuación ({compatibleRectaProducts.length} compatible{compatibleRectaProducts.length !== 1 ? 's' : ''})
         </label>
-        {rectaProducts.length === 0 ? (
-          <p style={{ color: '#ff9955' }}>Sin productos rectos en el catálogo.</p>
+        {compatibleRectaProducts.length === 0 ? (
+          <div style={{ padding: '6px 8px', background: '#2a1a1a', borderRadius: 3, color: '#ff9955', fontSize: 10 }}>
+            Sin continuaciones documentadas para este puerto en COMPATIBILIDADES.
+            {!context?.compatibilidades?.length && ' (Catálogo no disponible)'}
+          </div>
         ) : (
           <select
             className="inspector-input"
             style={{ width: '100%' }}
-            value={effectiveProductId}
+            value={selectedProductId}
             onChange={(e) => { setProduct(e.target.value); setError(null); }}
           >
-            {rectaProducts.map((p) => (
-              <option key={p.producto_id} value={p.producto_id}>
-                {p.sku} — {p.ancho_nominal_mm ?? '?'} mm
-                {(p as Record<string, unknown>).ala_nominal_mm != null
-                  ? ` · ala ${(p as Record<string, unknown>).ala_nominal_mm} mm`
-                  : ''}
-              </option>
+            {!selectedProductId && <option value="">— Elegí un producto —</option>}
+            {Array.from(familyGroups.entries()).map(([famId, { name, acabado, products }]) => (
+              <optgroup key={famId} label={acabado ? `${name} (${acabado})` : name}>
+                {products.map((p) => (
+                  <option key={p.producto_id} value={p.producto_id}>
+                    {p.ancho_nominal_mm ?? '?'} mm
+                    {(p as Record<string, unknown>).ala_nominal_mm != null
+                      ? ` × ${(p as Record<string, unknown>).ala_nominal_mm} mm ala`
+                      : ''}
+                    {' — '}{p.sku}
+                  </option>
+                ))}
+              </optgroup>
             ))}
           </select>
         )}
       </div>
 
-      {/* Compatibility feedback */}
+      {/* Compatibility result for selected product */}
       {compat && (
         <div style={{
-          marginBottom: 8,
-          padding: '5px 8px',
-          borderRadius: 3,
-          fontSize: 10,
-          background: compat.ok ? '#1a2e1a' : compat.needsReduction ? '#2a2a1a' : '#2a1a1a',
-          color: compat.ok ? '#77cc77' : compat.needsReduction ? '#cccc66' : '#ff7755',
-          borderLeft: `2px solid ${compat.ok ? '#44aa44' : compat.needsReduction ? '#aaaa44' : '#aa4444'}`,
+          marginBottom: 8, padding: '5px 8px', borderRadius: 3, fontSize: 10,
+          background: compat.ok ? '#1a2e1a' : '#2a1a1a',
+          color: compat.ok ? '#77cc77' : '#ff7755',
+          borderLeft: `2px solid ${compat.ok ? '#44aa44' : '#aa4444'}`,
         }}>
           {compat.reason}
           {compat.ok && compat.requiredUnion.length > 0 && (
@@ -218,7 +276,6 @@ function StepConfiguringSegment({ onConfirmDirect, onNeedsReduction, onCancel }:
         )}
       </label>
 
-      {/* Snap warning */}
       {snapWarnAngle !== null && (
         <div style={{ marginBottom: 10, padding: '5px 8px', borderRadius: 3, fontSize: 10, background: '#2a2211', color: '#ddaa44', borderLeft: '2px solid #aa8822' }}>
           La dirección del puerto ({snapWarnAngle}°) no coincide con el eje más cercano — ajustar a eje crearía una unión angular que requiere una curva, aún no soportada en este flujo.
@@ -232,17 +289,14 @@ function StepConfiguringSegment({ onConfirmDirect, onNeedsReduction, onCancel }:
       <div style={{ display: 'flex', gap: 6 }}>
         <button
           style={{
-            flex: 1, padding: '5px 0', fontSize: 12,
-            background: compat?.needsReduction ? '#3d3322' : '#1f3322',
-            color: 'white',
-            border: `1px solid ${compat?.needsReduction ? '#aa8833' : '#336644'}`,
-            borderRadius: 3, cursor: 'pointer',
+            flex: 1, padding: '5px 0', fontSize: 12, background: '#1f3322',
+            color: 'white', border: '1px solid #336644', borderRadius: 3, cursor: 'pointer',
             opacity: (snapToAxis && snapWarnAngle !== null) ? 0.5 : 1,
           }}
           onClick={handleConfirm}
           disabled={!selectedProduct || (snapToAxis && snapWarnAngle !== null)}
         >
-          {compat?.needsReduction ? 'Elegir reducción →' : 'Confirmar continuación'}
+          Confirmar continuación
         </button>
         <button
           style={{ padding: '5px 10px', fontSize: 12, background: '#333355', color: '#8888aa', border: '1px solid #445566', borderRadius: 3, cursor: 'pointer' }}
@@ -441,7 +495,6 @@ function StepConfirmingReduction({ onConfirm, onBack }: {
 // ─── Main panel ───────────────────────────────────────────────────────────────
 
 export function RoutingPanel() {
-  const context          = useTrayStore((s) => s.context);
   const entrada          = useTrayStore((s) => s.entrada);
   const trayEdit         = useTrayStore((s) => s.edit);
   const markDirty        = useWorkspaceStore((s) => s.markDirty);
@@ -456,23 +509,14 @@ export function RoutingPanel() {
   const reductionLengthMm = useRoutingStore((s) => s.reductionLengthMm);
   const reductionPortToExisting = useRoutingStore((s) => s.reductionPortToExisting);
   const deactivate        = useRoutingStore((s) => s.deactivate);
-  const proceedToReduction = useRoutingStore((s) => s.proceedToReduction);
   const back              = useRoutingStore((s) => s.back);
 
   const [commitError, setCommitError] = useState<string | null>(null);
-
-  const rectaProducts = useMemo(
-    () => context?.productos.filter((p) => p.tipo_pieza === 'recta') ?? [],
-    [context?.productos],
-  );
 
   const getEffectiveDir = () => {
     if (!startPort) return null;
     return snapToAxis ? snapDirectionToAxis(startPort.dir) : startPort.dir;
   };
-
-  const getEffectiveProductId = () =>
-    selectedProductId || rectaProducts[0]?.producto_id || '';
 
   const getNewPieceId = (existingIds: Set<string>) => generateSegmentId(existingIds);
 
@@ -490,7 +534,7 @@ export function RoutingPanel() {
     const effDir = getEffectiveDir();
     if (!effDir) return;
 
-    const effProductId = getEffectiveProductId();
+    const effProductId = selectedProductId;
     if (!effProductId) { setCommitError('Sin producto seleccionado.'); return; }
 
     if (previewLengthMm <= 0) { setCommitError('La longitud debe ser mayor que 0.'); return; }
@@ -537,7 +581,7 @@ export function RoutingPanel() {
     const effDir = getEffectiveDir();
     if (!effDir) return;
 
-    const effProductId = getEffectiveProductId();
+    const effProductId = selectedProductId;
 
     // Strict: no fallback to first reduction in catalog
     if (!reductionProductId) {
@@ -638,7 +682,6 @@ export function RoutingPanel() {
       {step === 'configuringSegment' && (
         <StepConfiguringSegment
           onConfirmDirect={commitDirect}
-          onNeedsReduction={proceedToReduction}
           onCancel={deactivate}
         />
       )}

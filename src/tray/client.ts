@@ -1,6 +1,6 @@
 import { GestorSolicitudes } from '../../vendor/motor_bandejas/integracion/ts/gestorSolicitudes';
 import type { Solicitud } from '../../vendor/motor_bandejas/integracion/ts/contrato';
-import { object, readResult, type Context, type Product, type CatalogPort, type CatalogCompatibility, type CatalogUnionComponent } from './model';
+import { object, readResult, type Context, type Product, type CatalogPort, type CatalogCompatibility, type CatalogUnionComponent, type CatalogFamily } from './model';
 export async function getJson(path:string,init?:RequestInit):Promise<unknown>{
  const response=await fetch(`/api/motor/v1/${path}`,{...init,signal:init?.signal??AbortSignal.timeout(30000)});
  let data:unknown;try{data=await response.json()}catch{throw Error(`HTTP_${response.status}: respuesta no JSON`)}
@@ -44,6 +44,12 @@ export async function loadContext():Promise<Context>{
          !!u && typeof (u as CatalogUnionComponent).compatibilidad_id === 'string'
      )
    : [];
- return {productos:products as Product[],cables:[...cables].sort(),puertos,compatibilidades,componentesUnion,ejemplos:examples.ejemplos as Context['ejemplos'],versions:JSON.stringify({health,decisiones_sha256:catalog.decisiones_sha256})};
+ const familias: CatalogFamily[] = Array.isArray(rawCat.FAMILIAS)
+   ? (rawCat.FAMILIAS as unknown[]).filter(
+       (f): f is CatalogFamily =>
+         !!f && typeof (f as CatalogFamily).familia_id === 'string'
+     )
+   : [];
+ return {productos:products as Product[],cables:[...cables].sort(),puertos,compatibilidades,componentesUnion,familias,ejemplos:examples.ejemplos as Context['ejemplos'],versions:JSON.stringify({health,decisiones_sha256:catalog.decisiones_sha256})};
 }
 export const createManager=()=>new GestorSolicitudes(transport,'cad-tray');
