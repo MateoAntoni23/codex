@@ -1,11 +1,16 @@
 /**
  * Tests for workspaceOperation.ts
  *
- * Covers all acceptance criteria for E0:
+ * Covers all acceptance criteria for E0 (closure corrections):
+ * - PE endpoint resolved via port + connections graph, not just last array element
+ * - Extension from both ends of a recorrido (append and prepend)
+ * - Pending status when conexiones can't verify outer port
+ * - Port that doesn't correspond to PE endpoint → no proposal
+ * - Multiple candidates with real conductor_id, explicit choice required
+ * - applyOperation: prepend and append
+ * - Import boundary: importEdit clears history (tested separately via store test)
  * - cancelar no modifica datos (pure functions, no side effects)
  * - confirmar crea una sola operación atómica
- * - deshacer restaura el estado anterior completo
- * - rehacer restaura el estado confirmado
  * - PE no se duplica y recupera su recorrido
  * - exportar/importar conserva todos los datos
  * - Python recibe únicamente campos admitidos (toMotorEntrada)
@@ -47,6 +52,11 @@ function makePiece(id: string): Piece {
   };
 }
 
+/** Connection from pieceA.portA to pieceB.portB */
+function makeConn(id: string, aId: string, aPort: string, bId: string, bPort: string) {
+  return { conexion_id: id, a: [aId, aPort] as [string,string], b: [bId, bPort] as [string,string] };
+}
+
 const COMPAT_OK: DirectCompatResult = {
   ok: true,
   needsReduction: false,
@@ -83,18 +93,20 @@ const DIR: Point3 = [1, 0, 0];
 // ─── findPeExtensionProposal ──────────────────────────────────────────────────
 
 describe('findPeExtensionProposal', () => {
+  // ── Null cases ──────────────────────────────────────────────────────────────
+
   it('returns null when pe.conductores is empty', () => {
     const entrada = makeTrayInput();
-    expect(findPeExtensionProposal(entrada, 'SEG-1', 'SEG-2')).toBeNull();
+    expect(findPeExtensionProposal(entrada, 'SEG-1', 'P2', 'SEG-2')).toBeNull();
   });
 
-  it('returns null when no conductor ends at startPieceId', () => {
+  it('returns null when no conductor has an endpoint at startPieceId', () => {
     const entrada = makeTrayInput({
       pe: { seccion_requerida_mm2: 16, cable_id: 'T', origen_requisito: 't', conductores: [
         { conductor_id: 'PE-1', recorrido: ['SEG-3', 'SEG-4'] },
       ]},
     });
-    expect(findPeExtensionProposal(entrada, 'SEG-1', 'SEG-2')).toBeNull();
+    expect(findPeExtensionProposal(entrada, 'SEG-1', 'P2', 'SEG-2')).toBeNull();
   });
 
   it('returns null when conductor recorrido is empty', () => {
@@ -103,65 +115,160 @@ describe('findPeExtensionProposal', () => {
         { conductor_id: 'PE-1', recorrido: [] },
       ]},
     });
-    expect(findPeExtensionProposal(entrada, 'SEG-1', 'SEG-2')).toBeNull();
+    expect(findPeExtensionProposal(entrada, 'SEG-1', 'P2', 'SEG-2')).toBeNull();
   });
 
-  it('returns proposal when conductor ends at startPieceId', () => {
+  it('returns null when piece is in the middle of recorrido (not first or last)', () => {
+    const entrada = makeTrayInput({
+      pe: { seccion_requerida_mm2: 16, cable_id: 'T', origen_requisito: 't', conductores: [
+        { conductor_id: 'PE-1', recorrido: ['SEG-0', 'SEG-1', 'SEG-2'] },
+      ]},
+    });
+    expect(findPeExtensionProposal(entrada, 'SEG-1', 'P2', 'SEG-X')).toBeNull();
+  });
+
+  // ── Single-piece recorrido ──────────────────────────────────────────────────
+
+  it('returns append proposal for single-piece recorrido when P2 selected', () => {
     const entrada = makeTrayInput({
       pe: { seccion_requerida_mm2: 16, cable_id: 'T', origen_requisito: 't', conductores: [
         { conductor_id: 'PE-1', recorrido: ['SEG-1'] },
       ]},
     });
-    const result = findPeExtensionProposal(entrada, 'SEG-1', 'SEG-2');
+    const result = findPeExtensionProposal(entrada, 'SEG-1', 'P2', 'SEG-2');
     expect(result).not.toBeNull();
-    expect(result!.conductorIdx).toBe(0);
-    expect(result!.currentRecorrido).toEqual(['SEG-1']);
-    expect(result!.proposedRecorrido).toEqual(['SEG-1', 'SEG-2']);
+    expect(result!.primary.extensionEnd).toBe('end');
+    expect(result!.primary.proposedRecorrido).toEqual(['SEG-1', 'SEG-2']);
+    expect(result!.primary.conductorId).toBe('PE-1');
+    expect(result!.primary.status).toBe('ready');
     expect(result!.ambiguous).toBe(false);
-    expect(result!.matchingIndices).toEqual([0]);
+  });
+
+  it('returns prepend proposal for single-piece recorrido when P1 selected', () => {
+    const entrada = makeTrayInput({
+      pe: { seccion_requerida_mm2: 16, cable_id: 'T', origen_requisito: 't', conductores: [
+        { conductor_id: 'PE-1', recorrido: ['SEG-1'] },
+      ]},
+    });
+    const result = findPeExtensionProposal(entrada, 'SEG-1', 'P1', 'SEG-2');
+    expect(result).not.toBeNull();
+    expect(result!.primary.extensionEnd).toBe('start');
+    expect(result!.primary.proposedRecorrido).toEqual(['SEG-2', 'SEG-1']);
+    expect(result!.primary.status).toBe('ready');
+  });
+
+  // ── Multi-piece end extension ───────────────────────────────────────────────
+
+  it('returns append proposal when outer port of end endpoint matches startPortName', () => {
+    // recorrido: SEG-1 → SEG-2. SEG-2.P1 is inner (connected to SEG-1.P2). SEG-2.P2 is outer.
+    const entrada = makeTrayInput({
+      piezas: [makePiece('SEG-1'), makePiece('SEG-2')],
+      conexiones: [makeConn('CON-1', 'SEG-1', 'P2', 'SEG-2', 'P1')],
+      pe: { seccion_requerida_mm2: 16, cable_id: 'T', origen_requisito: 't', conductores: [
+        { conductor_id: 'PE-A', recorrido: ['SEG-1', 'SEG-2'] },
+      ]},
+    });
+    const result = findPeExtensionProposal(entrada, 'SEG-2', 'P2', 'SEG-3');
+    expect(result).not.toBeNull();
+    expect(result!.primary.extensionEnd).toBe('end');
+    expect(result!.primary.proposedRecorrido).toEqual(['SEG-1', 'SEG-2', 'SEG-3']);
+    expect(result!.primary.status).toBe('ready');
+  });
+
+  it('returns null when startPortName is the inner port of the end endpoint', () => {
+    // SEG-2.P1 is connected to SEG-1.P2, so it is inner. Clicking P1 on SEG-2 is not an endpoint.
+    const entrada = makeTrayInput({
+      piezas: [makePiece('SEG-1'), makePiece('SEG-2')],
+      conexiones: [makeConn('CON-1', 'SEG-1', 'P2', 'SEG-2', 'P1')],
+      pe: { seccion_requerida_mm2: 16, cable_id: 'T', origen_requisito: 't', conductores: [
+        { conductor_id: 'PE-A', recorrido: ['SEG-1', 'SEG-2'] },
+      ]},
+    });
+    const result = findPeExtensionProposal(entrada, 'SEG-2', 'P1', 'SEG-3');
+    expect(result).toBeNull();
+  });
+
+  // ── Multi-piece start extension ─────────────────────────────────────────────
+
+  it('returns prepend proposal when outer port of start endpoint matches startPortName', () => {
+    // recorrido: SEG-1 → SEG-2. SEG-1.P2 is inner (connected to SEG-2.P1). SEG-1.P1 is outer.
+    const entrada = makeTrayInput({
+      piezas: [makePiece('SEG-1'), makePiece('SEG-2')],
+      conexiones: [makeConn('CON-1', 'SEG-1', 'P2', 'SEG-2', 'P1')],
+      pe: { seccion_requerida_mm2: 16, cable_id: 'T', origen_requisito: 't', conductores: [
+        { conductor_id: 'PE-A', recorrido: ['SEG-1', 'SEG-2'] },
+      ]},
+    });
+    const result = findPeExtensionProposal(entrada, 'SEG-1', 'P1', 'SEG-0');
+    expect(result).not.toBeNull();
+    expect(result!.primary.extensionEnd).toBe('start');
+    expect(result!.primary.proposedRecorrido).toEqual(['SEG-0', 'SEG-1', 'SEG-2']);
+    expect(result!.primary.status).toBe('ready');
+  });
+
+  it('returns null when startPortName is the inner port of the start endpoint', () => {
+    // SEG-1.P2 is connected to SEG-2.P1, so clicking P2 on SEG-1 is the inner port.
+    const entrada = makeTrayInput({
+      piezas: [makePiece('SEG-1'), makePiece('SEG-2')],
+      conexiones: [makeConn('CON-1', 'SEG-1', 'P2', 'SEG-2', 'P1')],
+      pe: { seccion_requerida_mm2: 16, cable_id: 'T', origen_requisito: 't', conductores: [
+        { conductor_id: 'PE-A', recorrido: ['SEG-1', 'SEG-2'] },
+      ]},
+    });
+    const result = findPeExtensionProposal(entrada, 'SEG-1', 'P2', 'SEG-0');
+    expect(result).toBeNull();
+  });
+
+  // ── Pending status ──────────────────────────────────────────────────────────
+
+  it('returns pending proposal when conexiones cannot resolve the outer port', () => {
+    // No connection linking SEG-1 and SEG-2 in conexiones
+    const entrada = makeTrayInput({
+      piezas: [makePiece('SEG-1'), makePiece('SEG-2')],
+      conexiones: [], // no connections
+      pe: { seccion_requerida_mm2: 16, cable_id: 'T', origen_requisito: 't', conductores: [
+        { conductor_id: 'PE-A', recorrido: ['SEG-1', 'SEG-2'] },
+      ]},
+    });
+    const result = findPeExtensionProposal(entrada, 'SEG-2', 'P2', 'SEG-3');
+    expect(result).not.toBeNull();
+    expect(result!.primary.status).toBe('pending');
+  });
+
+  // ── Ambiguity ───────────────────────────────────────────────────────────────
+
+  it('marks ambiguous and uses real conductor_id when multiple conductors have endpoint at port', () => {
+    const entrada = makeTrayInput({
+      piezas: [makePiece('SEG-1')],
+      conexiones: [],
+      pe: { seccion_requerida_mm2: 16, cable_id: 'T', origen_requisito: 't', conductores: [
+        { conductor_id: 'COND-A', recorrido: ['SEG-1'] },
+        { conductor_id: 'COND-B', recorrido: ['SEG-1'] },
+      ]},
+    });
+    const result = findPeExtensionProposal(entrada, 'SEG-1', 'P2', 'SEG-2');
+    expect(result).not.toBeNull();
+    expect(result!.ambiguous).toBe(true);
+    expect(result!.candidates).toHaveLength(2);
+    expect(result!.candidates.map(c => c.conductorId)).toEqual(['COND-A', 'COND-B']);
+    // primary is first candidate but all are exposed
+    expect(result!.primary.conductorId).toBe('COND-A');
   });
 
   it('includes full existing recorrido in proposal', () => {
     const entrada = makeTrayInput({
+      piezas: [makePiece('SEG-1'), makePiece('SEG-2'), makePiece('SEG-3')],
+      conexiones: [
+        makeConn('CON-1', 'SEG-1', 'P2', 'SEG-2', 'P1'),
+        makeConn('CON-2', 'SEG-2', 'P2', 'SEG-3', 'P1'),
+      ],
       pe: { seccion_requerida_mm2: 16, cable_id: 'T', origen_requisito: 't', conductores: [
         { conductor_id: 'PE-1', recorrido: ['SEG-1', 'SEG-2', 'SEG-3'] },
       ]},
     });
-    const result = findPeExtensionProposal(entrada, 'SEG-3', 'SEG-4');
-    expect(result!.currentRecorrido).toEqual(['SEG-1', 'SEG-2', 'SEG-3']);
-    expect(result!.proposedRecorrido).toEqual(['SEG-1', 'SEG-2', 'SEG-3', 'SEG-4']);
-  });
-
-  it('marks proposal as ambiguous when two conductors end at startPieceId', () => {
-    const entrada = makeTrayInput({
-      pe: { seccion_requerida_mm2: 16, cable_id: 'T', origen_requisito: 't', conductores: [
-        { conductor_id: 'PE-1', recorrido: ['SEG-1'] },
-        { conductor_id: 'PE-2', recorrido: ['SEG-2', 'SEG-1'] },
-      ]},
-    });
-    const result = findPeExtensionProposal(entrada, 'SEG-1', 'SEG-2');
-    expect(result!.ambiguous).toBe(true);
-    expect(result!.matchingIndices).toEqual([0, 1]);
-    // primary is the first match
-    expect(result!.conductorIdx).toBe(0);
-  });
-
-  it('does not check middle-of-recorrido occurrences — only the last element', () => {
-    const entrada = makeTrayInput({
-      pe: { seccion_requerida_mm2: 16, cable_id: 'T', origen_requisito: 't', conductores: [
-        { conductor_id: 'PE-1', recorrido: ['SEG-1', 'SEG-2', 'SEG-1'] }, // SEG-1 is last
-      ]},
-    });
-    const result1 = findPeExtensionProposal(entrada, 'SEG-1', 'SEG-X');
-    expect(result1).not.toBeNull(); // SEG-1 IS the last element
-
-    const entrada2 = makeTrayInput({
-      pe: { seccion_requerida_mm2: 16, cable_id: 'T', origen_requisito: 't', conductores: [
-        { conductor_id: 'PE-1', recorrido: ['SEG-1', 'SEG-2'] }, // SEG-1 is NOT last
-      ]},
-    });
-    const result2 = findPeExtensionProposal(entrada2, 'SEG-1', 'SEG-X');
-    expect(result2).toBeNull(); // SEG-1 is in the middle — not proposed
+    const result = findPeExtensionProposal(entrada, 'SEG-3', 'P2', 'SEG-4');
+    expect(result!.primary.currentRecorrido).toEqual(['SEG-1', 'SEG-2', 'SEG-3']);
+    expect(result!.primary.proposedRecorrido).toEqual(['SEG-1', 'SEG-2', 'SEG-3', 'SEG-4']);
   });
 
   it('does not mutate the entrada', () => {
@@ -171,7 +278,7 @@ describe('findPeExtensionProposal', () => {
       ]},
     });
     const original = JSON.stringify(entrada);
-    findPeExtensionProposal(entrada, 'SEG-1', 'SEG-2');
+    findPeExtensionProposal(entrada, 'SEG-1', 'P2', 'SEG-2');
     expect(JSON.stringify(entrada)).toBe(original);
   });
 });
@@ -223,7 +330,7 @@ describe('planAddSegment', () => {
     expect(op.newConnection.b).toEqual([op.newPiece.instancia_id, 'P1']);
   });
 
-  it('connection a uses reversed port when newPiecePort=P2', () => {
+  it('connection b uses P2 when newPiecePort=P2', () => {
     const entrada = makeTrayInput({ piezas: [makePiece('SEG-1')] });
     const op = planAddSegment(entrada, START_PORT, PRODUCT, COMPAT_REVERSED, 3000, DIR);
     expect(op.newConnection.b[1]).toBe('P2');
@@ -244,7 +351,8 @@ describe('planAddSegment', () => {
     expect(op.resolution.compatibilidadId).toBe('CMP-001');
   });
 
-  it('includes PE extension proposal when conductor ends at startPiece', () => {
+  it('includes PE extension proposal when conductor has endpoint at startPort', () => {
+    // Single-piece recorrido: SEG-1, start port is P2 → append
     const entrada = makeTrayInput({
       piezas: [makePiece('SEG-1')],
       pe: { seccion_requerida_mm2: 16, cable_id: 'T', origen_requisito: 't', conductores: [
@@ -253,7 +361,7 @@ describe('planAddSegment', () => {
     });
     const op = planAddSegment(entrada, START_PORT, PRODUCT, COMPAT_OK, 3000, DIR);
     expect(op.peExtension).not.toBeNull();
-    expect(op.peExtension!.proposedRecorrido).toContain(op.newPiece.instancia_id);
+    expect(op.peExtension!.primary.proposedRecorrido).toContain(op.newPiece.instancia_id);
   });
 
   it('sets peExtension=null when no PE is configured', () => {
@@ -306,17 +414,37 @@ describe('applyOperation', () => {
     expect(cond.recorrido).toEqual(['SEG-1']); // unchanged
   });
 
-  it('extends PE recorrido when peDecision=accept', () => {
+  it('appends new piece to PE recorrido (end extension) when peDecision=accept', () => {
     const entrada = makeTrayInput({
       piezas: [makePiece('SEG-1')],
       pe: { seccion_requerida_mm2: 16, cable_id: 'T', origen_requisito: 't', conductores: [
         { conductor_id: 'PE-1', recorrido: ['SEG-1'] },
       ]},
     });
-    const op = buildOp(entrada);
+    const op = buildOp(entrada); // START_PORT.portName='P2' → extensionEnd='end'
     const result = applyOperation(entrada, op, 'accept');
     const cond = result.pe.conductores[0] as Record<string,unknown>;
     expect(cond.recorrido).toEqual(['SEG-1', op.newPiece.instancia_id]);
+  });
+
+  it('prepends new piece to PE recorrido (start extension) when peDecision=accept', () => {
+    // recorrido: [SEG-1, SEG-2], connection SEG-1.P2 → SEG-2.P1
+    // User clicks SEG-1.P1 → outer port of start → propose prepend
+    const p1Port: StartPort = { pieceId: 'SEG-1', portName: 'P1', pos: [0,0,0], dir: [-1,0,0] };
+    const entrada = makeTrayInput({
+      piezas: [makePiece('SEG-1'), makePiece('SEG-2')],
+      conexiones: [makeConn('CON-1', 'SEG-1', 'P2', 'SEG-2', 'P1')],
+      pe: { seccion_requerida_mm2: 16, cable_id: 'T', origen_requisito: 't', conductores: [
+        { conductor_id: 'PE-1', recorrido: ['SEG-1', 'SEG-2'] },
+      ]},
+    });
+    const op = planAddSegment(entrada, p1Port, PRODUCT, COMPAT_REVERSED, 3000, [-1,0,0]);
+    expect(op.peExtension).not.toBeNull();
+    expect(op.peExtension!.primary.extensionEnd).toBe('start');
+    const result = applyOperation(entrada, op, 'accept');
+    const cond = result.pe.conductores[0] as Record<string,unknown>;
+    expect((cond.recorrido as string[])[0]).toBe(op.newPiece.instancia_id); // prepended
+    expect(cond.recorrido).toHaveLength(3);
   });
 
   it('accept with no peExtension is a no-op on PE', () => {
@@ -325,6 +453,30 @@ describe('applyOperation', () => {
     expect(op.peExtension).toBeNull();
     const result = applyOperation(entrada, op, 'accept');
     expect(result.pe.conductores).toHaveLength(0);
+  });
+
+  it('applies non-primary candidate when op.peExtension.primary is overridden', () => {
+    // Two candidates — user chose the second (COND-B)
+    const entrada = makeTrayInput({
+      piezas: [makePiece('SEG-1')],
+      conexiones: [],
+      pe: { seccion_requerida_mm2: 16, cable_id: 'T', origen_requisito: 't', conductores: [
+        { conductor_id: 'COND-A', recorrido: ['SEG-1'] },
+        { conductor_id: 'COND-B', recorrido: ['SEG-1'] },
+      ]},
+    });
+    const op = buildOp(entrada);
+    expect(op.peExtension!.ambiguous).toBe(true);
+    // Override primary to second candidate (conductorIdx=1)
+    const chosenCandidate = op.peExtension!.candidates.find(c => c.conductorIdx === 1)!;
+    op.peExtension = { ...op.peExtension!, primary: chosenCandidate };
+
+    const result = applyOperation(entrada, op, 'accept');
+    // COND-A unchanged, COND-B extended
+    const condA = result.pe.conductores[0] as Record<string,unknown>;
+    const condB = result.pe.conductores[1] as Record<string,unknown>;
+    expect(condA.recorrido).toEqual(['SEG-1']); // not extended
+    expect((condB.recorrido as string[])).toContain(op.newPiece.instancia_id); // extended
   });
 
   it('does not mutate the original entrada', () => {

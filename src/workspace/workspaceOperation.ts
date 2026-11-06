@@ -7,8 +7,8 @@
  *   apply*  → returns a new TrayInput (pure, structuredClone-based)
  *
  * PE rule: one conductor per tray, not one per circuit.
- * Extension is proposed only when the conductor's recorrido ends at the
- * selected port's piece. Ambiguity is surfaced, never silently resolved.
+ * Extension uses the port+connections graph to resolve the physical endpoint of
+ * each recorrido. Ambiguity is surfaced and requires explicit user choice.
  */
 import type { Piece, TrayInput } from '../tray/model';
 import type { Product } from '../tray/model';
@@ -18,59 +18,153 @@ import { computeEndpoint, generateConnectionId } from './routingRules';
 
 // ─── PE extension ─────────────────────────────────────────────────────────────
 
-export interface PeExtensionProposal {
-  /** Index in pe.conductores[] of the primary conductor to extend. */
+export interface PeConductorCandidate {
   conductorIdx: number;
-  /** Current recorrido of the primary conductor. */
+  /** Real conductor_id from data (not invented). */
+  conductorId: string;
+  /** Which end of the recorrido will be extended. */
+  extensionEnd: 'start' | 'end';
   currentRecorrido: string[];
-  /** Proposed recorrido with newPieceId appended at the end. */
+  /** Proposed recorrido with newPieceId prepended (start) or appended (end). */
   proposedRecorrido: string[];
-  /** All conductor indices whose recorrido ends at startPieceId (for display). */
-  matchingIndices: number[];
-  /** True when more than one conductor ends at startPieceId. */
+  /**
+   * 'ready' — outer port confirmed from conexiones graph, matches startPortName.
+   * 'pending' — conexiones insufficient to verify outer port; proposal is speculative.
+   */
+  status: 'ready' | 'pending';
+}
+
+export interface PeExtensionProposal {
+  /** All conductors with a physical endpoint at the selected port. */
+  candidates: PeConductorCandidate[];
+  /** Default primary (candidates[0]). UI may override with user's explicit choice. */
+  primary: PeConductorCandidate;
+  /** True when candidates.length > 1 — UI must require explicit choice. */
   ambiguous: boolean;
 }
 
 /**
- * Checks whether any PE conductor's recorrido ends at startPieceId.
- * Returns a proposal for extending that conductor, or null if none matches.
+ * Finds the connection that links endpointPieceId to neighborPieceId,
+ * and returns the outer port of endpointPiece (the free end, not connected to neighbor).
+ * Returns null when no such connection exists in conexiones.
+ */
+function resolveOuterPort(
+  conexiones: Array<{ conexion_id: string; a: [string, string]; b: [string, string] }>,
+  endpointPieceId: string,
+  neighborPieceId: string,
+): { outerPort: string } | null {
+  for (const conn of conexiones) {
+    const [aId, aPort] = conn.a;
+    const [bId, bPort] = conn.b;
+    if (aId === endpointPieceId && bId === neighborPieceId) {
+      return { outerPort: aPort === 'P1' ? 'P2' : 'P1' };
+    }
+    if (bId === endpointPieceId && aId === neighborPieceId) {
+      return { outerPort: bPort === 'P1' ? 'P2' : 'P1' };
+    }
+  }
+  return null;
+}
+
+/**
+ * Checks whether any PE conductor's recorrido has a physical endpoint at startPieceId
+ * on the port identified by startPortName. Uses the conexiones graph to verify
+ * which port of the endpoint piece is free (outer) vs. connected to its neighbor (inner).
  *
  * Rules enforced here:
- * - Only the LAST element of recorrido is checked (routing extends one end at a time).
- * - If multiple conductors end there, the proposal is marked ambiguous and the
- *   primary is the first match. The UI must surface the ambiguity.
- * - Does NOT propose extension if pe.conductores is empty.
+ * - Checks both ends (recorrido[0] and recorrido[last]) of each conductor.
+ * - For length-1 recorrido: both ports are outer; uses startPortName directly.
+ * - For multi-piece: finds the connection linking the endpoint to its neighbor to
+ *   derive the outer port. If no connection found → status 'pending' (speculative).
+ * - If startPortName is the inner port → that endpoint is not applicable.
+ * - Pieces in the middle of a recorrido are never proposed.
+ * - Returns all candidates; ambiguous when candidates.length > 1.
  */
 export function findPeExtensionProposal(
   entrada: TrayInput,
   startPieceId: string,
+  startPortName: string,
   newPieceId: string,
 ): PeExtensionProposal | null {
   const conductores = entrada.pe?.conductores;
   if (!Array.isArray(conductores) || conductores.length === 0) return null;
 
-  const matchingIndices: number[] = [];
+  const candidates: PeConductorCandidate[] = [];
+
   for (let i = 0; i < conductores.length; i++) {
     const cond = conductores[i];
     if (!cond || typeof cond !== 'object' || !Array.isArray(cond.recorrido)) continue;
-    const rec = cond.recorrido as unknown[];
-    if (rec.length > 0 && rec[rec.length - 1] === startPieceId) {
-      matchingIndices.push(i);
+    const rec = cond.recorrido as string[];
+    if (rec.length === 0) continue;
+
+    const conductorId =
+      typeof (cond as Record<string, unknown>).conductor_id === 'string'
+        ? (cond as Record<string, unknown>).conductor_id as string
+        : `cond-${i}`;
+
+    // Length-1 recorrido: both ports are free — determine extensionEnd from startPortName
+    if (rec.length === 1 && rec[0] === startPieceId) {
+      const extensionEnd: 'start' | 'end' = startPortName === 'P1' ? 'start' : 'end';
+      candidates.push({
+        conductorIdx: i,
+        conductorId,
+        extensionEnd,
+        currentRecorrido: [...rec],
+        proposedRecorrido: extensionEnd === 'end' ? [...rec, newPieceId] : [newPieceId, ...rec],
+        status: 'ready',
+      });
+      continue;
+    }
+
+    // End endpoint: recorrido[last]
+    if (rec[rec.length - 1] === startPieceId) {
+      const resolved = resolveOuterPort(entrada.conexiones, startPieceId, rec[rec.length - 2]);
+      if (resolved === null) {
+        // Can't confirm from conexiones — speculative pending proposal
+        candidates.push({
+          conductorIdx: i, conductorId, extensionEnd: 'end',
+          currentRecorrido: [...rec],
+          proposedRecorrido: [...rec, newPieceId],
+          status: 'pending',
+        });
+      } else if (resolved.outerPort === startPortName) {
+        candidates.push({
+          conductorIdx: i, conductorId, extensionEnd: 'end',
+          currentRecorrido: [...rec],
+          proposedRecorrido: [...rec, newPieceId],
+          status: 'ready',
+        });
+      }
+      // else: startPortName is the inner port — not an endpoint for extension
+    }
+
+    // Start endpoint: recorrido[0] (length > 1, so it's distinct from the end)
+    if (rec[0] === startPieceId && rec.length > 1) {
+      const resolved = resolveOuterPort(entrada.conexiones, startPieceId, rec[1]);
+      if (resolved === null) {
+        candidates.push({
+          conductorIdx: i, conductorId, extensionEnd: 'start',
+          currentRecorrido: [...rec],
+          proposedRecorrido: [newPieceId, ...rec],
+          status: 'pending',
+        });
+      } else if (resolved.outerPort === startPortName) {
+        candidates.push({
+          conductorIdx: i, conductorId, extensionEnd: 'start',
+          currentRecorrido: [...rec],
+          proposedRecorrido: [newPieceId, ...rec],
+          status: 'ready',
+        });
+      }
     }
   }
 
-  if (matchingIndices.length === 0) return null;
-
-  const primaryIdx = matchingIndices[0];
-  const primaryCond = conductores[primaryIdx] as Record<string, unknown>;
-  const currentRecorrido = [...(primaryCond.recorrido as string[])];
+  if (candidates.length === 0) return null;
 
   return {
-    conductorIdx: primaryIdx,
-    currentRecorrido,
-    proposedRecorrido: [...currentRecorrido, newPieceId],
-    matchingIndices,
-    ambiguous: matchingIndices.length > 1,
+    candidates,
+    primary: candidates[0],
+    ambiguous: candidates.length > 1,
   };
 }
 
@@ -130,7 +224,9 @@ export function planAddSegment(
     b: [newId, newPiecePort] as [string, string],
   };
 
-  const peExtension = findPeExtensionProposal(entrada, startPort.pieceId, newId);
+  const peExtension = findPeExtensionProposal(
+    entrada, startPort.pieceId, startPort.portName, newId,
+  );
 
   return { kind: 'add_segment', newPiece, newConnection, resolution: compat, peExtension };
 }
@@ -142,8 +238,10 @@ export function planAddSegment(
  * Does NOT modify entrada (uses structuredClone internally).
  *
  * peDecision:
- *   'accept' — extend the matched PE conductor's recorrido (if peExtension present)
+ *   'accept' — extend the matched PE conductor's recorrido using proposal.primary
  *   'reject' — leave PE unchanged
+ *
+ * To use a non-primary candidate, mutate op.peExtension.primary before calling.
  */
 export function applyOperation(
   entrada: TrayInput,
@@ -157,9 +255,10 @@ export function applyOperation(
     next.conexiones.push(op.newConnection);
 
     if (peDecision === 'accept' && op.peExtension !== null && Array.isArray(next.pe?.conductores)) {
-      const conductor = next.pe.conductores[op.peExtension.conductorIdx];
+      const primary = op.peExtension.primary;
+      const conductor = next.pe.conductores[primary.conductorIdx];
       if (conductor && Array.isArray(conductor.recorrido)) {
-        (conductor as Record<string,unknown>).recorrido = op.peExtension.proposedRecorrido;
+        (conductor as Record<string, unknown>).recorrido = primary.proposedRecorrido;
       }
     }
   }

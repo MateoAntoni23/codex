@@ -35,35 +35,83 @@ import { planAddSegment, applyOperation, type PeExtensionProposal } from './work
 function PeExtensionWidget({
   proposal,
   decision,
+  chosenConductorIdx,
   onChange,
+  onChooseConductor,
 }: {
   proposal: PeExtensionProposal;
   decision: 'accept' | 'reject';
+  /** null means no choice yet (required when ambiguous and decision=accept). */
+  chosenConductorIdx: number | null;
   onChange: (d: 'accept' | 'reject') => void;
+  onChooseConductor: (idx: number) => void;
 }) {
-  const lastPiece = proposal.currentRecorrido[proposal.currentRecorrido.length - 1] ?? '—';
+  const displayPrimary = chosenConductorIdx !== null
+    ? (proposal.candidates.find(c => c.conductorIdx === chosenConductorIdx) ?? proposal.primary)
+    : proposal.primary;
+
+  const isPending = displayPrimary.status === 'pending';
+  const isAmbiguousAndUnchosen = proposal.ambiguous && decision === 'accept' && chosenConductorIdx === null;
+
   return (
     <div style={{ marginBottom: 8, padding: '6px 8px', borderRadius: 3, background: '#1a2235', border: '1px solid #2a3a55', fontSize: 10 }}>
       <div style={{ color: '#99aadd', marginBottom: 4, fontWeight: 600 }}>Recorrido PE</div>
-      {proposal.ambiguous && (
+
+      {isPending && (
         <div style={{ color: '#ddaa44', marginBottom: 4, borderLeft: '2px solid #aa8822', paddingLeft: 6 }}>
-          {proposal.matchingIndices.length} conductores terminan en este tramo — se extiende el primero ({`PE-${proposal.conductorIdx + 1}`}). Si querés extender otro, confirmá y editá manualmente.
+          No se pudo verificar el extremo desde las conexiones — extensión pendiente de verificación.
         </div>
       )}
-      <div style={{ color: '#8899bb', marginBottom: 6, lineHeight: 1.5 }}>
-        Termina en <span style={{ color: '#ffaa44', fontFamily: 'monospace' }}>{lastPiece}</span>
-        {' '}({proposal.currentRecorrido.length} pieza{proposal.currentRecorrido.length !== 1 ? 's' : ''}).
-        ¿Extender para incluir el nuevo tramo?
-      </div>
+
+      {proposal.ambiguous ? (
+        <div style={{ marginBottom: 6 }}>
+          <div style={{ color: '#ddaa44', marginBottom: 4 }}>
+            {proposal.candidates.length} conductores con extremo en este tramo — elegí cuál extender:
+          </div>
+          {proposal.candidates.map(c => (
+            <button
+              key={c.conductorIdx}
+              onClick={() => onChooseConductor(c.conductorIdx)}
+              style={{
+                display: 'block', width: '100%', textAlign: 'left', marginBottom: 3,
+                padding: '3px 6px', borderRadius: 3, cursor: 'pointer', fontSize: 10,
+                background: chosenConductorIdx === c.conductorIdx ? '#1f3322' : '#1e2233',
+                color: chosenConductorIdx === c.conductorIdx ? '#77cc77' : '#99aabb',
+                border: `1px solid ${chosenConductorIdx === c.conductorIdx ? '#336644' : '#334455'}`,
+              }}
+            >
+              {c.conductorId}
+              <span style={{ color: '#556677', marginLeft: 6 }}>
+                ({c.extensionEnd === 'start' ? 'prepend' : 'append'} · {c.currentRecorrido.length} piezas)
+              </span>
+              {c.status === 'pending' && <span style={{ color: '#ddaa44', marginLeft: 4 }}>⚠ pendiente</span>}
+            </button>
+          ))}
+          {isAmbiguousAndUnchosen && (
+            <div style={{ color: '#ff9955', marginTop: 2 }}>Elegí un conductor para poder confirmar.</div>
+          )}
+        </div>
+      ) : (
+        <div style={{ color: '#8899bb', marginBottom: 6, lineHeight: 1.5 }}>
+          Conductor <span style={{ color: '#ffaa44', fontFamily: 'monospace' }}>{displayPrimary.conductorId}</span>
+          {' '}({displayPrimary.currentRecorrido.length} pieza{displayPrimary.currentRecorrido.length !== 1 ? 's' : ''} ·{' '}
+          {displayPrimary.extensionEnd === 'start' ? 'extiende inicio' : 'extiende final'}).
+          ¿Extender para incluir el nuevo tramo?
+        </div>
+      )}
+
       <div style={{ display: 'flex', gap: 5 }}>
         <button
           style={{
-            flex: 1, padding: '3px 0', fontSize: 11, borderRadius: 3, cursor: 'pointer',
+            flex: 1, padding: '3px 0', fontSize: 11, borderRadius: 3,
+            cursor: isAmbiguousAndUnchosen ? 'default' : 'pointer',
             background: decision === 'accept' ? '#1f3322' : '#222233',
             color: decision === 'accept' ? '#77cc77' : '#556677',
             border: `1px solid ${decision === 'accept' ? '#336644' : '#334455'}`,
+            opacity: isAmbiguousAndUnchosen ? 0.5 : 1,
           }}
-          onClick={() => onChange('accept')}
+          onClick={() => !isAmbiguousAndUnchosen && onChange('accept')}
+          disabled={isAmbiguousAndUnchosen}
         >
           ✓ Extender
         </button>
@@ -109,7 +157,7 @@ function StepSelectingPort() {
 // ─── Step 2: configuring segment ─────────────────────────────────────────────
 
 function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
-  onConfirmDirect: (peDecision: 'accept' | 'reject') => void;
+  onConfirmDirect: (peDecision: 'accept' | 'reject', peChosenConductorIdx: number | null) => void;
   onCancel: () => void;
 }) {
   const context           = useTrayStore((s) => s.context);
@@ -124,6 +172,7 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
 
   const [error, setError] = useState<string | null>(null);
   const [peDecision, setPeDecision] = useState<'accept' | 'reject'>('accept');
+  const [peChosenConductorIdx, setPeChosenConductorIdx] = useState<number | null>(null);
 
   // Existing piece / product at the selected port
   const existingPiece = useMemo(
@@ -221,7 +270,11 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
       setError('La dirección del puerto no coincide con el eje más cercano — desactivá el ajuste al eje para continuar.');
       return;
     }
-    onConfirmDirect(peDecision);
+    if (pendingOp?.peExtension?.ambiguous && peDecision === 'accept' && peChosenConductorIdx === null) {
+      setError('Elegí un conductor PE o seleccioná "No extender".');
+      return;
+    }
+    onConfirmDirect(peDecision, peChosenConductorIdx);
   };
 
   if (!startPort) return null;
@@ -323,7 +376,9 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
         <PeExtensionWidget
           proposal={pendingOp.peExtension}
           decision={peDecision}
-          onChange={setPeDecision}
+          chosenConductorIdx={peChosenConductorIdx}
+          onChange={(d) => { setPeDecision(d); if (d === 'reject') setPeChosenConductorIdx(null); }}
+          onChooseConductor={(idx) => { setPeChosenConductorIdx(idx); setPeDecision('accept'); }}
         />
       )}
 
@@ -602,9 +657,9 @@ export function RoutingPanel() {
   /**
    * Direct commit: validates, plans the operation (planAddSegment), applies it
    * (applyOperation) atomically, and writes the result via a single trayEdit().
-   * The peDecision parameter comes from the user's explicit choice in step 2.
+   * peDecision and peChosenConductorIdx come from the user's explicit choices in step 2.
    */
-  const commitDirect = (peDecision: 'accept' | 'reject') => {
+  const commitDirect = (peDecision: 'accept' | 'reject', peChosenConductorIdx: number | null) => {
     setCommitError(null);
     if (!entrada || !startPort) return;
 
@@ -635,6 +690,11 @@ export function RoutingPanel() {
     try {
       // Plan the operation (pure, no side effects)
       const op = planAddSegment(entrada, startPort, selectedProductForComp, compat, previewLengthMm, effDir);
+      // Override PE primary with user's explicit conductor choice when ambiguous
+      if (peDecision === 'accept' && op.peExtension && peChosenConductorIdx !== null) {
+        const chosen = op.peExtension.candidates.find(c => c.conductorIdx === peChosenConductorIdx);
+        if (chosen) op.peExtension = { ...op.peExtension, primary: chosen };
+      }
       // Apply all-or-nothing
       const nextEntrada = applyOperation(entrada, op, peDecision);
       // Single atomic write to store (pushes to history, clears future)

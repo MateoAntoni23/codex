@@ -29,6 +29,8 @@ interface State {
   /** Redo stack: future TrayInput states, most-recent first. Capped at MAX_HIST. */
   future:TrayInput[];
   initialize:()=>Promise<void>; edit:(input:unknown)=>void;
+  /** Replaces tray state on project import — clears history/future so undo never crosses project boundaries. */
+  importEdit:(input:unknown)=>void;
   undo:()=>void; redo:()=>void;
   select:(id:string|null)=>void; calculate:()=>Promise<void>;
 }
@@ -44,6 +46,12 @@ export const useTrayStore=create<State>((set,get)=>({
   set({history:newHist,future:[],entrada:structuredClone(input),revision:get().revision+1,
        status:get().result?'desactualizado':'sin_calcular',resultSelection:null,
        selected:get().selected&&input.piezas.some(p=>p.instancia_id===get().selected)?get().selected:null,error:null});
+ },
+ importEdit:(input)=>{
+  assertInput(input);
+  manager.invalidar('trazado');
+  set({history:[],future:[],entrada:structuredClone(input),revision:get().revision+1,
+       status:'sin_calcular',result:null,resultSelection:null,selected:null,error:null});
  },
  undo:()=>{
   const {entrada,history,future,selected}=get();

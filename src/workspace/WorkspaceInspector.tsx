@@ -359,6 +359,41 @@ function CalcPanel() {
   );
 }
 
+// ─── Undo / redo controls (always visible when history is non-empty) ──────────
+
+function TrayHistoryControls() {
+  const trayUndo  = useTrayStore((s) => s.undo);
+  const trayRedo  = useTrayStore((s) => s.redo);
+  const history   = useTrayStore((s) => s.history);
+  const future    = useTrayStore((s) => s.future);
+  const markDirty = useWorkspaceStore((s) => s.markDirty);
+  const canUndo   = history.length > 0;
+  const canRedo   = future.length > 0;
+
+  if (!canUndo && !canRedo) return null;
+
+  return (
+    <div style={{ display: 'flex', gap: 4, padding: '4px 12px 5px', borderBottom: '1px solid #2a2e44' }}>
+      <button
+        title={canUndo ? `Deshacer (${history.length} disponibles)` : 'Sin operaciones para deshacer'}
+        style={{ fontSize: 11, padding: '2px 8px', background: canUndo ? '#2a3344' : '#1e2233', color: canUndo ? '#99aadd' : '#445566', border: '1px solid #334455', borderRadius: 2, cursor: canUndo ? 'pointer' : 'default' }}
+        onClick={() => { if (canUndo) { trayUndo(); markDirty(); } }}
+        disabled={!canUndo}
+      >
+        ↩ {canUndo ? history.length : '—'}
+      </button>
+      <button
+        title={canRedo ? `Rehacer (${future.length} disponibles)` : 'Sin operaciones para rehacer'}
+        style={{ fontSize: 11, padding: '2px 8px', background: canRedo ? '#2a3344' : '#1e2233', color: canRedo ? '#99aadd' : '#445566', border: '1px solid #334455', borderRadius: 2, cursor: canRedo ? 'pointer' : 'default' }}
+        onClick={() => { if (canRedo) { trayRedo(); markDirty(); } }}
+        disabled={!canRedo}
+      >
+        ↪ {canRedo ? future.length : '—'}
+      </button>
+    </div>
+  );
+}
+
 // ─── Main inspector ───────────────────────────────────────────────────────────
 
 export function WorkspaceInspector() {
@@ -374,6 +409,8 @@ export function WorkspaceInspector() {
   return (
     <div className="panel panel-right" style={{ overflow: 'auto' }}>
       <div className="panel-title">Inspector</div>
+
+      {!routingActive && <TrayHistoryControls />}
 
       {routingActive ? (
         <RoutingPanel />

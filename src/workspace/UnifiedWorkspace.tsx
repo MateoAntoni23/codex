@@ -85,8 +85,8 @@ function Toolbar() {
       // All validation passed — now update both stores atomically
       const { elements, evidence } = ws.projectV2;
       useWorkspaceStore.getState().loadFile(elements, evidence, extractMeta(ws.projectV2), file.name);
-      // Load tray input; useTrayStore.edit discards previous result
-      useTrayStore.getState().edit(ws.trayInput);
+      // importEdit resets tray state and clears history/future so undo can't reach the previous project
+      useTrayStore.getState().importEdit(ws.trayInput);
       // Cancel any active routing session since the tray was replaced
       useRoutingStore.getState().deactivate();
       e.target.value = '';
