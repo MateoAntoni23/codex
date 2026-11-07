@@ -37,6 +37,7 @@ import {
   getLimitationReason,
   formatProductOption,
 } from './pieceClassification';
+import { hasParametricRecipe, resolveRecipe, placeRecipe, chiralityForTurn } from './parametricBridge';
 
 // ─── PE extension proposal widget ────────────────────────────────────────────
 
@@ -233,12 +234,15 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
     ),
     [context?.productos, compatibleIds],
   );
+  // Un producto es seleccionable si el flujo clásico lo admite o si hay una
+  // receta paramétrica que resuelve la geometría (p.ej. curvas con radio_mm
+  // nulo en catálogo pero medidas en el STEP paramétrico).
   const compatibleProducts = useMemo(
-    () => compatibleWalkable.filter(isInteractivelyInsertable),
+    () => compatibleWalkable.filter((p) => isInteractivelyInsertable(p) || hasParametricRecipe(p)),
     [compatibleWalkable],
   );
   const nonInsertableCompatible = useMemo(
-    () => compatibleWalkable.filter((p) => !isInteractivelyInsertable(p)),
+    () => compatibleWalkable.filter((p) => !isInteractivelyInsertable(p) && !hasParametricRecipe(p)),
     [compatibleWalkable],
   );
 
@@ -273,6 +277,39 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
       'P1',
     );
   }, [context, existingProduct, selectedProduct, startPort]);
+
+  // Receta paramétrica resuelta para el producto seleccionado — null cuando
+  // caemos al fallback de arco sustituto (familia sin catálogo paramétrico).
+  const parametricEntry = useMemo(
+    () => (selectedProduct ? resolveRecipe(selectedProduct) : null),
+    [selectedProduct],
+  );
+
+  // Ajuste geométrico: evalúa la colocación del puente paramétrico desde el
+  // puerto activo. Para curvas calcula P2 en coordenadas de mundo; el panel
+  // muestra el radio de línea central medido para que el usuario vea cuán
+  // lejos quedaría el arco sustituto de la geometría real del STEP.
+  const geometricFit = useMemo(() => {
+    if (!parametricEntry || !selectedProduct || !startPort) return null;
+    if (parametricEntry.piece_kind !== 'curva_horizontal') return null;
+    try {
+      const chirality = chiralityForTurn(turnDirection);
+      const placed = placeRecipe(selectedProduct, parametricEntry, startPort.pos, startPort.dir, chirality);
+      const dx = placed.p2.pos[0] - placed.p1.pos[0];
+      const dy = placed.p2.pos[1] - placed.p1.pos[1];
+      const dz = placed.p2.pos[2] - placed.p1.pos[2];
+      const chord = Math.hypot(dx, dy, dz);
+      const angleDeg = ((selectedProduct as Record<string, unknown>).angulo_grados as number | undefined) ?? 0;
+      const θ = (angleDeg * Math.PI) / 180;
+      const sinHalf = Math.sin(θ / 2);
+      const centerlineR = sinHalf > 1e-9 ? chord / (2 * sinHalf) : null;
+      const catalogR = (selectedProduct as Record<string, unknown>).radio_mm as number | null | undefined;
+      const fallbackR = (catalogR ?? 300) + (selectedProduct.ancho_nominal_mm ?? 0) / 2;
+      return { ok: true as const, centerlineR, fallbackR, catalogR: catalogR ?? null, angleDeg };
+    } catch (err) {
+      return { ok: false as const, reason: err instanceof Error ? err.message : String(err) };
+    }
+  }, [parametricEntry, selectedProduct, startPort, turnDirection]);
 
   const effectiveDir = useMemo(() => {
     if (!startPort) return null;
@@ -430,6 +467,41 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
           {compat.ok && compat.requiredUnion.length > 0 && (
             <div style={{ marginTop: 4, color: '#aaaacc' }}>
               Conexión con accesorios de unión — Python los calculará en el cómputo al calcular el trazado.
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Ajuste geométrico — separado de la compatibilidad de catálogo. */}
+      {selectedProduct && isCurve && (
+        <div style={{
+          marginBottom: 8, padding: '5px 8px', borderRadius: 3, fontSize: 10,
+          background: parametricEntry ? '#1a2235' : '#2a2211',
+          color: parametricEntry ? '#99aadd' : '#ddaa44',
+          borderLeft: `2px solid ${parametricEntry ? '#3355aa' : '#aa8822'}`,
+        }}>
+          <div style={{ fontWeight: 600, marginBottom: 2 }}>
+            {parametricEntry ? 'Ajuste geométrico — receta paramétrica' : 'Ajuste geométrico — arco sustituto'}
+          </div>
+          {parametricEntry && geometricFit?.ok && (
+            <div style={{ color: '#aaaacc' }}>
+              Receta <code style={{ color: '#99ccff' }}>{parametricEntry.recipe}</code>. Radio medido en el STEP:{' '}
+              <strong style={{ color: '#99ccff' }}>
+                {geometricFit.centerlineR != null ? `${geometricFit.centerlineR.toFixed(1)} mm` : '—'}
+              </strong>{' '}
+              (fallback catálogo: {geometricFit.fallbackR.toFixed(0)} mm
+              {geometricFit.catalogR == null ? ' — radio nominal null, derivado por defecto 300' : ''}).
+            </div>
+          )}
+          {parametricEntry && geometricFit && !geometricFit.ok && (
+            <div style={{ color: '#ff9955' }}>
+              La receta paramétrica no se puede colocar desde este puerto: {geometricFit.reason}. Se usará el arco sustituto.
+            </div>
+          )}
+          {!parametricEntry && (
+            <div style={{ color: '#ccbb99' }}>
+              Sin receta paramétrica confirmada para este SKU — se extruirá un arco sustituto con
+              radio = (radio_mm ∣ 300) + ancho/2. La curva de la pieza confirmada podría diferir del STEP original.
             </div>
           )}
         </div>

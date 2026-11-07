@@ -17,7 +17,14 @@ import * as THREE from 'three';
 import { useTrayStore } from '../tray/store';
 import { useWorkspaceStore } from './useWorkspaceStore';
 import { useRoutingStore } from './useRoutingStore';
-import type { Product } from '../tray/model';
+import type { Piece, Product } from '../tray/model';
+import {
+  resolveRecipe,
+  verifyGeometricFit,
+  placeRecipe,
+  buildLocalMesh,
+  type Vec3 as BridgeVec3,
+} from './parametricBridge';
 
 type V3 = [number, number, number];
 
@@ -79,6 +86,144 @@ function RectoPiece({
       <meshStandardMaterial color={color} transparent opacity={0.75} />
     </mesh>
   );
+}
+
+// ─── Transform mm (Z-up) → viewer m (Y-up), como THREE.Matrix4 constante ──
+const MM_TO_VIEWER = new THREE.Matrix4().set(
+  1 / 1000,       0,         0, 0,
+         0,       0,  1 / 1000, 0,
+         0, -1 / 1000,        0, 0,
+         0,       0,         0, 1,
+);
+
+/**
+ * ParametricMesh — renderiza una pieza con la receta medida del STEP.
+ *
+ * Toma el anclaje (P1 real), aplica la quiralidad detectada por el puente,
+ * y compone el transform mm→viewer con el transform local→mundo. El fit
+ * debe estar validado (matches=true) antes de montar este componente.
+ */
+function ParametricMesh({
+  product, piece, fit, selected, onClick,
+}: {
+  product: Product;
+  piece: Piece;
+  fit: NonNullable<ReturnType<typeof verifyGeometricFit>>;
+  selected: boolean;
+  onClick: () => void;
+}) {
+  const data = useMemo(() => {
+    const p1 = piece.puertos.P1;
+    if (!p1) return null;
+    const startPos = p1.posicion_mm as BridgeVec3;
+    const entryDir: BridgeVec3 = [
+      -p1.direccion[0],
+      -p1.direccion[1],
+      -p1.direccion[2],
+    ];
+    const entry = fit.entry;
+    const overrides = entry.piece_kind === 'tramo_recto'
+      ? { longitud_mm: pieceLengthFromPorts(piece) }
+      : undefined;
+    const placed = placeRecipe(product, entry, startPos, entryDir, fit.chirality, overrides);
+    const g = buildLocalMesh(placed.recipe);
+    const m = new THREE.Matrix4().multiplyMatrices(MM_TO_VIEWER, placed.matrix);
+    return { geom: g, matrix: m, mirrored: placed.mirrored };
+  }, [fit, product, piece]);
+
+  if (!data) return null;
+  const color = selected ? '#ffcf33' : '#50b8de';
+  return (
+    <mesh
+      matrixAutoUpdate={false}
+      onUpdate={(m) => {
+        m.matrix.copy(data.matrix);
+        m.matrixWorldNeedsUpdate = true;
+      }}
+      onClick={(e) => { e.stopPropagation(); onClick(); }}
+    >
+      <primitive object={data.geom} attach="geometry" />
+      <meshStandardMaterial
+        color={color}
+        transparent
+        opacity={0.75}
+        side={data.mirrored ? THREE.DoubleSide : THREE.FrontSide}
+      />
+    </mesh>
+  );
+}
+
+/**
+ * PieceVisual — despacho: receta paramétrica si existe y encaja; si no,
+ * mantiene la representación anterior (Box para rectas, Line para el resto).
+ */
+function PieceVisual({
+  product, piece, fallbackPorts, p1mm, p2mm, widthMm, alaMm, tipo,
+  selected, onClick, label,
+}: {
+  product: Product | undefined;
+  piece: Piece;
+  fallbackPorts: V3[];
+  p1mm: V3;
+  p2mm: V3;
+  widthMm: number | null;
+  alaMm: number | null;
+  tipo: string;
+  selected: boolean;
+  onClick: () => void;
+  label: string;
+}) {
+  const fit = useMemo(
+    () => (product && resolveRecipe(product) ? verifyGeometricFit(product, piece) : null),
+    [product, piece],
+  );
+
+  if (product && fit && fit.matches) {
+    return (
+      <ParametricMesh
+        product={product}
+        piece={piece}
+        fit={fit}
+        selected={selected}
+        onClick={onClick}
+      />
+    );
+  }
+
+  if (tipo === 'recta') {
+    return (
+      <RectoPiece
+        p1mm={p1mm}
+        p2mm={p2mm}
+        widthMm={widthMm}
+        alaMm={alaMm}
+        selected={selected}
+        onClick={onClick}
+        label={label}
+      />
+    );
+  }
+
+  return (
+    <SchematicPiece
+      ports={fallbackPorts}
+      selected={selected}
+      onClick={onClick}
+      label={label}
+    />
+  );
+}
+
+function pieceLengthFromPorts(piece: Piece): number | null {
+  const p1 = piece.puertos.P1;
+  const p2 = piece.puertos.P2;
+  if (!p1 || !p2) return null;
+  if (typeof piece.longitud_mm === 'number' && piece.longitud_mm > 0) return piece.longitud_mm;
+  const dx = p2.posicion_mm[0] - p1.posicion_mm[0];
+  const dy = p2.posicion_mm[1] - p1.posicion_mm[1];
+  const dz = p2.posicion_mm[2] - p1.posicion_mm[2];
+  const d = Math.hypot(dx, dy, dz);
+  return d > 0 ? d : null;
 }
 
 function SchematicPiece({
@@ -218,24 +363,19 @@ export function TrayObjects() {
             onPointerOver={onOver}
             onPointerOut={onOut}
           >
-            {tipo === 'recta' ? (
-              <RectoPiece
-                p1mm={p1}
-                p2mm={p2}
-                widthMm={product?.ancho_nominal_mm ?? null}
-                alaMm={alaFromProduct(product)}
-                selected={isSelected}
-                onClick={onClick}
-                label={piece.instancia_id}
-              />
-            ) : (
-              <SchematicPiece
-                ports={ports.map((p) => toViewer(p.posicion_mm as V3))}
-                selected={isSelected}
-                onClick={onClick}
-                label={piece.instancia_id}
-              />
-            )}
+            <PieceVisual
+              product={product}
+              piece={piece}
+              fallbackPorts={ports.map((pp) => toViewer(pp.posicion_mm as V3))}
+              p1mm={p1}
+              p2mm={p2}
+              widthMm={product?.ancho_nominal_mm ?? null}
+              alaMm={alaFromProduct(product)}
+              tipo={tipo}
+              selected={isSelected}
+              onClick={onClick}
+              label={piece.instancia_id}
+            />
 
             {/* Port markers when connection tool is active */}
             {connectionToolActive && Object.entries(piece.puertos).map(([portId, port]) => {

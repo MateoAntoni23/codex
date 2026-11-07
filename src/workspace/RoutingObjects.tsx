@@ -19,6 +19,14 @@ import {
 import type { Point3 } from './routingRules';
 import { computeTurnPerp } from './addCurvePiece';
 import { isHorizontalCurve } from './pieceClassification';
+import {
+  resolveRecipe,
+  placeRecipe,
+  buildLocalMesh,
+  chiralityForTurn,
+  type Vec3 as BridgeVec3,
+} from './parametricBridge';
+import type { Product } from '../tray/model';
 
 function toViewer(mm: Point3): Point3 {
   return [mm[0] / 1000, mm[2] / 1000, -mm[1] / 1000];
@@ -114,6 +122,72 @@ function PreviewMesh({
   );
 }
 
+// ─── Transform mm (Z-up) → viewer m (Y-up), como THREE.Matrix4 constante ──
+const MM_TO_VIEWER = new THREE.Matrix4().set(
+  1 / 1000,       0,         0, 0,
+         0,       0,  1 / 1000, 0,
+         0, -1 / 1000,        0, 0,
+         0,       0,         0, 1,
+);
+
+/**
+ * ParametricPreview — preview que usa la misma receta y transform que la
+ * pieza confirmada. Compartir el puente garantiza que lo que se ve antes
+ * de confirmar coincide con lo que queda al confirmar.
+ */
+function ParametricPreview({
+  product,
+  startPos,
+  entryDir,
+  turnDirection,
+  overrideLengthMm,
+}: {
+  product: Product;
+  startPos: BridgeVec3;
+  entryDir: BridgeVec3;
+  turnDirection: 'left' | 'right';
+  overrideLengthMm?: number | null;
+}) {
+  const data = useMemo(() => {
+    const entry = resolveRecipe(product);
+    if (!entry) return null;
+    try {
+      const overrides = entry.piece_kind === 'tramo_recto' && overrideLengthMm && overrideLengthMm > 0
+        ? { longitud_mm: overrideLengthMm }
+        : undefined;
+      const chirality = entry.piece_kind === 'curva_horizontal'
+        ? chiralityForTurn(turnDirection)
+        : 'native';
+      const placed = placeRecipe(product, entry, startPos, entryDir, chirality, overrides);
+      const geom = buildLocalMesh(placed.recipe);
+      const matrix = new THREE.Matrix4().multiplyMatrices(MM_TO_VIEWER, placed.matrix);
+      return { geom, matrix, mirrored: placed.mirrored };
+    } catch {
+      return null;
+    }
+  }, [product, startPos[0], startPos[1], startPos[2], entryDir[0], entryDir[1], entryDir[2], turnDirection, overrideLengthMm]);
+
+  if (!data) return null;
+  return (
+    <mesh
+      matrixAutoUpdate={false}
+      onUpdate={(m) => {
+        m.matrix.copy(data.matrix);
+        m.matrixWorldNeedsUpdate = true;
+      }}
+    >
+      <primitive object={data.geom} attach="geometry" />
+      <meshStandardMaterial
+        color="#ff9900"
+        transparent
+        opacity={0.35}
+        depthWrite={false}
+        side={THREE.DoubleSide}
+      />
+    </mesh>
+  );
+}
+
 // ─── Curve arc preview ────────────────────────────────────────────────────────
 
 function CurvePreviewMesh({ arcPoints, widthMm }: { arcPoints: THREE.Vector3[]; widthMm: number }) {
@@ -158,8 +232,39 @@ export function RoutingObjects() {
     [context?.productos, selectedProductId],
   );
 
+  // Preview paramétrico cuando el producto seleccionado tiene receta medida.
+  const parametricPreview = useMemo(() => {
+    if (!startPort || step === 'selectingPort' || !selectedProduct) return null;
+    const entry = resolveRecipe(selectedProduct);
+    if (!entry) return null;
+    // La dirección de avance que recibe el puente es la dirección "hacia la
+    // nueva pieza", opuesta a la normal saliente del P1 origen (pieza previa).
+    const entryDir: BridgeVec3 = [
+      startPort.dir[0],
+      startPort.dir[1],
+      startPort.dir[2],
+    ];
+    const startPos: BridgeVec3 = [
+      startPort.pos[0],
+      startPort.pos[1],
+      startPort.pos[2],
+    ];
+    // Para rectos, usar previewLengthMm si se configuró; si no, longitud catalogo.
+    const overrideLengthMm = entry.piece_kind === 'tramo_recto' && previewLengthMm > 0
+      ? previewLengthMm
+      : null;
+    return {
+      product: selectedProduct,
+      startPos,
+      entryDir,
+      overrideLengthMm,
+    };
+  }, [startPort, step, selectedProduct, previewLengthMm]);
+
   const previewData = useMemo(() => {
     if (!startPort || step === 'selectingPort') return null;
+    // Si hay preview paramétrico, el fallback no se calcula.
+    if (parametricPreview) return null;
 
     if (selectedProduct && isHorizontalCurve(selectedProduct)) {
       const angleDeg = (selectedProduct as Record<string, unknown>).angulo_grados as number | undefined;
@@ -203,7 +308,7 @@ export function RoutingObjects() {
       (endV[2] - startV[2]) / len,
     ];
     return { type: 'straight' as const, center, dirV, len };
-  }, [startPort, step, previewLengthMm, snapToAxis, selectedProduct, turnDirection]);
+  }, [startPort, step, previewLengthMm, snapToAxis, selectedProduct, turnDirection, parametricPreview]);
 
   if (!active || !entrada) return null;
 
@@ -242,7 +347,18 @@ export function RoutingObjects() {
         </group>
       )}
 
-      {/* Preview mesh */}
+      {/* Preview paramétrico (receta medida) — tiene prioridad sobre el fallback */}
+      {parametricPreview && (
+        <ParametricPreview
+          product={parametricPreview.product}
+          startPos={parametricPreview.startPos}
+          entryDir={parametricPreview.entryDir}
+          turnDirection={turnDirection}
+          overrideLengthMm={parametricPreview.overrideLengthMm}
+        />
+      )}
+
+      {/* Fallback: preview rectangular/tubo para productos sin receta medida */}
       {previewData?.type === 'straight' && (
         <PreviewMesh
           center={previewData.center}

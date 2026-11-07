@@ -16,6 +16,7 @@ import type { DirectCompatResult, StartPort, Point3 } from './routingRules';
 import { buildSegmentPiece, generateSegmentId } from './addTraySegment';
 import { buildCurvePiece, generateCurveId, computeTurnPerp } from './addCurvePiece';
 import { computeEndpoint, generateConnectionId } from './routingRules';
+import { resolveRecipe, placeRecipe, chiralityForTurn } from './parametricBridge';
 
 // ─── PE extension ─────────────────────────────────────────────────────────────
 
@@ -274,15 +275,11 @@ export function planAddCurve(
   const angleDeg = (newProduct as Record<string, unknown>).angulo_grados as number | undefined;
   if (!angleDeg || angleDeg <= 0) throw new Error('planAddCurve: angulo_grados must be > 0');
 
-  const radioInterior = ((newProduct as Record<string, unknown>).radio_mm as number | undefined) ?? 300;
-  const radiusMm = radioInterior + (newProduct.ancho_nominal_mm ?? 0) / 2;
-
   const pieceIds = new Set(entrada.piezas.map((p) => p.instancia_id));
   const connIds  = new Set(entrada.conexiones.map((c) => c.conexion_id));
 
   const newId = generateCurveId(pieceIds);
-  const entryDir = startPort.pos === startPort.pos ? startPort.dir : startPort.dir; // identity, keeps type
-  const turnPerp = computeTurnPerp(entryDir, turnDirection);
+  const entryDir = startPort.dir;
 
   // newPiecePort tells which port of the new curve connects to the existing piece.
   // Catalog entries for curves use P1 as the entry port; compat.newPiecePort reflects this.
@@ -292,7 +289,37 @@ export function planAddCurve(
     throw new Error(`planAddCurve: unexpected newPiecePort '${newPiecePort}'; only P1 entry is supported`);
   }
 
-  const newPiece = buildCurvePiece(newId, newProduct.producto_id, startPort.pos, entryDir, turnPerp, angleDeg, radiusMm);
+  // Preferimos la receta paramétrica medida del STEP cuando existe: así la
+  // trayectoria y el P2 de la pieza confirmada coinciden con el preview
+  // (no hay "arco sustituto" de 450 mm). Caemos al fallback cuando el
+  // producto no está en el catálogo paramétrico.
+  const parametricEntry = resolveRecipe(newProduct);
+  let newPiece: Piece;
+  if (parametricEntry && parametricEntry.piece_kind === 'curva_horizontal') {
+    const chirality = chiralityForTurn(turnDirection);
+    const placed = placeRecipe(newProduct, parametricEntry, startPort.pos, entryDir, chirality);
+    const arcLenMm = radiansToArcLengthForPlacement(placed.p1.pos, placed.p2.pos, angleDeg);
+    newPiece = {
+      instancia_id: newId,
+      producto_id: newProduct.producto_id,
+      longitud_eje_mm: arcLenMm,
+      puertos: {
+        P1: {
+          posicion_mm: [placed.p1.pos[0], placed.p1.pos[1], placed.p1.pos[2]],
+          direccion: [placed.p1.outwardNormal[0], placed.p1.outwardNormal[1], placed.p1.outwardNormal[2]],
+        },
+        P2: {
+          posicion_mm: [placed.p2.pos[0], placed.p2.pos[1], placed.p2.pos[2]],
+          direccion: [placed.p2.outwardNormal[0], placed.p2.outwardNormal[1], placed.p2.outwardNormal[2]],
+        },
+      },
+    };
+  } else {
+    const radioInterior = ((newProduct as Record<string, unknown>).radio_mm as number | undefined) ?? 300;
+    const radiusMm = radioInterior + (newProduct.ancho_nominal_mm ?? 0) / 2;
+    const turnPerp = computeTurnPerp(entryDir, turnDirection);
+    newPiece = buildCurvePiece(newId, newProduct.producto_id, startPort.pos, entryDir, turnPerp, angleDeg, radiusMm);
+  }
 
   const connId = generateConnectionId(connIds);
   const newConnection = {
@@ -306,6 +333,28 @@ export function planAddCurve(
   );
 
   return { kind: 'add_segment', newPiece, newConnection, resolution: compat, peExtension };
+}
+
+/**
+ * Longitud de arco deducida del P1 y P2 reales colocados por el puente y del
+ * ángulo nominal de la curva. R_chord = ‖P2−P1‖; R_centerline = chord / (2·sin(θ/2));
+ * arc = R·θ. Se calcula en vez de aproximar al valor de fallback (300+ancho/2).
+ */
+function radiansToArcLengthForPlacement(
+  p1: [number, number, number],
+  p2: [number, number, number],
+  angleDeg: number,
+): number {
+  const dx = p2[0] - p1[0];
+  const dy = p2[1] - p1[1];
+  const dz = p2[2] - p1[2];
+  const chord = Math.hypot(dx, dy, dz);
+  const θ = (angleDeg * Math.PI) / 180;
+  const half = θ / 2;
+  const sinHalf = Math.sin(half);
+  if (sinHalf < 1e-9) return chord;
+  const R = chord / (2 * sinHalf);
+  return R * θ;
 }
 
 // ─── Apply ────────────────────────────────────────────────────────────────────
