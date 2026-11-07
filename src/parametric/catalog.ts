@@ -73,6 +73,13 @@ export interface ParametricEntry {
   /** Versión del artefacto (SHA corto / etiqueta). Permite detectar cuando
    *  una calibración guardada corresponde a una generación anterior. */
   readonly source_version: string;
+  /**
+   * Rotación en grados alrededor del eje Z aplicada al STEP ORIGINAL antes
+   * de la alineación por bbox. Se usa cuando el frame interno del STEP está
+   * rotado respecto al marco de instalación natural (caso CUPS: +45°). Las
+   * reconstrucciones/variantes ya se generan en el marco natural.
+   */
+  readonly original_rotation_z_deg?: number;
 }
 
 // -----------------------------------------------------------------------------
@@ -108,7 +115,7 @@ function makeView(
  * polígonos medidos, reglas de escalado o posicionamiento de bocas. Las
  * calibraciones guardadas con una versión anterior se marcan "revisar".
  */
-const SOURCE_VERSION = '78dcb76-geom-fix';
+const SOURCE_VERSION = '4236323-cups-align';
 
 const RAW_ENTRIES: readonly {
   recipe: string;
@@ -131,6 +138,7 @@ const RAW_ENTRIES: readonly {
     notes: readonly string[];
   };
   volume_reconstruction_mm3: number;
+  original_rotation_z_deg?: number;
 }[] = [
   {
     recipe: 'TRPS-300-22-Z.STEP',
@@ -218,16 +226,22 @@ const RAW_ENTRIES: readonly {
     recipe: 'CUPS-300-A-Z.STEP',
     piece_kind: 'curva_vertical',
     original_glb_url: '/parametric/originals_glb/CUPS-300-A-Z.glb',
-    original_bbox_span_mm: [54.63, 232.97, 300],
+    // Bbox del STEP TRAS la rotación +45° al marco natural (mismo marco
+    // en el que se evalúa la reconstrucción). Span sin rotar era 54.63 × 232.97;
+    // con el perfil rotado el bbox envolvente es 164.74 × 164.74. Z=300
+    // no cambia porque la rotación es sólo en Z.
+    original_bbox_span_mm: [164.74, 164.74, 300],
     original_volume_mm3: 2375093.49,
+    original_rotation_z_deg: 45,
     recon: {
-      label: 'Reconstrucción paramétrica (perfil XY medido)',
+      label: 'Reconstrucción paramétrica (perfil XY medido, marco natural)',
       sku: 'CUPS-300-A-Z',
       glb_url: '/parametric/reconstructions/CUPS-300-A-Z__recon.glb',
       params: { ancho_mm: 300, ala_mm: 65, espesor_mm: 0.71, angulo_vertical_deg: 90 },
       notes: [
-        'Perfil XY faceteado (8 vértices medidos) extruido en Z por ancho. Reemplaza al envolvente box previo.',
-        'Bocas P1_horizontal y P2_vertical son planos de referencia (Y=0 y X=−54.63); SAMET no publica puertos operativos para CUPS.',
+        'Perfil XY faceteado (8 vértices medidos) rotado +45° al marco de instalación natural; extruido en Z por ancho.',
+        'Bocas OPERATIVAS medidas sobre las dos chaflanas exteriores del STEP: cada cara 300 × ~36.56 mm.',
+        'Función: P1_horizontal (normal −X) ↔ bandeja horizontal; P2_vertical (normal −Y) ↔ bandeja vertical.',
       ],
     },
     variant: {
@@ -237,7 +251,7 @@ const RAW_ENTRIES: readonly {
       params: { ancho_mm: 450, ala_mm: 65, espesor_mm: 0.71, angulo_vertical_deg: 90 },
       notes: [
         'Regla ESTIMADA: SAMET no publica CUPS de ancho≠300; asumimos perfil XY fijo y escalamos sólo profundidad Z.',
-        'Bocas P1/P2 siguen siendo REFERENCIA, no operativas; no usar como conexión verificada.',
+        'Altura de conexión (~36.56 mm) distinta del ala estándar 65 mm de los tramos rectos: compatibilidad mecánica PENDIENTE de dato SAMET aunque la geometría se visualice correctamente.',
       ],
     },
     volume_reconstruction_mm3: 2375093.49,
@@ -352,6 +366,7 @@ function buildEntry(raw: (typeof RAW_ENTRIES)[number]): ParametricEntry {
     },
     canonical_bbox_mm,
     source_version: SOURCE_VERSION,
+    original_rotation_z_deg: raw.original_rotation_z_deg,
   };
 }
 

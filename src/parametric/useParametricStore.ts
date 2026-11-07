@@ -16,6 +16,7 @@ interface ParametricState {
   readonly showNormals: boolean;
   readonly showTrajectory: boolean;
   readonly compareOriginal: boolean;
+  readonly showConnectionDemo: boolean;
   setRecipe(recipe: string): void;
   setView(view: ViewId): void;
   selectPort(port: string | null): void;
@@ -24,6 +25,7 @@ interface ParametricState {
   toggleNormals(): void;
   toggleTrajectory(): void;
   toggleCompareOriginal(): void;
+  toggleConnectionDemo(): void;
   reset(): void;
 }
 
@@ -38,6 +40,7 @@ export const useParametricStore = create<ParametricState>((set) => ({
   showNormals: true,
   showTrajectory: true,
   compareOriginal: false,
+  showConnectionDemo: false,
   setRecipe(recipe) {
     set({ recipe, selectedPort: null });
   },
@@ -62,6 +65,9 @@ export const useParametricStore = create<ParametricState>((set) => ({
   toggleCompareOriginal() {
     set((s) => ({ compareOriginal: !s.compareOriginal }));
   },
+  toggleConnectionDemo() {
+    set((s) => ({ showConnectionDemo: !s.showConnectionDemo }));
+  },
   reset() {
     set({
       recipe: INITIAL_RECIPE,
@@ -72,6 +78,7 @@ export const useParametricStore = create<ParametricState>((set) => ({
       showNormals: true,
       showTrajectory: true,
       compareOriginal: false,
+      showConnectionDemo: false,
     });
   },
 }));

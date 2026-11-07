@@ -29,11 +29,13 @@ export function ParametricSidebar() {
   const showNormals = useParametricStore((s) => s.showNormals);
   const showTrajectory = useParametricStore((s) => s.showTrajectory);
   const compare = useParametricStore((s) => s.compareOriginal);
+  const showConnectionDemo = useParametricStore((s) => s.showConnectionDemo);
   const toggleAxes = useParametricStore((s) => s.toggleAxes);
   const togglePorts = useParametricStore((s) => s.togglePorts);
   const toggleNormals = useParametricStore((s) => s.toggleNormals);
   const toggleTrajectory = useParametricStore((s) => s.toggleTrajectory);
   const toggleCompare = useParametricStore((s) => s.toggleCompareOriginal);
+  const toggleConnectionDemo = useParametricStore((s) => s.toggleConnectionDemo);
 
   return (
     <div className="pilot-list">
@@ -78,6 +80,11 @@ export function ParametricSidebar() {
         <Toggle label="Bocas (puertos)" value={showPorts} onChange={togglePorts} />
         <Toggle label="Normales de boca" value={showNormals} onChange={toggleNormals} />
         <Toggle label="Recorrido central" value={showTrajectory} onChange={toggleTrajectory} />
+        <Toggle
+          label="Prueba funcional: rectos en bocas (curva vertical)"
+          value={showConnectionDemo}
+          onChange={toggleConnectionDemo}
+        />
       </div>
     </div>
   );

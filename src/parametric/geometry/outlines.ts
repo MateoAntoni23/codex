@@ -372,9 +372,23 @@ export function buildXPSRecipe(params: {
 // CUPS — codo vertical (SAMET bracket A).
 // Pieza vertical: perfil XY extruido en Z. Polígono CCW visto desde +Z,
 // 8 vértices con chaflanes interiores y exteriores.
+//
+// Marco del STEP vs marco de instalación natural:
+//   El STEP viene modelado con su perfil XY rotado +45° CCW respecto al marco
+//   donde las bocas quedan axis-aligned (una mira a −Y, la otra a −X). Esto
+//   obligaba al usuario a calibrar +45° sobre Z en cada apertura. Lo
+//   corregimos aquí en la receta: rotamos el polígono medido +45° CCW alrededor
+//   del origen antes de construir el prisma y de calcular las bocas. El STEP
+//   original también se rota +45° en el loader para que coincida con la
+//   reconstrucción sin calibración (ver `original_rotation_z_deg` en catalog).
+//
+// Dos caras operativas (chaflanes exteriores V0→V1 y V4→V5, cada una 300×36.56
+// mm): el STEP sí expone estas caras rectas. Sus normales en el marco natural
+// son (0,−1,0) y (−1,0,0) — la pieza transiciona de horizontal a vertical.
 // -----------------------------------------------------------------------------
 
-const CUPS_OUTLINE_300_XY: readonly V2[] = [
+/** Perfil medido sobre el GLB original (marco XY del STEP, pre-rotación). */
+const CUPS_OUTLINE_300_XY_STEP: readonly V2[] = [
   [-54.63, 25.85],
   [-28.78, 0],
   [0, 28.78],
@@ -385,6 +399,20 @@ const CUPS_OUTLINE_300_XY: readonly V2[] = [
   [-34.0, 46.49],
 ];
 
+/** Rotación CCW alrededor del origen (grados). Conserva orientación CCW. */
+function rotatePolygonZ(poly: readonly V2[], deg: number): V2[] {
+  const rad = (deg * Math.PI) / 180;
+  const c = Math.cos(rad);
+  const s = Math.sin(rad);
+  return poly.map(([x, y]) => [x * c - y * s, x * s + y * c] as const);
+}
+
+/**
+ * Rotación aplicada al perfil CUPS para alinearlo al marco de instalación
+ * natural. También se aplica al STEP original (ver catalog.original_rotation_z_deg).
+ */
+export const CUPS_NATURAL_FRAME_ROTATION_Z_DEG = 45;
+
 export function buildCUPSRecipe(params: {
   ancho_mm: number;
   ala_mm: number;
@@ -394,47 +422,70 @@ export function buildCUPSRecipe(params: {
   void params.ala_mm;
   const { ancho_mm } = params;
 
-  // SAMET no publica regla de escalado para CUPS. Mantenemos el perfil XY
-  // fijo y sólo escalamos la profundidad (ancho/Z).
-  const polygon = CUPS_OUTLINE_300_XY;
+  // Rotamos el perfil medido al marco natural. SAMET no publica regla de
+  // escalado para CUPS → perfil XY fijo, sólo escalamos la profundidad (Z).
+  const polygon = rotatePolygonZ(
+    CUPS_OUTLINE_300_XY_STEP,
+    CUPS_NATURAL_FRAME_ROTATION_Z_DEG,
+  );
 
   const xy_minX = Math.min(...polygon.map((p) => p[0]));
   const xy_maxX = Math.max(...polygon.map((p) => p[0]));
   const xy_minY = Math.min(...polygon.map((p) => p[1]));
   const xy_maxY = Math.max(...polygon.map((p) => p[1]));
-  const xSpan = xy_maxX - xy_minX;
-  const ySpan = xy_maxY - xy_minY;
-  const centerX = (xy_minX + xy_maxX) / 2;
-  const centerY = (xy_minY + xy_maxY) / 2;
 
   // Canónico CUPS: Z ∈ [-ancho, 0] (igual convención que piezas horizontales).
   // El prisma se construye en Z ∈ [0, ancho] y se traslada a -ancho.
   const centerZ = -ancho_mm / 2;
 
-  // Bocas provisionales. El STEP no expone caras rectas en Y=0 ni X=xy_minX
-  // (los cantos están chaflanados); las conservamos como PLANOS DE REFERENCIA
-  // en los que apoyarán las bandejas vecinas, con la misma semántica que usaba
-  // el modelo envolvente previo. La fidelidad de malla sí mejora: el prisma
-  // reconstruido reproduce los 8 vértices del perfil medido.
-  const bocaHorizontal: PortDef = {
-    name: 'P1_horizontal',
-    center: [centerX, xy_minY, centerZ],
-    normal: [0, -1, 0],
-    ancho_mm,
-    ala_mm: xSpan,
-    u_dir: [1, 0, 0],
-    v_dir: [0, 0, -1],
-    kind: 'reference',
-  };
+  // Bocas operativas sobre las dos chaflanes exteriores del perfil. En el
+  // marco natural:
+  //   V0→V1  (índices 0→1): arista horizontal en Y = xy_minY, normal (0,−1,0).
+  //                         Es la cara de la bandeja VERTICAL.
+  //   V4→V5  (índices 4→5): arista vertical en X = xy_minX, normal (−1,0,0).
+  //                         Es la cara de la bandeja HORIZONTAL.
+  // Ancho del puerto = ancho_mm (profundidad del canal en Z, = ancho comercial).
+  // Alto del puerto  = longitud de la chaflán (~36.56 mm). No coincide con el
+  // ala estándar 65 mm de los tramos rectos: SAMET no publica compatibilidad
+  // directa — se marca como pendiente en catálogo.
+  const v0 = polygon[0];
+  const v1 = polygon[1];
+  const v4 = polygon[4];
+  const v5 = polygon[5];
+
+  const p2EdgeLen = Math.hypot(v1[0] - v0[0], v1[1] - v0[1]);
+  const p1EdgeLen = Math.hypot(v5[0] - v4[0], v5[1] - v4[1]);
+
+  // P2_vertical — chaflán V0→V1, horizontal, normal (0, −1, 0).
+  // u a lo largo de la extrusión (ancho de tray): elegimos (0,0,−1) para que
+  // u×v = normal con v = dirección de la arista en XY normalizada hacia +X.
+  const p2EdgeDx = (v1[0] - v0[0]) / p2EdgeLen; // +1 esperado
+  const p2EdgeDy = (v1[1] - v0[1]) / p2EdgeLen; // 0 esperado
   const bocaVertical: PortDef = {
     name: 'P2_vertical',
-    center: [xy_minX, centerY, centerZ],
+    center: [(v0[0] + v1[0]) / 2, (v0[1] + v1[1]) / 2, centerZ],
+    normal: [0, -1, 0],
+    ancho_mm,
+    ala_mm: p2EdgeLen,
+    u_dir: [0, 0, -1],
+    v_dir: [p2EdgeDx, p2EdgeDy, 0],
+    kind: 'operational',
+  };
+
+  // P1_horizontal — chaflán V4→V5, vertical, normal (−1, 0, 0).
+  // u = (0,0,−1) y v = dirección de la arista V4→V5 (hacia −Y esperado) para
+  // que u×v = normal.
+  const p1EdgeDx = (v5[0] - v4[0]) / p1EdgeLen; // 0 esperado
+  const p1EdgeDy = (v5[1] - v4[1]) / p1EdgeLen; // −1 esperado
+  const bocaHorizontal: PortDef = {
+    name: 'P1_horizontal',
+    center: [(v4[0] + v5[0]) / 2, (v4[1] + v5[1]) / 2, centerZ],
     normal: [-1, 0, 0],
     ancho_mm,
-    ala_mm: ySpan,
+    ala_mm: p1EdgeLen,
     u_dir: [0, 0, -1],
-    v_dir: [0, 1, 0],
-    kind: 'reference',
+    v_dir: [p1EdgeDx, p1EdgeDy, 0],
+    kind: 'operational',
   };
 
   return {
@@ -446,8 +497,9 @@ export function buildCUPSRecipe(params: {
     bboxMin: [xy_minX, xy_minY, -ancho_mm],
     bboxMax: [xy_maxX, xy_maxY, 0],
     notes: [
-      'Polígono faceteado del STEP original (8 vértices del perfil XY). Pieza vertical: se extruye en Z por ancho.',
-      'Bocas provisionales: planos de referencia Y=0 y X=-54.63 (el STEP no expone caras rectas ahí). SAMET no publica puertos operativos para CUPS.',
+      'Perfil XY medido del STEP (8 vértices) rotado +45° al marco de instalación natural donde las bocas quedan axis-aligned.',
+      `Bocas MEDIDAS sobre las chaflanas exteriores del STEP: 300 × ${p1EdgeLen.toFixed(2)} mm. Longitud de conexión (~${p1EdgeLen.toFixed(0)} mm) difiere del ala estándar 65 mm de los tramos rectos: compatibilidad mecánica pendiente de dato SAMET.`,
+      'Variante ascendente/descendente: SAMET publica sólo CUPS-A; la ascendente se asumiría espejo (pendiente de confirmación).',
       ancho_mm === 300
         ? 'Ancho=300 mm: profundidad del canal fiel al STEP.'
         : `Variante ancho=${ancho_mm}: sólo escala la profundidad Z. El perfil XY queda fijo (sin regla pública).`,

@@ -46,12 +46,28 @@ function stripOcpRootRotation(scene: THREE.Object3D): void {
   });
 }
 
-/** Clona la escena del GLB, neutraliza la rotación OCP y aplica material. */
-function useCleanGlb(url: string, color: string, opacity: number): THREE.Group {
+/**
+ * Clona la escena del GLB, neutraliza la rotación OCP, aplica material y
+ * opcionalmente aplica una rotación extra sobre Z al nodo raíz. Esta rotación
+ * extra existe para piezas cuyo frame interno del STEP está rotado respecto
+ * al marco de instalación natural (caso CUPS: +45°).
+ */
+function useCleanGlb(
+  url: string,
+  color: string,
+  opacity: number,
+  rotationZDeg: number,
+): THREE.Group {
   const { scene } = useGLTF(url);
   return useMemo(() => {
     const clone = scene.clone(true);
     stripOcpRootRotation(clone);
+    if (rotationZDeg !== 0) {
+      const rad = (rotationZDeg * Math.PI) / 180;
+      clone.rotation.z = rad;
+      clone.updateMatrix();
+      clone.updateMatrixWorld(true);
+    }
     clone.traverse((obj) => {
       if ((obj as THREE.Mesh).isMesh) {
         const mesh = obj as THREE.Mesh;
@@ -68,7 +84,7 @@ function useCleanGlb(url: string, color: string, opacity: number): THREE.Group {
       }
     });
     return clone;
-  }, [scene, color, opacity]);
+  }, [scene, color, opacity, rotationZDeg]);
 }
 
 function fileBboxMm(obj: THREE.Object3D): THREE.Box3 {
@@ -93,14 +109,16 @@ function AlignedGlb({
   opacity = 1,
   alignToCenterMm,
   calibration,
+  rotationZDeg = 0,
 }: {
   url: string;
   color: string;
   opacity?: number;
   alignToCenterMm?: Vec3;
   calibration?: Calibration;
+  rotationZDeg?: number;
 }) {
-  const clean = useCleanGlb(url, color, opacity);
+  const clean = useCleanGlb(url, color, opacity, rotationZDeg);
 
   const alignOffsetMm = useMemo<Vec3>(() => {
     if (!alignToCenterMm) return [0, 0, 0];
@@ -213,6 +231,68 @@ function ProceduralMesh({
       </group>
     </group>
   );
+}
+
+/**
+ * ConnectionStub — tramo recto de demostración conectado a un puerto.
+ *
+ * Usado para visualizar que la curva vertical conecta correctamente una
+ * bandeja horizontal con una vertical. La cara frontal del stub queda
+ * coplanaria con la cara del puerto; el stub se extiende hacia afuera a
+ * lo largo del eje de la normal del puerto.
+ *
+ * El stub reproduce ancho × ala del puerto × longitud axial fija. Si
+ * esos valores no coinciden con un tramo recto estándar (ej. CUPS con
+ * ala ~36 vs TRPS con ala 65), se renderiza igual pero la compatibilidad
+ * mecánica queda documentada como pendiente en el inspector.
+ */
+function ConnectionStub({
+  port,
+  color,
+  lengthMm = 400,
+}: {
+  port: ParametricPort;
+  color: string;
+  lengthMm?: number;
+}) {
+  const geometry = useMemo(() => {
+    // Box centrado en el origen con tamaño (ancho, ala, length). Luego
+    // aplicamos matriz de orientación: X_local → u_dir, Y_local → v_dir,
+    // Z_local → normal (así la cara +Z se apoya en el puerto). El centro
+    // del box se desplaza +length/2 en normal para que la cara −Z toque
+    // el puerto.
+    const g = new THREE.BoxGeometry(port.ancho_mm, port.ala_mm, lengthMm);
+    const basis = new THREE.Matrix4().makeBasis(
+      new THREE.Vector3(port.u_dir[0], port.u_dir[1], port.u_dir[2]),
+      new THREE.Vector3(port.v_dir[0], port.v_dir[1], port.v_dir[2]),
+      new THREE.Vector3(port.normal[0], port.normal[1], port.normal[2]),
+    );
+    const translate = new THREE.Matrix4().makeTranslation(
+      port.center[0] + (port.normal[0] * lengthMm) / 2,
+      port.center[1] + (port.normal[1] * lengthMm) / 2,
+      port.center[2] + (port.normal[2] * lengthMm) / 2,
+    );
+    g.applyMatrix4(basis);
+    g.applyMatrix4(translate);
+    g.computeBoundingBox();
+    g.computeBoundingSphere();
+    return g;
+  }, [port, lengthMm]);
+
+  const material = useMemo(
+    () =>
+      new THREE.MeshStandardMaterial({
+        color,
+        metalness: 0.1,
+        roughness: 0.6,
+        transparent: true,
+        opacity: 0.55,
+        side: THREE.DoubleSide,
+      }),
+    [color],
+  );
+
+  return <mesh geometry={geometry} material={material} scale={MM_TO_M} />;
 }
 
 function PortMarker({
@@ -352,6 +432,7 @@ function ActiveView({ entry, activeView }: { entry: ParametricEntry; activeView:
   const showNormals = useParametricStore((s) => s.showNormals);
   const showTrajectory = useParametricStore((s) => s.showTrajectory);
   const compare = useParametricStore((s) => s.compareOriginal);
+  const showConnectionDemo = useParametricStore((s) => s.showConnectionDemo);
   const view = useParametricStore((s) => s.view);
   const selectedPort = useParametricStore((s) => s.selectedPort);
   const selectPort = useParametricStore((s) => s.selectPort);
@@ -372,6 +453,7 @@ function ActiveView({ entry, activeView }: { entry: ParametricEntry; activeView:
           color="#cccccc"
           alignToCenterMm={canonicalCenter}
           calibration={effectiveCal}
+          rotationZDeg={entry.original_rotation_z_deg ?? 0}
         />
       ) : (
         <>
@@ -389,6 +471,7 @@ function ActiveView({ entry, activeView }: { entry: ParametricEntry; activeView:
               alignToCenterMm={canonicalCenter}
               /* el overlay original usa su propia calibración (clave :original) */
               calibration={useCalibrationStore.getState().calibrations[calibrationKey(entry.recipe, 'original')]}
+              rotationZDeg={entry.original_rotation_z_deg ?? 0}
             />
           )}
         </>
@@ -406,6 +489,17 @@ function ActiveView({ entry, activeView }: { entry: ParametricEntry; activeView:
             showNormal={showNormals}
           />
         ))}
+      {showConnectionDemo &&
+        entry.piece_kind === 'curva_vertical' &&
+        activeView.ports
+          .filter((p) => p.kind === 'operational')
+          .map((p) => (
+            <ConnectionStub
+              key={`stub-${p.name}`}
+              port={p}
+              color={view === 'variant' ? '#8ab8ff' : '#aadd88'}
+            />
+          ))}
     </group>
   );
 }
