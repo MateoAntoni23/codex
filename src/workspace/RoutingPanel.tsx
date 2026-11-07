@@ -245,6 +245,13 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
     () => compatibleWalkable.filter((p) => !isInteractivelyInsertable(p) && !hasParametricRecipe(p)),
     [compatibleWalkable],
   );
+  // Clasificación visual separada (sin alterar compatibilidades del catálogo):
+  // los que tienen modelo paramétrico se cuentan aparte y se marcan con ◆ en
+  // el selector; el resto queda como insertable sin modelo.
+  const parametricCompatible = useMemo(
+    () => compatibleProducts.filter((p) => hasParametricRecipe(p)),
+    [compatibleProducts],
+  );
 
   // Group compatible products by family for <optgroup> display
   const familyGroups = useMemo(() => {
@@ -405,12 +412,32 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
       <div style={{ marginBottom: 8 }}>
         <label style={{ color: '#8888aa', display: 'block', marginBottom: 3 }}>
           Continuación ({compatibleProducts.length} compatible{compatibleProducts.length !== 1 ? 's' : ''})
+          {parametricCompatible.length > 0 && (
+            <span style={{ color: '#99ccff', marginLeft: 6 }}>
+              · {parametricCompatible.length} con modelo
+            </span>
+          )}
           {nonInsertableCompatible.length > 0 && (
             <span style={{ color: '#ddaa44', marginLeft: 6 }}>
-              · {nonInsertableCompatible.length} aún no soportado{nonInsertableCompatible.length !== 1 ? 's' : ''}
+              · {nonInsertableCompatible.length} pendiente{nonInsertableCompatible.length !== 1 ? 's' : ''}
             </span>
           )}
         </label>
+        {/* Hint: familia activa sin modelos paramétricos — propone arrancar
+            un trazado nuevo. No falsea compatibilidad: declara explícitamente
+            que el catálogo SAMET veda intercambio entre familias (REV-032). */}
+        {compatibleProducts.length > 0 && parametricCompatible.length === 0 && (
+          <div style={{
+            marginBottom: 6, padding: '6px 8px', borderRadius: 3, fontSize: 10,
+            background: '#2a1f10', color: '#ddaa44', borderLeft: '2px solid #886633', lineHeight: 1.5,
+          }}>
+            <div style={{ fontWeight: 600, marginBottom: 2 }}>Ningún compatible tiene modelo paramétrico diseñado</div>
+            Los modelos 3D confirmados viven en la familia <strong>SAM-STP-Z (Perforada)</strong>:
+            TRPS-300-22-Z (recto), CPS-300-45-Z y CPS-300-90-Z (curvas horizontales).
+            SAMET veda compatibilidad entre familias (REV-032), por eso no aparecen acá.
+            Cancelá y usá "+ Agregar tramo recto" para iniciar un principal perforado.
+          </div>
+        )}
         {compatibleProducts.length === 0 ? (
           <div style={{ padding: '6px 8px', background: '#2a1a1a', borderRadius: 3, color: '#ff9955', fontSize: 10 }}>
             Sin continuaciones insertables para este puerto en el trazado interactivo.
@@ -428,12 +455,17 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
               <optgroup key={famId} label={acabado ? `${name} (${acabado})` : name}>
                 {products.map((p) => (
                   <option key={p.producto_id} value={p.producto_id}>
-                    {formatProductOption(p)}
+                    {hasParametricRecipe(p) ? '◆ ' : '○ '}{formatProductOption(p)}
                   </option>
                 ))}
               </optgroup>
             ))}
           </select>
+        )}
+        {compatibleProducts.length > 0 && (
+          <div style={{ fontSize: 9, color: '#667788', marginTop: 2 }}>
+            ◆ modelo paramétrico diseñado · ○ insertable sin modelo (geometría por fórmula de catálogo)
+          </div>
         )}
         {nonInsertableCompatible.length > 0 && (
           <details style={{ marginTop: 6, padding: '5px 8px', background: '#2a2211', borderRadius: 3, fontSize: 10, color: '#ddaa44', borderLeft: '2px solid #aa8822' }}>
