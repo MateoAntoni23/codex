@@ -1,14 +1,29 @@
 /**
  * catalog.ts — Catálogo paramétrico STP-Z 300: originales + reconstrucciones + variantes.
  *
- * Fuente: artifacts/parametric/fidelity.json (generado por
- * tools/step_parametric/build_all.py). Los GLB se sirven desde /parametric/*.
+ * Fuente (originales y volúmenes): artifacts/parametric/fidelity.json y los
+ * reportes STEP de tools/step_parametric/report/*.json. Los GLB se sirven desde
+ * /parametric/*.
+ *
+ * Fuente (reconstrucciones y variantes): recetas paramétricas JS en
+ * ./geometry/outlines.ts, despachadas por ./geometry/recipes.ts. Las bocas y
+ * bounding boxes de reconstruction/variant se DERIVAN del polígono medido;
+ * así la malla procedural y el panel del inspector no pueden salirse de sync.
  *
  * Esta vista es experimental y NO sustituye la geometría operativa del editor
  * ni las fórmulas Python del motor. Las dimensiones aquí son datos de prueba.
  */
 
+import {
+  buildRecipeFor,
+  type PieceKind,
+  type RawParams,
+} from './geometry/recipes';
+
 export type Vec3 = readonly [number, number, number];
+
+/** Tipo del puerto (ver geometry/outlines.ts para la semántica completa). */
+export type ParametricPortKind = 'operational' | 'reference';
 
 export interface ParametricPort {
   readonly name: string;
@@ -18,6 +33,7 @@ export interface ParametricPort {
   readonly ala_mm: number;
   readonly u_dir: Vec3;
   readonly v_dir: Vec3;
+  readonly kind: ParametricPortKind;
 }
 
 export interface ParametricFidelity {
@@ -33,15 +49,15 @@ export interface ParametricVariantView {
   readonly label: string;
   readonly sku: string;
   readonly glb_url: string;
-  readonly params: Readonly<Record<string, number | string | null>>;
+  readonly params: RawParams;
   readonly ports: readonly ParametricPort[];
   readonly notes: readonly string[];
-  readonly bbox_span_mm?: Vec3;
+  readonly bbox_span_mm: Vec3;
 }
 
 export interface ParametricEntry {
   readonly recipe: string;
-  readonly piece_kind: 'tramo_recto' | 'curva_horizontal' | 'curva_vertical' | 'derivacion_lateral' | 'cruz';
+  readonly piece_kind: PieceKind;
   readonly original_glb_url: string;
   readonly original_bbox_span_mm: Vec3;
   readonly original_volume_mm3: number;
@@ -54,62 +70,93 @@ export interface ParametricEntry {
    * para que el centro de su bbox coincida con el centro de este rectángulo.
    */
   readonly canonical_bbox_mm: { readonly min: Vec3; readonly max: Vec3 };
-  /** Versión del artefacto GLB (p.ej. SHA corto del build). Permite detectar
-   *  cuando una calibración guardada corresponde a un GLB ya reemplazado. */
+  /** Versión del artefacto (SHA corto / etiqueta). Permite detectar cuando
+   *  una calibración guardada corresponde a una generación anterior. */
   readonly source_version: string;
 }
 
-const P = (
-  name: string,
-  center: Vec3,
-  normal: Vec3,
-  ancho_mm: number,
-  ala_mm: number,
-  u_dir: Vec3,
-  v_dir: Vec3,
-): ParametricPort => ({ name, center, normal, ancho_mm, ala_mm, u_dir, v_dir });
+// -----------------------------------------------------------------------------
+// Construcción asistida: port data y bbox derivados del polígono medido.
+// -----------------------------------------------------------------------------
 
-export const PARAMETRIC_CATALOG: readonly ParametricEntry[] = [
+function spanOf(min: Vec3, max: Vec3): Vec3 {
+  return [max[0] - min[0], max[1] - min[1], max[2] - min[2]];
+}
+
+function makeView(
+  label: string,
+  sku: string,
+  glb_url: string,
+  piece_kind: PieceKind,
+  params: RawParams,
+  notes: readonly string[],
+): ParametricVariantView {
+  const recipe = buildRecipeFor(piece_kind, params);
+  return {
+    label,
+    sku,
+    glb_url,
+    params,
+    ports: recipe.ports,
+    notes,
+    bbox_span_mm: spanOf(recipe.bboxMin, recipe.bboxMax),
+  };
+}
+
+/**
+ * Versión de los artefactos de geometría JS. Se incrementa cuando cambian
+ * polígonos medidos, reglas de escalado o posicionamiento de bocas. Las
+ * calibraciones guardadas con una versión anterior se marcan "revisar".
+ */
+const SOURCE_VERSION = '78dcb76-geom-fix';
+
+const RAW_ENTRIES: readonly {
+  recipe: string;
+  piece_kind: PieceKind;
+  original_glb_url: string;
+  original_bbox_span_mm: Vec3;
+  original_volume_mm3: number;
+  recon: {
+    label: string;
+    sku: string;
+    glb_url: string;
+    params: RawParams;
+    notes: readonly string[];
+  };
+  variant: {
+    label: string;
+    sku: string;
+    glb_url: string;
+    params: RawParams;
+    notes: readonly string[];
+  };
+  volume_reconstruction_mm3: number;
+}[] = [
   {
     recipe: 'TRPS-300-22-Z.STEP',
     piece_kind: 'tramo_recto',
     original_glb_url: '/parametric/originals_glb/TRPS-300-22-Z.glb',
     original_bbox_span_mm: [3000, 65, 300],
     original_volume_mm3: 58500000,
-    reconstruction: {
+    recon: {
       label: 'Reconstrucción paramétrica (ancho=300)',
       sku: 'TRPS-300-22-Z',
       glb_url: '/parametric/reconstructions/TRPS-300-22-Z__recon.glb',
       params: { ancho_mm: 300, ala_mm: 65, longitud_mm: 3000, espesor_mm: 0.71 },
-      ports: [
-        P('P1', [0, 32.5, -150], [-1, 0, 0], 300, 65, [0, 0, 1], [0, 1, 0]),
-        P('P2', [3000, 32.5, -150], [1, 0, 0], 300, 65, [0, 0, 1], [0, 1, 0]),
+      notes: [
+        'Envolvente simplificada compatible con el STEP original (sin perfil Z ni perforaciones).',
       ],
-      notes: ['Envolvente simplificada compatible con el STEP original (sin perfil Z ni perforaciones).'],
-      bbox_span_mm: [3000, 65, 300],
     },
     variant: {
       label: 'Variante ancho=450 (ala, largo y espesor sin cambio)',
       sku: 'TRPS-450-22-Z',
       glb_url: '/parametric/variants/TRPS-450-22-Z__variante.glb',
       params: { ancho_mm: 450, ala_mm: 65, longitud_mm: 3000, espesor_mm: 0.71 },
-      ports: [
-        P('P1', [0, 32.5, -225], [-1, 0, 0], 450, 65, [0, 0, 1], [0, 1, 0]),
-        P('P2', [3000, 32.5, -225], [1, 0, 0], 450, 65, [0, 0, 1], [0, 1, 0]),
+      notes: [
+        'Regla MEDIDA: la sección rectangular del tramo recto escala sólo en Z (ancho); longitud y ala invariantes. Confirmada contra TRPS-300-22 y contrastable con cualquier TRPS-nnn-22 del catálogo SAMET.',
       ],
-      notes: ['Envolvente simplificada compatible con el STEP original (sin perfil Z ni perforaciones).'],
-      bbox_span_mm: [3000, 65, 450],
     },
-    fidelity: {
-      span_original_mm: [3000, 65, 300],
-      span_reconstruction_mm: [3000, 65, 300],
-      span_delta_pct: [0, 0, 0],
-      volume_original_mm3: 58500000,
-      volume_reconstruction_mm3: 58500000,
-      volume_delta_pct: 0,
-    },
-    canonical_bbox_mm: { min: [0, 0, -300], max: [3000, 65, 0] },
-    source_version: '1945a98',
+    volume_reconstruction_mm3: 58500000,
   },
   {
     recipe: 'CPS-300-45-Z.STEP',
@@ -117,45 +164,27 @@ export const PARAMETRIC_CATALOG: readonly ParametricEntry[] = [
     original_glb_url: '/parametric/originals_glb/CPS-300-45-Z.glb',
     original_bbox_span_mm: [345.99, 65, 321.98],
     original_volume_mm3: 4961049.74,
-    reconstruction: {
-      label: 'Reconstrucción paramétrica (ancho=300, R_in=155.3 mm)',
+    recon: {
+      label: 'Reconstrucción paramétrica (polígono medido, 7 vértices)',
       sku: 'CPS-300-45-Z',
       glb_url: '/parametric/reconstructions/CPS-300-45-Z__recon.glb',
-      params: { ancho_mm: 300, ala_mm: 65, espesor_mm: 0.71, angulo_deg: 45 },
-      ports: [
-        P('P1', [305.34, 32.5, 0], [1, 0, 0], 300, 65, [0, 0, 1], [0, 1, 0]),
-        P('P2', [215.91, 32.5, -215.91], [-0.70711, 0, -0.70711], 300, 65, [0.70711, 0, -0.70711], [0, 1, 0]),
-      ],
+      params: { ancho_mm: 300, ala_mm: 65, angulo_deg: 45, espesor_mm: 0.71 },
       notes: [
-        'Radio derivado del bbox Z del STEP (R_out = dz / sin ang). R_in=155.34 mm, R_out=455.34 mm.',
-        'Envolvente simplificada: perfil rectangular barrido (no refleja perforaciones ni ala real).',
+        'Polígono faceteado medido sobre el GLB original (sin revolución; refleja chaflanes 45° reales).',
+        'Ala y espesor son placeholders de visualización: SAMET no publica estos dimensionales para variantes.',
       ],
-      bbox_span_mm: [346.23, 66.1, 323.07],
     },
     variant: {
-      label: 'Variante ancho=450 — mismo R_out=455.34 (R_in se recalcula a 5.3 mm)',
+      label: 'Variante ancho=450 (escala uniforme desde origen)',
       sku: 'CPS-450-45-Z',
       glb_url: '/parametric/variants/CPS-450-45-Z__variante.glb',
-      params: { ancho_mm: 450, ala_mm: 65, espesor_mm: 0.71, angulo_deg: 45 },
-      ports: [
-        P('P1', [230.34, 32.5, 0], [1, 0, 0], 450, 65, [0, 0, 1], [0, 1, 0]),
-        P('P2', [162.88, 32.5, -162.88], [-0.70711, 0, -0.70711], 450, 65, [0.70711, 0, -0.70711], [0, 1, 0]),
-      ],
+      params: { ancho_mm: 450, ala_mm: 65, angulo_deg: 45, espesor_mm: 0.71 },
       notes: [
-        'Regla provisional: al variar ancho se mantiene R_out; R_in = R_out - ancho.',
-        'Valores paramétricos sin dato oficial del fabricante — revisión técnica obligatoria.',
+        'Regla ESTIMADA (no medida): escala uniforme del polígono por ancho/300 desde el origen.',
+        'SAMET no publica CPS de ancho≠300 ni su regla de escalado; dimensionales sin verificación oficial — revisión técnica obligatoria antes de usar.',
       ],
     },
-    fidelity: {
-      span_original_mm: [345.99, 65, 321.98],
-      span_reconstruction_mm: [346.23, 66.1, 323.07],
-      span_delta_pct: [0.07, 1.69, 0.34],
-      volume_original_mm3: 4961049.74,
-      volume_reconstruction_mm3: 4676384.66,
-      volume_delta_pct: -5.74,
-    },
-    canonical_bbox_mm: { min: [109.84, 0, -321.98], max: [455.34, 65, 0] },
-    source_version: '1945a98',
+    volume_reconstruction_mm3: 4961049.74,
   },
   {
     recipe: 'CPS-300-90-Z.STEP',
@@ -163,45 +192,27 @@ export const PARAMETRIC_CATALOG: readonly ParametricEntry[] = [
     original_glb_url: '/parametric/originals_glb/CPS-300-90-Z.glb',
     original_bbox_span_mm: [744.12, 65, 744.03],
     original_volume_mm3: 19402777.71,
-    reconstruction: {
-      label: 'Reconstrucción paramétrica (ancho=300, R_in=444.0 mm)',
+    recon: {
+      label: 'Reconstrucción paramétrica (polígono medido, 8 vértices)',
       sku: 'CPS-300-90-Z',
       glb_url: '/parametric/reconstructions/CPS-300-90-Z__recon.glb',
-      params: { ancho_mm: 300, ala_mm: 65, espesor_mm: 0.71, angulo_deg: 90 },
-      ports: [
-        P('P1', [594.03, 32.5, 0], [1, 0, 0], 300, 65, [0, 0, 1], [0, 1, 0]),
-        P('P2', [0, 32.5, -594.03], [-1, 0, 0], 300, 65, [0, 0, -1], [0, 1, 0]),
-      ],
+      params: { ancho_mm: 300, ala_mm: 65, angulo_deg: 90, espesor_mm: 0.71 },
       notes: [
-        'Radio derivado del bbox Z del STEP (R_out = dz / sin ang). R_in=444.03 mm, R_out=744.03 mm.',
-        'Envolvente simplificada: perfil rectangular barrido (no refleja perforaciones ni ala real).',
+        'Polígono faceteado del STEP original con chaflanes interior y exterior a 45°.',
+        'Ala y espesor son placeholders de visualización.',
       ],
-      bbox_span_mm: [745.82, 66.79, 745.82],
     },
     variant: {
-      label: 'Variante ancho=450 — mismo R_out=744.03 (R_in=294.0 mm)',
+      label: 'Variante ancho=450 (escala uniforme desde origen)',
       sku: 'CPS-450-90-Z',
       glb_url: '/parametric/variants/CPS-450-90-Z__variante.glb',
-      params: { ancho_mm: 450, ala_mm: 65, espesor_mm: 0.71, angulo_deg: 90 },
-      ports: [
-        P('P1', [519.03, 32.5, 0], [1, 0, 0], 450, 65, [0, 0, 1], [0, 1, 0]),
-        P('P2', [0, 32.5, -519.03], [-1, 0, 0], 450, 65, [0, 0, -1], [0, 1, 0]),
-      ],
+      params: { ancho_mm: 450, ala_mm: 65, angulo_deg: 90, espesor_mm: 0.71 },
       notes: [
-        'Regla provisional: al variar ancho se mantiene R_out; R_in = R_out - ancho.',
-        'Valores paramétricos sin dato oficial del fabricante — revisión técnica obligatoria.',
+        'Regla ESTIMADA (no medida): escala uniforme del polígono por ancho/300 desde el origen.',
+        'SAMET no publica CPS 90° de ancho≠300; dimensionales sin verificación oficial — revisión técnica obligatoria.',
       ],
     },
-    fidelity: {
-      span_original_mm: [744.12, 65, 744.03],
-      span_reconstruction_mm: [745.82, 66.79, 745.82],
-      span_delta_pct: [0.23, 2.76, 0.24],
-      volume_original_mm3: 19402777.71,
-      volume_reconstruction_mm3: 18195479.98,
-      volume_delta_pct: -6.22,
-    },
-    canonical_bbox_mm: { min: [0, 0, -744.03], max: [744.03, 65, 0] },
-    source_version: '1945a98',
+    volume_reconstruction_mm3: 19402777.71,
   },
   {
     recipe: 'CUPS-300-A-Z.STEP',
@@ -209,45 +220,27 @@ export const PARAMETRIC_CATALOG: readonly ParametricEntry[] = [
     original_glb_url: '/parametric/originals_glb/CUPS-300-A-Z.glb',
     original_bbox_span_mm: [54.63, 232.97, 300],
     original_volume_mm3: 2375093.49,
-    reconstruction: {
-      label: 'Reconstrucción paramétrica (envolvente — SAMET no publica radio)',
+    recon: {
+      label: 'Reconstrucción paramétrica (perfil XY medido)',
       sku: 'CUPS-300-A-Z',
       glb_url: '/parametric/reconstructions/CUPS-300-A-Z__recon.glb',
       params: { ancho_mm: 300, ala_mm: 65, espesor_mm: 0.71, angulo_vertical_deg: 90 },
-      ports: [
-        P('P1_horizontal', [-27.32, 0, -150], [0, -1, 0], 300, 54.63, [1, 0, 0], [0, 0, -1]),
-        P('P2_vertical', [-54.63, 116.49, -150], [-1, 0, 0], 300, 232.97, [0, 0, -1], [0, 1, 0]),
-      ],
       notes: [
-        'Modo ENVOLVENTE: reproduce bbox del STEP simplificado (54.6 × 233 × 300).',
-        'SAMET no publica radio ni ángulo verticales STP-Z: para generar codo curvo paramétrico pasar radio_interior_mm.',
+        'Perfil XY faceteado (8 vértices medidos) extruido en Z por ancho. Reemplaza al envolvente box previo.',
+        'Bocas P1_horizontal y P2_vertical son planos de referencia (Y=0 y X=−54.63); SAMET no publica puertos operativos para CUPS.',
       ],
-      bbox_span_mm: [54.63, 232.97, 300],
     },
     variant: {
-      label: 'Variante ancho=450 (envolvente — ala y profundidad constantes)',
+      label: 'Variante ancho=450 (sólo escala profundidad Z, perfil XY fijo)',
       sku: 'CUPS-450-A-Z',
       glb_url: '/parametric/variants/CUPS-450-A-Z__variante.glb',
       params: { ancho_mm: 450, ala_mm: 65, espesor_mm: 0.71, angulo_vertical_deg: 90 },
-      ports: [
-        P('P1_horizontal', [-27.32, 0, -225], [0, -1, 0], 450, 54.63, [1, 0, 0], [0, 0, -1]),
-        P('P2_vertical', [-54.63, 116.49, -225], [-1, 0, 0], 450, 232.97, [0, 0, -1], [0, 1, 0]),
-      ],
       notes: [
-        'Al variar ancho (eje Z local) se mantienen ala y profundidad frontal (65 × 54.6).',
-        'Variante de envolvente: sin dato de radio/ángulo vertical del fabricante.',
+        'Regla ESTIMADA: SAMET no publica CUPS de ancho≠300; asumimos perfil XY fijo y escalamos sólo profundidad Z.',
+        'Bocas P1/P2 siguen siendo REFERENCIA, no operativas; no usar como conexión verificada.',
       ],
     },
-    fidelity: {
-      span_original_mm: [54.63, 232.97, 300],
-      span_reconstruction_mm: [54.63, 232.97, 300],
-      span_delta_pct: [0, 0, 0],
-      volume_original_mm3: 2375093.49,
-      volume_reconstruction_mm3: 3818488.2,
-      volume_delta_pct: 60.77,
-    },
-    canonical_bbox_mm: { min: [-54.63, 0, -300], max: [0, 232.97, 0] },
-    source_version: '1945a98',
+    volume_reconstruction_mm3: 2375093.49,
   },
   {
     recipe: 'DCPS-300-Z.STEP',
@@ -255,47 +248,27 @@ export const PARAMETRIC_CATALOG: readonly ParametricEntry[] = [
     original_glb_url: '/parametric/originals_glb/DCPS-300-Z.glb',
     original_bbox_span_mm: [449.5, 65, 375.15],
     original_volume_mm3: 10378217.58,
-    reconstruction: {
-      label: 'Reconstrucción paramétrica (tronco_x=449.5, overhang_z=75.1)',
+    recon: {
+      label: 'Reconstrucción paramétrica (polígono medido, 10 vértices)',
       sku: 'DCPS-300-Z',
       glb_url: '/parametric/reconstructions/DCPS-300-Z__recon.glb',
       params: { ancho_mm: 300, ala_mm: 65, espesor_mm: 0.71 },
-      ports: [
-        P('boca_derivacion', [224.75, 32.5, -375.15], [0, 0, -1], 300, 65, [1, 0, 0], [0, 1, 0]),
-        P('tronco_P1', [0, 32.5, -37.57], [-1, 0, 0], 75.15, 65, [0, 0, 1], [0, 1, 0]),
-        P('tronco_P2', [449.5, 32.5, -37.57], [1, 0, 0], 75.15, 65, [0, 0, 1], [0, 1, 0]),
-      ],
       notes: [
-        'Envolvente en L: tronco_x=449.5, overhang_z=75.1, ramal ancho×ala=300×65.',
-        'SAMET declara solo boca_derivacion como puerto operativo; las dos del tronco son zonas de fijación.',
+        'Polígono faceteado del STEP original con chaflanes 45° en esquinas interiores.',
+        'Las TRES bocas tienen el ancho completo del fitting (el modelo previo truncaba las del tronco a 75 mm).',
       ],
-      bbox_span_mm: [449.5, 65, 375.15],
     },
     variant: {
-      label: 'Variante ancho=450 (ramal 450×65, overhang=75.1 constante)',
+      label: 'Variante ancho=450 (escala uniforme desde origen)',
       sku: 'DCPS-450-Z',
       glb_url: '/parametric/variants/DCPS-450-Z__variante.glb',
       params: { ancho_mm: 450, ala_mm: 65, espesor_mm: 0.71 },
-      ports: [
-        P('boca_derivacion', [224.75, 32.5, -525.15], [0, 0, -1], 450, 65, [1, 0, 0], [0, 1, 0]),
-        P('tronco_P1', [0, 32.5, -37.57], [-1, 0, 0], 75.15, 65, [0, 0, 1], [0, 1, 0]),
-        P('tronco_P2', [449.5, 32.5, -37.57], [1, 0, 0], 75.15, 65, [0, 0, 1], [0, 1, 0]),
-      ],
       notes: [
-        'tronco_x y overhang_z permanecen constantes al variar ancho; sólo cambia la boca_derivacion.',
-        'El fabricante no publica reglas de escalado: variante provisional.',
+        'Regla ESTIMADA (no medida): escala uniforme del polígono por ancho/300.',
+        'SAMET no publica DCPS de ancho≠300; valores sin verificación oficial — revisión técnica obligatoria.',
       ],
     },
-    fidelity: {
-      span_original_mm: [449.5, 65, 375.15],
-      span_reconstruction_mm: [449.5, 65, 375.15],
-      span_delta_pct: [0, 0, 0],
-      volume_original_mm3: 10378217.58,
-      volume_reconstruction_mm3: 8045653.02,
-      volume_delta_pct: -22.48,
-    },
-    canonical_bbox_mm: { min: [0, 0, -375.15], max: [449.5, 65, 0] },
-    source_version: '1945a98',
+    volume_reconstruction_mm3: 10378217.58,
   },
   {
     recipe: 'XPS-300-Z.STEP',
@@ -303,47 +276,91 @@ export const PARAMETRIC_CATALOG: readonly ParametricEntry[] = [
     original_glb_url: '/parametric/originals_glb/XPS-300-Z.glb',
     original_bbox_span_mm: [449.4, 65, 449.4],
     original_volume_mm3: 11964879.34,
-    reconstruction: {
-      label: 'Reconstrucción paramétrica (cruz simétrica L=449.4 mm)',
+    recon: {
+      label: 'Reconstrucción paramétrica (cruz simétrica, 16 vértices)',
       sku: 'XPS-300-Z',
       glb_url: '/parametric/reconstructions/XPS-300-Z__recon.glb',
       params: { ancho_mm: 300, ala_mm: 65, espesor_mm: 0.71 },
-      ports: [
-        P('P1_x_neg', [0, 32.5, -224.7], [-1, 0, 0], 300, 65, [0, 0, 1], [0, 1, 0]),
-        P('P2_x_pos', [449.4, 32.5, -224.7], [1, 0, 0], 300, 65, [0, 0, 1], [0, 1, 0]),
-        P('P3_z_neg', [224.7, 32.5, -449.4], [0, 0, -1], 300, 65, [1, 0, 0], [0, 1, 0]),
-        P('P4_z_pos', [224.7, 32.5, 0], [0, 0, 1], 300, 65, [1, 0, 0], [0, 1, 0]),
+      notes: [
+        'Polígono faceteado del STEP original con los 4 chaflanes 45° reales.',
       ],
-      notes: ['Cruz simétrica L=449.4 mm, ancho=300 mm, ala=65 mm. Cuatro bocas.'],
-      bbox_span_mm: [449.4, 65, 449.4],
     },
     variant: {
-      label: 'Variante ancho=450 (L=449.4 constante, bocas pasan a 450×65)',
+      label: 'Variante ancho=450 (escala uniforme desde origen)',
       sku: 'XPS-450-Z',
       glb_url: '/parametric/variants/XPS-450-Z__variante.glb',
       params: { ancho_mm: 450, ala_mm: 65, espesor_mm: 0.71 },
-      ports: [
-        P('P1_x_neg', [0, 32.5, -224.7], [-1, 0, 0], 450, 65, [0, 0, 1], [0, 1, 0]),
-        P('P2_x_pos', [449.4, 32.5, -224.7], [1, 0, 0], 450, 65, [0, 0, 1], [0, 1, 0]),
-        P('P3_z_neg', [224.7, 32.5, -449.4], [0, 0, -1], 450, 65, [1, 0, 0], [0, 1, 0]),
-        P('P4_z_pos', [224.7, 32.5, 0], [0, 0, 1], 450, 65, [1, 0, 0], [0, 1, 0]),
-      ],
       notes: [
-        'L=449.4 mm se mantiene (envolvente XY del STEP); las bocas usan ancho variante.',
+        'Regla ESTIMADA (no medida): escala uniforme del polígono por ancho/300.',
+        'SAMET no publica XPS de ancho≠300; valores sin verificación oficial — revisión técnica obligatoria.',
       ],
     },
-    fidelity: {
-      span_original_mm: [449.4, 65, 449.4],
-      span_reconstruction_mm: [449.4, 65, 449.4],
-      span_delta_pct: [0, 0, 0],
-      volume_original_mm3: 11964879.34,
-      volume_reconstruction_mm3: 11676487.58,
-      volume_delta_pct: -2.41,
-    },
-    canonical_bbox_mm: { min: [0, 0, -449.4], max: [449.4, 65, 0] },
-    source_version: '1945a98',
+    volume_reconstruction_mm3: 11964879.34,
   },
 ];
+
+function buildEntry(raw: (typeof RAW_ENTRIES)[number]): ParametricEntry {
+  const recon = makeView(
+    raw.recon.label,
+    raw.recon.sku,
+    raw.recon.glb_url,
+    raw.piece_kind,
+    raw.recon.params,
+    raw.recon.notes,
+  );
+  const variant = makeView(
+    raw.variant.label,
+    raw.variant.sku,
+    raw.variant.glb_url,
+    raw.piece_kind,
+    raw.variant.params,
+    raw.variant.notes,
+  );
+  // Marco canónico = bbox de la reconstrucción (ancho=300), que coincide con
+  // el bbox del STEP original tras neutralizar la rotación −90°X.
+  const reconRecipe = buildRecipeFor(raw.piece_kind, raw.recon.params);
+  const canonical_bbox_mm = {
+    min: reconRecipe.bboxMin,
+    max: reconRecipe.bboxMax,
+  };
+  const reconSpan = recon.bbox_span_mm;
+  const origSpan = raw.original_bbox_span_mm;
+  const span_delta_pct: Vec3 = [
+    pctDelta(origSpan[0], reconSpan[0]),
+    pctDelta(origSpan[1], reconSpan[1]),
+    pctDelta(origSpan[2], reconSpan[2]),
+  ];
+  const volume_delta_pct = pctDelta(
+    raw.original_volume_mm3,
+    raw.volume_reconstruction_mm3,
+  );
+  return {
+    recipe: raw.recipe,
+    piece_kind: raw.piece_kind,
+    original_glb_url: raw.original_glb_url,
+    original_bbox_span_mm: raw.original_bbox_span_mm,
+    original_volume_mm3: raw.original_volume_mm3,
+    reconstruction: recon,
+    variant,
+    fidelity: {
+      span_original_mm: raw.original_bbox_span_mm,
+      span_reconstruction_mm: reconSpan,
+      span_delta_pct,
+      volume_original_mm3: raw.original_volume_mm3,
+      volume_reconstruction_mm3: raw.volume_reconstruction_mm3,
+      volume_delta_pct,
+    },
+    canonical_bbox_mm,
+    source_version: SOURCE_VERSION,
+  };
+}
+
+function pctDelta(ref: number, value: number): number {
+  if (ref === 0) return 0;
+  return ((value - ref) / ref) * 100;
+}
+
+export const PARAMETRIC_CATALOG: readonly ParametricEntry[] = RAW_ENTRIES.map(buildEntry);
 
 export type ViewId = 'original' | 'reconstruction' | 'variant';
 

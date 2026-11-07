@@ -114,7 +114,25 @@ export function ParametricInspector() {
                   useParametricStore.getState().selectPort(p.name === selectedPortName ? null : p.name)
                 }
               >
-                <div style={{ fontSize: 12, fontWeight: 600 }}>{p.name}</div>
+                <div style={{ fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span>{p.name}</span>
+                  {p.kind === 'reference' && (
+                    <span
+                      title="Plano de referencia (no es una cara real del STEP). No usar como conexión verificada."
+                      style={{
+                        fontSize: 9,
+                        letterSpacing: '0.05em',
+                        padding: '1px 5px',
+                        borderRadius: 3,
+                        background: '#4a3310',
+                        color: '#ffcc66',
+                        fontWeight: 700,
+                      }}
+                    >
+                      REFERENCIA
+                    </span>
+                  )}
+                </div>
                 <div style={{ fontSize: 10, color: '#7788aa' }}>
                   {p.ancho_mm.toFixed(1)} × {p.ala_mm.toFixed(1)} mm
                 </div>
@@ -124,10 +142,16 @@ export function ParametricInspector() {
         </ul>
         {selectedPort && (
           <div style={{ marginTop: 8, fontSize: 11, fontFamily: 'monospace', color: '#99aacc' }}>
+            <div>kind   {selectedPort.kind}</div>
             <div>center {fmtVec(selectedPort.center, 1)}</div>
             <div>normal {fmtVec(selectedPort.normal, 3)}</div>
             <div>u_dir  {fmtVec(selectedPort.u_dir, 3)}</div>
             <div>v_dir  {fmtVec(selectedPort.v_dir, 3)}</div>
+            {selectedPort.kind === 'reference' && (
+              <div style={{ marginTop: 6, color: '#ffcc66', fontFamily: 'inherit', fontSize: 10, lineHeight: 1.4 }}>
+                Plano conceptual, NO una cara real del STEP. No apto como conexión operativa sin verificación del fabricante.
+              </div>
+            )}
           </div>
         )}
       </section>

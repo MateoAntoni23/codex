@@ -29,6 +29,8 @@ import * as THREE from 'three';
 import type { ParametricEntry, ParametricPort, ParametricVariantView, Vec3 } from './catalog';
 import { useParametricStore, findEntry } from './useParametricStore';
 import { useCalibrationStore, calibrationKey, IDENTITY_CALIBRATION, type Calibration } from './useCalibrationStore';
+import { buildPrism } from './geometry/buildPrism';
+import { buildRecipeFor } from './geometry/recipes';
 
 const MM_TO_M = 0.001;
 const OCP_ROOT_SUFFIX = '_root';
@@ -144,6 +146,75 @@ function AlignedGlb({
   );
 }
 
+/**
+ * Renderiza una reconstrucción/variante paramétrica construyendo la malla
+ * en JS (prisma del polígono medido). NO carga GLB para evitar depender de
+ * artefactos del toolchain Python: la verdad es el polígono en outlines.ts.
+ *
+ * El eje de calibración replica el patrón de AlignedGlb (pivote = centro del
+ * bbox canónico, calibración traslación/rotación aplicada sólo a la malla).
+ */
+function ProceduralMesh({
+  entry,
+  variant,
+  color,
+  opacity = 1,
+  calibration,
+}: {
+  entry: ParametricEntry;
+  variant: ParametricVariantView;
+  color: string;
+  opacity?: number;
+  calibration?: Calibration;
+}) {
+  const geometry = useMemo(() => {
+    const recipe = buildRecipeFor(entry.piece_kind, variant.params);
+    const geom = buildPrism(recipe.polygon, recipe.height, recipe.extrudeAlongY);
+    if (
+      recipe.translate[0] !== 0 ||
+      recipe.translate[1] !== 0 ||
+      recipe.translate[2] !== 0
+    ) {
+      geom.translate(recipe.translate[0], recipe.translate[1], recipe.translate[2]);
+      geom.computeBoundingBox();
+      geom.computeBoundingSphere();
+    }
+    return geom;
+  }, [entry.piece_kind, variant.params]);
+
+  const material = useMemo(
+    () =>
+      new THREE.MeshStandardMaterial({
+        color,
+        metalness: 0.15,
+        roughness: 0.55,
+        transparent: opacity < 1,
+        opacity,
+        side: THREE.DoubleSide,
+      }),
+    [color, opacity],
+  );
+
+  const pivotMm = useMemo<Vec3>(() => bboxCenterMm(entry.canonical_bbox_mm), [entry]);
+  const cal: Calibration = calibration ?? IDENTITY_CALIBRATION;
+  const DEG = Math.PI / 180;
+
+  return (
+    <group
+      position={[
+        (pivotMm[0] + cal.tx_mm) * MM_TO_M,
+        (pivotMm[1] + cal.ty_mm) * MM_TO_M,
+        (pivotMm[2] + cal.tz_mm) * MM_TO_M,
+      ]}
+      rotation={[cal.rx_deg * DEG, cal.ry_deg * DEG, cal.rz_deg * DEG]}
+    >
+      <group position={[-pivotMm[0] * MM_TO_M, -pivotMm[1] * MM_TO_M, -pivotMm[2] * MM_TO_M]}>
+        <mesh geometry={geometry} material={material} scale={MM_TO_M} />
+      </group>
+    </group>
+  );
+}
+
 function PortMarker({
   port,
   selected,
@@ -182,7 +253,10 @@ function PortMarker({
     return new Float32Array(positions);
   }, [port]);
 
-  const color = selected ? '#ffdd44' : '#44aaff';
+  // Puertos de referencia (CUPS) se dibujan en naranja para distinguirlos de
+  // puertos operativos (azul); el amarillo sigue reservado al seleccionado.
+  const refColor = port.kind === 'reference' ? '#ff9933' : '#44aaff';
+  const color = selected ? '#ffdd44' : refColor;
 
   return (
     <group onClick={(e) => { e.stopPropagation(); onSelect(); }}>
@@ -301,7 +375,12 @@ function ActiveView({ entry, activeView }: { entry: ParametricEntry; activeView:
         />
       ) : (
         <>
-          <AlignedGlb url={activeView.glb_url} color={color} calibration={effectiveCal} />
+          <ProceduralMesh
+            entry={entry}
+            variant={activeView}
+            color={color}
+            calibration={effectiveCal}
+          />
           {compare && (
             <AlignedGlb
               url={entry.original_glb_url}
@@ -346,7 +425,6 @@ export function ParametricScene() {
 
 export function preloadRecipe(recipe: string) {
   const entry = findEntry(recipe);
+  // Sólo el original es GLB; reconstrucciones/variantes son procedurales JS.
   useGLTF.preload(entry.original_glb_url);
-  useGLTF.preload(entry.reconstruction.glb_url);
-  useGLTF.preload(entry.variant.glb_url);
 }
