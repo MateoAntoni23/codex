@@ -5,8 +5,9 @@
  */
 
 import { useParametricStore, findEntry } from './useParametricStore';
-import type { ParametricPort, ParametricVariantView } from './catalog';
+import type { ParametricEntry, ParametricPort, ParametricVariantView, Vec3 } from './catalog';
 import { viewLabel } from './catalog';
+import { ParametricCalibrationPanel } from './ParametricCalibrationPanel';
 
 function formatNum(x: number, digits = 2): string {
   if (Math.abs(x) < 1e-3) return x.toExponential(2);
@@ -131,6 +132,10 @@ export function ParametricInspector() {
         )}
       </section>
 
+      <BboxDiagnosticSection entry={entry} />
+
+      <ParametricCalibrationPanel />
+
       <section style={{ padding: 12 }}>
         <h4 style={{ fontSize: 10, letterSpacing: '0.08em', color: '#8899bb', marginBottom: 6 }}>PROCEDENCIA</h4>
         <ul style={{ padding: 0, margin: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -153,4 +158,50 @@ function colorForDelta(pct: number): string {
   if (a < 1) return '#aadd88';
   if (a < 10) return '#eebb66';
   return '#ff8866';
+}
+
+/**
+ * Diagnóstico de marco: bbox canónico esperado por el catálogo, usado para
+ * alinear el STEP original y colocar bocas. Si el GLB cargado no coincide con
+ * este rectángulo, la calibración de malla permite corregirlo sin tocar bocas.
+ */
+function BboxDiagnosticSection({ entry }: { entry: ParametricEntry }) {
+  const { min, max } = entry.canonical_bbox_mm;
+  const span: Vec3 = [max[0] - min[0], max[1] - min[1], max[2] - min[2]];
+  const center: Vec3 = [(min[0] + max[0]) / 2, (min[1] + max[1]) / 2, (min[2] + max[2]) / 2];
+  return (
+    <section style={{ padding: 12, borderBottom: '1px solid #2a2a44' }}>
+      <h4 style={{ fontSize: 10, letterSpacing: '0.08em', color: '#8899bb', marginBottom: 6 }}>
+        MARCO CANÓNICO (diagnóstico)
+      </h4>
+      <table style={{ width: '100%', fontSize: 11, borderCollapse: 'collapse' }}>
+        <tbody>
+          <tr>
+            <td style={{ color: '#99aacc' }}>min</td>
+            <td style={{ textAlign: 'right', fontFamily: 'monospace' }}>{fmtVec(min, 1)}</td>
+          </tr>
+          <tr>
+            <td style={{ color: '#99aacc' }}>max</td>
+            <td style={{ textAlign: 'right', fontFamily: 'monospace' }}>{fmtVec(max, 1)}</td>
+          </tr>
+          <tr>
+            <td style={{ color: '#99aacc' }}>span</td>
+            <td style={{ textAlign: 'right', fontFamily: 'monospace' }}>{fmtVec(span, 1)}</td>
+          </tr>
+          <tr>
+            <td style={{ color: '#99aacc' }}>center</td>
+            <td style={{ textAlign: 'right', fontFamily: 'monospace' }}>{fmtVec(center, 1)}</td>
+          </tr>
+          <tr>
+            <td style={{ color: '#99aacc' }}>build</td>
+            <td style={{ textAlign: 'right', fontFamily: 'monospace' }}>{entry.source_version}</td>
+          </tr>
+        </tbody>
+      </table>
+      <div style={{ fontSize: 10, color: '#7788aa', marginTop: 6, lineHeight: 1.4 }}>
+        El STEP original se alinea al centro de este bbox tras neutralizar la rotación −90°X
+        que OpenCASCADE 7.8 escribe en el nodo raíz del GLB.
+      </div>
+    </section>
+  );
 }

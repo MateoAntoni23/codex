@@ -48,6 +48,15 @@ export interface ParametricEntry {
   readonly reconstruction: ParametricVariantView;
   readonly variant: ParametricVariantView;
   readonly fidelity: ParametricFidelity;
+  /**
+   * Marco canónico compartido por bocas y recorridos (coincide con el frame
+   * de generación de la reconstrucción). El STEP original se auto-traslada
+   * para que el centro de su bbox coincida con el centro de este rectángulo.
+   */
+  readonly canonical_bbox_mm: { readonly min: Vec3; readonly max: Vec3 };
+  /** Versión del artefacto GLB (p.ej. SHA corto del build). Permite detectar
+   *  cuando una calibración guardada corresponde a un GLB ya reemplazado. */
+  readonly source_version: string;
 }
 
 const P = (
@@ -99,6 +108,8 @@ export const PARAMETRIC_CATALOG: readonly ParametricEntry[] = [
       volume_reconstruction_mm3: 58500000,
       volume_delta_pct: 0,
     },
+    canonical_bbox_mm: { min: [0, 0, -300], max: [3000, 65, 0] },
+    source_version: '1945a98',
   },
   {
     recipe: 'CPS-300-45-Z.STEP',
@@ -143,6 +154,8 @@ export const PARAMETRIC_CATALOG: readonly ParametricEntry[] = [
       volume_reconstruction_mm3: 4676384.66,
       volume_delta_pct: -5.74,
     },
+    canonical_bbox_mm: { min: [109.84, 0, -321.98], max: [455.34, 65, 0] },
+    source_version: '1945a98',
   },
   {
     recipe: 'CPS-300-90-Z.STEP',
@@ -187,6 +200,8 @@ export const PARAMETRIC_CATALOG: readonly ParametricEntry[] = [
       volume_reconstruction_mm3: 18195479.98,
       volume_delta_pct: -6.22,
     },
+    canonical_bbox_mm: { min: [0, 0, -744.03], max: [744.03, 65, 0] },
+    source_version: '1945a98',
   },
   {
     recipe: 'CUPS-300-A-Z.STEP',
@@ -231,6 +246,8 @@ export const PARAMETRIC_CATALOG: readonly ParametricEntry[] = [
       volume_reconstruction_mm3: 3818488.2,
       volume_delta_pct: 60.77,
     },
+    canonical_bbox_mm: { min: [-54.63, 0, -300], max: [0, 232.97, 0] },
+    source_version: '1945a98',
   },
   {
     recipe: 'DCPS-300-Z.STEP',
@@ -277,6 +294,8 @@ export const PARAMETRIC_CATALOG: readonly ParametricEntry[] = [
       volume_reconstruction_mm3: 8045653.02,
       volume_delta_pct: -22.48,
     },
+    canonical_bbox_mm: { min: [0, 0, -375.15], max: [449.5, 65, 0] },
+    source_version: '1945a98',
   },
   {
     recipe: 'XPS-300-Z.STEP',
@@ -321,6 +340,8 @@ export const PARAMETRIC_CATALOG: readonly ParametricEntry[] = [
       volume_reconstruction_mm3: 11676487.58,
       volume_delta_pct: -2.41,
     },
+    canonical_bbox_mm: { min: [0, 0, -449.4], max: [449.4, 65, 0] },
+    source_version: '1945a98',
   },
 ];
 
