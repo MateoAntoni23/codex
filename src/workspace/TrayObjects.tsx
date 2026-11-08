@@ -25,6 +25,8 @@ import {
   buildLocalMesh,
   type Vec3 as BridgeVec3,
 } from './parametricBridge';
+import { PlacedRecipePortFrames, logPlacement, isPortDiagEnabled } from './portFrameDiag';
+import { LadderPiece, isLadderFamily } from './ladderGeometry';
 
 type V3 = [number, number, number];
 
@@ -54,10 +56,11 @@ function alaFromProduct(product: Product | undefined): number | null {
 }
 
 function RectoPiece({
-  p1mm, p2mm, widthMm, alaMm, selected, onClick, label,
+  p1mm, p2mm, widthMm, alaMm, selected, onClick, label, instanciaId, sku,
 }: {
   p1mm: V3; p2mm: V3; widthMm: number | null; alaMm: number | null;
   selected: boolean; onClick: () => void; label: string;
+  instanciaId: string; sku: string | null;
 }) {
   const p1v = toViewer(p1mm);
   const p2v = toViewer(p2mm);
@@ -67,10 +70,21 @@ function RectoPiece({
   const dir: V3 = [(p2v[0] - p1v[0]) / safeLen, (p2v[1] - p1v[1]) / safeLen, (p2v[2] - p1v[2]) / safeLen];
   const quat = useMemo(() => alignToDir(dir), [dir[0], dir[1], dir[2]]);
   const color = selected ? '#ffcf33' : '#50b8de';
+  const lenMm = lengthBetween(p1mm, p2mm);
 
   if (widthMm == null || alaMm == null) {
     return (
-      <group>
+      <group
+        onUpdate={(g) => {
+          g.userData.codex = {
+            kind: 'schematic-line-fallback',
+            instanciaId, sku,
+            p1mm, p2mm,
+            widthMm, alaMm, lenMm,
+            reason: 'missing-dimensions',
+          };
+        }}
+      >
         <Line points={[p1v, p2v]} color={selected ? '#ffcf33' : '#8899bb'} lineWidth={selected ? 10 : 5}
           onClick={(e: { stopPropagation: () => void }) => { e.stopPropagation(); onClick(); }} />
         <Html position={center} style={{ pointerEvents: 'none', color: '#ff9955', fontSize: 10 }}>
@@ -81,7 +95,19 @@ function RectoPiece({
   }
 
   return (
-    <mesh position={center} quaternion={quat} onClick={(e) => { e.stopPropagation(); onClick(); }}>
+    <mesh
+      position={center}
+      quaternion={quat}
+      onClick={(e) => { e.stopPropagation(); onClick(); }}
+      onUpdate={(m) => {
+        m.userData.codex = {
+          kind: 'recto-box-fallback',
+          instanciaId, sku,
+          widthMm, alaMm, lenMm,
+          p1mm, p2mm,
+        };
+      }}
+    >
       <boxGeometry args={[len, alaMm / 1000, widthMm / 1000]} />
       <meshStandardMaterial color={color} transparent opacity={0.75} />
     </mesh>
@@ -128,28 +154,53 @@ function ParametricMesh({
     const placed = placeRecipe(product, entry, startPos, entryDir, fit.chirality, overrides);
     const g = buildLocalMesh(placed.recipe);
     const m = new THREE.Matrix4().multiplyMatrices(MM_TO_VIEWER, placed.matrix);
-    return { geom: g, matrix: m, mirrored: placed.mirrored };
+    const storedP2 = piece.puertos.P2;
+    logPlacement(`confirmed ${piece.instancia_id} (${product.sku})`, {
+      sku: product.sku,
+      ala_mm: placed.recipe.height,
+      ancho_mm: (product.ancho_nominal_mm ?? null),
+      chirality: fit.chirality,
+      startPosMm: startPos,
+      entryDir,
+      placedP1Mm: placed.p1.pos,
+      placedP2Mm: placed.p2.pos,
+      storedP1Mm: p1.posicion_mm as BridgeVec3,
+      storedP2Mm: storedP2 ? (storedP2.posicion_mm as BridgeVec3) : undefined,
+    });
+    return { geom: g, matrix: m, mirrored: placed.mirrored, placed };
   }, [fit, product, piece]);
 
   if (!data) return null;
   const color = selected ? '#ffcf33' : '#50b8de';
   return (
-    <mesh
-      matrixAutoUpdate={false}
-      onUpdate={(m) => {
-        m.matrix.copy(data.matrix);
-        m.matrixWorldNeedsUpdate = true;
-      }}
-      onClick={(e) => { e.stopPropagation(); onClick(); }}
-    >
-      <primitive object={data.geom} attach="geometry" />
-      <meshStandardMaterial
-        color={color}
-        transparent
-        opacity={0.75}
-        side={data.mirrored ? THREE.DoubleSide : THREE.FrontSide}
-      />
-    </mesh>
+    <group>
+      <mesh
+        matrixAutoUpdate={false}
+        onUpdate={(m) => {
+          m.matrix.copy(data.matrix);
+          m.matrixWorldNeedsUpdate = true;
+          m.userData.codex = {
+            kind: 'parametric-confirmed',
+            instanciaId: piece.instancia_id,
+            sku: product.sku,
+            chirality: fit.chirality,
+            mirrored: data.mirrored,
+            placedP1: data.placed.p1.pos,
+            placedP2: data.placed.p2.pos,
+          };
+        }}
+        onClick={(e) => { e.stopPropagation(); onClick(); }}
+      >
+        <primitive object={data.geom} attach="geometry" />
+        <meshStandardMaterial
+          color={color}
+          transparent
+          opacity={isPortDiagEnabled() ? 0.4 : 0.75}
+          side={data.mirrored ? THREE.DoubleSide : THREE.FrontSide}
+        />
+      </mesh>
+      <PlacedRecipePortFrames tag={piece.instancia_id} placed={data.placed} />
+    </group>
   );
 }
 
@@ -178,12 +229,41 @@ function PieceVisual({
     [product, piece],
   );
 
+  if (isPortDiagEnabled()) {
+    const path = product && fit && fit.matches
+      ? 'parametric'
+      : (tipo === 'recta' ? 'recto-box-fallback' : 'schematic-line-fallback');
+    const fitInfo = fit
+      ? { chirality: fit.chirality, p2PosErr: fit.p2PosErrorMm, p2DirErr: fit.p2DirErrorDeg, matches: fit.matches }
+      : null;
+    // eslint-disable-next-line no-console
+    console.log(
+      `%c[diag/path] ${piece.instancia_id} (${product?.sku ?? 'no-sku'}) → ${path}`,
+      'color:#99ccff',
+      { tipo, fit: fitInfo, ala_mm: alaMm, ancho_mm: widthMm },
+    );
+  }
+
   if (product && fit && fit.matches) {
     return (
       <ParametricMesh
         product={product}
         piece={piece}
         fit={fit}
+        selected={selected}
+        onClick={onClick}
+      />
+    );
+  }
+
+  // Familia escalera (SAM-STE-Z): generador propio de largueros + travesaños
+  // a partir de puertos almacenados + dimensiones del catálogo. No mapea a
+  // recetas de perforada (STP-Z).
+  if (product && isLadderFamily(product)) {
+    return (
+      <LadderPiece
+        piece={piece}
+        product={product}
         selected={selected}
         onClick={onClick}
       />
@@ -200,16 +280,23 @@ function PieceVisual({
         selected={selected}
         onClick={onClick}
         label={label}
+        instanciaId={piece.instancia_id}
+        sku={product?.sku ?? null}
       />
     );
   }
 
+  const portsMm = Object.values(piece.puertos).map((pp) => pp.posicion_mm as V3);
   return (
     <SchematicPiece
       ports={fallbackPorts}
       selected={selected}
       onClick={onClick}
       label={label}
+      instanciaId={piece.instancia_id}
+      sku={product?.sku ?? null}
+      tipo={tipo}
+      portsMm={portsMm}
     />
   );
 }
@@ -227,15 +314,25 @@ function pieceLengthFromPorts(piece: Piece): number | null {
 }
 
 function SchematicPiece({
-  ports, selected, onClick, label,
+  ports, selected, onClick, label, instanciaId, sku, tipo, portsMm,
 }: {
   ports: V3[]; selected: boolean; onClick: () => void; label: string;
+  instanciaId: string; sku: string | null; tipo: string; portsMm: V3[];
 }) {
   if (ports.length < 2) return null;
   const color = selected ? '#ffcf33' : '#8899bb';
   const start = ports[0];
   return (
-    <group>
+    <group
+      onUpdate={(g) => {
+        g.userData.codex = {
+          kind: 'schematic-line-fallback',
+          instanciaId, sku, tipo,
+          portsMm,
+          reason: tipo === 'recta' ? 'no-parametric-recipe' : `non-straight-tipo:${tipo}`,
+        };
+      }}
+    >
       {ports.slice(1).map((end, i) => (
         <Line key={i} points={[start, end]} color={color} lineWidth={selected ? 10 : 5}
           onClick={(e: { stopPropagation: () => void }) => { e.stopPropagation(); onClick(); }} />

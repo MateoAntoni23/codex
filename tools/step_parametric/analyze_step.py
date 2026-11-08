@@ -1,4 +1,5 @@
-"""Analiza los STEP de la carpeta de referencia SAMET y extrae geometría clave.
+"""Analiza los STEP de la carpeta de referencia (archivos aportados al proyecto;
+procedencia como originales del fabricante en verificación) y extrae geometría clave.
 
 Para cada archivo:
   - hash SHA-256 del contenido binario.
@@ -17,7 +18,7 @@ Uso:
     python tools/step_parametric/analyze_step.py --src "<ruta read-only>" \
         --out tools/step_parametric/report
 
-Unidades: los STEP de SAMET vienen en milímetros; verificado en encabezado.
+Unidades: los STEP de referencia vienen en milímetros; verificado en encabezado.
 """
 from __future__ import annotations
 

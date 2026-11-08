@@ -27,6 +27,7 @@ import {
   type Vec3 as BridgeVec3,
 } from './parametricBridge';
 import type { Product } from '../tray/model';
+import { PlacedRecipePortFrames, logPlacement, isPortDiagEnabled } from './portFrameDiag';
 
 function toViewer(mm: Point3): Point3 {
   return [mm[0] / 1000, mm[2] / 1000, -mm[1] / 1000];
@@ -161,7 +162,17 @@ function ParametricPreview({
       const placed = placeRecipe(product, entry, startPos, entryDir, chirality, overrides);
       const geom = buildLocalMesh(placed.recipe);
       const matrix = new THREE.Matrix4().multiplyMatrices(MM_TO_VIEWER, placed.matrix);
-      return { geom, matrix, mirrored: placed.mirrored };
+      logPlacement(`preview (${product.sku})`, {
+        sku: product.sku,
+        ala_mm: placed.recipe.height,
+        ancho_mm: product.ancho_nominal_mm ?? null,
+        chirality,
+        startPosMm: startPos,
+        entryDir,
+        placedP1Mm: placed.p1.pos,
+        placedP2Mm: placed.p2.pos,
+      });
+      return { geom, matrix, mirrored: placed.mirrored, placed };
     } catch {
       return null;
     }
@@ -169,22 +180,33 @@ function ParametricPreview({
 
   if (!data) return null;
   return (
-    <mesh
-      matrixAutoUpdate={false}
-      onUpdate={(m) => {
-        m.matrix.copy(data.matrix);
-        m.matrixWorldNeedsUpdate = true;
-      }}
-    >
-      <primitive object={data.geom} attach="geometry" />
-      <meshStandardMaterial
-        color="#ff9900"
-        transparent
-        opacity={0.35}
-        depthWrite={false}
-        side={THREE.DoubleSide}
-      />
-    </mesh>
+    <group>
+      <mesh
+        matrixAutoUpdate={false}
+        onUpdate={(m) => {
+          m.matrix.copy(data.matrix);
+          m.matrixWorldNeedsUpdate = true;
+          m.userData.codex = {
+            kind: 'parametric-preview',
+            sku: product.sku,
+            turnDirection,
+            mirrored: data.mirrored,
+            placedP1: data.placed.p1.pos,
+            placedP2: data.placed.p2.pos,
+          };
+        }}
+      >
+        <primitive object={data.geom} attach="geometry" />
+        <meshStandardMaterial
+          color="#ff9900"
+          transparent
+          opacity={isPortDiagEnabled() ? 0.2 : 0.35}
+          depthWrite={false}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
+      <PlacedRecipePortFrames tag="preview" placed={data.placed} />
+    </group>
   );
 }
 
@@ -358,16 +380,29 @@ export function RoutingObjects() {
         />
       )}
 
-      {/* Fallback: preview rectangular/tubo para productos sin receta medida */}
-      {previewData?.type === 'straight' && (
-        <PreviewMesh
-          center={previewData.center}
-          dirV={previewData.dirV}
-          len={previewData.len}
-          widthMm={selectedProduct?.ancho_nominal_mm ?? 150}
-          alaMm={(selectedProduct as Record<string, unknown> | undefined)?.ala_nominal_mm as number ?? 65}
-        />
-      )}
+      {/* Fallback: preview rectangular/tubo para productos sin receta medida.
+          Si el producto no publica ala_nominal_mm, NO inventamos un genérico
+          (65/50 varían por familia) — no se renderiza preview y el caller ve
+          el aviso de datos faltantes en consola vía recipes.ts. */}
+      {previewData?.type === 'straight' && (() => {
+        const ala = (selectedProduct as Record<string, unknown> | undefined)?.ala_nominal_mm;
+        if (typeof ala !== 'number' || !(ala > 0)) {
+          // eslint-disable-next-line no-console
+          console.warn(
+            `[routing/preview] ${selectedProduct?.sku ?? 'sin SKU'} no publica ala_nominal_mm — preview omitido.`,
+          );
+          return null;
+        }
+        return (
+          <PreviewMesh
+            center={previewData.center}
+            dirV={previewData.dirV}
+            len={previewData.len}
+            widthMm={selectedProduct?.ancho_nominal_mm ?? 150}
+            alaMm={ala}
+          />
+        );
+      })()}
       {previewData?.type === 'curve' && (
         <CurvePreviewMesh arcPoints={previewData.arcPoints} widthMm={previewData.widthMm} />
       )}

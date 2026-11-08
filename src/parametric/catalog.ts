@@ -3,12 +3,22 @@
  *
  * Fuente (originales y volúmenes): artifacts/parametric/fidelity.json y los
  * reportes STEP de tools/step_parametric/report/*.json. Los GLB se sirven desde
- * /parametric/*.
+ * /parametric/*. Procedencia de los STEP: aportados al proyecto por el usuario;
+ * no confirmados como originales del fabricante.
  *
  * Fuente (reconstrucciones y variantes): recetas paramétricas JS en
  * ./geometry/outlines.ts, despachadas por ./geometry/recipes.ts. Las bocas y
  * bounding boxes de reconstruction/variant se DERIVAN del polígono medido;
  * así la malla procedural y el panel del inspector no pueden salirse de sync.
+ *
+ * Divergencia conocida ala 50 vs 65 (familia SAM-STP-Z): el catálogo SAMET
+ * publica ala_nominal_mm = 50 mm (observación "cota del dibujo", PDF 4/impr. 7
+ * y PDF 5/impr. 9 del snapshot). Los STEP aportados muestran bbox Y = 65 mm.
+ * Resolución (criterio A): la GEOMETRÍA OPERATIVA del editor usa la cota del
+ * catálogo (50 mm). Los campos `original_bbox_span_mm` se dejan intactos como
+ * registro observado del STEP; sólo `params.ala_mm` en recon/variant se alinea
+ * con la cota de catálogo. La diferencia queda explícitamente visible en
+ * `fidelity.span_delta_pct.y`.
  *
  * Esta vista es experimental y NO sustituye la geometría operativa del editor
  * ni las fórmulas Python del motor. Las dimensiones aquí son datos de prueba.
@@ -115,7 +125,7 @@ function makeView(
  * polígonos medidos, reglas de escalado o posicionamiento de bocas. Las
  * calibraciones guardadas con una versión anterior se marcan "revisar".
  */
-const SOURCE_VERSION = '4236323-cups-align';
+const SOURCE_VERSION = 'ala50-catalogo-SAM-STP-Z';
 
 const RAW_ENTRIES: readonly {
   recipe: string;
@@ -150,18 +160,19 @@ const RAW_ENTRIES: readonly {
       label: 'Reconstrucción paramétrica (ancho=300)',
       sku: 'TRPS-300-22-Z',
       glb_url: '/parametric/reconstructions/TRPS-300-22-Z__recon.glb',
-      params: { ancho_mm: 300, ala_mm: 65, longitud_mm: 3000, espesor_mm: 0.71 },
+      params: { ancho_mm: 300, ala_mm: 50, longitud_mm: 3000, espesor_mm: 0.71 },
       notes: [
-        'Envolvente simplificada compatible con el STEP original (sin perfil Z ni perforaciones).',
+        'Envolvente simplificada del STEP de referencia (sin perfil Z ni perforaciones).',
+        'ala_mm proviene del catálogo SAMET (cota del dibujo, 50 mm). El STEP aportado muestra bbox Y = 65 mm; esa divergencia queda documentada en fidelity.span_delta_pct.y.',
       ],
     },
     variant: {
       label: 'Variante ancho=450 (ala, largo y espesor sin cambio)',
       sku: 'TRPS-450-22-Z',
       glb_url: '/parametric/variants/TRPS-450-22-Z__variante.glb',
-      params: { ancho_mm: 450, ala_mm: 65, longitud_mm: 3000, espesor_mm: 0.71 },
+      params: { ancho_mm: 450, ala_mm: 50, longitud_mm: 3000, espesor_mm: 0.71 },
       notes: [
-        'Regla MEDIDA: la sección rectangular del tramo recto escala sólo en Z (ancho); longitud y ala invariantes. Confirmada contra TRPS-300-22 y contrastable con cualquier TRPS-nnn-22 del catálogo SAMET.',
+        'Regla MEDIDA sobre los STEP de referencia: la sección rectangular escala sólo en Z (ancho); longitud y ala invariantes. ala_mm 50 por catálogo (familia SAM-STP-Z).',
       ],
     },
     volume_reconstruction_mm3: 58500000,
@@ -176,17 +187,17 @@ const RAW_ENTRIES: readonly {
       label: 'Reconstrucción paramétrica (polígono medido, 7 vértices)',
       sku: 'CPS-300-45-Z',
       glb_url: '/parametric/reconstructions/CPS-300-45-Z__recon.glb',
-      params: { ancho_mm: 300, ala_mm: 65, angulo_deg: 45, espesor_mm: 0.71 },
+      params: { ancho_mm: 300, ala_mm: 50, angulo_deg: 45, espesor_mm: 0.71 },
       notes: [
-        'Polígono faceteado medido sobre el GLB original (sin revolución; refleja chaflanes 45° reales).',
-        'Ala y espesor son placeholders de visualización: SAMET no publica estos dimensionales para variantes.',
+        'Polígono faceteado medido sobre el GLB de referencia (sin revolución; refleja chaflanes 45° reales).',
+        'ala_mm 50 por catálogo (familia SAM-STP-Z, "Ala 50 mm de la familia"). El bbox Y del STEP aportado es 65 mm — divergencia visible en fidelity.span_delta_pct.y.',
       ],
     },
     variant: {
       label: 'Variante ancho=450 (escala uniforme desde origen)',
       sku: 'CPS-450-45-Z',
       glb_url: '/parametric/variants/CPS-450-45-Z__variante.glb',
-      params: { ancho_mm: 450, ala_mm: 65, angulo_deg: 45, espesor_mm: 0.71 },
+      params: { ancho_mm: 450, ala_mm: 50, angulo_deg: 45, espesor_mm: 0.71 },
       notes: [
         'Regla ESTIMADA (no medida): escala uniforme del polígono por ancho/300 desde el origen.',
         'SAMET no publica CPS de ancho≠300 ni su regla de escalado; dimensionales sin verificación oficial — revisión técnica obligatoria antes de usar.',
@@ -204,17 +215,17 @@ const RAW_ENTRIES: readonly {
       label: 'Reconstrucción paramétrica (polígono medido, 8 vértices)',
       sku: 'CPS-300-90-Z',
       glb_url: '/parametric/reconstructions/CPS-300-90-Z__recon.glb',
-      params: { ancho_mm: 300, ala_mm: 65, angulo_deg: 90, espesor_mm: 0.71 },
+      params: { ancho_mm: 300, ala_mm: 50, angulo_deg: 90, espesor_mm: 0.71 },
       notes: [
-        'Polígono faceteado del STEP original con chaflanes interior y exterior a 45°.',
-        'Ala y espesor son placeholders de visualización.',
+        'Polígono faceteado del STEP de referencia con chaflanes interior y exterior a 45°.',
+        'ala_mm 50 por catálogo (familia SAM-STP-Z). bbox Y del STEP aportado = 65 mm; divergencia explícita en fidelity.span_delta_pct.y.',
       ],
     },
     variant: {
       label: 'Variante ancho=450 (escala uniforme desde origen)',
       sku: 'CPS-450-90-Z',
       glb_url: '/parametric/variants/CPS-450-90-Z__variante.glb',
-      params: { ancho_mm: 450, ala_mm: 65, angulo_deg: 90, espesor_mm: 0.71 },
+      params: { ancho_mm: 450, ala_mm: 50, angulo_deg: 90, espesor_mm: 0.71 },
       notes: [
         'Regla ESTIMADA (no medida): escala uniforme del polígono por ancho/300 desde el origen.',
         'SAMET no publica CPS 90° de ancho≠300; dimensionales sin verificación oficial — revisión técnica obligatoria.',
@@ -237,7 +248,7 @@ const RAW_ENTRIES: readonly {
       label: 'Reconstrucción paramétrica (perfil XY medido, marco natural)',
       sku: 'CUPS-300-A-Z',
       glb_url: '/parametric/reconstructions/CUPS-300-A-Z__recon.glb',
-      params: { ancho_mm: 300, ala_mm: 65, espesor_mm: 0.71, angulo_vertical_deg: 90 },
+      params: { ancho_mm: 300, ala_mm: 50, espesor_mm: 0.71, angulo_vertical_deg: 90 },
       notes: [
         'Perfil XY faceteado (8 vértices medidos) rotado +45° al marco de instalación natural; extruido en Z por ancho.',
         'Bocas OPERATIVAS medidas sobre las dos chaflanas exteriores del STEP: cada cara 300 × ~36.56 mm.',
@@ -248,10 +259,10 @@ const RAW_ENTRIES: readonly {
       label: 'Variante ancho=450 (sólo escala profundidad Z, perfil XY fijo)',
       sku: 'CUPS-450-A-Z',
       glb_url: '/parametric/variants/CUPS-450-A-Z__variante.glb',
-      params: { ancho_mm: 450, ala_mm: 65, espesor_mm: 0.71, angulo_vertical_deg: 90 },
+      params: { ancho_mm: 450, ala_mm: 50, espesor_mm: 0.71, angulo_vertical_deg: 90 },
       notes: [
         'Regla ESTIMADA: SAMET no publica CUPS de ancho≠300; asumimos perfil XY fijo y escalamos sólo profundidad Z.',
-        'Altura de conexión (~36.56 mm) distinta del ala estándar 65 mm de los tramos rectos: compatibilidad mecánica PENDIENTE de dato SAMET aunque la geometría se visualice correctamente.',
+        'Altura de conexión (~36.56 mm) distinta del ala de los tramos rectos (50 mm por catálogo SAM-STP-Z): compatibilidad mecánica PENDIENTE de dato SAMET aunque la geometría se visualice correctamente.',
       ],
     },
     volume_reconstruction_mm3: 2375093.49,
@@ -266,17 +277,19 @@ const RAW_ENTRIES: readonly {
       label: 'Reconstrucción paramétrica (polígono medido, 10 vértices)',
       sku: 'DCPS-300-Z',
       glb_url: '/parametric/reconstructions/DCPS-300-Z__recon.glb',
-      params: { ancho_mm: 300, ala_mm: 65, espesor_mm: 0.71 },
+      params: { ancho_mm: 300, ala_mm: 50, espesor_mm: 0.71 },
       notes: [
-        'Polígono faceteado del STEP original con chaflanes 45° en esquinas interiores.',
+        'Polígono faceteado del STEP de referencia con chaflanes 45° en esquinas interiores.',
         'Las TRES bocas tienen el ancho completo del fitting (el modelo previo truncaba las del tronco a 75 mm).',
+        'ala_mm 50 por catálogo (familia SAM-STP-Z). bbox Y del STEP aportado = 65 mm — divergencia explícita.',
+        'IDENTIFICACIÓN EN REVISIÓN: el polígono medido es simétrico en X (v0↔v7, v1↔v6, v2↔v5, v3↔v4); un DCPS es asimétrico, una T simétrica (TPS) sí lo es. Archivo nombrado `DCPS-300-Z.STEP` pero forma compatible con TPS. SKU preservado hasta contrastar con maestro oficial SAMET (no afectar BOM/compatibilidades).',
       ],
     },
     variant: {
       label: 'Variante ancho=450 (escala uniforme desde origen)',
       sku: 'DCPS-450-Z',
       glb_url: '/parametric/variants/DCPS-450-Z__variante.glb',
-      params: { ancho_mm: 450, ala_mm: 65, espesor_mm: 0.71 },
+      params: { ancho_mm: 450, ala_mm: 50, espesor_mm: 0.71 },
       notes: [
         'Regla ESTIMADA (no medida): escala uniforme del polígono por ancho/300.',
         'SAMET no publica DCPS de ancho≠300; valores sin verificación oficial — revisión técnica obligatoria.',
@@ -294,16 +307,17 @@ const RAW_ENTRIES: readonly {
       label: 'Reconstrucción paramétrica (cruz simétrica, 16 vértices)',
       sku: 'XPS-300-Z',
       glb_url: '/parametric/reconstructions/XPS-300-Z__recon.glb',
-      params: { ancho_mm: 300, ala_mm: 65, espesor_mm: 0.71 },
+      params: { ancho_mm: 300, ala_mm: 50, espesor_mm: 0.71 },
       notes: [
-        'Polígono faceteado del STEP original con los 4 chaflanes 45° reales.',
+        'Polígono faceteado del STEP de referencia con los 4 chaflanes 45° reales.',
+        'ala_mm 50 por catálogo (familia SAM-STP-Z). bbox Y del STEP aportado = 65 mm — divergencia explícita.',
       ],
     },
     variant: {
       label: 'Variante ancho=450 (escala uniforme desde origen)',
       sku: 'XPS-450-Z',
       glb_url: '/parametric/variants/XPS-450-Z__variante.glb',
-      params: { ancho_mm: 450, ala_mm: 65, espesor_mm: 0.71 },
+      params: { ancho_mm: 450, ala_mm: 50, espesor_mm: 0.71 },
       notes: [
         'Regla ESTIMADA (no medida): escala uniforme del polígono por ancho/300.',
         'SAMET no publica XPS de ancho≠300; valores sin verificación oficial — revisión técnica obligatoria.',

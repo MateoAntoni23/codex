@@ -1,6 +1,7 @@
 /**
  * parametricBridge — puente puro entre el catálogo paramétrico (recetas
- * medidas del STEP SAMET) y el editor operativo de bandejas.
+ * medidas sobre los STEP aportados; procedencia en verificación) y el editor
+ * operativo de bandejas.
  *
  * Responsabilidad única: traducir una receta paramétrica (polígono local en
  * marco XZ o XY) al marco mundial del editor (mm, Z-up) dado un punto de

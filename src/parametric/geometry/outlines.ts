@@ -1,11 +1,15 @@
 /**
  * outlines.ts — polígonos canónicos por tipo de pieza STP-Z 300.
  *
- * Los polígonos están medidos directamente sobre los GLB originales SAMET
- * (vértices por cara extraídos de los accessor min/max), trasladados al
- * marco canónico (centro del bbox GLB → centro del bbox canónico). Son
- * la fuente de verdad que reemplaza la revolución suave de CadQuery, que
- * no reflejaba las secciones rectas con quiebres reales.
+ * Los polígonos están medidos directamente sobre los GLB de REFERENCIA
+ * aportados al proyecto (vértices por cara extraídos de los accessor min/max),
+ * trasladados al marco canónico (centro del bbox GLB → centro del bbox
+ * canónico). La procedencia de los GLB (originales del fabricante vs
+ * reconstruidos por el usuario) no está confirmada; se usan como referencia
+ * geométrica, no como fuente oficial de cotas comerciales.
+ *
+ * Son la fuente de verdad del contorno 2D que reemplaza la revolución suave
+ * de CadQuery, que no reflejaba las secciones rectas con quiebres reales.
  *
  * Reglas de variación:
  *
@@ -14,6 +18,10 @@
  *     ancho / 300. Preserva relaciones angulares y ratios internos.
  *   - CUPS: escala solo la profundidad de extrusión (Z=ancho). El perfil
  *     XY queda fijo (SAMET no publica regla de variación).
+ *
+ * El `ala_mm` NO se infiere del polígono: entra como parámetro proveniente
+ * del CATÁLOGO (familia SAM-STP-Z: 50 mm). Si el STEP aportado tiene un bbox
+ * Y distinto, es dato de observación (fidelity.span_delta_pct), no fuente.
  *
  * Todos los polígonos horizontales están en XZ, CCW visto desde +Y. CUPS
  * está en XY, CCW visto desde +Z.
@@ -182,9 +190,9 @@ export function buildCPS45Recipe(params: {
     bboxMin: [minX, 0, minZ],
     bboxMax: [maxX, ala_mm, maxZ],
     notes: [
-      'Polígono faceteado medido del STEP original (7 vértices, chaflanes mitrados; NO revolución suave).',
+      'Polígono faceteado medido del STEP de referencia (7 vértices, chaflanes mitrados; NO revolución suave).',
       ancho_mm === 300
-        ? 'Ancho=300 mm: geometría fiel al STEP SAMET.'
+        ? 'Ancho=300 mm: geometría medida sobre el STEP de referencia (procedencia en verificación).'
         : `Variante ancho=${ancho_mm}: escala uniforme desde origen por ${(ancho_mm / 300).toFixed(3)}. Regla provisional (SAMET no publica ancho≠300).`,
     ],
   };
@@ -233,18 +241,26 @@ export function buildCPS90Recipe(params: {
     bboxMin: [minX, 0, minZ],
     bboxMax: [maxX, ala_mm, maxZ],
     notes: [
-      'Polígono faceteado medido del STEP original (8 vértices: chaflanes 45° interior y exterior).',
+      'Polígono faceteado medido del STEP de referencia (8 vértices: chaflanes 45° interior y exterior).',
       ancho_mm === 300
-        ? 'Ancho=300 mm: geometría fiel al STEP SAMET.'
+        ? 'Ancho=300 mm: geometría medida sobre el STEP de referencia (procedencia en verificación).'
         : `Variante ancho=${ancho_mm}: escala uniforme desde origen por ${(ancho_mm / 300).toFixed(3)}. Regla provisional.`,
     ],
   };
 }
 
 // -----------------------------------------------------------------------------
-// DCPS — derivación T lateral.
-// Polígono medido (ancho=300) del GLB DCPS-300-Z con chaflanes interiores.
-// Las tres bocas son 300 mm (el modelo previo truncaba las del tronco a 75).
+// DCPS — derivación T lateral (identificación en revisión).
+// Polígono medido (ancho=300) del archivo `DCPS-300-Z.STEP` con chaflanes
+// interiores. Las tres bocas son 300 mm (el modelo previo truncaba las del
+// tronco a 75).
+//
+// IDENTIFICACIÓN PENDIENTE: el polígono observado es simétrico en X respecto
+// al eje central (v0↔v7, v1↔v6, v2↔v5, v3↔v4, v9↔v8). Un DCPS SAMET es
+// asimétrico (derivación común); una T simétrica corresponde a la familia TPS.
+// El archivo STEP se llama DCPS pero su forma es compatible con TPS. No se
+// renombra el SKU (impacto en BOM/compatibilidades) hasta contrastar con el
+// maestro oficial SAMET.
 // -----------------------------------------------------------------------------
 
 const DCPS_OUTLINE_300: readonly V2[] = [
@@ -294,10 +310,10 @@ export function buildDCPSRecipe(params: {
     bboxMin: [minX, 0, minZ],
     bboxMax: [maxX, ala_mm, maxZ],
     notes: [
-      'Polígono faceteado del STEP original (10 vértices, chaflanes 45° en esquinas interiores).',
+      'Polígono faceteado del STEP de referencia (10 vértices, chaflanes 45° en esquinas interiores).',
       'Las tres bocas son ancho×ala (medidas del STEP: ~300 mm c/u). El modelo previo truncaba las del tronco a 75 mm.',
       ancho_mm === 300
-        ? 'Ancho=300 mm: geometría fiel al STEP SAMET.'
+        ? 'Ancho=300 mm: geometría medida sobre el STEP de referencia (procedencia en verificación).'
         : `Variante ancho=${ancho_mm}: escala uniforme desde origen por ${(ancho_mm / 300).toFixed(3)}. Regla provisional.`,
     ],
   };
@@ -360,9 +376,9 @@ export function buildXPSRecipe(params: {
     bboxMin: [minX, 0, minZ],
     bboxMax: [maxX, ala_mm, maxZ],
     notes: [
-      'Polígono faceteado del STEP original (16 vértices, chaflanes 45° en cada esquina interior).',
+      'Polígono faceteado del STEP de referencia (16 vértices, chaflanes 45° en cada esquina interior).',
       ancho_mm === 300
-        ? 'Ancho=300 mm: geometría fiel al STEP SAMET.'
+        ? 'Ancho=300 mm: geometría medida sobre el STEP de referencia (procedencia en verificación).'
         : `Variante ancho=${ancho_mm}: escala uniforme desde origen por ${(ancho_mm / 300).toFixed(3)}. Mantiene proporciones.`,
     ],
   };
@@ -446,8 +462,8 @@ export function buildCUPSRecipe(params: {
   //                         Es la cara de la bandeja HORIZONTAL.
   // Ancho del puerto = ancho_mm (profundidad del canal en Z, = ancho comercial).
   // Alto del puerto  = longitud de la chaflán (~36.56 mm). No coincide con el
-  // ala estándar 65 mm de los tramos rectos: SAMET no publica compatibilidad
-  // directa — se marca como pendiente en catálogo.
+  // ala del tramo recto (50 mm por catálogo SAM-STP-Z): SAMET no publica
+  // compatibilidad directa — se marca como pendiente en catálogo.
   const v0 = polygon[0];
   const v1 = polygon[1];
   const v4 = polygon[4];
@@ -498,7 +514,7 @@ export function buildCUPSRecipe(params: {
     bboxMax: [xy_maxX, xy_maxY, 0],
     notes: [
       'Perfil XY medido del STEP (8 vértices) rotado +45° al marco de instalación natural donde las bocas quedan axis-aligned.',
-      `Bocas MEDIDAS sobre las chaflanas exteriores del STEP: 300 × ${p1EdgeLen.toFixed(2)} mm. Longitud de conexión (~${p1EdgeLen.toFixed(0)} mm) difiere del ala estándar 65 mm de los tramos rectos: compatibilidad mecánica pendiente de dato SAMET.`,
+      `Bocas MEDIDAS sobre las chaflanas exteriores del STEP: 300 × ${p1EdgeLen.toFixed(2)} mm. Longitud de conexión (~${p1EdgeLen.toFixed(0)} mm) difiere del ala del tramo recto (50 mm por catálogo SAM-STP-Z): compatibilidad mecánica pendiente de dato SAMET.`,
       'Variante ascendente/descendente: SAMET publica sólo CUPS-A; la ascendente se asumiría espejo (pendiente de confirmación).',
       ancho_mm === 300
         ? 'Ancho=300 mm: profundidad del canal fiel al STEP.'

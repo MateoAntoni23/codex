@@ -1,0 +1,1269 @@
+{
+  "fileVersion": 1,
+  "exportedAt": "2026-11-07T23:21:39.852Z",
+  "projectV2": {
+    "schemaVersion": 2,
+    "elements": [
+      {
+        "id": "floor-1",
+        "name": "Piso",
+        "tag": null,
+        "aliases": [],
+        "condition": "unknown",
+        "lifecycle": "active",
+        "parentId": null,
+        "mounting": "unknown",
+        "manufacturer": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": []
+        },
+        "model": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": []
+        },
+        "physicalLocation": {
+          "kind": "unassigned",
+          "factoryId": null,
+          "subareaId": null,
+          "description": null
+        },
+        "version": 1,
+        "placementStatus": "placed",
+        "transform": {
+          "positionMm": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          }
+        },
+        "category": "infrastructure",
+        "geometry": {
+          "kind": "plane",
+          "widthMm": 30000,
+          "depthMm": 30000
+        },
+        "technical": {
+          "role": {
+            "value": "floor",
+            "status": "provided",
+            "evidenceIds": [
+              "ev-mig-floor-1"
+            ]
+          }
+        }
+      },
+      {
+        "id": "building-1",
+        "name": "Nave Industrial",
+        "tag": null,
+        "aliases": [],
+        "condition": "unknown",
+        "lifecycle": "active",
+        "parentId": null,
+        "mounting": "unknown",
+        "manufacturer": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": []
+        },
+        "model": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": []
+        },
+        "physicalLocation": {
+          "kind": "unassigned",
+          "factoryId": null,
+          "subareaId": null,
+          "description": null
+        },
+        "version": 1,
+        "placementStatus": "placed",
+        "transform": {
+          "positionMm": {
+            "x": 0,
+            "y": 0,
+            "z": 4000
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          }
+        },
+        "category": "infrastructure",
+        "geometry": {
+          "kind": "box",
+          "widthMm": 20000,
+          "depthMm": 15000,
+          "heightMm": 8000
+        },
+        "technical": {
+          "role": {
+            "value": "building",
+            "status": "provided",
+            "evidenceIds": [
+              "ev-mig-building-1"
+            ]
+          }
+        }
+      },
+      {
+        "id": "panel-1",
+        "name": "Tablero Eléctrico",
+        "tag": null,
+        "aliases": [],
+        "condition": "unknown",
+        "lifecycle": "active",
+        "parentId": null,
+        "mounting": "unknown",
+        "manufacturer": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": []
+        },
+        "model": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": []
+        },
+        "physicalLocation": {
+          "kind": "unassigned",
+          "factoryId": null,
+          "subareaId": null,
+          "description": null
+        },
+        "version": 1,
+        "placementStatus": "placed",
+        "transform": {
+          "positionMm": {
+            "x": -7000,
+            "y": 2000,
+            "z": 1000
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          }
+        },
+        "category": "electrical_panel",
+        "geometry": {
+          "kind": "box",
+          "widthMm": 800,
+          "depthMm": 400,
+          "heightMm": 2000
+        },
+        "technical": {
+          "ipRating": {
+            "value": null,
+            "status": "unknown",
+            "evidenceIds": []
+          },
+          "ratedCurrent": {
+            "value": null,
+            "status": "unknown",
+            "evidenceIds": []
+          }
+        }
+      },
+      {
+        "id": "motor-1",
+        "name": "Motor Eléctrico",
+        "tag": null,
+        "aliases": [],
+        "condition": "unknown",
+        "lifecycle": "active",
+        "parentId": null,
+        "mounting": "unknown",
+        "manufacturer": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": []
+        },
+        "model": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": []
+        },
+        "physicalLocation": {
+          "kind": "unassigned",
+          "factoryId": null,
+          "subareaId": null,
+          "description": null
+        },
+        "version": 1,
+        "placementStatus": "placed",
+        "transform": {
+          "positionMm": {
+            "x": 4000,
+            "y": 4000,
+            "z": 400
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          }
+        },
+        "category": "motor",
+        "geometry": {
+          "kind": "cylinder",
+          "diameterMm": 600,
+          "lengthMm": 800
+        },
+        "technical": {
+          "power": {
+            "value": null,
+            "status": "unknown",
+            "evidenceIds": []
+          },
+          "voltage": {
+            "value": null,
+            "status": "unknown",
+            "evidenceIds": []
+          },
+          "phases": {
+            "value": null,
+            "status": "unknown",
+            "evidenceIds": []
+          },
+          "plateCurrent": {
+            "value": null,
+            "status": "unknown",
+            "evidenceIds": []
+          },
+          "efficiency": {
+            "value": null,
+            "status": "unknown",
+            "evidenceIds": []
+          },
+          "powerFactor": {
+            "value": null,
+            "status": "unknown",
+            "evidenceIds": []
+          },
+          "start": {
+            "value": null,
+            "status": "unknown",
+            "evidenceIds": []
+          }
+        }
+      },
+      {
+        "id": "support-panel-1",
+        "name": "Soporte giratorio",
+        "tag": null,
+        "aliases": [],
+        "physicalLocation": {
+          "kind": "unassigned",
+          "factoryId": null,
+          "subareaId": null,
+          "description": null
+        },
+        "condition": "unknown",
+        "lifecycle": "active",
+        "parentId": null,
+        "geometry": {
+          "kind": "box",
+          "widthMm": 600,
+          "depthMm": 600,
+          "heightMm": 800
+        },
+        "mounting": "floor",
+        "manufacturer": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": []
+        },
+        "model": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": []
+        },
+        "version": 1,
+        "placementStatus": "placed",
+        "transform": {
+          "positionMm": {
+            "x": 2000,
+            "y": -5000,
+            "z": 400
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0.3826834323650898,
+            "w": 0.9238795325112867
+          }
+        },
+        "category": "electrical_panel",
+        "technical": {
+          "ipRating": {
+            "value": null,
+            "status": "unknown",
+            "evidenceIds": []
+          },
+          "ratedCurrent": {
+            "value": null,
+            "status": "unknown",
+            "evidenceIds": []
+          }
+        }
+      },
+      {
+        "id": "child-motor-1",
+        "name": "Motor en soporte",
+        "tag": null,
+        "aliases": [],
+        "physicalLocation": {
+          "kind": "unassigned",
+          "factoryId": null,
+          "subareaId": null,
+          "description": null
+        },
+        "condition": "unknown",
+        "lifecycle": "active",
+        "parentId": "support-panel-1",
+        "geometry": {
+          "kind": "cylinder",
+          "diameterMm": 300,
+          "lengthMm": 500
+        },
+        "mounting": "panel_mount",
+        "manufacturer": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": []
+        },
+        "model": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": []
+        },
+        "version": 1,
+        "placementStatus": "placed",
+        "transform": {
+          "positionMm": {
+            "x": 0,
+            "y": 800,
+            "z": 0
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          }
+        },
+        "category": "motor",
+        "technical": {
+          "power": {
+            "value": null,
+            "status": "unknown",
+            "evidenceIds": []
+          },
+          "voltage": {
+            "value": null,
+            "status": "unknown",
+            "evidenceIds": []
+          },
+          "phases": {
+            "value": null,
+            "status": "unknown",
+            "evidenceIds": []
+          },
+          "plateCurrent": {
+            "value": null,
+            "status": "unknown",
+            "evidenceIds": []
+          },
+          "efficiency": {
+            "value": null,
+            "status": "unknown",
+            "evidenceIds": []
+          },
+          "powerFactor": {
+            "value": null,
+            "status": "unknown",
+            "evidenceIds": []
+          },
+          "start": {
+            "value": null,
+            "status": "unknown",
+            "evidenceIds": []
+          }
+        }
+      },
+      {
+        "id": "sensor-nogeo-1",
+        "name": "Sensor de presión (sin dimensiones)",
+        "tag": null,
+        "aliases": [],
+        "physicalLocation": {
+          "kind": "unassigned",
+          "factoryId": null,
+          "subareaId": null,
+          "description": null
+        },
+        "condition": "unknown",
+        "lifecycle": "active",
+        "parentId": null,
+        "geometry": null,
+        "mounting": "unknown",
+        "manufacturer": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": []
+        },
+        "model": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": []
+        },
+        "version": 1,
+        "placementStatus": "placed",
+        "transform": {
+          "positionMm": {
+            "x": -4000,
+            "y": -3000,
+            "z": 1000
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          }
+        },
+        "category": "sensor",
+        "technical": {
+          "measuredVariable": {
+            "value": null,
+            "status": "unknown",
+            "evidenceIds": []
+          },
+          "range": {
+            "value": null,
+            "status": "unknown",
+            "evidenceIds": []
+          },
+          "supply": {
+            "value": null,
+            "status": "unknown",
+            "evidenceIds": []
+          },
+          "signal": {
+            "value": null,
+            "status": "unknown",
+            "evidenceIds": []
+          }
+        }
+      },
+      {
+        "id": "sensor-unplaced-1",
+        "name": "Sensor de temperatura",
+        "tag": null,
+        "aliases": [],
+        "physicalLocation": {
+          "kind": "unassigned",
+          "factoryId": null,
+          "subareaId": null,
+          "description": null
+        },
+        "condition": "unknown",
+        "lifecycle": "active",
+        "parentId": null,
+        "geometry": {
+          "kind": "box",
+          "widthMm": 50,
+          "depthMm": 50,
+          "heightMm": 100
+        },
+        "mounting": "unknown",
+        "manufacturer": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": []
+        },
+        "model": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": []
+        },
+        "version": 1,
+        "placementStatus": "unplaced",
+        "transform": null,
+        "category": "sensor",
+        "technical": {
+          "measuredVariable": {
+            "value": null,
+            "status": "unknown",
+            "evidenceIds": []
+          },
+          "range": {
+            "value": null,
+            "status": "unknown",
+            "evidenceIds": []
+          },
+          "supply": {
+            "value": null,
+            "status": "unknown",
+            "evidenceIds": []
+          },
+          "signal": {
+            "value": null,
+            "status": "unknown",
+            "evidenceIds": []
+          }
+        }
+      },
+      {
+        "id": "sensor-flow-1",
+        "name": "[DEMO] Sensor de caudal",
+        "tag": "FT-101",
+        "aliases": [],
+        "physicalLocation": {
+          "kind": "unassigned",
+          "factoryId": null,
+          "subareaId": null,
+          "description": null
+        },
+        "condition": "new",
+        "lifecycle": "active",
+        "parentId": null,
+        "geometry": {
+          "kind": "box",
+          "widthMm": 80,
+          "depthMm": 60,
+          "heightMm": 120
+        },
+        "mounting": "wall",
+        "manufacturer": {
+          "value": "[demo] Endress+Hauser",
+          "status": "provided",
+          "evidenceIds": []
+        },
+        "model": {
+          "value": "[demo] Promag 300",
+          "status": "provided",
+          "evidenceIds": []
+        },
+        "version": 1,
+        "placementStatus": "placed",
+        "transform": {
+          "positionMm": {
+            "x": -2000,
+            "y": 3000,
+            "z": 1200
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          }
+        },
+        "category": "sensor",
+        "technical": {
+          "measuredVariable": {
+            "value": "[demo] Caudal volumétrico de agua",
+            "status": "provided",
+            "evidenceIds": []
+          },
+          "range": {
+            "value": {
+              "min": 0,
+              "max": 100,
+              "unit": "m3/h"
+            },
+            "status": "estimated",
+            "evidenceIds": []
+          },
+          "supply": {
+            "value": {
+              "voltageV": 24,
+              "currentType": "DC"
+            },
+            "status": "provided",
+            "evidenceIds": []
+          },
+          "signal": {
+            "value": "4_20mA",
+            "status": "provided",
+            "evidenceIds": []
+          }
+        }
+      }
+    ],
+    "evidence": [
+      {
+        "id": "ev-mig-floor-1",
+        "elementOrConnectionId": "floor-1",
+        "fieldPath": "",
+        "source": "migration",
+        "fileChecksum": null,
+        "sheet": null,
+        "row": null,
+        "cell": null,
+        "formula": null,
+        "rawValue": {
+          "id": "floor-1",
+          "name": "Piso",
+          "type": "floor",
+          "position": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "dimensions": {
+            "width": 30000,
+            "depth": 30000,
+            "height": 0
+          }
+        },
+        "author": null,
+        "recordedAt": "1970-01-01T00:00:00.000Z"
+      },
+      {
+        "id": "ev-mig-building-1",
+        "elementOrConnectionId": "building-1",
+        "fieldPath": "",
+        "source": "migration",
+        "fileChecksum": null,
+        "sheet": null,
+        "row": null,
+        "cell": null,
+        "formula": null,
+        "rawValue": {
+          "id": "building-1",
+          "name": "Nave Industrial",
+          "type": "building",
+          "position": {
+            "x": 0,
+            "y": 0,
+            "z": 4000
+          },
+          "dimensions": {
+            "width": 20000,
+            "depth": 15000,
+            "height": 8000
+          }
+        },
+        "author": null,
+        "recordedAt": "1970-01-01T00:00:00.000Z"
+      },
+      {
+        "id": "ev-mig-panel-1",
+        "elementOrConnectionId": "panel-1",
+        "fieldPath": "",
+        "source": "migration",
+        "fileChecksum": null,
+        "sheet": null,
+        "row": null,
+        "cell": null,
+        "formula": null,
+        "rawValue": {
+          "id": "panel-1",
+          "name": "Tablero Eléctrico",
+          "type": "panel",
+          "position": {
+            "x": -7000,
+            "y": 2000,
+            "z": 1000
+          },
+          "dimensions": {
+            "width": 800,
+            "depth": 400,
+            "height": 2000
+          }
+        },
+        "author": null,
+        "recordedAt": "1970-01-01T00:00:00.000Z"
+      },
+      {
+        "id": "ev-mig-motor-1",
+        "elementOrConnectionId": "motor-1",
+        "fieldPath": "",
+        "source": "migration",
+        "fileChecksum": null,
+        "sheet": null,
+        "row": null,
+        "cell": null,
+        "formula": null,
+        "rawValue": {
+          "id": "motor-1",
+          "name": "Motor Eléctrico",
+          "type": "motor",
+          "position": {
+            "x": 4000,
+            "y": 4000,
+            "z": 400
+          },
+          "dimensions": {
+            "width": 600,
+            "depth": 600,
+            "height": 800
+          }
+        },
+        "author": null,
+        "recordedAt": "1970-01-01T00:00:00.000Z"
+      }
+    ],
+    "projectOrigin": {
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "factories": [],
+    "subareas": [],
+    "elementServices": [],
+    "ports": [],
+    "connections": [],
+    "cableCores": [],
+    "internalLinks": [],
+    "functionalRelations": [],
+    "migrationIncidents": []
+  },
+  "trayInput": {
+    "version_contrato": "trazado/1",
+    "meta": {
+      "ejemplo_sintetico": true,
+      "descripcion": "EJEMPLO SINTÉTICO de trazado. Productos y datos del catálogo real; posiciones, longitudes de eje de piezas especiales, circuitos y soportes son inventados para mostrar el contrato. No son productos ni geometrías acreditadas."
+    },
+    "tipo_circuito": "potencia",
+    "reserva_solicitada_pct": 20,
+    "eje_vertical": [
+      0,
+      0,
+      1
+    ],
+    "piezas": [
+      {
+        "instancia_id": "R1",
+        "producto_id": "SAM_TRES-300-065-18-Z",
+        "longitud_mm": 3000,
+        "puertos": {
+          "P1": {
+            "posicion_mm": [
+              0,
+              0,
+              3000
+            ],
+            "direccion": [
+              -1,
+              0,
+              0
+            ]
+          },
+          "P2": {
+            "posicion_mm": [
+              3000,
+              0,
+              3000
+            ],
+            "direccion": [
+              1,
+              0,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "instancia_id": "R2",
+        "producto_id": "SAM_TRES-300-065-18-Z",
+        "longitud_mm": 3000,
+        "puertos": {
+          "P1": {
+            "posicion_mm": [
+              3000,
+              0,
+              3000
+            ],
+            "direccion": [
+              -1,
+              0,
+              0
+            ]
+          },
+          "P2": {
+            "posicion_mm": [
+              6000,
+              0,
+              3000
+            ],
+            "direccion": [
+              1,
+              0,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "instancia_id": "T1",
+        "producto_id": "SAM_TS-300-065-18-Z",
+        "longitud_eje_mm": 600,
+        "puertos": {
+          "P1": {
+            "posicion_mm": [
+              6000,
+              0,
+              3000
+            ],
+            "direccion": [
+              -1,
+              0,
+              0
+            ]
+          },
+          "P2": {
+            "posicion_mm": [
+              6600,
+              0,
+              3000
+            ],
+            "direccion": [
+              1,
+              0,
+              0
+            ]
+          },
+          "P3": {
+            "posicion_mm": [
+              6300,
+              450,
+              3000
+            ],
+            "direccion": [
+              0,
+              1,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "instancia_id": "R3",
+        "producto_id": "SAM_TRES-300-065-18-Z",
+        "longitud_mm": 3000,
+        "puertos": {
+          "P1": {
+            "posicion_mm": [
+              6600,
+              0,
+              3000
+            ],
+            "direccion": [
+              -1,
+              0,
+              0
+            ]
+          },
+          "P2": {
+            "posicion_mm": [
+              9600,
+              0,
+              3000
+            ],
+            "direccion": [
+              1,
+              0,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "instancia_id": "R4",
+        "producto_id": "SAM_TRES-300-065-18-Z",
+        "longitud_mm": 3000,
+        "puertos": {
+          "P1": {
+            "posicion_mm": [
+              6300,
+              450,
+              3000
+            ],
+            "direccion": [
+              0,
+              -1,
+              0
+            ]
+          },
+          "P2": {
+            "posicion_mm": [
+              6300,
+              3450,
+              3000
+            ],
+            "direccion": [
+              0,
+              1,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "instancia_id": "CS1",
+        "producto_id": "SAM_CS-300-90-065-18-Z",
+        "longitud_eje_mm": 707,
+        "puertos": {
+          "P1": {
+            "posicion_mm": [
+              6300,
+              3450,
+              3000
+            ],
+            "direccion": [
+              0,
+              -1,
+              0
+            ]
+          },
+          "P2": {
+            "posicion_mm": [
+              6900,
+              4050,
+              3000
+            ],
+            "direccion": [
+              1,
+              0,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "instancia_id": "R5",
+        "producto_id": "SAM_TRES-300-065-18-Z",
+        "longitud_mm": 1500,
+        "puertos": {
+          "P1": {
+            "posicion_mm": [
+              6900,
+              4050,
+              3000
+            ],
+            "direccion": [
+              -1,
+              0,
+              0
+            ]
+          },
+          "P2": {
+            "posicion_mm": [
+              8400,
+              4050,
+              3000
+            ],
+            "direccion": [
+              1,
+              0,
+              0
+            ]
+          }
+        }
+      }
+    ],
+    "conexiones": [
+      {
+        "conexion_id": "C1",
+        "a": [
+          "R1",
+          "P2"
+        ],
+        "b": [
+          "R2",
+          "P1"
+        ]
+      },
+      {
+        "conexion_id": "C2",
+        "a": [
+          "R2",
+          "P2"
+        ],
+        "b": [
+          "T1",
+          "P1"
+        ]
+      },
+      {
+        "conexion_id": "C3",
+        "a": [
+          "T1",
+          "P2"
+        ],
+        "b": [
+          "R3",
+          "P1"
+        ]
+      },
+      {
+        "conexion_id": "C4",
+        "a": [
+          "T1",
+          "P3"
+        ],
+        "b": [
+          "R4",
+          "P1"
+        ]
+      },
+      {
+        "conexion_id": "C5",
+        "a": [
+          "R4",
+          "P2"
+        ],
+        "b": [
+          "CS1",
+          "P1"
+        ]
+      },
+      {
+        "conexion_id": "C6",
+        "a": [
+          "CS1",
+          "P2"
+        ],
+        "b": [
+          "R5",
+          "P1"
+        ]
+      }
+    ],
+    "tapas": [
+      {
+        "tapa_id": "TP1",
+        "producto_id": "SAM_TTRS-300-22-Z",
+        "sobre": "R3"
+      }
+    ],
+    "accesorios": [],
+    "circuitos": [
+      {
+        "circuito_id": "K1",
+        "funcion": "potencia",
+        "cable_id": "PRY-SVALIO-CU-1x35",
+        "cantidad": 3,
+        "separado": true,
+        "recorrido": [
+          "R1",
+          "R2",
+          "T1",
+          "R3"
+        ]
+      },
+      {
+        "circuito_id": "K2",
+        "funcion": "potencia",
+        "cable_id": "PRY-SVALIO-CU-1x35",
+        "cantidad": 3,
+        "separado": true,
+        "recorrido": [
+          "R1",
+          "R2",
+          "T1",
+          "R4",
+          "CS1",
+          "R5"
+        ]
+      }
+    ],
+    "soportes": [
+      {
+        "soporte_id": "S1",
+        "sistema_soporte_id": "SIS-001",
+        "producto_id": "SAM_STS-300-Z",
+        "instancia_id": "R1",
+        "distancia_desde_P1_mm": 750
+      },
+      {
+        "soporte_id": "S2",
+        "sistema_soporte_id": "SIS-001",
+        "producto_id": "SAM_STS-300-Z",
+        "instancia_id": "R1",
+        "distancia_desde_P1_mm": 2250
+      },
+      {
+        "soporte_id": "S3",
+        "sistema_soporte_id": "SIS-001",
+        "producto_id": "SAM_STS-300-Z",
+        "instancia_id": "R2",
+        "distancia_desde_P1_mm": 750
+      },
+      {
+        "soporte_id": "S4",
+        "sistema_soporte_id": "SIS-001",
+        "producto_id": "SAM_STS-300-Z",
+        "instancia_id": "R2",
+        "distancia_desde_P1_mm": 2250
+      },
+      {
+        "soporte_id": "S5",
+        "sistema_soporte_id": "SIS-001",
+        "producto_id": "SAM_STS-300-Z",
+        "instancia_id": "R3",
+        "distancia_desde_P1_mm": 750
+      },
+      {
+        "soporte_id": "S6",
+        "sistema_soporte_id": "SIS-001",
+        "producto_id": "SAM_STS-300-Z",
+        "instancia_id": "R3",
+        "distancia_desde_P1_mm": 2250
+      },
+      {
+        "soporte_id": "S7",
+        "sistema_soporte_id": "SIS-001",
+        "producto_id": "SAM_STS-300-Z",
+        "instancia_id": "R4",
+        "distancia_desde_P1_mm": 750
+      },
+      {
+        "soporte_id": "S8",
+        "sistema_soporte_id": "SIS-001",
+        "producto_id": "SAM_STS-300-Z",
+        "instancia_id": "R4",
+        "distancia_desde_P1_mm": 2250
+      },
+      {
+        "soporte_id": "S9",
+        "sistema_soporte_id": "SIS-001",
+        "producto_id": "SAM_STS-300-Z",
+        "instancia_id": "R5",
+        "distancia_desde_P1_mm": 750
+      }
+    ],
+    "pe": {
+      "seccion_requerida_mm2": 16,
+      "cable_id": "PRY-SASTFLEX-CU-1x16",
+      "origen_requisito": "Requisito acordado del usuario (R-PE-16): PE 16 mm² en todos los tramos, incluidos ramales",
+      "conductores": [
+        {
+          "conductor_id": "PE1",
+          "recorrido": [
+            "R1",
+            "R2",
+            "T1",
+            "R3"
+          ],
+          "inicio": "SP1",
+          "fin": null
+        },
+        {
+          "conductor_id": "PE2",
+          "recorrido": [
+            {
+              "instancia": "T1",
+              "longitud_mm": 300
+            },
+            "R4",
+            "CS1",
+            "R5"
+          ],
+          "inicio": "D1",
+          "fin": null
+        }
+      ]
+    },
+    "equipotencial": {
+      "puntos": [
+        {
+          "punto_id": "SP1",
+          "tipo": "sistema_proteccion",
+          "conductores": [
+            "PE1"
+          ],
+          "descripcion": "Barra PE del tablero de origen (ejemplo)"
+        },
+        {
+          "punto_id": "D1",
+          "tipo": "derivacion_pe",
+          "conductores": [
+            "PE1",
+            "PE2"
+          ],
+          "instancias": [
+            "T1"
+          ],
+          "conector": {
+            "producto_id": null,
+            "descripcion": "Conector de derivación a definir"
+          }
+        },
+        {
+          "punto_id": "B1",
+          "tipo": "conexion_bandeja",
+          "conductores": [
+            "PE1"
+          ],
+          "instancias": [
+            "R1"
+          ],
+          "conector": {
+            "producto_id": "SAM_GFCE-B"
+          }
+        },
+        {
+          "punto_id": "B2",
+          "tipo": "conexion_bandeja",
+          "conductores": [
+            "PE2"
+          ],
+          "instancias": [
+            "R4"
+          ],
+          "conector": {
+            "producto_id": "SAM_GFCE-B"
+          }
+        },
+        {
+          "punto_id": "J1",
+          "tipo": "puente",
+          "instancias": [
+            "R1",
+            "R2"
+          ],
+          "conductor_puente": {
+            "cable_id": "PRY-SASTFLEX-CU-1x16",
+            "longitud_mm": 400
+          },
+          "conector": null
+        }
+      ]
+    },
+    "escenario_reserva": {
+      "descripcion": "Ocupación futura: otro circuito por el tronco (escenario, no carga cubierta)",
+      "circuitos": [
+        {
+          "circuito_id": "K3",
+          "cable_id": "PRY-SVALIO-CU-1x35",
+          "cantidad": 3,
+          "separado": true,
+          "recorrido": [
+            "R1",
+            "R2",
+            "T1",
+            "R3"
+          ]
+        }
+      ]
+    }
+  }
+}

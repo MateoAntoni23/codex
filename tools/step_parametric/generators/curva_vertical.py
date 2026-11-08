@@ -1,13 +1,14 @@
 """Generador paramétrico: Curva vertical rígida SAM-STP-Z (SKU CUPS-300-A-Z).
 
-Observaciones del STEP original (envolvente poligonal):
+Observaciones del STEP de referencia aportado al proyecto (procedencia como
+original del fabricante en verificación; envolvente poligonal):
     bbox = 54.6 (X) x 233 (Y) x 300 (Z)
     volumen ≈ 2.37e6 mm³ (no coincide con un bloque sólido 54.6*233*300 =
     3.82e6; el modelo tiene un recorte interno y una pestaña delgada).
 
-El STEP SAMET de esta pieza es un bloque macizo reducido más una
-pestaña: no contiene arco paramétrico ni perfil Z. Como el fabricante no
-publica radio/ángulo verticales para STP-Z, el generador reproduce la
+El STEP aportado para esta pieza es un bloque macizo reducido más una
+pestaña: no contiene arco paramétrico ni perfil Z. Como no se dispone de
+radio/ángulo verticales publicados para STP-Z, el generador reproduce la
 envolvente del STEP como una CAJA del tamaño de su bbox y marca la
 geometría interna como "no reconstruible desde STEP simplificado".
 
@@ -15,7 +16,9 @@ Reglas
 ------
 - `ancho_mm`:  controla el eje Z (default 300).
 - `ala_mm`:    controla la dimensión más corta "longitudinal" del codo.
-  Default = 65 pero NO se puede variar sin dato adicional del fabricante.
+  Default = 65 (bbox observado en el STEP) pero NO se puede variar sin
+  dato adicional del fabricante. El catálogo SAMET para la familia
+  SAM-STP-Z publica ala = 50 mm; el editor operativo usa ese valor.
 - `radio_interior_mm`: si el usuario lo provee, se construye un codo curvo
   de 90° en lugar de la envolvente; se marca explícitamente como regla
   provisional.
@@ -104,8 +107,9 @@ def build(
         notes=[
             "Modo ENVOLVENTE: reproduce bbox del STEP simplificado "
             f"({dim_x:.1f} x {dim_y:.1f} x {ancho:.0f}).",
-            "SAMET no publica radio ni ángulo verticales para STP-Z: "
-            "para generar codo curvo pasar `radio_interior_mm` explícito.",
+            "No se dispone de radio ni ángulo verticales publicados para "
+            "STP-Z: para generar codo curvo pasar `radio_interior_mm` "
+            "explícito.",
         ],
     )
 
@@ -194,6 +198,6 @@ def _build_codo_curvo(
         ports=ports,
         notes=[
             f"Modo CODO CURVO PROVISIONAL (radio_interior={r_in:.1f}, ala={ala:.1f}, ang={ang:.0f}°).",
-            "No hay dato oficial SAMET para STP-Z vertical; parámetros bajo responsabilidad del usuario.",
+            "Sin dato oficial del fabricante para STP-Z vertical; parámetros bajo responsabilidad del usuario.",
         ],
     )

@@ -4,19 +4,23 @@ Ambas variantes del catálogo (45° y 90°) se construyen con la misma regla
 paramétrica: barrido del perfil transversal (una sección rectangular ala×ancho)
 a lo largo de un arco horizontal.
 
-Datos medidos del STEP (envolvente solamente, sin radio declarado por SAMET):
+Datos medidos del STEP de referencia aportado al proyecto (procedencia como
+original del fabricante en verificación; envolvente solamente, sin radio
+publicado para STP-Z):
     CPS-300-90-Z: bbox 744.1 × 65 × 744.0 → R_out ≈ 744 (coincide con chord 90°).
     CPS-300-45-Z: bbox 346   × 65 × 322
+Nota: el ala observada en estos STEP es 65 mm. El catálogo SAMET para la
+familia SAM-STP-Z publica ala = 50 mm y el editor operativo usa ese valor.
 
 Regla de radio
 --------------
-El fabricante NO publica radio para STP-Z. Dejamos el radio como parámetro y
-reconstruimos el STEP original con el valor derivado del bbox (R_out = span X).
+No se dispone de radio publicado para STP-Z. Dejamos el radio como parámetro y
+reconstruimos el STEP de referencia con el valor derivado del bbox (R_out = span X).
 Para generar una variante de ancho distinto, la REGLA PROVISIONAL es mantener
 el R_interior constante y adaptar R_exterior = R_interior + ancho. El usuario
 puede sobrescribir el radio por completo.
 
-Convención de orientación (coincide con el STEP original de CPS-300-90-Z):
+Convención de orientación (coincide con el STEP de referencia de CPS-300-90-Z):
     - El centro de la curva está en (x_min, 0, z_max) local; es decir, el arco
       "se abre" hacia +X y -Z.
     - Boca P1 en el borde +X (ángulo 0°), normal +X.

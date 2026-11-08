@@ -8,3 +8,9 @@ dist/
 **/__pycache__/
 *.py[cod]
 artifacts/
+
+# Playwright transient outputs
+test-results/
+playwright-report/
+e2e/output/
+

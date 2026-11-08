@@ -25,7 +25,7 @@ Prioridad reducida a lo que el catálogo soporta hoy. Todo lo marcado "pendiente
 
 | # | SKU catálogo | Función del trazado | Generador reusable | ¿Master nuevo? | Parámetros del catálogo | Pendiente de medir |
 |---|---|---|---|---|---|---|
-| 1 | **TPS-NN-Z** (familia T simétrica) | Ramal 90° con tres bocas equivalentes | `derivacion_lateral.py` como base; **no** cubre TPS tal cual (DCPS tiene chaflán asimétrico; TPS no) | Sí | ancho, espesor, los tres puertos | polígono real, radios internos, posición de bocas |
+| 1 | **TPS-NN-Z** (familia T simétrica) | Ramal 90° con tres bocas equivalentes | `derivacion_lateral.py` como base; **no** cubre TPS tal cual (DCPS tiene chaflán asimétrico; TPS no). Nota 2026-11-07: el STEP `DCPS-300-Z.STEP` que alimenta el polígono actual presenta forma **simétrica** en X — compatible con TPS. Identificación DCPS vs TPS pendiente de contraste con maestro oficial. | Sí | ancho, espesor, los tres puertos | polígono real, radios internos, posición de bocas |
 | 2 | **CUPS-300-D-Z** | Curva vertical descendente | `curva_vertical.py` **a verificar**; no asumir reflexión | Sí (hasta confirmar) | ancho, espesor | polígono, posición de chaflanes, orientación |
 | 3 | **EMTS-NN-Z** / **EMPS-NN-Z** | Embudo de bajada (perpendicular / paralelo); añade boca vertical al trazado | Nuevo (no es ni recto, ni curva, ni T) | Sí | ancho entrada, salida vertical, espesor | polígono completo, ángulo de garganta, altura |
 | 4 | **RFPS-NN-Z** | Final de tramo (cierre) | Derivable de `tramo_recto.py` con 1 boca | No (recorte del recto) | ancho, espesor | profundidad del faldón |

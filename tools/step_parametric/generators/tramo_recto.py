@@ -1,13 +1,19 @@
 """Generador paramétrico: Tramo recto SAM-STP-Z (SKU referencia TRPS-300-22-Z).
 
-Envolvente SolidWorks (medición del STEP original):
+Envolvente SolidWorks (medición del STEP de referencia aportado al proyecto;
+procedencia como original del fabricante en verificación):
     bbox = 3000 (X) × 65 (Y) × 300 (Z)
     cuerpo con esquina en (0, 0, -300); 6 caras planares.
+
+Nota sobre ala: el STEP aportado mide 65 mm en Y, pero el catálogo SAMET para
+la familia SAM-STP-Z publica ala = 50 mm. La geometría operativa del editor
+usa 50 mm (ver src/parametric/catalog.ts); este generador conserva la
+observación del STEP (65) para no alterar el registro de la fuente.
 
 Reglas del generador
 --------------------
     - `longitud_mm` controla el eje X (default 3000, comercial declarado).
-    - `ala_mm`      controla el eje Y (default 65 observado en STEP).
+    - `ala_mm`      controla el eje Y (default 65 observado en STEP, 50 por catálogo).
     - `ancho_mm`    controla el ancho (|Z|) (default 300).
     - `espesor_mm`  NO se usa en la envolvente simplificada; se registra en
       parámetros efectivos para pipelines detallados futuros.

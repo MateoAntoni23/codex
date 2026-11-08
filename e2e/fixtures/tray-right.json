@@ -1,0 +1,130 @@
+{
+  "version_contrato": "trazado/1",
+  "piezas": [
+    {
+      "instancia_id": "T1",
+      "producto_id": "SAM_TRPS-300-22-Z",
+      "longitud_mm": 3000,
+      "puertos": {
+        "P1": {
+          "posicion_mm": [
+            0,
+            0,
+            0
+          ],
+          "direccion": [
+            -1,
+            0,
+            0
+          ]
+        },
+        "P2": {
+          "posicion_mm": [
+            3000,
+            0,
+            0
+          ],
+          "direccion": [
+            1,
+            0,
+            0
+          ]
+        }
+      }
+    },
+    {
+      "instancia_id": "CRV-1",
+      "producto_id": "SAM_CPS-300-90-Z",
+      "longitud_eje_mm": 933.5164030325733,
+      "puertos": {
+        "P1": {
+          "posicion_mm": [
+            3000,
+            0,
+            0
+          ],
+          "direccion": [
+            -1,
+            0,
+            0
+          ]
+        },
+        "P2": {
+          "posicion_mm": [
+            3593.160605459253,
+            -595.4272333217659,
+            0
+          ],
+          "direccion": [
+            -0.004416170774331087,
+            -0.9999902486703018,
+            0
+          ]
+        }
+      }
+    },
+    {
+      "instancia_id": "SEG-1",
+      "producto_id": "SAM_TRPS-300-22-Z",
+      "longitud_mm": 3000.0000000000005,
+      "puertos": {
+        "P1": {
+          "posicion_mm": [
+            3593.160605459253,
+            -595.4272333217659,
+            0
+          ],
+          "direccion": [
+            0.004416170774331021,
+            0.9999902486703017,
+            0
+          ]
+        },
+        "P2": {
+          "posicion_mm": [
+            3579.91209313626,
+            -3595.3979793326716,
+            0
+          ],
+          "direccion": [
+            -0.004416170774331021,
+            -0.9999902486703017,
+            0
+          ]
+        }
+      }
+    }
+  ],
+  "conexiones": [
+    {
+      "conexion_id": "CON-001",
+      "a": [
+        "T1",
+        "P2"
+      ],
+      "b": [
+        "CRV-1",
+        "P1"
+      ]
+    },
+    {
+      "conexion_id": "CON-002",
+      "a": [
+        "CRV-1",
+        "P2"
+      ],
+      "b": [
+        "SEG-1",
+        "P1"
+      ]
+    }
+  ],
+  "circuitos": [],
+  "soportes": [],
+  "pe": {
+    "seccion_requerida_mm2": 16,
+    "cable_id": "TEST",
+    "origen_requisito": "test",
+    "conductores": []
+  }
+}

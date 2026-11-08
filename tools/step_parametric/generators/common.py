@@ -44,8 +44,12 @@ class PieceParams:
     cada uno documenta qué consume."""
 
     ancho_mm: float = 300.0
+    # Default 65 corresponde al bbox Y del STEP aportado. El catálogo SAMET
+    # para la familia SAM-STP-Z publica ala 50 mm; los callers del editor usan
+    # ese valor (no este default). Este default se conserva para generar
+    # geometrías comparables con el STEP sin alterar la fuente original.
     ala_mm: float = 65.0
-    espesor_mm: float = 0.71  # declarado SAMET para STP-Z
+    espesor_mm: float = 0.71  # valor observado para STP-Z (procedencia en verificación)
     longitud_mm: float | None = None  # tramos rectos
     angulo_deg: float | None = None  # curvas horizontales
     radio_interior_mm: float | None = None  # curvas; None => derivado
@@ -82,9 +86,8 @@ def volume_of(wp: cq.Workplane) -> float:
 def box_body(long_x: float, ala_y: float, ancho_z: float) -> cq.Workplane:
     """Caja alineada a los ejes con una esquina en (0,0,-ancho).
 
-    Esta geometría reproduce exactamente la envolvente de un tramo recto SAMET
-    (STP-Z) tal como viene en el STEP: cuerpo en el cuadrante X>=0, Y>=0,
-    Z<=0.
+    Esta geometría reproduce la envolvente de un tramo recto STP-Z tal como
+    viene en el STEP de referencia: cuerpo en el cuadrante X>=0, Y>=0, Z<=0.
     """
     body = (
         cq.Workplane("XY")

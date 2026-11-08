@@ -33,6 +33,26 @@ function readNumber(params: RawParams, key: string, fallback: number): number {
 }
 
 /**
+ * Advierte una sola vez por combinación (piece_kind, key) cuando se activa un
+ * fallback. Mantener un fallback (65 mm para ala) es intencional: no todas las
+ * familias usan la misma cota (p.ej. escalera SAM-STE y perforada SAM-STP-Z
+ * difieren); cambiarlo globalmente taparía bugs de datos. Esta traza permite
+ * localizar en caliente los productos que llegan sin dimensional declarado.
+ */
+const FALLBACK_WARNED = new Set<string>();
+function warnFallback(piece_kind: PieceKind, key: string, fallback: number): void {
+  const tag = `${piece_kind}:${key}`;
+  if (FALLBACK_WARNED.has(tag)) return;
+  FALLBACK_WARNED.add(tag);
+  // eslint-disable-next-line no-console
+  console.warn(
+    `[parametric/recipes] fallback ${key}=${fallback} aplicado para piece_kind=${piece_kind}. ` +
+    `El producto no publica '${key}' — revisá el snapshot del catálogo. ` +
+    `Este fallback NO sustituye un valor real y no corresponde a todas las familias.`,
+  );
+}
+
+/**
  * Devuelve la receta geométrica efectiva para una combinación
  * piece_kind + params. Si el tipo de pieza no está soportado lanza, para que
  * el callsite caiga a la ruta GLB o reporte configuración inválida.
@@ -41,8 +61,16 @@ export function buildRecipeFor(
   piece_kind: PieceKind,
   params: RawParams,
 ): GeometryRecipe {
-  const ancho_mm = readNumber(params, 'ancho_mm', 300);
-  const ala_mm = readNumber(params, 'ala_mm', 65);
+  const ancho_mm_raw = params.ancho_mm;
+  const ancho_mm =
+    typeof ancho_mm_raw === 'number' && Number.isFinite(ancho_mm_raw)
+      ? ancho_mm_raw
+      : (warnFallback(piece_kind, 'ancho_mm', 300), 300);
+  const ala_mm_raw = params.ala_mm;
+  const ala_mm =
+    typeof ala_mm_raw === 'number' && Number.isFinite(ala_mm_raw)
+      ? ala_mm_raw
+      : (warnFallback(piece_kind, 'ala_mm', 65), 65);
 
   switch (piece_kind) {
     case 'tramo_recto': {

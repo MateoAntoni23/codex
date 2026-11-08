@@ -44,6 +44,13 @@ from generators import (
 # mapea nombre de archivo original -> (generador, kwargs extra, param default,
 # variante para probar el cambio paramétrico). No se declaran SKUs comerciales
 # nuevos: la "variante" solo prueba la regla; se marca como experimental.
+#
+# Nota sobre ala_mm=65: estos valores reproducen la ENVOLVENTE medida en los
+# STEP aportados (bbox Y = 65 mm). El catálogo SAMET para la familia SAM-STP-Z
+# publica ala = 50 mm y es el valor que usa el editor operativo (ver
+# `src/parametric/catalog.ts`). Este pipeline de reconstrucción comparativa
+# conserva 65 para que las métricas de fidelidad vs el STEP de referencia sean
+# significativas; no es un valor comercial.
 RECIPES: dict[str, dict[str, Any]] = {
     "TRPS-300-22-Z.STEP": {
         "piece_kind": "tramo_recto",
@@ -80,6 +87,13 @@ RECIPES: dict[str, dict[str, Any]] = {
         ),
     },
     "DCPS-300-Z.STEP": {
+        # IDENTIFICACIÓN EN REVISIÓN: el polígono medido en este STEP es
+        # simétrico en X (los chaflanes v1↔v6, v2↔v5 están especulares). Un
+        # DCPS SAMET es asimétrico (derivación común); una T simétrica
+        # corresponde a TPS. El archivo se nombra "DCPS-300-Z.STEP" pero la
+        # forma observada es compatible con TPS. Mantenemos el piece_kind
+        # 'derivacion_lateral' y la trayectoria del archivo original hasta
+        # contrastar con el maestro oficial SAMET — no afectar BOM.
         "piece_kind": "derivacion_lateral",
         "default_params": dict(ancho_mm=300, ala_mm=65, espesor_mm=0.71),
         "variant_params": dict(ancho_mm=450, ala_mm=65, espesor_mm=0.71),
