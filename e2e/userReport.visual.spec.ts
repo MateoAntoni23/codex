@@ -175,7 +175,11 @@ test.describe('Reporte del usuario — escalera Z', () => {
       const pz = parsed.trayInput.piezas.find((p) => p.instancia_id === id)!;
       console.log(`  ${id} (${pz.producto_id}) → ${m?.kind ?? 'MISSING'}  (width=${m?.widthMm ?? '∅'} ala=${m?.alaMm ?? '∅'} len/radius/tronco=${m?.lenMm ?? m?.radiusMm ?? m?.troncoLenMm ?? '∅'})`);
       expect(m, `${id} debe tener root-tag de escalera`).toBeTruthy();
-      expect(m!.kind, `${id} ruta de render`).toMatch(/^ladder-(straight|curve|tee)$/);
+      // El dispatcher prioriza el render medido (`ladder-measured`) cuando
+      // existe outline STEP para el SKU; si falla la alineación cae al
+      // generador por puertos (`ladder-straight|curve|tee`). Ambos son
+      // rutas válidas para la familia escalera.
+      expect(m!.kind, `${id} ruta de render`).toMatch(/^ladder-(straight|curve|tee|measured)$/);
     }
 
     // 2 — Puertos renderizados coinciden con puertos almacenados (no se moviero).
