@@ -1,0 +1,169 @@
+{
+  "file": "RIS-15-065-18-Z.STEP",
+  "bbox_local": {
+    "x_max": 298.9,
+    "z_max": 450.0,
+    "y_height_mm": 65.0
+  },
+  "n_vertices": 6,
+  "polygon_xz_mm": [
+    [
+      148.896,
+      0.0
+    ],
+    [
+      148.9,
+      149.503
+    ],
+    [
+      298.9,
+      299.503
+    ],
+    [
+      298.9,
+      450.0
+    ],
+    [
+      0.004,
+      450.0
+    ],
+    [
+      0.0,
+      0.0
+    ]
+  ],
+  "edges": [
+    {
+      "i": 0,
+      "a": [
+        148.896,
+        0.0
+      ],
+      "b": [
+        148.9,
+        149.503
+      ],
+      "length_mm": 149.503,
+      "midpoint": [
+        148.898,
+        74.751
+      ],
+      "outward_normal": [
+        1.0,
+        -0.0
+      ],
+      "boundary": null,
+      "axis_aligned": false
+    },
+    {
+      "i": 1,
+      "a": [
+        148.9,
+        149.503
+      ],
+      "b": [
+        298.9,
+        299.503
+      ],
+      "length_mm": 212.132,
+      "midpoint": [
+        223.9,
+        224.503
+      ],
+      "outward_normal": [
+        0.707,
+        -0.707
+      ],
+      "boundary": null,
+      "axis_aligned": false
+    },
+    {
+      "i": 2,
+      "a": [
+        298.9,
+        299.503
+      ],
+      "b": [
+        298.9,
+        450.0
+      ],
+      "length_mm": 150.497,
+      "midpoint": [
+        298.9,
+        374.751
+      ],
+      "outward_normal": [
+        1.0,
+        -0.0
+      ],
+      "boundary": "x_max",
+      "axis_aligned": true
+    },
+    {
+      "i": 3,
+      "a": [
+        298.9,
+        450.0
+      ],
+      "b": [
+        0.004,
+        450.0
+      ],
+      "length_mm": 298.896,
+      "midpoint": [
+        149.452,
+        450.0
+      ],
+      "outward_normal": [
+        0.0,
+        1.0
+      ],
+      "boundary": "z_max",
+      "axis_aligned": true
+    },
+    {
+      "i": 4,
+      "a": [
+        0.004,
+        450.0
+      ],
+      "b": [
+        0.0,
+        0.0
+      ],
+      "length_mm": 450.0,
+      "midpoint": [
+        0.002,
+        225.0
+      ],
+      "outward_normal": [
+        -1.0,
+        0.0
+      ],
+      "boundary": "x_min",
+      "axis_aligned": false
+    },
+    {
+      "i": 5,
+      "a": [
+        0.0,
+        0.0
+      ],
+      "b": [
+        148.896,
+        0.0
+      ],
+      "length_mm": 148.896,
+      "midpoint": [
+        74.448,
+        0.0
+      ],
+      "outward_normal": [
+        0.0,
+        -1.0
+      ],
+      "boundary": "z_min",
+      "axis_aligned": true
+    }
+  ]
+}
