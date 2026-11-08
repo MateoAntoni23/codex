@@ -254,7 +254,6 @@ export function RoutingObjects() {
   const selectedProductId = useRoutingStore((s) => s.selectedProductId);
   const hoverPiece      = useRoutingStore((s) => s.hoverPiece);
   const selectStartPort = useRoutingStore((s) => s.selectStartPort);
-  const setProduct      = useRoutingStore((s) => s.setProduct);
 
   const freePorts = useMemo(() => {
     if (!entrada || !active) return [];
@@ -361,8 +360,10 @@ export function RoutingObjects() {
             dimmed={hasHover && !isHovered}
             hovered={isHovered}
             onClick={() => {
-              const srcPiece = entrada.piezas.find((p) => p.instancia_id === fp.pieceId);
-              if (srcPiece) setProduct(srcPiece.producto_id);
+              // No preseleccionar el producto de la pieza origen: el
+              // panel de routing muestra la lista filtrada por compat.
+              // y preseleccionar algo fuera de esa lista producía la
+              // disonancia "selector muestra TRPS, preview muestra CPS".
               selectStartPort(fp);
             }}
             onOver={() => hoverPiece(fp.pieceId)}

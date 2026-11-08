@@ -73,7 +73,12 @@ export const useRoutingStore = create<RoutingState>((set) => ({
 
   hoverPiece: (id) => set({ hoveredPieceId: id }),
 
-  selectStartPort: (port) => set({ startPort: port, step: 'configuringSegment' }),
+  // Al seleccionar un puerto de arranque, blanquear `selectedProductId` para
+  // que el usuario elija explícitamente la continuación (antes se
+  // preseleccionaba el producto de la pieza origen, lo que provocaba un
+  // preview con la forma de la pieza origen incluso cuando el inspector
+  // mostraba otro SKU: ver fix stale-preview y routingPreviewSwap spec).
+  selectStartPort: (port) => set({ startPort: port, step: 'configuringSegment', selectedProductId: '' }),
 
   setProduct: (id) => set({ selectedProductId: id }),
 
