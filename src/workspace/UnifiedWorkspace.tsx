@@ -180,6 +180,7 @@ function Toolbar() {
       <button onClick={handleExport}>Exportar JSON</button>
       <button onClick={() => fileInputRef.current?.click()}>Importar JSON</button>
       <input ref={fileInputRef} type="file" accept=".json" style={{ display: 'none' }} onChange={handleImport} />
+      <a href="?configurator=v1" className="workspace-toolbar-link" data-testid="open-configurator">Configuración de biblioteca</a>
     </div>
   );
 }

@@ -6,6 +6,7 @@ import { Layout } from './ui/Layout';
 import { PreviewLayout } from './preview/PreviewLayout';
 import { PilotLayout } from './pilot/PilotLayout';
 import { ParametricLayout } from './parametric/ParametricLayout';
+import { ConfiguratorLayout } from './configurator/ConfiguratorLayout';
 import { initProject } from './persistence/projectManager';
 import { useSceneStore } from './store/sceneStore';
 
@@ -29,6 +30,9 @@ export function App() {
   const ws = params.get('workspace');
   if (ws === 'bandejas') return <UnifiedWorkspace />;
   if (ws === 'bandejas-legacy') return <TrayWorkspace />;
+
+  // Configurador central de modelos, productos y conexiones.
+  if (params.get('configurator') === 'v1') return <ConfiguratorLayout />;
 
   // Vista experimental de geometría piloto. Aislada: no sustituye geometría
   // de proyectos existentes ni toca el catálogo.
