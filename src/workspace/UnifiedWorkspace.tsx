@@ -10,6 +10,7 @@ import { WorkspaceTree } from './WorkspaceTree';
 import { WorkspaceInspector } from './WorkspaceInspector';
 import { exportWorkspace, importWorkspace, extractMeta } from './workspaceFile';
 import { RoutingStatusBadge } from './RoutingPanel';
+import { useCatalogConfigStore } from '../configurator/catalogConfigStore';
 
 function SceneBridge() {
   const scene = useThree((s) => s.scene);
@@ -114,11 +115,13 @@ function Toolbar() {
   const handleExport = () => {
     const ws   = useWorkspaceStore.getState();
     const tray = useTrayStore.getState();
+    const cfg  = useCatalogConfigStore.getState();
     if (!tray.entrada) {
       alert('No hay trazado cargado para exportar.');
       return;
     }
-    const json = exportWorkspace(ws.elements, ws.evidence, ws.projectMeta, tray.entrada);
+    // Incluir overrides del Configurador para portabilidad entre PCs.
+    const json = exportWorkspace(ws.elements, ws.evidence, ws.projectMeta, tray.entrada, cfg.overrides);
     const blob = new Blob([json], { type: 'application/json' });
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement('a');
@@ -162,6 +165,10 @@ function Toolbar() {
       useTrayStore.getState().importEdit(ws.trayInput);
       // Cancel any active routing session since the tray was replaced
       useRoutingStore.getState().deactivate();
+      // Overrides del Configurador — si el archivo los trae, reemplazar;
+      // si no, limpiar (para que el proyecto refleje su propia configuración
+      // y no la del equipo local).
+      useCatalogConfigStore.getState().replaceAll(ws.catalogConfig?.overrides ?? {});
       e.target.value = '';
     };
     reader.onerror = () => {
@@ -194,6 +201,10 @@ export function UnifiedWorkspace() {
   // Initialize motor connection on mount
   useEffect(() => {
     void useTrayStore.getState().initialize();
+    // Hidratar overrides del Configurador para que routingRules y toMotorEntrada
+    // reflejen las decisiones guardadas desde que el workspace carga, sin esperar
+    // a que el usuario abra la Configuración de biblioteca.
+    useCatalogConfigStore.getState().hydrate();
     const tick = setInterval(() => void useTrayStore.getState().initialize(), 30000);
     return () => clearInterval(tick);
   }, []);

@@ -205,3 +205,65 @@ describe('importWorkspace', () => {
     expect(() => importWorkspace(badJson)).toThrow();
   });
 });
+
+// ─── catalogConfig (Configurador de biblioteca) ──────────────────────────────
+
+describe('exportWorkspace + importWorkspace — catalogConfig', () => {
+  const SAMPLE_OVERRIDES = {
+    'SAM_TPS-300-Z': {
+      productId: 'SAM_TPS-300-Z',
+      source: 'override' as const,
+      overrideReason: 'Datos del fabricante actualizados vía PDF 2026 Rev. B',
+      overrideAt: '2026-11-08T10:00:00Z',
+      entries: [
+        { recipePortName: 'tronco_P1', catalogPortName: 'P3', physicalLabel: 'reasignado', justification: 'Override' },
+      ],
+    },
+  };
+
+  it('omite el bloque catalogConfig cuando no hay overrides', () => {
+    const json = exportWorkspace([ELEMENT], EVIDENCE, DEFAULT_PROJECT_META, TRAY_INPUT, {});
+    const parsed = JSON.parse(json) as Record<string, unknown>;
+    expect('catalogConfig' in parsed).toBe(false);
+  });
+
+  it('incluye catalogConfig con firma de versión cuando hay overrides', () => {
+    const json = exportWorkspace([ELEMENT], EVIDENCE, DEFAULT_PROJECT_META, TRAY_INPUT, SAMPLE_OVERRIDES);
+    const parsed = JSON.parse(json) as Record<string, unknown>;
+    const cfg = parsed.catalogConfig as Record<string, unknown>;
+    expect(cfg.version).toBe('codex:catalogConfig/1');
+    expect((cfg.overrides as Record<string, unknown>)['SAM_TPS-300-Z']).toBeDefined();
+  });
+
+  it('round-trip: export → import preserva overrides', () => {
+    const json = exportWorkspace([ELEMENT], EVIDENCE, DEFAULT_PROJECT_META, TRAY_INPUT, SAMPLE_OVERRIDES);
+    const imported = importWorkspace(json);
+    expect(imported.catalogConfig?.version).toBe('codex:catalogConfig/1');
+    expect(imported.catalogConfig?.overrides['SAM_TPS-300-Z'].source).toBe('override');
+    expect(imported.catalogConfig?.overrides['SAM_TPS-300-Z'].entries[0].catalogPortName).toBe('P3');
+  });
+
+  it('archivo legacy sin catalogConfig importa correctamente', () => {
+    const json = exportWorkspace([ELEMENT], EVIDENCE, DEFAULT_PROJECT_META, TRAY_INPUT);
+    const imported = importWorkspace(json);
+    expect(imported.catalogConfig).toBeUndefined();
+  });
+
+  it('rechaza versión desconocida de catalogConfig', () => {
+    const json = exportWorkspace([ELEMENT], EVIDENCE, DEFAULT_PROJECT_META, TRAY_INPUT, SAMPLE_OVERRIDES);
+    const parsed = JSON.parse(json) as Record<string, unknown>;
+    (parsed.catalogConfig as Record<string, unknown>).version = 'otra/9';
+    expect(() => importWorkspace(JSON.stringify(parsed))).toThrow('catalogConfig');
+  });
+
+  it('rechaza catalogConfig con source inválido', () => {
+    const bad = {
+      version: 'codex:catalogConfig/1',
+      overrides: { X: { productId: 'X', source: 'garbage', entries: [] } },
+    };
+    const json = exportWorkspace([ELEMENT], EVIDENCE, DEFAULT_PROJECT_META, TRAY_INPUT);
+    const parsed = JSON.parse(json) as Record<string, unknown>;
+    parsed.catalogConfig = bad;
+    expect(() => importWorkspace(JSON.stringify(parsed))).toThrow('catalogConfig');
+  });
+});

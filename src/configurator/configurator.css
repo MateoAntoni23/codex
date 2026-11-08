@@ -26,9 +26,15 @@
 }
 
 .cfg-toolbar-hint {
-  margin-left: auto;
   color: #8888cc;
   font-size: 12px;
+}
+
+.cfg-toolbar-io {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .cfg-back-link {
