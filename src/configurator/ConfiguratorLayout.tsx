@@ -167,6 +167,8 @@ function Inspector({ product }: { product: Product | null }) {
   const context = useTrayStore((s) => s.context);
   const familias = context?.familias ?? [];
   const puertos = context?.puertos ?? [];
+  const productos = context?.productos ?? [];
+  const compatibilidades = context?.compatibilidades ?? [];
   return (
     <aside className="cfg-panel cfg-panel-right">
       <div className="cfg-panel-title">Inspector</div>
@@ -191,6 +193,8 @@ function Inspector({ product }: { product: Product | null }) {
           product={product}
           familias={familias}
           puertos={puertos}
+          productos={productos}
+          compatibilidades={compatibilidades}
         />
       </div>
     </aside>

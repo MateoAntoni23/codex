@@ -7,6 +7,10 @@ import {
   setPortMappingOverrides,
   clearPortMappingOverrides,
   listOverriddenProductIds,
+  getModelFrameOverride,
+  getPortGeometryOverride,
+  isIdentityModelFrame,
+  isIdentityPortGeometry,
   type ProductPortMapping,
 } from '../catalogPortMapping';
 
@@ -113,5 +117,116 @@ describe('catalogPortMapping — overrides del configurador', () => {
     clearPortMappingOverrides();
     expect(recipePortToCatalogPort('SAM_TPS-300-Z', 'tronco_P1')).toBe('P1');
     expect(listOverriddenProductIds()).toHaveLength(0);
+  });
+});
+
+describe('catalogPortMapping — overrides geométricos (modelFrame + portGeometry)', () => {
+  beforeEach(() => clearPortMappingOverrides());
+
+  it('isIdentityModelFrame es true para undefined y para ceros', () => {
+    expect(isIdentityModelFrame(undefined)).toBe(true);
+    expect(isIdentityModelFrame({})).toBe(true);
+    expect(isIdentityModelFrame({ tx_mm: 0, ty_mm: 0, tz_mm: 0 })).toBe(true);
+    expect(isIdentityModelFrame({ rx_deg: 90 })).toBe(false);
+    expect(isIdentityModelFrame({ tx_mm: 1e-9 })).toBe(false);
+  });
+
+  it('isIdentityPortGeometry es true sin vectores y sin rotación', () => {
+    expect(isIdentityPortGeometry(undefined)).toBe(true);
+    expect(isIdentityPortGeometry({})).toBe(true);
+    expect(isIdentityPortGeometry({ installRotationDeg: 0 })).toBe(true);
+    expect(isIdentityPortGeometry({ installRotationDeg: 45 })).toBe(false);
+    expect(isIdentityPortGeometry({ centerMm: [1, 2, 3] })).toBe(false);
+    expect(isIdentityPortGeometry({ normal: [1, 0, 0] })).toBe(false);
+  });
+
+  it('getModelFrameOverride devuelve null si identidad', () => {
+    setPortMappingOverrides({
+      'SAM_TPS-300-Z': {
+        productId: 'SAM_TPS-300-Z',
+        source: 'override',
+        entries: [],
+        modelFrame: { tx_mm: 0, ty_mm: 0, tz_mm: 0 },
+      },
+    });
+    expect(getModelFrameOverride('SAM_TPS-300-Z')).toBeNull();
+  });
+
+  it('getModelFrameOverride devuelve el objeto cuando no es identidad', () => {
+    setPortMappingOverrides({
+      'SAM_TPS-300-Z': {
+        productId: 'SAM_TPS-300-Z',
+        source: 'override',
+        entries: [],
+        modelFrame: { rz_deg: 90 },
+      },
+    });
+    const mf = getModelFrameOverride('SAM_TPS-300-Z');
+    expect(mf?.rz_deg).toBe(90);
+  });
+
+  it('getPortGeometryOverride devuelve override por boca cuando existe', () => {
+    setPortMappingOverrides({
+      'SAM_TPS-300-Z': {
+        productId: 'SAM_TPS-300-Z',
+        source: 'override',
+        entries: [
+          {
+            recipePortName: 'boca_derivacion',
+            catalogPortName: 'P3',
+            physicalLabel: 'lateral',
+            justification: 'ajuste',
+            geometry: { installRotationDeg: 15, centerMm: [10, 25, 0] },
+          },
+        ],
+      },
+    });
+    const g = getPortGeometryOverride('SAM_TPS-300-Z', 'boca_derivacion');
+    expect(g?.installRotationDeg).toBe(15);
+    expect(g?.centerMm).toEqual([10, 25, 0]);
+    expect(getPortGeometryOverride('SAM_TPS-300-Z', 'tronco_P1')).toBeNull();
+  });
+
+  it('getPortGeometryOverride ignora geometría identidad', () => {
+    setPortMappingOverrides({
+      'SAM_TPS-300-Z': {
+        productId: 'SAM_TPS-300-Z',
+        source: 'override',
+        entries: [
+          {
+            recipePortName: 'boca_derivacion',
+            catalogPortName: 'P3',
+            physicalLabel: 'lateral',
+            justification: 'noop',
+            geometry: { installRotationDeg: 0 },
+          },
+        ],
+      },
+    });
+    expect(getPortGeometryOverride('SAM_TPS-300-Z', 'boca_derivacion')).toBeNull();
+  });
+
+  it('agregar geometry no rompe el mapping de nombres existente', () => {
+    setPortMappingOverrides({
+      'SAM_TPS-300-Z': {
+        productId: 'SAM_TPS-300-Z',
+        source: 'override',
+        entries: [
+          { recipePortName: 'tronco_P1', catalogPortName: 'P1', physicalLabel: '', justification: '' },
+          {
+            recipePortName: 'boca_derivacion',
+            catalogPortName: 'P3',
+            physicalLabel: '',
+            justification: '',
+            geometry: { installRotationDeg: 10 },
+          },
+        ],
+      },
+    });
+    // Name translation sigue funcionando.
+    expect(recipePortToCatalogPort('SAM_TPS-300-Z', 'tronco_P1')).toBe('P1');
+    expect(recipePortToCatalogPort('SAM_TPS-300-Z', 'boca_derivacion')).toBe('P3');
+    // Y la geometría se puede leer separada.
+    expect(getPortGeometryOverride('SAM_TPS-300-Z', 'boca_derivacion')?.installRotationDeg).toBe(10);
   });
 });

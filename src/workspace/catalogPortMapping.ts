@@ -43,11 +43,50 @@
  * "sepa" que debería haberla — se devuelve la ausencia en forma honesta.
  */
 
+/**
+ * Override geométrico para una boca (opcional).
+ *
+ * Alcance: ajuste fino de centro/normal/sección/giro de instalación SIN
+ * modificar el nombre semántico ni la asociación con el catálogo. Pensado
+ * para corregir desvíos observados en campo sin editar la receta.
+ *
+ * Convención de unidades: mm para `centerMm`, grados para `installRotationDeg`;
+ * `normal`, `uDir`, `vDir` son adimensionales (quedan normalizados en el
+ * consumidor). Todas las coordenadas comparten el marco canónico de la pieza.
+ */
+export interface PortGeometryOverride {
+  readonly centerMm?: readonly [number, number, number];
+  readonly normal?: readonly [number, number, number];
+  readonly uDir?: readonly [number, number, number];
+  readonly vDir?: readonly [number, number, number];
+  /** Giro de instalación alrededor del eje normal de la boca, en grados. */
+  readonly installRotationDeg?: number;
+}
+
 export interface PortMappingEntry {
   readonly recipePortName: string;
   readonly catalogPortName: string;
   readonly physicalLabel: string;
   readonly justification: string;
+  /** Override geométrico por boca. Si está ausente, se usa la receta cruda. */
+  readonly geometry?: PortGeometryOverride;
+}
+
+/**
+ * Transformación del MODELO al marco canónico (modo A, "calibrar modelo").
+ *
+ * Esto NO es posición de la instancia: es el ajuste del artefacto (mesh, mapping
+ * por producto) para que su marco local coincida con lo que espera el motor.
+ * Sólo afecta al producto correspondiente; las instancias en el proyecto heredan
+ * esta corrección pero conservan su posición propia.
+ */
+export interface ModelFrameOverride {
+  readonly tx_mm?: number;
+  readonly ty_mm?: number;
+  readonly tz_mm?: number;
+  readonly rx_deg?: number;
+  readonly ry_deg?: number;
+  readonly rz_deg?: number;
 }
 
 export interface ProductPortMapping {
@@ -57,6 +96,37 @@ export interface ProductPortMapping {
   /** Motivo del override cuando source === 'override'. */
   readonly overrideReason?: string;
   readonly overrideAt?: string;
+  /** Corrección del marco del modelo. Opcional. */
+  readonly modelFrame?: ModelFrameOverride;
+}
+
+export const IDENTITY_MODEL_FRAME: ModelFrameOverride = {
+  tx_mm: 0,
+  ty_mm: 0,
+  tz_mm: 0,
+  rx_deg: 0,
+  ry_deg: 0,
+  rz_deg: 0,
+};
+
+/**
+ * Verdadero cuando el override no mueve nada (todos los campos ausentes o 0).
+ * Usar para evitar persistir ruido semánticamente nulo.
+ */
+export function isIdentityModelFrame(f: ModelFrameOverride | undefined): boolean {
+  if (!f) return true;
+  const keys: (keyof ModelFrameOverride)[] = ['tx_mm', 'ty_mm', 'tz_mm', 'rx_deg', 'ry_deg', 'rz_deg'];
+  return keys.every((k) => (f[k] ?? 0) === 0);
+}
+
+/**
+ * Verdadero cuando el override por boca no cambia nada observable: ningún
+ * vector presente y `installRotationDeg` ausente o 0.
+ */
+export function isIdentityPortGeometry(g: PortGeometryOverride | undefined): boolean {
+  if (!g) return true;
+  if (g.centerMm || g.normal || g.uDir || g.vDir) return false;
+  return (g.installRotationDeg ?? 0) === 0;
 }
 
 /**
@@ -201,4 +271,32 @@ export function getDefaultMapping(productId: string): readonly PortMappingEntry[
  */
 export function listOverriddenProductIds(): readonly string[] {
   return Object.keys(_overrides);
+}
+
+/**
+ * Devuelve la transformación de modelo para un producto (si está declarada).
+ * Side-effect free; la aplicación concreta la hace el consumidor (viewer o motor).
+ */
+export function getModelFrameOverride(productId: string): ModelFrameOverride | null {
+  const mapping = getEffectiveMapping(productId);
+  if (!mapping?.modelFrame) return null;
+  if (isIdentityModelFrame(mapping.modelFrame)) return null;
+  return mapping.modelFrame;
+}
+
+/**
+ * Devuelve el override geométrico para una boca específica (recipe port
+ * name). Si no hay override o es identidad, devuelve null. El consumidor
+ * aplica la mezcla con los datos de la receta.
+ */
+export function getPortGeometryOverride(
+  productId: string,
+  recipePortName: string,
+): PortGeometryOverride | null {
+  const mapping = getEffectiveMapping(productId);
+  if (!mapping) return null;
+  const hit = mapping.entries.find((e) => e.recipePortName === recipePortName);
+  if (!hit?.geometry) return null;
+  if (isIdentityPortGeometry(hit.geometry)) return null;
+  return hit.geometry;
 }

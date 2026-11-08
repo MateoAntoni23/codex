@@ -266,4 +266,64 @@ describe('exportWorkspace + importWorkspace — catalogConfig', () => {
     parsed.catalogConfig = bad;
     expect(() => importWorkspace(JSON.stringify(parsed))).toThrow('catalogConfig');
   });
+
+  it('round-trip: overrides con modelFrame + port geometry se preservan', () => {
+    const ov = {
+      'SAM_TPS-300-Z': {
+        productId: 'SAM_TPS-300-Z',
+        source: 'override' as const,
+        overrideReason: 'Calibración modelo + boca_derivacion girada 10° para el STEP revisado',
+        overrideAt: '2026-11-08T10:00:00Z',
+        entries: [
+          {
+            recipePortName: 'tronco_P1',
+            catalogPortName: 'P1',
+            physicalLabel: '',
+            justification: '',
+          },
+          {
+            recipePortName: 'boca_derivacion',
+            catalogPortName: 'P3',
+            physicalLabel: 'lateral',
+            justification: 'ajustada',
+            geometry: {
+              installRotationDeg: 10,
+              centerMm: [150, 25, 0] as [number, number, number],
+              normal: [0, 0, 1] as [number, number, number],
+            },
+          },
+        ],
+        modelFrame: { tx_mm: 0, ty_mm: 0, tz_mm: 0, rz_deg: 90 },
+      },
+    };
+    const json = exportWorkspace([ELEMENT], EVIDENCE, DEFAULT_PROJECT_META, TRAY_INPUT, ov);
+    const imported = importWorkspace(json);
+    const got = imported.catalogConfig?.overrides['SAM_TPS-300-Z'];
+    expect(got?.modelFrame?.rz_deg).toBe(90);
+    const dev = got?.entries.find((e) => e.recipePortName === 'boca_derivacion');
+    expect(dev?.geometry?.installRotationDeg).toBe(10);
+    expect(dev?.geometry?.centerMm).toEqual([150, 25, 0]);
+    expect(dev?.geometry?.normal).toEqual([0, 0, 1]);
+  });
+
+  it('archivo de un proyecto previo (sin modelFrame ni geometry) se importa sin pérdidas', () => {
+    const ovLegacy = {
+      'SAM_TPS-300-Z': {
+        productId: 'SAM_TPS-300-Z',
+        source: 'override' as const,
+        overrideReason: 'proyecto previo sin calibración geométrica',
+        overrideAt: '2025-01-01T10:00:00Z',
+        entries: [
+          { recipePortName: 'tronco_P1', catalogPortName: 'P1', physicalLabel: '', justification: '' },
+        ],
+      },
+    };
+    const json = exportWorkspace([ELEMENT], EVIDENCE, DEFAULT_PROJECT_META, TRAY_INPUT, ovLegacy);
+    const imported = importWorkspace(json);
+    const got = imported.catalogConfig?.overrides['SAM_TPS-300-Z'];
+    expect(got?.modelFrame).toBeUndefined();
+    expect(got?.entries[0].geometry).toBeUndefined();
+    // Y el campo source se preserva intacto.
+    expect(got?.source).toBe('override');
+  });
 });

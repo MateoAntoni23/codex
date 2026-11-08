@@ -16,13 +16,23 @@
  *   - "Resetear" elimina el override — vuelve al default declarado.
  */
 import { useMemo, useState } from 'react';
-import type { Product, CatalogFamily, CatalogPort } from '../tray/model';
+import type {
+  Product,
+  CatalogFamily,
+  CatalogPort,
+  CatalogCompatibility,
+} from '../tray/model';
 import {
   getDefaultMapping,
   getEffectiveMapping,
+  isIdentityModelFrame,
+  isIdentityPortGeometry,
+  type ModelFrameOverride,
+  type PortGeometryOverride,
   type PortMappingEntry,
   type ProductPortMapping,
 } from '../workspace/catalogPortMapping';
+import { getCompatibleProductIds } from '../workspace/routingRules';
 import { useCatalogConfigStore } from './catalogConfigStore';
 
 export const TABS = [
@@ -375,18 +385,652 @@ function BocasTab({ product, catalogPortsForProduct }: {
   );
 }
 
+// ─── Orientación / Colocación ───────────────────────────────────────────────
+//
+// Pestaña para la calibración del MODELO (no de la instancia). Permite:
+//   - Ajustar el marco del artefacto al canónico: tx/ty/tz (mm) + rx/ry/rz (°).
+//   - Por cada boca: giro de instalación alrededor de la normal (°), y
+//     opcionalmente override explícito del centro / normal (avanzado).
+//
+// Reglas:
+//   - Siempre hay motivo (≥10 chars) y timestamp — el override se guarda
+//     dentro del ProductPortMapping del producto; si el producto no tenía
+//     mapping, se crea uno con entries por cada boca declarada en la receta
+//     y sin cambios de nombre (identidad), para no perder la trazabilidad.
+//   - Apply/Cancel/Reset: Apply persiste al store; Cancel descarta; Reset
+//     elimina el override geométrico pero preserva el mapping de nombres si
+//     el usuario lo definió por su cuenta.
+//
+// Si el producto no tiene mapping declarado (default ni override) los puertos
+// se derivan del catálogo (CatalogPort[]) para permitir el override por boca
+// sin requerir un mapping previo.
+
+interface OrientacionDraft {
+  modelFrame: Required<ModelFrameOverride>;
+  portOverrides: Record<string, {
+    installRotationDeg: number;
+    centerMmText: [string, string, string];
+    normalText: [string, string, string];
+  }>;
+}
+
+function toText(n: number | undefined): string {
+  if (n === undefined) return '';
+  if (!Number.isFinite(n)) return '';
+  return Number.isInteger(n) ? String(n) : String(n);
+}
+
+function parseVec3(text: readonly [string, string, string]): readonly [number, number, number] | null {
+  const nums = text.map((t) => {
+    if (t.trim() === '') return null;
+    const n = Number(t);
+    return Number.isFinite(n) ? n : NaN;
+  });
+  if (nums.every((n) => n === null)) return null;
+  if (nums.some((n) => n === null || Number.isNaN(n))) return null;
+  return [nums[0] as number, nums[1] as number, nums[2] as number];
+}
+
+function buildDraftFromMapping(
+  mapping: ProductPortMapping | null,
+  recipePortNames: readonly string[],
+): OrientacionDraft {
+  const mf = mapping?.modelFrame ?? {};
+  const portOverrides: OrientacionDraft['portOverrides'] = {};
+  for (const name of recipePortNames) {
+    const entry = mapping?.entries.find((e) => e.recipePortName === name);
+    const g = entry?.geometry;
+    portOverrides[name] = {
+      installRotationDeg: g?.installRotationDeg ?? 0,
+      centerMmText: [
+        toText(g?.centerMm?.[0]),
+        toText(g?.centerMm?.[1]),
+        toText(g?.centerMm?.[2]),
+      ],
+      normalText: [
+        toText(g?.normal?.[0]),
+        toText(g?.normal?.[1]),
+        toText(g?.normal?.[2]),
+      ],
+    };
+  }
+  return {
+    modelFrame: {
+      tx_mm: mf.tx_mm ?? 0,
+      ty_mm: mf.ty_mm ?? 0,
+      tz_mm: mf.tz_mm ?? 0,
+      rx_deg: mf.rx_deg ?? 0,
+      ry_deg: mf.ry_deg ?? 0,
+      rz_deg: mf.rz_deg ?? 0,
+    },
+    portOverrides,
+  };
+}
+
+function OrientacionTab({
+  product,
+  catalogPortsForProduct,
+}: {
+  product: Product;
+  catalogPortsForProduct: readonly CatalogPort[];
+}) {
+  const effective = getEffectiveMapping(product.producto_id);
+  const defaultEntries = getDefaultMapping(product.producto_id);
+  const upsert = useCatalogConfigStore((s) => s.upsertOverride);
+  const overrides = useCatalogConfigStore((s) => s.overrides);
+
+  // Set de bocas sobre las que se puede ofrecer override: unión de las
+  // declaradas en el mapping (default+override) y las del catálogo SAMET,
+  // priorizando nombres-receta del mapping.
+  const recipePortNames = useMemo<readonly string[]>(() => {
+    const fromMapping = effective?.entries.map((e) => e.recipePortName) ??
+      defaultEntries?.map((e) => e.recipePortName) ?? [];
+    const fromCatalog = catalogPortsForProduct.map((p) => p.nombre_puerto);
+    const set = new Set<string>([...fromMapping, ...fromCatalog]);
+    return Array.from(set);
+  }, [effective, defaultEntries, catalogPortsForProduct]);
+
+  const [editMode, setEditMode] = useState(false);
+  const [draft, setDraft] = useState<OrientacionDraft>(() =>
+    buildDraftFromMapping(effective, recipePortNames));
+  const [reason, setReason] = useState('');
+  const [error, setError] = useState<string | null>(null);
+
+  const startEdit = () => {
+    setDraft(buildDraftFromMapping(effective, recipePortNames));
+    setReason(effective?.source === 'override' ? (effective.overrideReason ?? '') : '');
+    setError(null);
+    setEditMode(true);
+  };
+
+  const cancelEdit = () => {
+    setEditMode(false);
+    setError(null);
+    setDraft(buildDraftFromMapping(effective, recipePortNames));
+  };
+
+  const applyEdit = () => {
+    if (reason.trim().length < 10) {
+      setError('El motivo del override debe tener al menos 10 caracteres.');
+      return;
+    }
+    // Validar y construir PortGeometryOverride por boca.
+    const geomByName = new Map<string, PortGeometryOverride | undefined>();
+    for (const [name, p] of Object.entries(draft.portOverrides)) {
+      const center = parseVec3(p.centerMmText);
+      const normal = parseVec3(p.normalText);
+      // Si el usuario rellenó parcialmente alguno de los vectores, pedir los 3.
+      const centerPartial = p.centerMmText.some((t) => t.trim() !== '') && center === null;
+      const normalPartial = p.normalText.some((t) => t.trim() !== '') && normal === null;
+      if (centerPartial) {
+        setError(`Boca "${name}": centro debe tener los 3 componentes (x,y,z) o ninguno.`);
+        return;
+      }
+      if (normalPartial) {
+        setError(`Boca "${name}": normal debe tener los 3 componentes (x,y,z) o ninguno.`);
+        return;
+      }
+      const geometry: PortGeometryOverride = {
+        ...(center ? { centerMm: center } : {}),
+        ...(normal ? { normal } : {}),
+        ...(p.installRotationDeg !== 0 ? { installRotationDeg: p.installRotationDeg } : {}),
+      };
+      geomByName.set(name, isIdentityPortGeometry(geometry) ? undefined : geometry);
+    }
+
+    // Base de entries: defaults declarados (si existen) o identidad por cada
+    // boca-receta conocida (sin cambio de nombre).
+    const baseEntries: readonly PortMappingEntry[] =
+      effective?.entries ?? defaultEntries ?? recipePortNames.map((n) => ({
+        recipePortName: n,
+        catalogPortName: n,
+        physicalLabel: n,
+        justification: 'Mapping identidad generado por override geométrico (no se renombran bocas).',
+      }));
+
+    const entries = baseEntries.map<PortMappingEntry>((e) => {
+      const g = geomByName.get(e.recipePortName);
+      return g ? { ...e, geometry: g } : (e.geometry ? { ...e, geometry: undefined } : e);
+    });
+
+    const modelFrame: ModelFrameOverride = {
+      tx_mm: draft.modelFrame.tx_mm,
+      ty_mm: draft.modelFrame.ty_mm,
+      tz_mm: draft.modelFrame.tz_mm,
+      rx_deg: draft.modelFrame.rx_deg,
+      ry_deg: draft.modelFrame.ry_deg,
+      rz_deg: draft.modelFrame.rz_deg,
+    };
+
+    const mapping: ProductPortMapping = {
+      productId: product.producto_id,
+      source: 'override',
+      overrideReason: reason.trim(),
+      overrideAt: new Date().toISOString(),
+      entries,
+      ...(isIdentityModelFrame(modelFrame) ? {} : { modelFrame }),
+    };
+    upsert(product.producto_id, mapping);
+    setEditMode(false);
+    setError(null);
+  };
+
+  const resetGeometry = () => {
+    // Si existe un override, reescribimos sin modelFrame y sin geometry en entries.
+    const existing = overrides[product.producto_id];
+    if (!existing) return;
+    const cleanedEntries = existing.entries.map<PortMappingEntry>((e) =>
+      e.geometry ? { ...e, geometry: undefined } : e);
+    const next: ProductPortMapping = {
+      ...existing,
+      entries: cleanedEntries,
+      modelFrame: undefined,
+      overrideReason: existing.overrideReason,
+      overrideAt: new Date().toISOString(),
+    };
+    upsert(product.producto_id, next);
+    setEditMode(false);
+    setDraft(buildDraftFromMapping(next, recipePortNames));
+  };
+
+  const hasGeometryOverride =
+    !!(effective?.modelFrame && !isIdentityModelFrame(effective.modelFrame)) ||
+    (effective?.entries ?? []).some((e) => !isIdentityPortGeometry(e.geometry));
+
+  return (
+    <div className="cfg-tab-content">
+      <div className="cfg-tab-note">
+        Edita la calibración del modelo (marco → canónico) y por boca
+        (centro / normal / giro de instalación). Esto NO cambia la posición
+        de las instancias existentes; es ajuste del artefacto, no de la pieza.
+      </div>
+
+      {!editMode ? (
+        <>
+          <h3 className="cfg-section-title">Marco del modelo</h3>
+          {effective?.modelFrame && !isIdentityModelFrame(effective.modelFrame) ? (
+            <dl className="cfg-kv">
+              <dt>Traslación (mm)</dt>
+              <dd>
+                {effective.modelFrame.tx_mm ?? 0}, {effective.modelFrame.ty_mm ?? 0},
+                {' '}{effective.modelFrame.tz_mm ?? 0}
+              </dd>
+              <dt>Rotación Euler (°)</dt>
+              <dd>
+                {effective.modelFrame.rx_deg ?? 0}, {effective.modelFrame.ry_deg ?? 0},
+                {' '}{effective.modelFrame.rz_deg ?? 0}
+              </dd>
+            </dl>
+          ) : (
+            <div className="cfg-tab-hint">Sin calibración del modelo (identidad).</div>
+          )}
+
+          <h3 className="cfg-section-title">Bocas</h3>
+          {recipePortNames.length ? (
+            <table className="cfg-table">
+              <thead>
+                <tr>
+                  <th>Boca</th>
+                  <th>Giro instal. (°)</th>
+                  <th>Centro override (mm)</th>
+                  <th>Normal override</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recipePortNames.map((name) => {
+                  const entry = effective?.entries.find((e) => e.recipePortName === name);
+                  const g = entry?.geometry;
+                  const empty = isIdentityPortGeometry(g);
+                  return (
+                    <tr key={name} className={empty ? 'cfg-table-muted' : ''}>
+                      <td><code>{name}</code></td>
+                      <td>{g?.installRotationDeg ?? 0}</td>
+                      <td>{g?.centerMm ? g.centerMm.join(', ') : '—'}</td>
+                      <td>{g?.normal ? g.normal.join(', ') : '—'}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          ) : (
+            <div className="cfg-tab-hint">Sin bocas declaradas para este producto.</div>
+          )}
+
+          <div className="cfg-actions">
+            <button
+              type="button"
+              className="cfg-btn"
+              onClick={startEdit}
+              data-testid="cfg-edit-orientacion"
+            >
+              Editar orientación…
+            </button>
+            {hasGeometryOverride && (
+              <button
+                type="button"
+                className="cfg-btn cfg-btn-danger"
+                onClick={resetGeometry}
+                data-testid="cfg-reset-orientacion"
+              >
+                Quitar overrides geométricos
+              </button>
+            )}
+          </div>
+        </>
+      ) : (
+        <>
+          <h3 className="cfg-section-title">Marco del modelo</h3>
+          <table className="cfg-table">
+            <thead>
+              <tr>
+                <th>Eje</th><th>Traslación (mm)</th><th>Rotación (°)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(['x', 'y', 'z'] as const).map((ax) => {
+                const tKey = (`t${ax}_mm`) as 'tx_mm' | 'ty_mm' | 'tz_mm';
+                const rKey = (`r${ax}_deg`) as 'rx_deg' | 'ry_deg' | 'rz_deg';
+                return (
+                  <tr key={ax}>
+                    <td><code>{ax.toUpperCase()}</code></td>
+                    <td>
+                      <input
+                        type="number"
+                        step={1}
+                        value={draft.modelFrame[tKey]}
+                        onChange={(e) => {
+                          const n = Number(e.target.value);
+                          if (!Number.isFinite(n)) return;
+                          setDraft({
+                            ...draft,
+                            modelFrame: { ...draft.modelFrame, [tKey]: n },
+                          });
+                        }}
+                        className="cfg-filter-input"
+                        data-testid={`cfg-mf-${tKey}`}
+                      />
+                    </td>
+                    <td>
+                      <input
+                        type="number"
+                        step={1}
+                        value={draft.modelFrame[rKey]}
+                        onChange={(e) => {
+                          const n = Number(e.target.value);
+                          if (!Number.isFinite(n)) return;
+                          setDraft({
+                            ...draft,
+                            modelFrame: { ...draft.modelFrame, [rKey]: n },
+                          });
+                        }}
+                        className="cfg-filter-input"
+                        data-testid={`cfg-mf-${rKey}`}
+                      />
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+
+          <h3 className="cfg-section-title">Bocas</h3>
+          <table className="cfg-table">
+            <thead>
+              <tr>
+                <th>Boca</th>
+                <th>Giro instal. (°)</th>
+                <th>Centro override (mm)</th>
+                <th>Normal override</th>
+              </tr>
+            </thead>
+            <tbody>
+              {recipePortNames.map((name) => {
+                const p = draft.portOverrides[name];
+                if (!p) return null;
+                return (
+                  <tr key={name}>
+                    <td><code>{name}</code></td>
+                    <td>
+                      <input
+                        type="number"
+                        step={1}
+                        value={p.installRotationDeg}
+                        onChange={(e) => {
+                          const n = Number(e.target.value);
+                          if (!Number.isFinite(n)) return;
+                          setDraft({
+                            ...draft,
+                            portOverrides: {
+                              ...draft.portOverrides,
+                              [name]: { ...p, installRotationDeg: n },
+                            },
+                          });
+                        }}
+                        className="cfg-filter-input"
+                        data-testid={`cfg-port-rot-${name}`}
+                      />
+                    </td>
+                    <td>
+                      <Vec3Input
+                        value={p.centerMmText}
+                        onChange={(next) => setDraft({
+                          ...draft,
+                          portOverrides: {
+                            ...draft.portOverrides,
+                            [name]: { ...p, centerMmText: next },
+                          },
+                        })}
+                        testId={`cfg-port-center-${name}`}
+                      />
+                    </td>
+                    <td>
+                      <Vec3Input
+                        value={p.normalText}
+                        onChange={(next) => setDraft({
+                          ...draft,
+                          portOverrides: {
+                            ...draft.portOverrides,
+                            [name]: { ...p, normalText: next },
+                          },
+                        })}
+                        testId={`cfg-port-normal-${name}`}
+                      />
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+
+          <label className="cfg-field">
+            <span className="cfg-field-label">
+              Motivo (≥ 10 caracteres, se persiste como auditoría)
+            </span>
+            <textarea
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              rows={2}
+              className="cfg-filter-input"
+              placeholder="Ej.: medición en campo 2026-11, el centro P3 estaba desplazado +4 mm en X."
+              data-testid="cfg-orientacion-reason"
+            />
+          </label>
+
+          {error && <div className="cfg-tab-note cfg-tab-note-error">{error}</div>}
+
+          <div className="cfg-actions">
+            <button
+              type="button"
+              className="cfg-btn cfg-btn-primary"
+              onClick={applyEdit}
+              data-testid="cfg-apply-orientacion"
+            >
+              Aplicar
+            </button>
+            <button type="button" className="cfg-btn" onClick={cancelEdit}>
+              Cancelar
+            </button>
+            {hasGeometryOverride && (
+              <button
+                type="button"
+                className="cfg-btn cfg-btn-danger"
+                onClick={resetGeometry}
+              >
+                Reset geométrico
+              </button>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function Vec3Input({
+  value,
+  onChange,
+  testId,
+}: {
+  value: readonly [string, string, string];
+  onChange: (next: [string, string, string]) => void;
+  testId: string;
+}) {
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 2 }}>
+      {(['x', 'y', 'z'] as const).map((axis, i) => (
+        <input
+          key={axis}
+          type="text"
+          inputMode="decimal"
+          value={value[i]}
+          placeholder={axis}
+          onChange={(e) => {
+            const next: [string, string, string] = [value[0], value[1], value[2]];
+            next[i] = e.target.value;
+            onChange(next);
+          }}
+          className="cfg-filter-input"
+          data-testid={`${testId}-${axis}`}
+        />
+      ))}
+    </div>
+  );
+}
+
+// ─── Continuaciones ──────────────────────────────────────────────────────────
+//
+// Para cada boca-receta del producto, calcula los productos continuadores y
+// los separa en:
+//   - "Recomendados": publicados por el catálogo SAMET (compatibilidad directa).
+//   - "Limitaciones conocidas": sin compatibilidad publicada pero con misma
+//     familia de ancho, con razón explícita por boca.
+//
+// Esto verifica P3 "mostrar desde cada boca: productos recomendados,
+// excepciones y limitaciones" + comprobar que TPS/XPS/CUPS se resuelven con
+// nombres geométricos traducidos. La traducción se aplica automáticamente en
+// `getCompatibleProductIds` vía `recipePortToCatalogPort` — si una boca
+// retorna lista vacía lo marcamos con razón.
+
+function ContinuacionesTab({
+  product,
+  productos,
+  compatibilidades,
+}: {
+  product: Product;
+  productos: readonly Product[];
+  compatibilidades: readonly CatalogCompatibility[];
+}) {
+  const effective = getEffectiveMapping(product.producto_id);
+  const defaultEntries = getDefaultMapping(product.producto_id);
+  const entries = effective?.entries ?? defaultEntries ?? [];
+
+  const ancho = product.ancho_nominal_mm;
+  const perPort = useMemo(() => {
+    return entries.map((e) => {
+      const compat = getCompatibleProductIds(
+        compatibilidades as CatalogCompatibility[],
+        product.producto_id,
+        e.recipePortName,
+      );
+      const compatProducts = productos.filter((p) => compat.has(p.producto_id));
+      const sameAnchoNoCompat = productos.filter((p) =>
+        !compat.has(p.producto_id) &&
+        p.producto_id !== product.producto_id &&
+        ancho != null && p.ancho_nominal_mm === ancho,
+      );
+      return { entry: e, compatProducts, sameAnchoNoCompat };
+    });
+  }, [entries, compatibilidades, productos, product.producto_id, ancho]);
+
+  if (entries.length === 0) {
+    return (
+      <div className="cfg-tab-content">
+        <div className="cfg-tab-note">
+          Este producto no tiene mapping declarado (default ni override). Para
+          continuaciones por boca con nombres específicos, agregá un mapping
+          desde la pestaña "Bocas / Asociaciones".
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="cfg-tab-content">
+      <div className="cfg-tab-note">
+        Compatibilidades consultadas con nombres geométricos traducidos vía
+        <code> catalogPortMapping</code>. Si una boca aparece vacía, el catálogo
+        SAMET no publica compatibilidad directa para el puerto resuelto.
+      </div>
+
+      {perPort.map(({ entry: e, compatProducts, sameAnchoNoCompat }) => (
+        <section
+          key={e.recipePortName}
+          style={{ marginTop: 16 }}
+          data-testid={`cfg-cont-${e.recipePortName}`}
+        >
+          <h3 className="cfg-section-title">
+            Boca <code>{e.recipePortName}</code> → catálogo <code>{e.catalogPortName}</code>
+          </h3>
+          <div className="cfg-tab-hint" style={{ marginBottom: 4 }}>
+            {e.physicalLabel}
+          </div>
+
+          <h4 className="cfg-section-subtitle">
+            Recomendados ({compatProducts.length})
+          </h4>
+          {compatProducts.length > 0 ? (
+            <table className="cfg-table">
+              <thead>
+                <tr><th>producto_id</th><th>SKU</th><th>tipo_pieza</th><th>ancho</th></tr>
+              </thead>
+              <tbody>
+                {compatProducts.map((p) => (
+                  <tr key={p.producto_id}>
+                    <td><code>{p.producto_id}</code></td>
+                    <td>{p.sku}</td>
+                    <td>{p.tipo_pieza}</td>
+                    <td>{p.ancho_nominal_mm ?? 'n/d'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <div className="cfg-tab-note cfg-tab-note-error">
+              Sin compatibilidad publicada por el catálogo SAMET para
+              <code> {product.producto_id}-{e.catalogPortName}</code>.
+              Verificá que el mapping boca-puerto esté correcto.
+            </div>
+          )}
+
+          {sameAnchoNoCompat.length > 0 && (
+            <>
+              <h4 className="cfg-section-subtitle">
+                Mismo ancho sin compat publicada ({sameAnchoNoCompat.length})
+              </h4>
+              <div className="cfg-tab-hint" style={{ marginBottom: 4 }}>
+                Compartir ancho no convierte la conexión en compatible — sólo se
+                listan para auditoría. El workspace los ofrece como "Otros" con
+                excepción obligatoria y motivo.
+              </div>
+              <table className="cfg-table cfg-table-muted">
+                <thead>
+                  <tr><th>producto_id</th><th>SKU</th><th>tipo_pieza</th></tr>
+                </thead>
+                <tbody>
+                  {sameAnchoNoCompat.slice(0, 20).map((p) => (
+                    <tr key={p.producto_id}>
+                      <td><code>{p.producto_id}</code></td>
+                      <td>{p.sku}</td>
+                      <td>{p.tipo_pieza}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {sameAnchoNoCompat.length > 20 && (
+                <div className="cfg-tab-hint">
+                  Mostrando primeros 20 de {sameAnchoNoCompat.length}.
+                </div>
+              )}
+            </>
+          )}
+        </section>
+      ))}
+    </div>
+  );
+}
+
 // ─── Placeholders ───────────────────────────────────────────────────────────
 
 function PlaceholderTab({ tab }: { tab: TabId }) {
   const label = TABS.find((t) => t.id === tab)?.label ?? tab;
   const notes: Record<TabId, string> = {
     producto: '',
-    modelo: 'Parámetros de la receta (ancho, radio, ángulo, etc.) y calibración de malla. Tarea #90.',
+    modelo: 'Parámetros de la receta (ancho, radio, ángulo, etc.) y calibración de malla por recipe:view. Pendiente.',
     bocas: '',
-    orientacion: 'Rotación por eje, calibración vs orientación de colocación, undo/redo. Tarea #90.',
-    continuaciones: 'Compatibilidades declaradas, estado por boca, generación de reglas. Tarea #90.',
-    prueba: 'Dos visores sincronizados: preview y confirmado con el mismo producto. Tarea #90.',
-    procedencia: 'Historial de cambios: versión, timestamp, autor, hash del archivo fuente. Tarea #90.',
+    orientacion: '',
+    continuaciones: '',
+    prueba: 'Dos visores sincronizados: preview y confirmado con las operaciones reales del workspace. Pendiente.',
+    procedencia: 'Historial de cambios: versión, timestamp, autor, hash del archivo fuente. Pendiente.',
   };
   return (
     <div className="cfg-tab-content">
@@ -403,12 +1047,19 @@ export function InspectorTabContent({
   product,
   familias,
   puertos,
+  productos,
+  compatibilidades,
 }: {
   tab: TabId;
   product: Product | null;
   familias: readonly CatalogFamily[];
   puertos: readonly CatalogPort[];
+  productos: readonly Product[];
+  compatibilidades: readonly CatalogCompatibility[];
 }) {
+  // Subscribe to overrides so tabs reflect edits made elsewhere in the session.
+  useCatalogConfigStore((s) => s.overrides);
+
   const familia = useMemo(() => {
     if (!product) return null;
     const fid = (product as Record<string, unknown>).familia_id;
@@ -426,5 +1077,15 @@ export function InspectorTabContent({
   }
   if (tab === 'producto') return <ProductoFamiliaTab product={product} familia={familia} />;
   if (tab === 'bocas') return <BocasTab product={product} catalogPortsForProduct={portsForProduct} />;
+  if (tab === 'orientacion') return <OrientacionTab product={product} catalogPortsForProduct={portsForProduct} />;
+  if (tab === 'continuaciones') {
+    return (
+      <ContinuacionesTab
+        product={product}
+        productos={productos}
+        compatibilidades={compatibilidades}
+      />
+    );
+  }
   return <PlaceholderTab tab={tab} />;
 }
