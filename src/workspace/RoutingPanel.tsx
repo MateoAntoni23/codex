@@ -38,6 +38,7 @@ import {
   formatProductOption,
 } from './pieceClassification';
 import { hasParametricRecipe, resolveRecipe, placeRecipe, chiralityForTurn } from './parametricBridge';
+import { buildContinuationCandidates, type ContinuationCandidate } from './continuationCandidates';
 
 // ─── PE extension proposal widget ────────────────────────────────────────────
 
@@ -267,10 +268,45 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
     return groups;
   }, [compatibleProducts, context?.familias]);
 
-  const selectedProduct = useMemo(
-    () => compatibleProducts.find((p) => p.producto_id === selectedProductId) ?? null,
-    [compatibleProducts, selectedProductId],
+  // Candidatos clasificados con razones explícitas — base del selector
+  // ampliado ("Recomendados" / "Otros productos"). Mantiene disjunción con
+  // compatibleProducts: los "recommended" son un subconjunto estricto.
+  const continuationCandidates: ContinuationCandidate[] = useMemo(() => {
+    if (!existingProduct || !startPort || !context?.productos) return [];
+    return buildContinuationCandidates({
+      existingProduct,
+      existingPortName: startPort.portName,
+      catalogProducts: context.productos,
+      compatibleIds,
+    });
+  }, [existingProduct, startPort, context?.productos, compatibleIds]);
+
+  const otherCandidates: ContinuationCandidate[] = useMemo(
+    () => continuationCandidates.filter((c) => c.category === 'other'),
+    [continuationCandidates],
   );
+  const otherCandidateById = useMemo(() => {
+    const m = new Map<string, ContinuationCandidate>();
+    for (const c of otherCandidates) m.set(c.product.producto_id, c);
+    return m;
+  }, [otherCandidates]);
+
+  const selectedOtherCandidate = useMemo(
+    () => otherCandidateById.get(selectedProductId) ?? null,
+    [otherCandidateById, selectedProductId],
+  );
+
+  // Motivo requerido al usar un candidato 'other' (compatibilidad no documentada
+  // o piece_kind pendiente). Vive en el componente — el store de excepciones
+  // es otra tarea aún pendiente; aquí al menos bloqueamos la confirmación.
+  const [exceptionMotive, setExceptionMotive] = useState('');
+
+  const selectedProduct = useMemo(() => {
+    const fromCompat = compatibleProducts.find((p) => p.producto_id === selectedProductId);
+    if (fromCompat) return fromCompat;
+    const fromOther = otherCandidates.find((c) => c.product.producto_id === selectedProductId);
+    return fromOther?.product ?? null;
+  }, [compatibleProducts, otherCandidates, selectedProductId]);
 
   const isCurve = isHorizontalCurve(selectedProduct);
 
@@ -351,7 +387,18 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
   const handleConfirm = () => {
     setError(null);
     if (!selectedProduct) { setError('Seleccioná un producto compatible.'); return; }
-    if (!compat?.ok) { setError(compat?.reason ?? 'Sin compatibilidad documentada.'); return; }
+    // Candidato 'other' habilitado para inserción: exige motivo escrito.
+    if (selectedOtherCandidate) {
+      if (!selectedOtherCandidate.insertionSupported) {
+        setError('Este producto todavía no puede insertarse desde el flujo interactivo.');
+        return;
+      }
+      if (exceptionMotive.trim().length < 3) {
+        setError('Escribí el motivo de la excepción antes de confirmar.');
+        return;
+      }
+    }
+    if (!compat?.ok && !selectedOtherCandidate) { setError(compat?.reason ?? 'Sin compatibilidad documentada.'); return; }
     if (!isCurve) {
       if (snapToAxis && snapWarnAngle !== null) {
         setError('La dirección del puerto no coincide con el eje más cercano — desactivá el ajuste al eje para continuar.');
@@ -438,7 +485,7 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
             Cancelá y usá "+ Agregar tramo recto" para iniciar un principal perforado.
           </div>
         )}
-        {compatibleProducts.length === 0 ? (
+        {compatibleProducts.length === 0 && otherCandidates.length === 0 ? (
           <div style={{ padding: '6px 8px', background: '#2a1a1a', borderRadius: 3, color: '#ff9955', fontSize: 10 }}>
             Sin continuaciones insertables para este puerto en el trazado interactivo.
             {!context?.compatibilidades?.length && ' (Catálogo no disponible)'}
@@ -449,23 +496,86 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
             className="inspector-input"
             style={{ width: '100%' }}
             value={selectedProductId}
-            onChange={(e) => { setProduct(e.target.value); setError(null); }}
+            onChange={(e) => {
+              setProduct(e.target.value);
+              setError(null);
+              setExceptionMotive('');
+            }}
           >
             {!selectedProductId && <option value="">— Elegí un producto —</option>}
-            {Array.from(familyGroups.entries()).map(([famId, { name, acabado, products }]) => (
-              <optgroup key={famId} label={acabado ? `${name} (${acabado})` : name}>
-                {products.map((p) => (
-                  <option key={p.producto_id} value={p.producto_id}>
-                    {hasParametricRecipe(p) ? '◆ ' : '○ '}{formatProductOption(p)}
+            {compatibleProducts.length > 0 && (
+              <optgroup label="Recomendados — compatibilidad SAMET + modelo">
+                {Array.from(familyGroups.entries()).map(([famId, { name, acabado, products }]) => (
+                  <optgroup key={famId} label={acabado ? `  ${name} (${acabado})` : `  ${name}`}>
+                    {products.map((p) => (
+                      <option key={p.producto_id} value={p.producto_id}>
+                        {hasParametricRecipe(p) ? '◆ ' : '○ '}{formatProductOption(p)}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
+              </optgroup>
+            )}
+            {otherCandidates.length > 0 && (
+              <optgroup label="Otros productos — requieren excepción con motivo">
+                {otherCandidates.map((c) => (
+                  <option
+                    key={c.product.producto_id}
+                    value={c.product.producto_id}
+                    disabled={!c.insertionSupported}
+                  >
+                    {c.insertionSupported ? '⚠ ' : '⏳ '}{formatProductOption(c.product)}
+                    {' — '}
+                    {c.reasonCode === 'compat_no_documentada' && 'compat. no documentada'}
+                    {c.reasonCode === 'kind_pendiente_insercion' && 'inserción pendiente'}
+                    {c.reasonCode === 'sin_modelo_geometrico' && 'sin modelo'}
+                    {c.reasonCode === 'boca_dimension_divergente' && 'bocas divergentes'}
                   </option>
                 ))}
               </optgroup>
-            ))}
+            )}
           </select>
         )}
-        {compatibleProducts.length > 0 && (
+        {(compatibleProducts.length > 0 || otherCandidates.length > 0) && (
           <div style={{ fontSize: 9, color: '#667788', marginTop: 2 }}>
-            ◆ modelo paramétrico diseñado · ○ insertable sin modelo (geometría por fórmula de catálogo)
+            ◆ modelo paramétrico · ○ sin modelo · ⚠ excepción (sin compat SAMET) · ⏳ inserción pendiente
+          </div>
+        )}
+        {selectedOtherCandidate && (
+          <div style={{
+            marginTop: 8, padding: '6px 8px', borderRadius: 3, fontSize: 10,
+            background: '#2a2211', color: '#ffcc77', borderLeft: '2px solid #aa8822', lineHeight: 1.5,
+          }}>
+            <div style={{ fontWeight: 600, marginBottom: 3 }}>
+              Excepción — {selectedOtherCandidate.reasonCode.split('_').join(' ')}
+            </div>
+            <div style={{ color: '#ccbb99', marginBottom: 6 }}>
+              {selectedOtherCandidate.reasonText}
+            </div>
+            {selectedOtherCandidate.insertionSupported ? (
+              <>
+                <label style={{ color: '#8888aa', display: 'block', marginBottom: 3 }}>
+                  Motivo (obligatorio — no modifica el diagnóstico del motor):
+                </label>
+                <textarea
+                  data-codex-routing-exception-motive
+                  value={exceptionMotive}
+                  onChange={(e) => setExceptionMotive(e.target.value)}
+                  placeholder="Ej.: autorización técnica del proyectista; condición de obra que fuerza esta combinación."
+                  rows={2}
+                  style={{
+                    width: '100%', fontSize: 10, padding: '4px 6px', borderRadius: 3,
+                    background: '#1a1e30', color: '#ccddee', border: '1px solid #334455',
+                    resize: 'vertical',
+                  }}
+                />
+              </>
+            ) : (
+              <div style={{ color: '#ff9955' }}>
+                Inserción pendiente — el flujo interactivo todavía no coloca este tipo de pieza.
+                Se muestra para que la brecha sea visible, pero no se puede confirmar desde aquí.
+              </div>
+            )}
           </div>
         )}
         {nonInsertableCompatible.length > 0 && (

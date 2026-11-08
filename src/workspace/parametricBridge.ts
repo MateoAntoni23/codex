@@ -107,6 +107,29 @@ export function hasParametricRecipe(
   return resolveRecipe(product) !== null;
 }
 
+/**
+ * Devuelve la entrada paramétrica de un producto SIN filtrar por
+ * SUPPORTED_PIECE_KINDS — útil para que el UI sepa que existe un modelo
+ * (p.ej. DCPS, XPS, CUPS) aunque el flujo interactivo aún no lo coloque.
+ */
+export function resolveParametricEntry(
+  product: { sku?: string | null } | null | undefined,
+): ParametricEntry | null {
+  if (!product || typeof product.sku !== 'string' || !product.sku) return null;
+  return ENTRY_BY_SKU.get(product.sku) ?? null;
+}
+
+/**
+ * True cuando el `piece_kind` del producto está habilitado para inserción
+ * interactiva a través del puente paramétrico. Distingue "tiene modelo"
+ * (resolveParametricEntry) de "sabemos colocarlo hoy" (SUPPORTED_PIECE_KINDS).
+ */
+export function isParametricInsertable(
+  product: { sku?: string | null } | null | undefined,
+): boolean {
+  return resolveRecipe(product) !== null;
+}
+
 // ─── Construcción de receta a partir del producto real ──────────────────────
 
 interface BuildRecipeOverrides {
