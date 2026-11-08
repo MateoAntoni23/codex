@@ -16,7 +16,7 @@ import { TrayResults } from './TrayResults';
 import { checkDeleteDependencies, duplicateElement } from '../preview/previewCrud';
 import type { Piece, Support, TrayInput } from '../tray/model';
 import { object } from '../tray/model';
-import { rotatePiece, normalizeDeg, type AxisKey, type PivotRef } from './pieceTransforms';
+import { rotatePiece, rotatePieceAroundAxis, normalizeDeg, type AxisKey, type PivotRef } from './pieceTransforms';
 
 /** Renders a Python result value as readable text, handling nested objects and arrays. */
 function formatResultValue(v: unknown, depth = 0): string {
@@ -38,29 +38,55 @@ function formatResultValue(v: unknown, depth = 0): string {
 
 // ─── Rotación manual de pieza ─────────────────────────────────────────────────
 
+type RotationMode = 'worldAxis' | 'portAxis';
+
 function RotatePieceControls({ piece, entrada }: { piece: Piece; entrada: TrayInput }) {
   const edit = useTrayStore((s) => s.edit);
   const markDirty = useWorkspaceStore((s) => s.markDirty);
+  const [mode, setMode] = useState<RotationMode>('worldAxis');
   const [axis, setAxis] = useState<AxisKey>('Z');
   const [pivotKind, setPivotKind] = useState<'centroid' | 'port'>('centroid');
   const [pivotPort, setPivotPort] = useState<string>(Object.keys(piece.puertos)[0] ?? 'P1');
+  const [portAxisPort, setPortAxisPort] = useState<string>(Object.keys(piece.puertos)[0] ?? 'P1');
   const [angleDeg, setAngleDeg] = useState<string>('0');
 
   const portNames = Object.keys(piece.puertos);
-  const hasConnections = entrada.conexiones.some(
+  const myConnections = entrada.conexiones.filter(
     (c) => c.a[0] === piece.instancia_id || c.b[0] === piece.instancia_id,
   );
+  // Qué puertos de ESTA pieza están conectados (y a quién).
+  const connectedPorts = new Map<string, { otherId: string; otherPort: string; conexionId: string }>();
+  for (const c of myConnections) {
+    const [thisSide, otherSide] = c.a[0] === piece.instancia_id ? [c.a, c.b] : [c.b, c.a];
+    connectedPorts.set(thisSide[1], { otherId: otherSide[0], otherPort: otherSide[1], conexionId: c.conexion_id });
+  }
+  const hasConnections = connectedPorts.size > 0;
+  const isPortAxisPortConnected = connectedPorts.has(portAxisPort);
+  // En modo portAxis, los puertos conectados ≠ portAxisPort quedarán rotos tras la rotación.
+  const conflictsWhenPortAxis = Array.from(connectedPorts.entries())
+    .filter(([pName]) => pName !== portAxisPort);
 
   const applyRotation = (deg: number) => {
     const d = normalizeDeg(deg);
     if (Math.abs(d) < 1e-6) return;
-    const pivot: PivotRef = pivotKind === 'centroid'
-      ? { kind: 'centroid' }
-      : { kind: 'port', name: pivotPort };
     const next = structuredClone(entrada);
     const idx = next.piezas.findIndex((p) => p.instancia_id === piece.instancia_id);
     if (idx < 0) return;
-    next.piezas[idx] = rotatePiece(next.piezas[idx], axis, d, pivot);
+    if (mode === 'worldAxis') {
+      const pivot: PivotRef = pivotKind === 'centroid'
+        ? { kind: 'centroid' }
+        : { kind: 'port', name: pivotPort };
+      next.piezas[idx] = rotatePiece(next.piezas[idx], axis, d, pivot);
+    } else {
+      const port = next.piezas[idx].puertos[portAxisPort];
+      if (!port) return;
+      next.piezas[idx] = rotatePieceAroundAxis(
+        next.piezas[idx],
+        port.direccion,
+        d,
+        port.posicion_mm,
+      );
+    }
     edit(next);
     markDirty();
     setAngleDeg('0');
@@ -77,56 +103,138 @@ function RotatePieceControls({ piece, entrada }: { piece: Piece; entrada: TrayIn
       data-codex-rotate-controls
       style={{ margin: '4px 12px', border: '1px solid #4a5570', padding: '4px 8px', borderRadius: 3, background: '#1e2338' }}
     >
-      <legend style={{ fontSize: 11, color: '#99aacc', padding: '0 4px' }}>Rotar pieza</legend>
-      {hasConnections && (
+      <legend style={{ fontSize: 11, color: '#99aacc', padding: '0 4px' }}>Orientar pieza</legend>
+      <div style={{ fontSize: 10, color: '#8899cc', marginBottom: 4, lineHeight: 1.4 }}>
+        Orientación de instancia: cambia la pose de los puertos de esta pieza en el trazado.
+        No es una calibración del modelo CAD — para eso usá el calibrador del visor.
+      </div>
+      <div style={{ display: 'flex', gap: 6, marginBottom: 6, fontSize: 11 }}>
+        <button
+          onClick={() => setMode('worldAxis')}
+          data-codex-rotate-mode="worldAxis"
+          style={{
+            flex: 1,
+            padding: '3px 6px',
+            background: mode === 'worldAxis' ? '#3c4967' : '#262a40',
+            color: mode === 'worldAxis' ? 'white' : '#aabbdd',
+            border: `1px solid ${mode === 'worldAxis' ? '#5566aa' : '#333a55'}`,
+            borderRadius: 3,
+            cursor: 'pointer',
+          }}
+        >
+          Eje mundo
+        </button>
+        <button
+          onClick={() => setMode('portAxis')}
+          data-codex-rotate-mode="portAxis"
+          disabled={portNames.length === 0}
+          style={{
+            flex: 1,
+            padding: '3px 6px',
+            background: mode === 'portAxis' ? '#3c4967' : '#262a40',
+            color: mode === 'portAxis' ? 'white' : '#aabbdd',
+            border: `1px solid ${mode === 'portAxis' ? '#5566aa' : '#333a55'}`,
+            borderRadius: 3,
+            cursor: portNames.length === 0 ? 'not-allowed' : 'pointer',
+          }}
+        >
+          Eje de boca
+        </button>
+      </div>
+      {mode === 'worldAxis' && hasConnections && (
         <div style={{ fontSize: 10, color: '#ff9955', marginBottom: 4 }}>
-          ⚠ Esta pieza tiene conexiones — rotarla puede desalinear vecinas.
+          ⚠ Esta pieza tiene {connectedPorts.size} conexión(es) — rotarla desalineará vecinas.
         </div>
       )}
-      <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 4, fontSize: 11 }}>
-        <label style={{ color: '#8899bb' }}>Eje</label>
-        {(['X', 'Y', 'Z'] as AxisKey[]).map((a) => (
-          <button
-            key={a}
-            onClick={() => setAxis(a)}
-            style={{
-              fontSize: 11,
-              padding: '2px 8px',
-              background: axis === a ? '#3c4967' : '#262a40',
-              color: axis === a ? 'white' : '#9999aa',
-              border: `1px solid ${axis === a ? '#5566aa' : '#333a55'}`,
-              borderRadius: 3,
-              cursor: 'pointer',
-            }}
-          >
-            {a}
-          </button>
-        ))}
-      </div>
-      <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 4, fontSize: 11 }}>
-        <label style={{ color: '#8899bb' }}>Pivote</label>
-        <select
-          value={pivotKind}
-          onChange={(e) => setPivotKind(e.target.value as 'centroid' | 'port')}
-          className="inspector-input"
-          style={{ fontSize: 11 }}
-        >
-          <option value="centroid">Centroide</option>
-          <option value="port">Puerto</option>
-        </select>
-        {pivotKind === 'port' && (
-          <select
-            value={pivotPort}
-            onChange={(e) => setPivotPort(e.target.value)}
-            className="inspector-input"
-            style={{ fontSize: 11 }}
-          >
-            {portNames.map((n) => (
-              <option key={n} value={n}>{n}</option>
+      {mode === 'worldAxis' && (
+        <>
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 4, fontSize: 11 }}>
+            <label style={{ color: '#8899bb' }}>Eje</label>
+            {(['X', 'Y', 'Z'] as AxisKey[]).map((a) => (
+              <button
+                key={a}
+                onClick={() => setAxis(a)}
+                style={{
+                  fontSize: 11,
+                  padding: '2px 8px',
+                  background: axis === a ? '#3c4967' : '#262a40',
+                  color: axis === a ? 'white' : '#9999aa',
+                  border: `1px solid ${axis === a ? '#5566aa' : '#333a55'}`,
+                  borderRadius: 3,
+                  cursor: 'pointer',
+                }}
+              >
+                {a}
+              </button>
             ))}
-          </select>
-        )}
-      </div>
+          </div>
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 4, fontSize: 11 }}>
+            <label style={{ color: '#8899bb' }}>Pivote</label>
+            <select
+              value={pivotKind}
+              onChange={(e) => setPivotKind(e.target.value as 'centroid' | 'port')}
+              className="inspector-input"
+              style={{ fontSize: 11 }}
+            >
+              <option value="centroid">Centroide</option>
+              <option value="port">Puerto</option>
+            </select>
+            {pivotKind === 'port' && (
+              <select
+                value={pivotPort}
+                onChange={(e) => setPivotPort(e.target.value)}
+                className="inspector-input"
+                style={{ fontSize: 11 }}
+              >
+                {portNames.map((n) => (
+                  <option key={n} value={n}>{n}</option>
+                ))}
+              </select>
+            )}
+          </div>
+        </>
+      )}
+      {mode === 'portAxis' && (
+        <>
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 4, fontSize: 11 }}>
+            <label style={{ color: '#8899bb' }}>Boca</label>
+            <select
+              value={portAxisPort}
+              onChange={(e) => setPortAxisPort(e.target.value)}
+              data-codex-rotate-port-axis
+              className="inspector-input"
+              style={{ fontSize: 11 }}
+            >
+              {portNames.map((n) => {
+                const conn = connectedPorts.get(n);
+                return (
+                  <option key={n} value={n}>
+                    {n}{conn ? ` · conectada a ${conn.otherId}:${conn.otherPort}` : ' · libre'}
+                  </option>
+                );
+              })}
+            </select>
+          </div>
+          <div style={{ fontSize: 10, color: isPortAxisPortConnected ? '#99cc99' : '#99aacc', marginBottom: 4, lineHeight: 1.4 }}>
+            {isPortAxisPortConnected
+              ? `✓ La boca ${portAxisPort} queda fija (posición + dirección). La unión con su vecina se preserva.`
+              : `La boca ${portAxisPort} está libre. La rotación la mantiene fija como pivote.`}
+          </div>
+          {conflictsWhenPortAxis.length > 0 && (
+            <div
+              data-codex-rotate-conflicts
+              style={{ fontSize: 10, color: '#ff9955', marginBottom: 4, lineHeight: 1.4, border: '1px dashed #553322', padding: 4, borderRadius: 2 }}
+            >
+              ⚠ Se desalinearán {conflictsWhenPortAxis.length} unión(es):
+              {conflictsWhenPortAxis.map(([pName, info]) => (
+                <div key={pName}>
+                  • {pName} ↔ {info.otherId}:{info.otherPort}
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
       <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 4, fontSize: 11 }}>
         <button onClick={() => applyRotation(-90)} title="−90°" style={rotButtonStyle}>−90°</button>
         <button onClick={() => applyRotation(-45)} title="−45°" style={rotButtonStyle}>−45°</button>
@@ -160,8 +268,10 @@ function RotatePieceControls({ piece, entrada }: { piece: Piece; entrada: TrayIn
         </button>
       </div>
       <div style={{ fontSize: 10, color: '#777799', marginTop: 4 }}>
-        Rota alrededor del eje mundial {axis} respecto al {pivotKind === 'centroid' ? 'centroide' : `puerto ${pivotPort}`}.
-        Usá Deshacer (Ctrl+Z) para revertir.
+        {mode === 'worldAxis'
+          ? `Rota alrededor del eje mundial ${axis} respecto al ${pivotKind === 'centroid' ? 'centroide' : `puerto ${pivotPort}`}.`
+          : `Rota alrededor de la dirección de ${portAxisPort}, dejando esa boca fija.`}
+        {' '}Usá Deshacer (Ctrl+Z) para revertir.
       </div>
     </fieldset>
   );

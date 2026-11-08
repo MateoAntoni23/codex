@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Piece } from '../../tray/model';
-import { rotatePiece, translatePiece, normalizeDeg, resolvePivot } from '../pieceTransforms';
+import { rotatePiece, rotatePieceAroundAxis, translatePiece, normalizeDeg, resolvePivot } from '../pieceTransforms';
 
 function makeStraight(): Piece {
   return {
@@ -75,6 +75,82 @@ describe('rotatePiece', () => {
     expect(pv).not.toBeNull();
     expect(pv![0]).toBeCloseTo(1500, 3);
     expect(pv![2]).toBeCloseTo(100, 3);
+  });
+});
+
+describe('rotatePieceAroundAxis — rotación alrededor de eje arbitrario', () => {
+  function makeLShape(): Piece {
+    // L-shape: P1 en (0,0,100) mirando -X; P2 en (0,3000,100) mirando +Y.
+    return {
+      instancia_id: 'L-1',
+      producto_id: 'TEST',
+      puertos: {
+        P1: { posicion_mm: [0, 0, 100], direccion: [-1, 0, 0] },
+        P2: { posicion_mm: [0, 3000, 100], direccion: [0, 1, 0] },
+      },
+    };
+  }
+
+  it('rotar alrededor de eje de P1 deja P1 inmóvil (posición y dirección)', () => {
+    const p = makeLShape();
+    // Rotación 60° alrededor del eje de P1 (-1,0,0) pasando por (0,0,100).
+    const r = rotatePieceAroundAxis(p, p.puertos.P1.direccion, 60, p.puertos.P1.posicion_mm);
+    expect(r.puertos.P1.posicion_mm[0]).toBeCloseTo(0, 6);
+    expect(r.puertos.P1.posicion_mm[1]).toBeCloseTo(0, 6);
+    expect(r.puertos.P1.posicion_mm[2]).toBeCloseTo(100, 6);
+    expect(r.puertos.P1.direccion[0]).toBeCloseTo(-1, 6);
+    expect(r.puertos.P1.direccion[1]).toBeCloseTo(0, 6);
+    expect(r.puertos.P1.direccion[2]).toBeCloseTo(0, 6);
+  });
+
+  it('rotar 90° alrededor de eje de P1 (-X) manda P2 de +Y a -Z', () => {
+    const p = makeLShape();
+    const r = rotatePieceAroundAxis(p, p.puertos.P1.direccion, 90, p.puertos.P1.posicion_mm);
+    // P2 relativa al pivote: (0,3000,0). Rotada 90° alrededor de -X → Rodrigues.
+    // k=(-1,0,0), v=(0,3000,0): k×v = (0,0,-3000); v·cos90 + (k×v)·sin90 = (0,0,-3000).
+    // Posición absoluta: (0, 0, 100-3000) = (0, 0, -2900).
+    expect(r.puertos.P2.posicion_mm[0]).toBeCloseTo(0, 3);
+    expect(r.puertos.P2.posicion_mm[1]).toBeCloseTo(0, 3);
+    expect(r.puertos.P2.posicion_mm[2]).toBeCloseTo(-2900, 3);
+    // Dirección P2: (0,1,0) rotada 90° alrededor de (-1,0,0): k×v=(0,0,-1); v·0 + (0,0,-1)·1 = (0,0,-1).
+    expect(r.puertos.P2.direccion[0]).toBeCloseTo(0, 6);
+    expect(r.puertos.P2.direccion[1]).toBeCloseTo(0, 6);
+    expect(r.puertos.P2.direccion[2]).toBeCloseTo(-1, 6);
+  });
+
+  it('rotar 360° alrededor de cualquier eje es identidad', () => {
+    const p = makeLShape();
+    const r = rotatePieceAroundAxis(p, [0.5, 0.5, 0.707], 360, [10, 20, 30]);
+    for (const port of ['P1', 'P2'] as const) {
+      for (let i = 0; i < 3; i++) {
+        expect(r.puertos[port].posicion_mm[i]).toBeCloseTo(p.puertos[port].posicion_mm[i], 3);
+        expect(r.puertos[port].direccion[i]).toBeCloseTo(p.puertos[port].direccion[i], 6);
+      }
+    }
+  });
+
+  it('acepta eje no unitario (lo normaliza internamente)', () => {
+    const p = makeLShape();
+    // Eje (−2, 0, 0) debe comportarse como (−1, 0, 0) tras normalizar.
+    const r1 = rotatePieceAroundAxis(p, [-2, 0, 0], 90, [0, 0, 100]);
+    const r2 = rotatePieceAroundAxis(p, [-1, 0, 0], 90, [0, 0, 100]);
+    expect(r1.puertos.P2.posicion_mm[2]).toBeCloseTo(r2.puertos.P2.posicion_mm[2], 6);
+  });
+
+  it('preserva unitariedad de direcciones tras rotación con ángulo no trivial', () => {
+    const p = makeLShape();
+    const r = rotatePieceAroundAxis(p, [1, 1, 1], 37.5, [0, 0, 100]);
+    for (const port of ['P1', 'P2'] as const) {
+      const d = r.puertos[port].direccion;
+      const norm = Math.hypot(d[0], d[1], d[2]);
+      expect(norm).toBeCloseTo(1, 6);
+    }
+  });
+
+  it('eje nulo devuelve la pieza sin cambios', () => {
+    const p = makeLShape();
+    const r = rotatePieceAroundAxis(p, [0, 0, 0], 90, [0, 0, 0]);
+    expect(r).toBe(p);
   });
 });
 

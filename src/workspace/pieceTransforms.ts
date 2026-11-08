@@ -113,6 +113,84 @@ export function rotatePiece(piece: Piece, axis: AxisKey, angleDeg: number, pivot
   };
 }
 
+function crossV(a: readonly number[], b: readonly number[]): Vec3 {
+  return [
+    a[1] * b[2] - a[2] * b[1],
+    a[2] * b[0] - a[0] * b[2],
+    a[0] * b[1] - a[1] * b[0],
+  ];
+}
+function dotV(a: readonly number[], b: readonly number[]): number {
+  return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+}
+function scaleV(a: readonly number[], s: number): Vec3 {
+  return [a[0] * s, a[1] * s, a[2] * s];
+}
+
+/**
+ * Rota un vector `v` alrededor del eje unitario `k` por `rad` radianes
+ * usando la fórmula de Rodrigues: v·cosθ + (k×v)·sinθ + k·(k·v)·(1-cosθ).
+ * Si `k` no está normalizado, se normaliza internamente.
+ */
+function rodrigues(v: readonly number[], k: readonly number[], rad: number): Vec3 {
+  const kN = normV(k);
+  if (kN[0] === 0 && kN[1] === 0 && kN[2] === 0) return [v[0], v[1], v[2]];
+  const c = Math.cos(rad);
+  const s = Math.sin(rad);
+  const kxv = crossV(kN, v);
+  const kdv = dotV(kN, v);
+  const term1 = scaleV(v, c);
+  const term2 = scaleV(kxv, s);
+  const term3 = scaleV(kN, kdv * (1 - c));
+  return [
+    term1[0] + term2[0] + term3[0],
+    term1[1] + term2[1] + term3[1],
+    term1[2] + term2[2] + term3[2],
+  ];
+}
+
+/**
+ * Rota una pieza alrededor de un eje arbitrario (no necesariamente X/Y/Z)
+ * que pasa por el punto `pivotMm`. Preserva la unitariedad de las
+ * direcciones de puertos. Si `axis` es casi nulo o `angleDeg` es cero,
+ * devuelve la pieza sin cambios.
+ *
+ * Uso típico: rotar alrededor del eje de una boca conectada pasándole
+ * como `axis` la `direccion` del puerto y como `pivotMm` su `posicion_mm`.
+ * Este es el único modo que preserva la pose de un puerto al 100%
+ * (posición y dirección), permitiendo rotar el resto de la pieza sin
+ * romper esa unión.
+ */
+export function rotatePieceAroundAxis(
+  piece: Piece,
+  axis: readonly number[],
+  angleDeg: number,
+  pivotMm: readonly number[],
+): Piece {
+  const rad = (angleDeg * Math.PI) / 180;
+  if (Math.abs(rad) < EPS) return piece;
+  const axisN = normV(axis);
+  if (axisN[0] === 0 && axisN[1] === 0 && axisN[2] === 0) return piece;
+
+  const newPorts: Record<string, { posicion_mm: Vec3; direccion: Vec3 }> = {};
+  for (const [portId, port] of Object.entries(piece.puertos)) {
+    const relative = subV(port.posicion_mm, pivotMm);
+    const rotatedRel = rodrigues(relative, axisN, rad);
+    const newPos: Vec3 = [
+      pivotMm[0] + rotatedRel[0],
+      pivotMm[1] + rotatedRel[1],
+      pivotMm[2] + rotatedRel[2],
+    ];
+    const newDir = normV(rodrigues(port.direccion, axisN, rad));
+    newPorts[portId] = { posicion_mm: newPos, direccion: newDir };
+  }
+
+  return {
+    ...piece,
+    puertos: newPorts as Piece['puertos'],
+  };
+}
+
 /**
  * Traslada una pieza por `delta_mm`. Las direcciones no cambian.
  */
