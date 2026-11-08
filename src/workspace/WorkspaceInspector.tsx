@@ -6,6 +6,7 @@
  * Support selected → SupportCard (ID, piece, product, system, distance from P1)
  * Nothing selected → CalcPanel (pre-calc summary + structured results)
  */
+import { useState } from 'react';
 import { useWorkspaceStore } from './useWorkspaceStore';
 import { useTrayStore } from '../tray/store';
 import { useRoutingStore } from './useRoutingStore';
@@ -13,8 +14,9 @@ import { RoutingPanel } from './RoutingPanel';
 import { EquipmentEditorPanel } from '../preview/EquipmentEditorPanel';
 import { TrayResults } from './TrayResults';
 import { checkDeleteDependencies, duplicateElement } from '../preview/previewCrud';
-import type { Piece, Support } from '../tray/model';
+import type { Piece, Support, TrayInput } from '../tray/model';
 import { object } from '../tray/model';
+import { rotatePiece, normalizeDeg, type AxisKey, type PivotRef } from './pieceTransforms';
 
 /** Renders a Python result value as readable text, handling nested objects and arrays. */
 function formatResultValue(v: unknown, depth = 0): string {
@@ -33,6 +35,148 @@ function formatResultValue(v: unknown, depth = 0): string {
   }
   return JSON.stringify(v);
 }
+
+// ─── Rotación manual de pieza ─────────────────────────────────────────────────
+
+function RotatePieceControls({ piece, entrada }: { piece: Piece; entrada: TrayInput }) {
+  const edit = useTrayStore((s) => s.edit);
+  const markDirty = useWorkspaceStore((s) => s.markDirty);
+  const [axis, setAxis] = useState<AxisKey>('Z');
+  const [pivotKind, setPivotKind] = useState<'centroid' | 'port'>('centroid');
+  const [pivotPort, setPivotPort] = useState<string>(Object.keys(piece.puertos)[0] ?? 'P1');
+  const [angleDeg, setAngleDeg] = useState<string>('0');
+
+  const portNames = Object.keys(piece.puertos);
+  const hasConnections = entrada.conexiones.some(
+    (c) => c.a[0] === piece.instancia_id || c.b[0] === piece.instancia_id,
+  );
+
+  const applyRotation = (deg: number) => {
+    const d = normalizeDeg(deg);
+    if (Math.abs(d) < 1e-6) return;
+    const pivot: PivotRef = pivotKind === 'centroid'
+      ? { kind: 'centroid' }
+      : { kind: 'port', name: pivotPort };
+    const next = structuredClone(entrada);
+    const idx = next.piezas.findIndex((p) => p.instancia_id === piece.instancia_id);
+    if (idx < 0) return;
+    next.piezas[idx] = rotatePiece(next.piezas[idx], axis, d, pivot);
+    edit(next);
+    markDirty();
+    setAngleDeg('0');
+  };
+
+  const handleApply = () => {
+    const d = Number(angleDeg);
+    if (!Number.isFinite(d)) return;
+    applyRotation(d);
+  };
+
+  return (
+    <fieldset
+      data-codex-rotate-controls
+      style={{ margin: '4px 12px', border: '1px solid #4a5570', padding: '4px 8px', borderRadius: 3, background: '#1e2338' }}
+    >
+      <legend style={{ fontSize: 11, color: '#99aacc', padding: '0 4px' }}>Rotar pieza</legend>
+      {hasConnections && (
+        <div style={{ fontSize: 10, color: '#ff9955', marginBottom: 4 }}>
+          ⚠ Esta pieza tiene conexiones — rotarla puede desalinear vecinas.
+        </div>
+      )}
+      <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 4, fontSize: 11 }}>
+        <label style={{ color: '#8899bb' }}>Eje</label>
+        {(['X', 'Y', 'Z'] as AxisKey[]).map((a) => (
+          <button
+            key={a}
+            onClick={() => setAxis(a)}
+            style={{
+              fontSize: 11,
+              padding: '2px 8px',
+              background: axis === a ? '#3c4967' : '#262a40',
+              color: axis === a ? 'white' : '#9999aa',
+              border: `1px solid ${axis === a ? '#5566aa' : '#333a55'}`,
+              borderRadius: 3,
+              cursor: 'pointer',
+            }}
+          >
+            {a}
+          </button>
+        ))}
+      </div>
+      <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 4, fontSize: 11 }}>
+        <label style={{ color: '#8899bb' }}>Pivote</label>
+        <select
+          value={pivotKind}
+          onChange={(e) => setPivotKind(e.target.value as 'centroid' | 'port')}
+          className="inspector-input"
+          style={{ fontSize: 11 }}
+        >
+          <option value="centroid">Centroide</option>
+          <option value="port">Puerto</option>
+        </select>
+        {pivotKind === 'port' && (
+          <select
+            value={pivotPort}
+            onChange={(e) => setPivotPort(e.target.value)}
+            className="inspector-input"
+            style={{ fontSize: 11 }}
+          >
+            {portNames.map((n) => (
+              <option key={n} value={n}>{n}</option>
+            ))}
+          </select>
+        )}
+      </div>
+      <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 4, fontSize: 11 }}>
+        <button onClick={() => applyRotation(-90)} title="−90°" style={rotButtonStyle}>−90°</button>
+        <button onClick={() => applyRotation(-45)} title="−45°" style={rotButtonStyle}>−45°</button>
+        <button onClick={() => applyRotation(45)} title="+45°" style={rotButtonStyle}>+45°</button>
+        <button onClick={() => applyRotation(90)} title="+90°" style={rotButtonStyle}>+90°</button>
+      </div>
+      <div style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 11 }}>
+        <label style={{ color: '#8899bb' }}>Ángulo (°)</label>
+        <input
+          type="number"
+          step="1"
+          value={angleDeg}
+          onChange={(e) => setAngleDeg(e.target.value)}
+          className="inspector-input"
+          style={{ width: 70, fontSize: 11 }}
+        />
+        <button
+          onClick={handleApply}
+          data-codex-rotate-apply
+          style={{
+            fontSize: 11,
+            padding: '2px 10px',
+            background: '#3c4967',
+            color: 'white',
+            border: '1px solid #5566aa',
+            borderRadius: 3,
+            cursor: 'pointer',
+          }}
+        >
+          Aplicar
+        </button>
+      </div>
+      <div style={{ fontSize: 10, color: '#777799', marginTop: 4 }}>
+        Rota alrededor del eje mundial {axis} respecto al {pivotKind === 'centroid' ? 'centroide' : `puerto ${pivotPort}`}.
+        Usá Deshacer (Ctrl+Z) para revertir.
+      </div>
+    </fieldset>
+  );
+}
+
+const rotButtonStyle: React.CSSProperties = {
+  fontSize: 11,
+  padding: '2px 8px',
+  background: '#262a40',
+  color: '#c0c0e0',
+  border: '1px solid #333a55',
+  borderRadius: 3,
+  cursor: 'pointer',
+  minWidth: 46,
+};
 
 // ─── Tray piece card ──────────────────────────────────────────────────────────
 
@@ -123,6 +267,8 @@ function PieceCard({ piece }: { piece: Piece }) {
           </div>
         </fieldset>
       ))}
+
+      <RotatePieceControls piece={piece} entrada={entrada} />
 
       <div style={{ padding: '4px 12px 8px' }}>
         <button
