@@ -27,6 +27,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { useTrayStore } from '../tray/store';
 import type { Product } from '../tray/model';
 import { getEffectiveMapping } from '../workspace/catalogPortMapping';
+import { useCatalogConfigStore } from './catalogConfigStore';
+import { InspectorTabContent, TABS, type TabId } from './ConfiguratorInspectorTabs';
 import './configurator.css';
 
 type MappingStatus = 'default' | 'override' | 'sin-mapping';
@@ -71,7 +73,12 @@ function ProductList({
   setFilters: (f: Filters) => void;
   tipoPiezaOptions: readonly string[];
 }) {
-  const visible = useMemo(() => products.filter((p) => matchesFilter(p, filters)), [products, filters]);
+  // Subscribe to overrides so mapping badges + filter re-run on upsert/remove.
+  const overrides = useCatalogConfigStore((s) => s.overrides);
+  const visible = useMemo(
+    () => products.filter((p) => matchesFilter(p, filters)),
+    [products, filters, overrides],
+  );
   return (
     <aside className="cfg-panel cfg-panel-left">
       <div className="cfg-panel-title">Catálogo</div>
@@ -155,88 +162,11 @@ function ViewerPlaceholder({ product }: { product: Product | null }) {
   );
 }
 
-const TABS = [
-  { id: 'producto',   label: 'Producto / Familia' },
-  { id: 'modelo',     label: 'Modelo / Parámetros' },
-  { id: 'bocas',      label: 'Bocas / Asociaciones' },
-  { id: 'orientacion',label: 'Orientación / Colocación' },
-  { id: 'continuaciones', label: 'Continuaciones / Compatibilidad' },
-  { id: 'prueba',     label: 'Prueba preview / Confirmado' },
-  { id: 'procedencia',label: 'Procedencia / Historial' },
-] as const;
-type TabId = typeof TABS[number]['id'];
-
-function TabPlaceholder({ tab, product }: { tab: TabId; product: Product | null }) {
-  if (!product) {
-    return <div className="cfg-tab-empty">Seleccioná un producto a la izquierda.</div>;
-  }
-  const mapping = getEffectiveMapping(product.producto_id);
-  if (tab === 'producto') {
-    return (
-      <div className="cfg-tab-content">
-        <dl className="cfg-kv">
-          <dt>SKU</dt><dd>{product.sku}</dd>
-          <dt>producto_id</dt><dd>{product.producto_id}</dd>
-          <dt>tipo_pieza</dt><dd>{product.tipo_pieza}</dd>
-          <dt>Ancho nominal</dt><dd>{product.ancho_nominal_mm ?? 'n/d'} mm</dd>
-          <dt>Descripción</dt><dd>{product.descripcion_original}</dd>
-        </dl>
-      </div>
-    );
-  }
-  if (tab === 'bocas') {
-    return (
-      <div className="cfg-tab-content">
-        {mapping ? (
-          <>
-            <div className="cfg-tab-note">
-              Fuente del mapping: <strong>{mapping.source}</strong>
-              {mapping.source === 'override' && mapping.overrideReason && (
-                <> · Motivo: {mapping.overrideReason}</>
-              )}
-            </div>
-            <table className="cfg-table">
-              <thead>
-                <tr>
-                  <th>Boca-receta</th>
-                  <th>Puerto-catálogo</th>
-                  <th>Etiqueta física</th>
-                  <th>Justificación</th>
-                </tr>
-              </thead>
-              <tbody>
-                {mapping.entries.map((e) => (
-                  <tr key={e.recipePortName}>
-                    <td><code>{e.recipePortName}</code></td>
-                    <td><code>{e.catalogPortName}</code></td>
-                    <td>{e.physicalLabel}</td>
-                    <td>{e.justification}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <div className="cfg-tab-hint">
-              Edición y overrides: tarea #89.
-            </div>
-          </>
-        ) : (
-          <div className="cfg-tab-note">
-            Sin mapping declarado. El motor usa identidad (recipe==catálogo).
-            Apropiado para productos 2-boca que ya usan P1/P2 en la receta.
-          </div>
-        )}
-      </div>
-    );
-  }
-  return (
-    <div className="cfg-tab-empty">
-      Pestaña «{TABS.find((t) => t.id === tab)?.label}» — contenido pendiente.
-    </div>
-  );
-}
-
 function Inspector({ product }: { product: Product | null }) {
   const [activeTab, setActiveTab] = useState<TabId>('producto');
+  const context = useTrayStore((s) => s.context);
+  const familias = context?.familias ?? [];
+  const puertos = context?.puertos ?? [];
   return (
     <aside className="cfg-panel cfg-panel-right">
       <div className="cfg-panel-title">Inspector</div>
@@ -249,13 +179,19 @@ function Inspector({ product }: { product: Product | null }) {
             aria-selected={activeTab === t.id}
             className={`cfg-tab-button ${activeTab === t.id ? 'is-active' : ''}`}
             onClick={() => setActiveTab(t.id)}
+            data-testid={`cfg-tab-${t.id}`}
           >
             {t.label}
           </button>
         ))}
       </nav>
       <div className="cfg-tab-panel" role="tabpanel">
-        <TabPlaceholder tab={activeTab} product={product} />
+        <InspectorTabContent
+          tab={activeTab}
+          product={product}
+          familias={familias}
+          puertos={puertos}
+        />
       </div>
     </aside>
   );
@@ -268,6 +204,10 @@ export function ConfiguratorLayout() {
 
   useEffect(() => {
     void useTrayStore.getState().initialize();
+    // Hidratar overrides del Configurador para que la lista refleje
+    // correctamente el estado por producto (default vs override) y el
+    // workspace/motor reciban los overrides persistidos sin extra wiring.
+    useCatalogConfigStore.getState().hydrate();
   }, []);
 
   const products = context?.productos ?? [];
