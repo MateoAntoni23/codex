@@ -4,6 +4,7 @@
  */
 import type { Piece, Product, Context, CatalogCompatibility, CatalogUnionComponent } from '../tray/model';
 import { isHorizontalCurve, isStraight } from './pieceClassification';
+import { recipePortToCatalogPort } from './catalogPortMapping';
 
 export type Point3 = [number, number, number];
 
@@ -144,8 +145,10 @@ function findCompatEntryPortLevel(
   productBId: string,
   portBName: string,
 ): CatalogCompatibility | null {
-  const portAId = `${productAId}-${portAName}`;
-  const portBId = `${productBId}-${portBName}`;
+  // Traducción recipe-port → catalog-port (ver catalogPortMapping.ts). Es
+  // no-op para productos 2-boca que ya usan P1/P2.
+  const portAId = `${productAId}-${recipePortToCatalogPort(productAId, portAName)}`;
+  const portBId = `${productBId}-${recipePortToCatalogPort(productBId, portBName)}`;
   for (const c of compatibilidades) {
     if (c.tipo_conexion !== 'directa') continue;
     if (c.estado_compatibilidad === 'no compatible') continue;
@@ -512,7 +515,13 @@ export function getCompatibleProductIds(
   existingProductId: string,
   existingPortName: string,
 ): Set<string> {
-  const portId = `${existingProductId}-${existingPortName}`;
+  // Traducir el nombre de boca (semántica de la receta, p.ej. 'tronco_P2' o
+  // 'boca_derivacion' en una TPS) al nombre anónimo que usa el catálogo SAMET
+  // (P1/P2/P3). Para productos 2-boca (rectos, curvas horizontales) el
+  // mapping es identidad y esta llamada es un no-op. Ver catalogPortMapping.ts
+  // para el default declarado y la API de overrides del configurador.
+  const catalogPortName = recipePortToCatalogPort(existingProductId, existingPortName);
+  const portId = `${existingProductId}-${catalogPortName}`;
   const result = new Set<string>();
 
   for (const c of compatibilidades) {

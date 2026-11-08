@@ -642,6 +642,21 @@ describe('getCompatibleProductIds', () => {
   it('returns empty set when no entries match', () => {
     expect(getCompatibleProductIds([c1, c2, c3], 'PROD-Z', 'P1').size).toBe(0);
   });
+
+  it('traduce boca semántica (tronco_P2) al nombre del catálogo (P2) via mapping explícito', () => {
+    // Catálogo real tiene SAM_TPS-300-Z-P2 ↔ SAM_TRPS-300-22-Z-P1; la receta
+    // paramétrica de TPS usa `tronco_P2` como alias semántico. Sin mapping
+    // explícito la búsqueda `SAM_TPS-300-Z-tronco_P2` nunca encajaba.
+    const compat = makeCompat('C-TPS-TRPS', 'SAM_TPS-300-Z', 'SAM_TPS-300-Z-P2', 'SAM_TRPS-300-22-Z', 'SAM_TRPS-300-22-Z-P1');
+    const result = getCompatibleProductIds([compat], 'SAM_TPS-300-Z', 'tronco_P2');
+    expect(result.has('SAM_TRPS-300-22-Z')).toBe(true);
+  });
+
+  it('boca_derivacion (TPS) se traduce a P3 del catálogo', () => {
+    const compat = makeCompat('C-TPS-DER', 'SAM_TPS-300-Z', 'SAM_TPS-300-Z-P3', 'SAM_TRPS-300-22-Z', 'SAM_TRPS-300-22-Z-P1');
+    const result = getCompatibleProductIds([compat], 'SAM_TPS-300-Z', 'boca_derivacion');
+    expect(result.has('SAM_TRPS-300-22-Z')).toBe(true);
+  });
 });
 
 // ─── checkDirectCompatibility — symmetric fallback for curves ─────────────────

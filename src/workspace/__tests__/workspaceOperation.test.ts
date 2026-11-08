@@ -804,4 +804,103 @@ describe('toMotorEntrada', () => {
     toMotorEntrada(entrada);
     expect(JSON.stringify(entrada)).toBe(originalJson);
   });
+
+  // ─── Traducción de puertos recipe→catálogo ────────────────────────────────
+  it('traduce las claves de puertos de TPS (tronco_P1/tronco_P2/boca_derivacion) a P1/P2/P3', () => {
+    const tps: Piece = {
+      instancia_id: 'TPS-1',
+      producto_id: 'SAM_TPS-300-Z',
+      puertos: {
+        tronco_P1:       { posicion_mm: [0, 0, 0],      direccion: [-1, 0, 0] },
+        tronco_P2:       { posicion_mm: [449.5, 0, 0],  direccion: [1, 0, 0] },
+        boca_derivacion: { posicion_mm: [224.75, 150, 0], direccion: [0, 1, 0] },
+      },
+    };
+    const entrada = makeTrayInput({ piezas: [tps] });
+    const motor = toMotorEntrada(entrada) as { piezas: Piece[] };
+    const translated = motor.piezas[0].puertos;
+    expect(Object.keys(translated).sort()).toEqual(['P1', 'P2', 'P3']);
+    expect(translated.P1.direccion).toEqual([-1, 0, 0]);
+    expect(translated.P2.direccion).toEqual([1, 0, 0]);
+    expect(translated.P3.direccion).toEqual([0, 1, 0]);
+  });
+
+  it('traduce las conexiones de TPS en a[1] y b[1] al nombre de catálogo', () => {
+    const tps: Piece = {
+      instancia_id: 'TPS-1',
+      producto_id: 'SAM_TPS-300-Z',
+      puertos: {
+        tronco_P1:       { posicion_mm: [0, 0, 0],      direccion: [-1, 0, 0] },
+        tronco_P2:       { posicion_mm: [449.5, 0, 0],  direccion: [1, 0, 0] },
+        boca_derivacion: { posicion_mm: [224.75, 150, 0], direccion: [0, 1, 0] },
+      },
+    };
+    const recto: Piece = {
+      instancia_id: 'SEG-1',
+      producto_id: 'SAM_TRPS-300-22-Z',
+      longitud_mm: 3000,
+      puertos: {
+        P1: { posicion_mm: [-3000, 0, 0], direccion: [-1, 0, 0] },
+        P2: { posicion_mm: [0, 0, 0],     direccion: [1, 0, 0] },
+      },
+    };
+    const entrada = makeTrayInput({
+      piezas: [tps, recto],
+      conexiones: [makeConn('C-1', 'TPS-1', 'tronco_P1', 'SEG-1', 'P2')],
+    });
+    const motor = toMotorEntrada(entrada) as { conexiones: { a: [string,string]; b: [string,string] }[] };
+    expect(motor.conexiones[0].a).toEqual(['TPS-1', 'P1']);
+    expect(motor.conexiones[0].b).toEqual(['SEG-1', 'P2']);
+  });
+
+  it('deja intactos puertos y conexiones de productos sin mapping declarado (TRPS/CPS)', () => {
+    const entrada = makeTrayInput({
+      piezas: [makePiece('SEG-1'), makePiece('SEG-2')],
+      conexiones: [makeConn('C-1', 'SEG-1', 'P2', 'SEG-2', 'P1')],
+    });
+    const motor = toMotorEntrada(entrada) as {
+      piezas: Piece[];
+      conexiones: { a: [string,string]; b: [string,string] }[];
+    };
+    expect(Object.keys(motor.piezas[0].puertos).sort()).toEqual(['P1', 'P2']);
+    expect(motor.conexiones[0].a).toEqual(['SEG-1', 'P2']);
+    expect(motor.conexiones[0].b).toEqual(['SEG-2', 'P1']);
+  });
+
+  it('traduce XPS (P1_x_neg..P4_z_pos) y conserva las direcciones', () => {
+    const xps: Piece = {
+      instancia_id: 'XPS-1',
+      producto_id: 'SAM_XPS-300-Z',
+      puertos: {
+        P1_x_neg: { posicion_mm: [-224.75, 0, 0], direccion: [-1, 0, 0] },
+        P2_x_pos: { posicion_mm: [224.75, 0, 0],  direccion: [1, 0, 0] },
+        P3_z_neg: { posicion_mm: [0, 0, -224.75], direccion: [0, 0, -1] },
+        P4_z_pos: { posicion_mm: [0, 0, 224.75],  direccion: [0, 0, 1] },
+      },
+    };
+    const motor = toMotorEntrada(makeTrayInput({ piezas: [xps] })) as { piezas: Piece[] };
+    const puertos = motor.piezas[0].puertos;
+    expect(Object.keys(puertos).sort()).toEqual(['P1', 'P2', 'P3', 'P4']);
+    expect(puertos.P1.direccion).toEqual([-1, 0, 0]);
+    expect(puertos.P4.direccion).toEqual([0, 0, 1]);
+  });
+
+  it('no muta las claves de puertos originales en el TrayInput entrada', () => {
+    const tps: Piece = {
+      instancia_id: 'TPS-1',
+      producto_id: 'SAM_TPS-300-Z',
+      puertos: {
+        tronco_P1:       { posicion_mm: [0, 0, 0],      direccion: [-1, 0, 0] },
+        tronco_P2:       { posicion_mm: [449.5, 0, 0],  direccion: [1, 0, 0] },
+        boca_derivacion: { posicion_mm: [224.75, 150, 0], direccion: [0, 1, 0] },
+      },
+    };
+    const entrada = makeTrayInput({ piezas: [tps] });
+    toMotorEntrada(entrada);
+    expect(Object.keys(entrada.piezas[0].puertos).sort()).toEqual([
+      'boca_derivacion',
+      'tronco_P1',
+      'tronco_P2',
+    ]);
+  });
 });

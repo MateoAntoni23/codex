@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { createManager, loadContext } from './client';
 import { assertInput, readResult, type Context, type TrayInput } from './model';
+import { recipePortToCatalogPort } from '../workspace/catalogPortMapping';
 const manager=createManager();
 let callSequence=0;
 
@@ -8,14 +9,57 @@ let callSequence=0;
 const WS_ONLY: ReadonlySet<string> = new Set(['excepciones_conexion']);
 
 /**
- * Strips workspace-only fields from TrayInput before submitting to the motor.
- * This is the explicit Python adapter: nothing outside trazado/1 schema reaches the motor.
+ * Strips workspace-only fields from TrayInput before submitting to the motor AND
+ * traduce los nombres de bocas de recetas paramétricas al nombre que publica el
+ * catálogo SAMET.
+ *
+ * Por qué: las recetas usan nombres semánticos (`tronco_P1`, `tronco_P2`,
+ * `boca_derivacion` en TPS; `P1_x_neg`..`P4_z_pos` en XPS; `P1_horizontal`/
+ * `P2_vertical` en CUPS) para que el UI y el inspector sean legibles. El motor
+ * Python, en cambio, construye `${producto_id}-${nombre_puerto}` para
+ * `IndiceCompat.evaluar(...)` y busca en `cat.puertos_por_id` — que sólo tiene
+ * `P1/P2/P3/P4`. Sin esta traducción, cualquier TPS/XPS/CUPS cae en
+ * compatibilidad PENDIENTE aunque el catálogo sí la liste.
+ *
+ * La traducción cubre dos superficies:
+ *  - `piezas[*].puertos`: las claves del objeto se renombran de receta → catálogo
+ *    para que `piezas[i]["puertos"].get(pa)` dentro de `encaje_conexion` acierte.
+ *  - `conexiones[*].a[1]` y `conexiones[*].b[1]`: el segundo elemento de cada
+ *    extremo pasa a ser el nombre de catálogo para que la clave compuesta
+ *    `${producto_id}-${port_name}` coincida con el índice de compat.
+ *
+ * Productos sin mapping declarado (TRPS, CPS-45, CPS-90) usan identidad P1/P2
+ * y no cambian. Es side-effect free y conserva el `TrayInput` original
+ * intacto (copia profunda de las secciones afectadas).
  */
 export function toMotorEntrada(trayInput: TrayInput): Record<string,unknown> {
   const out: Record<string,unknown> = {};
   for (const [k,v] of Object.entries(trayInput)) {
     if (!WS_ONLY.has(k)) out[k] = v;
   }
+  // Índice instancia_id → producto_id para traducir conexiones sin volver a
+  // buscar la pieza en cada extremo.
+  const productByInstance = new Map<string, string>();
+  for (const pz of trayInput.piezas) productByInstance.set(pz.instancia_id, pz.producto_id);
+
+  out.piezas = trayInput.piezas.map((pz) => {
+    const translated: Record<string, unknown> = {};
+    for (const [portName, portDef] of Object.entries(pz.puertos)) {
+      translated[recipePortToCatalogPort(pz.producto_id, portName)] = portDef;
+    }
+    return { ...pz, puertos: translated };
+  });
+
+  out.conexiones = trayInput.conexiones.map((c) => {
+    const prodA = productByInstance.get(c.a[0]) ?? '';
+    const prodB = productByInstance.get(c.b[0]) ?? '';
+    return {
+      ...c,
+      a: [c.a[0], recipePortToCatalogPort(prodA, c.a[1])] as [string, string],
+      b: [c.b[0], recipePortToCatalogPort(prodB, c.b[1])] as [string, string],
+    };
+  });
+
   return out;
 }
 
