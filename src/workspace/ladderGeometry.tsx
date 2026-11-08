@@ -18,6 +18,15 @@ import { useMemo } from 'react';
 import { Html, Line } from '@react-three/drei';
 import * as THREE from 'three';
 import type { Piece, Product } from '../tray/model';
+import { getEscaleraOutline, type EscaleraOutline } from '../parametric/geometry/escaleraOutlines';
+import {
+  alignOutlineToPorts,
+  outlinePointToWorld,
+  segmentRailsFromOutline,
+  polylineLengthMm,
+  pointAtArclength,
+  type MeasuredPlacement,
+} from './measuredLadder';
 
 type V3 = [number, number, number];
 
@@ -629,12 +638,157 @@ function ConceptualMissing({
   );
 }
 
+// ─── Render basado en polígono medido STEP ──────────────────────────────────
+
+/**
+ * Renderiza la pieza a partir del polígono medido STEP:
+ *   - Alinea el outline con los puertos almacenados (sin moverlos).
+ *   - Dibuja las paredes-riel como extrusiones verticales de ala.
+ *   - Pinta travesaños perpendiculares al centerline a lo largo del eje P1→P2.
+ *
+ * Si la alineación supera la tolerancia, devuelve null para que el llamante
+ * caiga al render por arco/aproximación.
+ */
+function LadderMeasured({
+  piece, product, outline, selected, onClick,
+}: { piece: Piece; product: Product; outline: EscaleraOutline; selected: boolean; onClick: () => void }) {
+  const p1 = piece.puertos.P1;
+  const p2 = piece.puertos.P2;
+  if (!p1) return null;
+
+  const placement = useMemo<MeasuredPlacement | null>(
+    () => alignOutlineToPorts(outline, { P1: p1, P2: p2 }, { posTolMm: 3, dirTolDeg: 2 }),
+    [outline, p1.posicion_mm[0], p1.posicion_mm[1], p1.posicion_mm[2], p1.direccion[0], p1.direccion[1], p1.direccion[2],
+     p2?.posicion_mm[0], p2?.posicion_mm[1], p2?.posicion_mm[2], p2?.direccion[0], p2?.direccion[1], p2?.direccion[2]],
+  );
+
+  if (!placement) return null;
+
+  const alaMm = outline.bbox_local.y_height_mm;
+  const espMm = getProductDim(product, 'espesor_chapa_mm') ?? DEFAULT_RAIL_THICKNESS_MM;
+
+  const codexBase = {
+    instanciaId: piece.instancia_id,
+    sku: product.sku ?? product.producto_id,
+    kind: 'ladder-measured',
+    source: outline.source_file,
+    alaMm, espMm,
+    chirality: placement.mirrored ? 'mirrored' : 'native',
+    p2PosErrorMm: placement.p2PosErrorMm,
+    p2DirErrorDeg: placement.p2DirErrorDeg,
+    ports: Object.fromEntries(
+      Object.entries(piece.puertos).map(([k, v]) => [k, v.posicion_mm as V3]),
+    ),
+  };
+
+  // Paredes-riel: cada chain del outline se dibuja como pared vertical de alto `ala`.
+  const chains = segmentRailsFromOutline(outline);
+  const railSegments: JSX.Element[] = [];
+  chains.forEach((chain, chainIdx) => {
+    for (let i = 0; i < chain.length - 1; i++) {
+      const a2 = chain[i];
+      const b2 = chain[i + 1];
+      const aMm = outlinePointToWorld(outline, placement, a2[0], a2[1], 0);
+      const bMm = outlinePointToWorld(outline, placement, b2[0], b2[1], 0);
+      railSegments.push(
+        <OrientedBox
+          key={`rail-${chainIdx}-${i}`}
+          aMm={aMm as unknown as V3}
+          bMm={bMm as unknown as V3}
+          sectYMm={espMm}
+          sectZMm={alaMm}
+          color={COLOR_RAIL}
+          selected={selected}
+          codex={{ ...codexBase, part: `rail-${chainIdx}-${i}` }}
+        />,
+      );
+    }
+  });
+
+  // Travesaños: parametrizamos a lo largo del centerline aproximado (promedio
+  // punto-a-punto entre las dos chains principales). Para TS/XS con más chains
+  // omitimos travesaños y confiamos sólo en las paredes.
+  const rungs: JSX.Element[] = [];
+  if (chains.length === 2) {
+    const [chainA, chainB] = chains;
+    const lenA = polylineLengthMm(chainA);
+    const lenB = polylineLengthMm(chainB);
+    const refLen = Math.min(lenA, lenB);
+    const nInterior = Math.max(0, Math.floor((refLen - 2 * DEFAULT_RUNG_MARGIN_MM) / DEFAULT_RUNG_PITCH_MM));
+    const total = Math.max(2, nInterior + 2);
+    for (let i = 0; i < total; i++) {
+      const f = total > 1 ? i / (total - 1) : 0.5;
+      const sA = DEFAULT_RUNG_MARGIN_MM + f * Math.max(0, lenA - 2 * DEFAULT_RUNG_MARGIN_MM);
+      const sB = DEFAULT_RUNG_MARGIN_MM + f * Math.max(0, lenB - 2 * DEFAULT_RUNG_MARGIN_MM);
+      // chainA va en orden CCW desde final-P1 hasta inicio-P2; chainB en orden
+      // CCW desde final-P2 hasta inicio-P1 → para que los travesaños conecten
+      // puntos "homólogos" invertimos la parametrización de B.
+      const pA = pointAtArclength(chainA, sA);
+      const pB = pointAtArclength(chainB, Math.max(0, lenB - sB));
+      if (!pA || !pB) continue;
+      const aMm = outlinePointToWorld(outline, placement, pA[0], pA[1], 0);
+      const bMm = outlinePointToWorld(outline, placement, pB[0], pB[1], 0);
+      const offsetZ = -alaMm / 2 + DEFAULT_RUNG_THICKNESS_MM / 2;
+      rungs.push(
+        <OrientedBox
+          key={`rung-${i}`}
+          aMm={aMm as unknown as V3}
+          bMm={bMm as unknown as V3}
+          sectYMm={DEFAULT_RUNG_WIDTH_MM}
+          sectZMm={DEFAULT_RUNG_THICKNESS_MM}
+          color={COLOR_RUNG}
+          selected={selected}
+          codex={{ ...codexBase, part: `rung-${i}` }}
+          offsetZMm={offsetZ}
+        />,
+      );
+    }
+  }
+
+  return (
+    <group
+      onClick={(e) => { e.stopPropagation(); onClick(); }}
+      onUpdate={(g) => { g.userData.codex = codexBase; }}
+    >
+      {railSegments}
+      {rungs}
+    </group>
+  );
+}
+
 // ─── Entry point ─────────────────────────────────────────────────────────────
 
 export function LadderPiece({
   piece, product, selected, onClick,
 }: { piece: Piece; product: Product; selected: boolean; onClick: () => void }) {
   const tipo = product.tipo_pieza;
+
+  // Preferir render basado en STEP medido si existe outline para el SKU y
+  // los puertos almacenados alinean dentro de tolerancia.
+  const skuForOutline = (product.sku ?? product.producto_id) as string | undefined;
+  const outline = getEscaleraOutline(skuForOutline ?? null);
+  if (outline && outline.polygon.length >= 3) {
+    // Probamos con el renderer medido; si devuelve null (alineación fallida)
+    // seguiremos con el camino clásico.
+    const measured = (
+      <LadderMeasured
+        piece={piece}
+        product={product}
+        outline={outline}
+        selected={selected}
+        onClick={onClick}
+      />
+    );
+    // React permite devolver el elemento directamente; si LadderMeasured
+    // devuelve null internamente, el consumidor verá null (no renderiza nada
+    // y pasamos al fallback de abajo). Para una decisión real previa a render,
+    // llamamos a alignOutlineToPorts aquí — pero duplica cómputo; preferimos
+    // confiar en el early-return del componente.
+    const aligned = alignOutlineToPorts(outline, { P1: piece.puertos.P1, P2: piece.puertos.P2 }, { posTolMm: 3, dirTolDeg: 2 });
+    if (aligned) return measured;
+    // si no alinea → caemos al generador clásico más abajo (no rompe proyecto previo).
+  }
+
   if (tipo === 'recta') return <LadderStraight piece={piece} product={product} selected={selected} onClick={onClick} />;
   if (tipo === 'T') return <LadderTee piece={piece} product={product} selected={selected} onClick={onClick} />;
   if (tipo === 'curva horizontal') return <LadderCurve piece={piece} product={product} selected={selected} onClick={onClick} />;

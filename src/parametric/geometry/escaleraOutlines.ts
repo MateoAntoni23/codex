@@ -41,6 +41,8 @@ export interface EscaleraOutline {
 }
 
 // ─── TRES-300-065-18-Z — tramo recto escalera 3000mm, ancho 300, ala 65 ────
+// Las aristas de 3000 mm (z_min/z_max) son los rails; los puertos son los
+// lados cortos (ancho = 298.9 mm nominal 300). P1 = x_min, P2 = x_max.
 export const TRES_300_065_18_Z: EscaleraOutline = {
   source_file: 'TRES-300-065-18-Z.STEP',
   bbox_local: { x_max: 3000.0, z_max: 298.9, y_height_mm: 65.0 },
@@ -51,10 +53,10 @@ export const TRES_300_065_18_Z: EscaleraOutline = {
     [0.0, 298.9],
   ],
   boundary_edges: [
-    { i: 0, a: [0.0, 0.0], b: [3000.0, 0.0], length_mm: 3000.0, midpoint: [1500.0, 0.0], outward_normal: [0.0, -1.0], boundary: 'z_min' },
-    { i: 1, a: [3000.0, 0.0], b: [3000.0, 298.9], length_mm: 298.9, midpoint: [3000.0, 149.45], outward_normal: [1.0, 0.0], boundary: 'x_max' },
-    { i: 2, a: [3000.0, 298.9], b: [0.0, 298.9], length_mm: 3000.0, midpoint: [1500.0, 298.9], outward_normal: [0.0, 1.0], boundary: 'z_max' },
+    // P1: boca en x_min — outward -X.
     { i: 3, a: [0.0, 298.9], b: [0.0, 0.0], length_mm: 298.9, midpoint: [0.0, 149.45], outward_normal: [-1.0, 0.0], boundary: 'x_min' },
+    // P2: boca en x_max — outward +X.
+    { i: 1, a: [3000.0, 0.0], b: [3000.0, 298.9], length_mm: 298.9, midpoint: [3000.0, 149.45], outward_normal: [1.0, 0.0], boundary: 'x_max' },
   ],
 };
 
