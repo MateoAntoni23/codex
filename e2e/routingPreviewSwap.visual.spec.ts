@@ -137,6 +137,16 @@ test.describe('Preview swap de producto — debe cambiar de curva a recto sin es
     const productSelect = page.locator('[data-codex-routing-product-select]');
     await productSelect.waitFor({ state: 'visible', timeout: 10_000 });
 
+    // Esperar a que el catálogo de compatibilidades esté cargado — si no, el
+    // selector sólo muestra el grupo sintético "Otros productos" (que se
+    // construye del paramétrico, sin fetch). TRPS entra a "Recomendados" sólo
+    // cuando compatibleIds trae la compat SAMET para CPS-90.P2.
+    await page.waitForFunction(() => {
+      const sel = document.querySelector('[data-codex-routing-product-select]') as HTMLSelectElement | null;
+      if (!sel) return false;
+      return Array.from(sel.options).some((o) => o.value === 'SAM_TRPS-300-22-Z');
+    }, { timeout: 15_000 });
+
     // Capturar todas las opciones disponibles en el dropdown — crítico para
     // documentar Objetivo 2 (listado estrecho al continuar desde curva).
     const availableOptions = await productSelect.evaluate((sel: HTMLSelectElement) => {

@@ -504,9 +504,16 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
           >
             {!selectedProductId && <option value="">— Elegí un producto —</option>}
             {compatibleProducts.length > 0 && (
-              <optgroup label="Recomendados — compatibilidad SAMET + modelo">
+              // Optgroups planos por familia (prefijo "Recomendados · ") en vez
+              // de anidar optgroups — el HTML no permite optgroup dentro de
+              // optgroup y el DOM resultante esconde opciones de select.options,
+              // bloqueando Playwright selectOption y la navegación por teclado.
+              <>
                 {Array.from(familyGroups.entries()).map(([famId, { name, acabado, products }]) => (
-                  <optgroup key={famId} label={acabado ? `  ${name} (${acabado})` : `  ${name}`}>
+                  <optgroup
+                    key={famId}
+                    label={`Recomendados · ${acabado ? `${name} (${acabado})` : name}`}
+                  >
                     {products.map((p) => (
                       <option key={p.producto_id} value={p.producto_id}>
                         {hasParametricRecipe(p) ? '◆ ' : '○ '}{formatProductOption(p)}
@@ -514,7 +521,7 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
                     ))}
                   </optgroup>
                 ))}
-              </optgroup>
+              </>
             )}
             {otherCandidates.length > 0 && (
               <optgroup label="Otros productos — requieren excepción con motivo">
