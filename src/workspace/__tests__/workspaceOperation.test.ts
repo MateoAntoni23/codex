@@ -19,6 +19,7 @@ import { describe, it, expect } from 'vitest';
 import {
   findPeExtensionProposal,
   planAddSegment,
+  planAddAccessory,
   applyOperation,
   type PendingSegmentAddition,
 } from '../workspaceOperation';
@@ -620,6 +621,148 @@ describe('pending candidate blocking', () => {
     // PE unchanged
     const cond = result.pe.conductores[0] as Record<string,unknown>;
     expect(cond.recorrido).toEqual(['SEG-1']);
+  });
+});
+
+// ─── planAddAccessory (TPS / XPS / CUPS) ─────────────────────────────────────
+
+describe('planAddAccessory', () => {
+  const TPS_PRODUCT = {
+    producto_id: 'SAM_TPS-300-Z',
+    descripcion_original: 'TPS-300-Z',
+    tipo_pieza: 'T',
+    ancho_nominal_mm: 300,
+    sku: 'TPS-300-Z',
+    ala_nominal_mm: 50,
+    familia_id: 'SAM-STP-Z',
+  } as unknown as import('../../tray/model').Product;
+
+  const XPS_PRODUCT = {
+    producto_id: 'SAM_XPS-300-Z',
+    descripcion_original: 'XPS-300-Z',
+    tipo_pieza: 'X',
+    ancho_nominal_mm: 300,
+    sku: 'XPS-300-Z',
+    ala_nominal_mm: 50,
+    familia_id: 'SAM-STP-Z',
+  } as unknown as import('../../tray/model').Product;
+
+  const CUPS_PRODUCT = {
+    producto_id: 'SAM_CUPS-300-A-Z',
+    descripcion_original: 'CUPS-300-A-Z',
+    tipo_pieza: 'curva vertical exterior',
+    ancho_nominal_mm: 300,
+    sku: 'CUPS-300-A-Z',
+    ala_nominal_mm: 50,
+    familia_id: 'SAM-STP-Z',
+  } as unknown as import('../../tray/model').Product;
+
+  const START_FROM_TRPS: StartPort = {
+    pieceId: 'SEG-1',
+    portName: 'P2',
+    pos: [3000, 0, 0],
+    dir: [1, 0, 0],
+  };
+
+  it('throws when compat.ok is false', () => {
+    const entrada = makeTrayInput({ piezas: [makePiece('SEG-1')] });
+    const bad: DirectCompatResult = { ...COMPAT_OK, ok: false };
+    expect(() =>
+      planAddAccessory(entrada, START_FROM_TRPS, TPS_PRODUCT, bad, 'tronco_P1', 'left'),
+    ).toThrow();
+  });
+
+  it('throws when product has no parametric recipe enabled', () => {
+    const entrada = makeTrayInput({ piezas: [makePiece('SEG-1')] });
+    const unknownProduct = { ...TPS_PRODUCT, producto_id: 'SAM_ZZZ-999', sku: 'ZZZ-999' } as import('../../tray/model').Product;
+    expect(() =>
+      planAddAccessory(entrada, START_FROM_TRPS, unknownProduct, COMPAT_OK, 'tronco_P1', 'left'),
+    ).toThrow();
+  });
+
+  it('TPS entering via tronco_P1: produces 3-port piece and connection uses tronco_P1', () => {
+    const entrada = makeTrayInput({ piezas: [makePiece('SEG-1')] });
+    const op = planAddAccessory(entrada, START_FROM_TRPS, TPS_PRODUCT, COMPAT_OK, 'tronco_P1', 'left');
+    expect(op.kind).toBe('add_segment');
+    expect(op.newPiece.producto_id).toBe('SAM_TPS-300-Z');
+    const portNames = Object.keys(op.newPiece.puertos).sort();
+    expect(portNames).toEqual(['boca_derivacion', 'tronco_P1', 'tronco_P2']);
+    expect(op.newConnection.a).toEqual(['SEG-1', 'P2']);
+    expect(op.newConnection.b[1]).toBe('tronco_P1');
+    // Puerto de entrada está en startPos (dentro de tolerancia).
+    const entryPos = op.newPiece.puertos['tronco_P1'].posicion_mm;
+    expect(Math.hypot(entryPos[0] - 3000, entryPos[1], entryPos[2])).toBeLessThan(1e-3);
+    // Normal del puerto de entrada opuesta a entryDir.
+    const entryDir = op.newPiece.puertos['tronco_P1'].direccion;
+    expect(entryDir[0]).toBeCloseTo(-1, 3);
+  });
+
+  it('TPS entering via boca_derivacion: tronco_P1 y tronco_P2 quedan libres y perpendiculares', () => {
+    const entrada = makeTrayInput({ piezas: [makePiece('SEG-1')] });
+    const op = planAddAccessory(entrada, START_FROM_TRPS, TPS_PRODUCT, COMPAT_OK, 'boca_derivacion', 'left');
+    expect(op.newConnection.b[1]).toBe('boca_derivacion');
+    const bocaDir = op.newPiece.puertos['boca_derivacion'].direccion;
+    expect(bocaDir[0]).toBeCloseTo(-1, 3); // opuesta a entryDir X+
+    // Los otros dos puertos deben ser perpendiculares al puerto de entrada
+    // (el "tronco" cruza perpendicular al eje de derivación).
+    const troncoP1Dir = op.newPiece.puertos['tronco_P1'].direccion;
+    const troncoP2Dir = op.newPiece.puertos['tronco_P2'].direccion;
+    const dot1 = troncoP1Dir[0] * bocaDir[0] + troncoP1Dir[1] * bocaDir[1];
+    const dot2 = troncoP2Dir[0] * bocaDir[0] + troncoP2Dir[1] * bocaDir[1];
+    expect(Math.abs(dot1)).toBeLessThan(1e-3);
+    expect(Math.abs(dot2)).toBeLessThan(1e-3);
+  });
+
+  it('XPS entering via P1_x_neg: 4-port piece, 3 bocas libres', () => {
+    const entrada = makeTrayInput({ piezas: [makePiece('SEG-1')] });
+    const op = planAddAccessory(entrada, START_FROM_TRPS, XPS_PRODUCT, COMPAT_OK, 'P1_x_neg', 'left');
+    const portNames = Object.keys(op.newPiece.puertos).sort();
+    expect(portNames).toEqual(['P1_x_neg', 'P2_x_pos', 'P3_z_neg', 'P4_z_pos']);
+    expect(op.newConnection.b[1]).toBe('P1_x_neg');
+  });
+
+  it('XPS entering via P4_z_pos: entry port rotated 90° alinea con -entryDir', () => {
+    const entrada = makeTrayInput({ piezas: [makePiece('SEG-1')] });
+    const op = planAddAccessory(entrada, START_FROM_TRPS, XPS_PRODUCT, COMPAT_OK, 'P4_z_pos', 'left');
+    // entryDir = +X mundo; normal de entrada en mundo debe ser −X.
+    const entryDir = op.newPiece.puertos['P4_z_pos'].direccion;
+    expect(entryDir[0]).toBeCloseTo(-1, 3);
+    expect(entryDir[1]).toBeCloseTo(0, 3);
+  });
+
+  it('CUPS entering via P1_horizontal: 2 bocas, la vertical está disponible', () => {
+    const entrada = makeTrayInput({ piezas: [makePiece('SEG-1')] });
+    const op = planAddAccessory(entrada, START_FROM_TRPS, CUPS_PRODUCT, COMPAT_OK, 'P1_horizontal', 'left');
+    const portNames = Object.keys(op.newPiece.puertos).sort();
+    expect(portNames).toEqual(['P1_horizontal', 'P2_vertical']);
+    expect(op.newConnection.b[1]).toBe('P1_horizontal');
+    // La boca vertical debe tener componente Z ≠ 0 en su dirección (transición a vertical).
+    const pv = op.newPiece.puertos['P2_vertical'].direccion;
+    expect(Math.abs(pv[2])).toBeGreaterThan(0.5);
+  });
+
+  it('CUPS entering via P2_vertical: lanza error por normal con componente Y local', () => {
+    const entrada = makeTrayInput({ piezas: [makePiece('SEG-1')] });
+    expect(() =>
+      planAddAccessory(entrada, START_FROM_TRPS, CUPS_PRODUCT, COMPAT_OK, 'P2_vertical', 'left'),
+    ).toThrow(/vertical pendiente/);
+  });
+
+  it('does not mutate the entrada', () => {
+    const entrada = makeTrayInput({ piezas: [makePiece('SEG-1')] });
+    const originalJson = JSON.stringify(entrada);
+    planAddAccessory(entrada, START_FROM_TRPS, TPS_PRODUCT, COMPAT_OK, 'tronco_P1', 'left');
+    expect(JSON.stringify(entrada)).toBe(originalJson);
+  });
+
+  it('applyOperation adds accessory piece and its connection', () => {
+    const entrada = makeTrayInput({ piezas: [makePiece('SEG-1')] });
+    const op = planAddAccessory(entrada, START_FROM_TRPS, TPS_PRODUCT, COMPAT_OK, 'tronco_P1', 'left');
+    const result = applyOperation(entrada, op, 'reject');
+    expect(result.piezas).toHaveLength(2);
+    expect(result.piezas[1].producto_id).toBe('SAM_TPS-300-Z');
+    expect(result.conexiones).toHaveLength(1);
+    expect(result.conexiones[0].b[1]).toBe('tronco_P1');
   });
 });
 

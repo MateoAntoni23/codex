@@ -144,6 +144,30 @@ describe('importWorkspace', () => {
     expect(reimport.projectV2.projectOrigin.x).toBe(1234);
   });
 
+  it('preserves excepciones_conexion workspace-only field through export/import', () => {
+    const trayWithException: TrayInput = {
+      ...TRAY_INPUT,
+      excepciones_conexion: {
+        'CON-001': {
+          motivo: 'Transición horizontal→vertical autorizada por proyectista',
+          confirmado_por: 'proyectista',
+          fecha_iso: '2026-11-08T12:00:00.000Z',
+          reason_code: 'compat_no_documentada',
+          producto_id: 'SAM_CUPS-300-A-Z',
+        },
+      },
+    } as TrayInput;
+    const json   = exportWorkspace([ELEMENT], EVIDENCE, DEFAULT_PROJECT_META, trayWithException);
+    const result = importWorkspace(json);
+    const persisted = (result.trayInput as Record<string, unknown>).excepciones_conexion as
+      | Record<string, Record<string, unknown>>
+      | undefined;
+    expect(persisted).toBeDefined();
+    expect(persisted!['CON-001'].motivo).toContain('Transición');
+    expect(persisted!['CON-001'].reason_code).toBe('compat_no_documentada');
+    expect(persisted!['CON-001'].producto_id).toBe('SAM_CUPS-300-A-Z');
+  });
+
   it('throws on non-JSON input', () => {
     expect(() => importWorkspace('not json')).toThrow('JSON');
   });

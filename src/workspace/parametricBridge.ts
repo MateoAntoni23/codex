@@ -54,7 +54,29 @@ export interface PlacedRecipe {
   readonly matrix: THREE.Matrix4;
   /** True cuando el transform incluye reflexión (winding invertido). */
   readonly mirrored: boolean;
+  /** Nombre del puerto por el que se entra (alineado con −entryDir). */
+  readonly entryPortName: string;
+  /**
+   * Todos los puertos de la receta colocados en el mundo. El primero coincide
+   * con el puerto de entrada; el resto son bocas libres disponibles para
+   * continuar el routing. Las entradas y las bocas restantes NO están ordenadas
+   * por nombre; el orden preserva la definición de la receta excepto por
+   * mover la entrada a la posición 0.
+   */
+  readonly ports: readonly PlacedPort[];
+  /**
+   * Alias legacy: puerto de entrada (igual a ports[0]). Para recetas 2-puerto
+   * horizontales coincide con el P1 geométrico; para 3+ puertos conserva el
+   * contrato de "puerto por el que entra la pieza nueva" que esperan los
+   * callers existentes.
+   */
   readonly p1: PlacedPort;
+  /**
+   * Alias legacy: siguiente puerto libre (ports[1]). Para recetas 2-puerto
+   * horizontales coincide con el P2 geométrico; para 3+ puertos devuelve la
+   * primera boca disponible — no toda la pieza se puede describir con sólo
+   * dos puertos, por lo que los callers de accesorios deben leer `ports`.
+   */
   readonly p2: PlacedPort;
 }
 
@@ -84,6 +106,9 @@ for (const entry of PARAMETRIC_CATALOG) {
 const SUPPORTED_PIECE_KINDS: ReadonlySet<PieceKind> = new Set([
   'tramo_recto',
   'curva_horizontal',
+  'derivacion_lateral',
+  'cruz',
+  'curva_vertical',
 ]);
 
 /**
@@ -299,14 +324,6 @@ function householderMatrixAroundPoint(
 
 // ─── Colocación de la receta en el mundo ────────────────────────────────────
 
-function findPort(ports: readonly PortDef[], name: string): PortDef {
-  const port = ports.find((p) => p.name === name);
-  if (!port) {
-    throw new Error(`parametricBridge: receta sin puerto '${name}'`);
-  }
-  return port;
-}
-
 /** Normaliza un vector 3D; devuelve copia unitaria, o el mismo si ya lo es. */
 function unit(v: readonly [number, number, number]): Vec3 {
   const len = Math.hypot(v[0], v[1], v[2]);
@@ -340,6 +357,39 @@ export function chiralityForTurn(turnDirection: 'left' | 'right'): Chirality {
 
 const HORIZONTAL_ENTRY_TOLERANCE = 1e-3;
 
+export interface PlaceOptions {
+  /**
+   * Nombre del puerto por el que entra la pieza (debe existir en recipe.ports).
+   * Si se omite, se usa la receta "clásica": 'P1' en recetas 2-puerto o el
+   * primer puerto si la receta sólo tiene uno con otro nombre. Las recetas
+   * de 3+ puertos (TPS, XPS, CUPS) DEBEN pasar este parámetro explícitamente.
+   */
+  readonly entryPortName?: string;
+}
+
+function resolveEntryPort(
+  recipe: GeometryRecipe,
+  entryPortName: string | undefined,
+): PortDef {
+  if (entryPortName) {
+    const port = recipe.ports.find((p) => p.name === entryPortName);
+    if (!port) {
+      throw new Error(
+        `parametricBridge.placeRecipe: receta sin puerto '${entryPortName}' (disponibles: ${recipe.ports.map((p) => p.name).join(', ')})`,
+      );
+    }
+    return port;
+  }
+  // Default legacy: preferir 'P1'; si la receta no lo tiene y sólo hay un
+  // puerto, usar ése — cualquier otra cosa requiere entryPortName explícito.
+  const p1 = recipe.ports.find((p) => p.name === 'P1');
+  if (p1) return p1;
+  if (recipe.ports.length === 1) return recipe.ports[0];
+  throw new Error(
+    `parametricBridge.placeRecipe: receta con ${recipe.ports.length} puertos (${recipe.ports.map((p) => p.name).join(', ')}) requiere entryPortName explícito`,
+  );
+}
+
 export function placeRecipe(
   product: Product,
   entry: ParametricEntry,
@@ -347,32 +397,41 @@ export function placeRecipe(
   entryDir: readonly [number, number, number],
   chirality: Chirality,
   overrides?: BuildRecipeOverrides,
+  options?: PlaceOptions,
 ): PlacedRecipe {
   const recipe = buildRecipeFromProduct(product, entry, overrides);
-  if (!recipe.extrudeAlongY) {
-    throw new Error(
-      `parametricBridge.placeRecipe: receta ${entry.recipe} no es horizontal (extrudeAlongY=false); scope actual sólo soporta tramo_recto y curva_horizontal`,
-    );
-  }
+  // Nota: ambos modos (extrudeAlongY true/false) comparten M_base. La única
+  // restricción real es que la normal local del puerto de entrada no tenga
+  // componente Y — eso se valida unos renglones más abajo via `entryDef.normal[1]`.
+  // Antes se bloqueaba toda receta vertical aquí; se removió porque CUPS
+  // (extrudeAlongY=false) se coloca correctamente cuando se entra por su
+  // boca horizontal (P1_horizontal, normal (-1,0,0) sin componente Y).
   if (Math.abs(entryDir[2]) > HORIZONTAL_ENTRY_TOLERANCE) {
     throw new Error(
       `parametricBridge.placeRecipe: entryDir no horizontal (Z=${entryDir[2]}); scope actual sólo acepta direcciones en el plano XY`,
     );
   }
 
-  const p1Def = findPort(recipe.ports, 'P1');
-  const p2Def = findPort(recipe.ports, 'P2');
+  const entryDef = resolveEntryPort(recipe, options?.entryPortName);
+  // La entrada por un puerto cuya normal tenga componente Y en el marco local
+  // implica una conexión vertical (pieza que entra desde arriba/abajo). Esto
+  // requiere un marco base distinto que todavía no está habilitado.
+  if (Math.abs(entryDef.normal[1]) > HORIZONTAL_ENTRY_TOLERANCE) {
+    throw new Error(
+      `parametricBridge.placeRecipe: puerto '${entryDef.name}' tiene normal con componente Y local (${entryDef.normal.join(', ')}); entrada vertical pendiente de habilitar`,
+    );
+  }
 
   const eDir = unit([entryDir[0], entryDir[1], 0]);
 
-  // Rotación alrededor de +Z mundo que alinea M_base · P1.normal con −eDir.
-  const { cos, sin } = phiForAlignment(p1Def.normal, eDir);
+  // Rotación alrededor de +Z mundo que alinea M_base · entry.normal con −eDir.
+  const { cos, sin } = phiForAlignment(entryDef.normal, eDir);
 
-  // Traslación para que world(P1.center) = startPos.
-  const p1WorldPre = rotateZ(applyMBase(p1Def.center), cos, sin);
-  const tx = startPos[0] - p1WorldPre[0];
-  const ty = startPos[1] - p1WorldPre[1];
-  const tz = startPos[2] - p1WorldPre[2];
+  // Traslación para que world(entry.center) = startPos.
+  const entryWorldPre = rotateZ(applyMBase(entryDef.center), cos, sin);
+  const tx = startPos[0] - entryWorldPre[0];
+  const ty = startPos[1] - entryWorldPre[1];
+  const tz = startPos[2] - entryWorldPre[2];
 
   // Transform base (local → mundo) como Matrix4 columna-major de THREE.
   // Columns are images of local basis vectors in world coordinates AFTER Rz(φ):
@@ -391,34 +450,41 @@ export function placeRecipe(
     ? householderMatrixAroundPoint(startPos, eDir).multiply(baseMatrix)
     : baseMatrix;
 
-  // Calcular puertos mundo aplicando finalMatrix a los centros y rotando las
-  // normales con la parte lineal (sin traslación). Para una reflexión la
-  // parte lineal es ortogonal con det=−1 pero sigue preservando longitudes.
-  const p1World = applyMatrixToPoint(finalMatrix, p1Def.center);
-  const p2World = applyMatrixToPoint(finalMatrix, p2Def.center);
+  // Calcular TODOS los puertos mundo aplicando finalMatrix a los centros y
+  // rotando las normales con la parte lineal (sin traslación). Para una
+  // reflexión la parte lineal es ortogonal con det=−1 pero sigue preservando
+  // longitudes.
+  const placedPorts: PlacedPort[] = recipe.ports.map((port) => ({
+    name: port.name,
+    pos: applyMatrixToPoint(finalMatrix, port.center),
+    outwardNormal: applyMatrixToDir(finalMatrix, port.normal),
+    ancho_mm: port.ancho_mm,
+    ala_mm: port.ala_mm,
+  }));
 
-  const p1NormalWorld = applyMatrixToDir(finalMatrix, p1Def.normal);
-  const p2NormalWorld = applyMatrixToDir(finalMatrix, p2Def.normal);
+  // Mover el puerto de entrada al índice 0 preservando el orden del resto.
+  const entryIdx = placedPorts.findIndex((p) => p.name === entryDef.name);
+  const orderedPorts =
+    entryIdx === 0
+      ? placedPorts
+      : [
+          placedPorts[entryIdx],
+          ...placedPorts.slice(0, entryIdx),
+          ...placedPorts.slice(entryIdx + 1),
+        ];
+
+  const legacyP1 = orderedPorts[0];
+  const legacyP2 = orderedPorts[1] ?? orderedPorts[0];
 
   return {
     entry,
     recipe,
     matrix: finalMatrix,
     mirrored,
-    p1: {
-      name: 'P1',
-      pos: p1World,
-      outwardNormal: p1NormalWorld,
-      ancho_mm: p1Def.ancho_mm,
-      ala_mm: p1Def.ala_mm,
-    },
-    p2: {
-      name: 'P2',
-      pos: p2World,
-      outwardNormal: p2NormalWorld,
-      ancho_mm: p2Def.ancho_mm,
-      ala_mm: p2Def.ala_mm,
-    },
+    entryPortName: entryDef.name,
+    ports: orderedPorts,
+    p1: legacyP1,
+    p2: legacyP2,
   };
 }
 

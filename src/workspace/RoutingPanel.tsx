@@ -11,7 +11,7 @@
  *
  * Undo/redo: exposed in the panel header; both invalidate motor results.
  */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTrayStore } from '../tray/store';
 import { useWorkspaceStore } from './useWorkspaceStore';
 import { useRoutingStore } from './useRoutingStore';
@@ -29,7 +29,7 @@ import {
   hasSelfPortEquivalence,
 } from './routingRules';
 import { buildSegmentPiece, generateSegmentId } from './addTraySegment';
-import { planAddSegment, planAddCurve, applyOperation, type PeExtensionProposal } from './workspaceOperation';
+import { planAddSegment, planAddCurve, planAddAccessory, applyOperation, type PeExtensionProposal } from './workspaceOperation';
 import {
   isHorizontalCurve,
   isInteractivelyInsertable,
@@ -37,7 +37,7 @@ import {
   getLimitationReason,
   formatProductOption,
 } from './pieceClassification';
-import { hasParametricRecipe, resolveRecipe, placeRecipe, chiralityForTurn } from './parametricBridge';
+import { hasParametricRecipe, resolveRecipe, placeRecipe, chiralityForTurn, buildRecipeFromProduct } from './parametricBridge';
 import { buildContinuationCandidates, type ContinuationCandidate } from './continuationCandidates';
 
 // ─── PE extension proposal widget ────────────────────────────────────────────
@@ -168,8 +168,24 @@ function StepSelectingPort() {
 
 // ─── Step 2: configuring segment ─────────────────────────────────────────────
 
+/**
+ * Metadatos de una excepción confirmada en el workspace. Se persisten en
+ * `TrayInput.excepciones_conexion[conexion_id]` para dejar trazabilidad de
+ * decisiones manuales (producto no SAMET-compatible, piece_kind pendiente),
+ * sin contaminar el payload que ve el motor Python (`WS_ONLY` los strippea).
+ */
+export interface PendingExceptionMetadata {
+  motivo: string;
+  reason_code: string;
+  producto_id: string;
+}
+
 function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
-  onConfirmDirect: (peDecision: 'accept' | 'reject', peChosenConductorIdx: number | null) => void;
+  onConfirmDirect: (
+    peDecision: 'accept' | 'reject',
+    peChosenConductorIdx: number | null,
+    exception: PendingExceptionMetadata | null,
+  ) => void;
   onCancel: () => void;
 }) {
   const context           = useTrayStore((s) => s.context);
@@ -179,10 +195,12 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
   const previewLengthMm   = useRoutingStore((s) => s.previewLengthMm);
   const snapToAxis        = useRoutingStore((s) => s.snapToAxis);
   const turnDirection     = useRoutingStore((s) => s.turnDirection);
+  const entryPortName     = useRoutingStore((s) => s.entryPortName);
   const setProduct        = useRoutingStore((s) => s.setProduct);
   const setLength         = useRoutingStore((s) => s.setLength);
   const toggleSnap        = useRoutingStore((s) => s.toggleSnap);
   const setTurnDirection  = useRoutingStore((s) => s.setTurnDirection);
+  const setEntryPortName  = useRoutingStore((s) => s.setEntryPortName);
 
   const [error, setError] = useState<string | null>(null);
   const [peDecision, setPeDecision] = useState<'accept' | 'reject'>('accept');
@@ -310,6 +328,67 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
 
   const isCurve = isHorizontalCurve(selectedProduct);
 
+  // Receta paramétrica del producto seleccionado para derivar la lista de
+  // bocas de entrada (sólo se usa cuando el piece_kind lo exige, ver abajo).
+  const selectedRecipe = useMemo(() => {
+    if (!selectedProduct) return null;
+    const entry = resolveRecipe(selectedProduct);
+    if (!entry) return null;
+    try {
+      return { entry, recipe: buildRecipeFromProduct(selectedProduct, entry) };
+    } catch {
+      return null;
+    }
+  }, [selectedProduct]);
+
+  // Piece_kind requiere elegir boca de entrada explícitamente (3+ bocas o
+  // curva vertical con dos bocas semánticamente distintas horizontal/vertical).
+  const needsEntryPortChoice = useMemo(() => {
+    const kind = selectedRecipe?.entry.piece_kind;
+    return (
+      kind === 'derivacion_lateral' || kind === 'cruz' || kind === 'curva_vertical'
+    );
+  }, [selectedRecipe]);
+
+  // Bocas candidatas para entrada: todas las operacionales de la receta. Las
+  // que tienen componente Y local en la normal se marcan como no disponibles
+  // (entrada vertical pendiente de habilitar en el puente).
+  const entryPortOptions = useMemo(() => {
+    if (!selectedRecipe) return [];
+    return selectedRecipe.recipe.ports.map((p) => {
+      const hasYNormal = Math.abs(p.normal[1]) > 1e-3;
+      return {
+        name: p.name,
+        normal: p.normal,
+        supported: !hasYNormal,
+        reasonUnsupported: hasYNormal
+          ? 'Entrada por boca con normal vertical (pendiente de habilitar).'
+          : null,
+      };
+    });
+  }, [selectedRecipe]);
+
+  // Preseleccionar boca al elegir un producto que la exija. Preferimos la
+  // primera soportada; si no hay ninguna soportada quedamos en null (el UI
+  // bloquea confirmar y muestra el motivo).
+  const effectiveEntryPortName = useMemo(() => {
+    if (!needsEntryPortChoice) return null;
+    const match = entryPortOptions.find((o) => o.name === entryPortName && o.supported);
+    if (match) return match.name;
+    const firstSupported = entryPortOptions.find((o) => o.supported);
+    return firstSupported?.name ?? null;
+  }, [needsEntryPortChoice, entryPortName, entryPortOptions]);
+
+  // Mantener sincronizado el store con el default cuando cambia el producto o
+  // la receta propone otra lista de bocas soportadas (p.ej. CUPS: la vertical
+  // está bloqueada; el default debe ser P1_horizontal).
+  useEffect(() => {
+    if (!needsEntryPortChoice) return;
+    if (effectiveEntryPortName && effectiveEntryPortName !== entryPortName) {
+      setEntryPortName(effectiveEntryPortName);
+    }
+  }, [needsEntryPortChoice, effectiveEntryPortName, entryPortName, setEntryPortName]);
+
   const compat = useMemo(() => {
     if (!existingProduct || !selectedProduct || !context || !startPort) return null;
     return checkDirectCompatibility(
@@ -369,6 +448,14 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
   // Plan the pending operation for PE proposal preview (only when all inputs valid)
   const pendingOp = useMemo(() => {
     if (!compat?.ok || !selectedProduct || !entrada || !startPort) return null;
+    if (needsEntryPortChoice) {
+      if (!effectiveEntryPortName) return null;
+      try {
+        return planAddAccessory(entrada, startPort, selectedProduct, compat, effectiveEntryPortName, turnDirection);
+      } catch {
+        return null;
+      }
+    }
     if (isCurve) {
       try {
         return planAddCurve(entrada, startPort, selectedProduct, compat, turnDirection);
@@ -382,7 +469,7 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
     } catch {
       return null;
     }
-  }, [compat, selectedProduct, entrada, startPort, effectiveDir, previewLengthMm, isCurve, turnDirection]);
+  }, [compat, selectedProduct, entrada, startPort, effectiveDir, previewLengthMm, isCurve, turnDirection, needsEntryPortChoice, effectiveEntryPortName]);
 
   const handleConfirm = () => {
     setError(null);
@@ -399,7 +486,12 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
       }
     }
     if (!compat?.ok && !selectedOtherCandidate) { setError(compat?.reason ?? 'Sin compatibilidad documentada.'); return; }
-    if (!isCurve) {
+    if (needsEntryPortChoice) {
+      if (!effectiveEntryPortName) {
+        setError('No hay boca de entrada habilitada para este accesorio desde este puerto.');
+        return;
+      }
+    } else if (!isCurve) {
       if (snapToAxis && snapWarnAngle !== null) {
         setError('La dirección del puerto no coincide con el eje más cercano — desactivá el ajuste al eje para continuar.');
         return;
@@ -410,7 +502,15 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
       setError('Elegí un conductor PE o seleccioná "No extender".');
       return;
     }
-    onConfirmDirect(peDecision, peChosenConductorIdx);
+    const exception: PendingExceptionMetadata | null =
+      selectedOtherCandidate && selectedProduct
+        ? {
+            motivo: exceptionMotive.trim(),
+            reason_code: selectedOtherCandidate.reasonCode,
+            producto_id: selectedProduct.producto_id,
+          }
+        : null;
+    onConfirmDirect(peDecision, peChosenConductorIdx, exception);
   };
 
   if (!startPort) return null;
@@ -657,6 +757,49 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
         </div>
       )}
 
+      {/* Boca de entrada (TPS/XPS/CUPS) — se muestra sólo cuando el piece_kind
+          lo exige. Mantiene el default sincronizado con la primera boca
+          soportada (ver effect arriba) y bloquea las que requieren entrada
+          vertical (pendiente de habilitar). */}
+      {needsEntryPortChoice && entryPortOptions.length > 0 && (
+        <div style={{ marginBottom: 10 }}>
+          <div style={{ color: '#8888aa', marginBottom: 4 }}>
+            Boca de entrada del accesorio
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {entryPortOptions.map((opt) => {
+              const selected = effectiveEntryPortName === opt.name;
+              return (
+                <button
+                  key={opt.name}
+                  data-codex-routing-entry-port={opt.name}
+                  onClick={() => opt.supported && setEntryPortName(opt.name)}
+                  disabled={!opt.supported}
+                  style={{
+                    padding: '4px 8px', fontSize: 11, borderRadius: 3, textAlign: 'left',
+                    cursor: opt.supported ? 'pointer' : 'not-allowed',
+                    opacity: opt.supported ? 1 : 0.5,
+                    background: selected ? '#1a2235' : '#222233',
+                    color: selected ? '#99ccff' : opt.supported ? '#aaaabb' : '#886644',
+                    border: `1px solid ${selected ? '#3355aa' : '#334455'}`,
+                  }}
+                >
+                  <span style={{ fontFamily: 'monospace' }}>{opt.name}</span>
+                  <span style={{ marginLeft: 6, color: '#667788', fontSize: 10 }}>
+                    normal local ({opt.normal.map((v) => v.toFixed(0)).join(', ')})
+                  </span>
+                  {!opt.supported && opt.reasonUnsupported && (
+                    <div style={{ color: '#cc8844', fontSize: 9, marginTop: 2 }}>
+                      {opt.reasonUnsupported}
+                    </div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* PE extension proposal (only when operation is fully planned) */}
       {pendingOp?.peExtension && (
         <PeExtensionWidget
@@ -691,8 +834,8 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
         </div>
       )}
 
-      {/* Length input (straight segments only) */}
-      {!isCurve && (
+      {/* Length input (straight segments only — no length on curves/accesorios) */}
+      {!isCurve && !needsEntryPortChoice && (
         <div style={{ marginBottom: 8 }}>
           <label style={{ color: '#8888aa', display: 'block', marginBottom: 3 }}>
             Longitud del tramo (mm)
@@ -710,7 +853,7 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
       )}
 
       {/* Axis snap (straight segments only) */}
-      {!isCurve && (
+      {!isCurve && !needsEntryPortChoice && (
         <>
           <label style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: snapWarnAngle ? 4 : 10, cursor: 'pointer', fontSize: 11, color: '#8888aa' }}>
             <input type="checkbox" checked={snapToAxis} onChange={toggleSnap} />
@@ -739,10 +882,14 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
           style={{
             flex: 1, padding: '5px 0', fontSize: 12, background: '#1f3322',
             color: 'white', border: '1px solid #336644', borderRadius: 3, cursor: 'pointer',
-            opacity: (!isCurve && snapToAxis && snapWarnAngle !== null) ? 0.5 : 1,
+            opacity: (!isCurve && !needsEntryPortChoice && snapToAxis && snapWarnAngle !== null) ? 0.5 : 1,
           }}
           onClick={handleConfirm}
-          disabled={!selectedProduct || (!isCurve && snapToAxis && snapWarnAngle !== null)}
+          disabled={
+            !selectedProduct ||
+            (!isCurve && !needsEntryPortChoice && snapToAxis && snapWarnAngle !== null) ||
+            (needsEntryPortChoice && !effectiveEntryPortName)
+          }
         >
           Confirmar continuación
         </button>
@@ -957,6 +1104,7 @@ export function RoutingPanel() {
   const previewLengthMm   = useRoutingStore((s) => s.previewLengthMm);
   const snapToAxis        = useRoutingStore((s) => s.snapToAxis);
   const turnDirection     = useRoutingStore((s) => s.turnDirection);
+  const entryPortName     = useRoutingStore((s) => s.entryPortName);
   const reductionProductId = useRoutingStore((s) => s.reductionProductId);
   const reductionLengthMm = useRoutingStore((s) => s.reductionLengthMm);
   const reductionPortToExisting = useRoutingStore((s) => s.reductionPortToExisting);
@@ -974,8 +1122,16 @@ export function RoutingPanel() {
    * Direct commit: validates, plans the operation (planAddSegment), applies it
    * (applyOperation) atomically, and writes the result via a single trayEdit().
    * peDecision and peChosenConductorIdx come from the user's explicit choices in step 2.
+   * `exception`, cuando no es null, guarda el motivo documentado en
+   * `excepciones_conexion[conexion_id]` del TrayInput persistido. Sobrevive a
+   * export/import y undo/redo por estar incluido en el `structuredClone` que
+   * hace el store, y queda stripeado antes de llegar al motor.
    */
-  const commitDirect = (peDecision: 'accept' | 'reject', peChosenConductorIdx: number | null) => {
+  const commitDirect = (
+    peDecision: 'accept' | 'reject',
+    peChosenConductorIdx: number | null,
+    exception: PendingExceptionMetadata | null,
+  ) => {
     setCommitError(null);
     if (!entrada || !startPort) return;
 
@@ -1004,11 +1160,22 @@ export function RoutingPanel() {
     if (!compat.ok) { setCommitError(compat.reason); return; }
 
     const isSelectedCurve = isHorizontalCurve(selectedProductForComp);
+    const selectedRecipeEntry = resolveRecipe(selectedProductForComp);
+    const selectedIsAccessory =
+      selectedRecipeEntry?.piece_kind === 'derivacion_lateral' ||
+      selectedRecipeEntry?.piece_kind === 'cruz' ||
+      selectedRecipeEntry?.piece_kind === 'curva_vertical';
 
     try {
       // Plan the operation (pure, no side effects)
       let op;
-      if (isSelectedCurve) {
+      if (selectedIsAccessory) {
+        if (!entryPortName) {
+          setCommitError('Elegí la boca de entrada del accesorio antes de confirmar.');
+          return;
+        }
+        op = planAddAccessory(entrada, startPort, selectedProductForComp, compat, entryPortName, turnDirection);
+      } else if (isSelectedCurve) {
         op = planAddCurve(entrada, startPort, selectedProductForComp, compat, turnDirection);
       } else {
         if (previewLengthMm <= 0) { setCommitError('La longitud debe ser mayor que 0.'); return; }
@@ -1038,6 +1205,25 @@ export function RoutingPanel() {
 
       // Apply all-or-nothing
       const nextEntrada = applyOperation(entrada, op, peDecision);
+      // Si se confirmó con excepción, anotarla en el campo workspace-only
+      // keyed por conexion_id; conserva motivo, reason_code, producto_id,
+      // autor y timestamp. La presencia del motivo se validó en Step 2.
+      if (exception && exception.motivo.length > 0) {
+        const existing =
+          (nextEntrada as Record<string, unknown>).excepciones_conexion as
+            | Record<string, unknown>
+            | undefined;
+        (nextEntrada as Record<string, unknown>).excepciones_conexion = {
+          ...(existing ?? {}),
+          [op.newConnection.conexion_id]: {
+            motivo: exception.motivo,
+            confirmado_por: 'proyectista',
+            fecha_iso: new Date().toISOString(),
+            reason_code: exception.reason_code,
+            producto_id: exception.producto_id,
+          },
+        };
+      }
       // Single atomic write to store (pushes to history, clears future)
       trayEdit(nextEntrada);
       selectTray(op.newPiece.instancia_id);

@@ -336,6 +336,83 @@ export function planAddCurve(
 }
 
 /**
+ * Plans an accessory addition (TPS/XPS/CUPS) from a free port.
+ *
+ * El flujo paramétrico resuelve la receta del producto y la coloca usando la
+ * boca de entrada elegida (`entryPortName`), que pasa a formar parte de la
+ * conexión con la pieza existente. El resto de las bocas (operacionales) se
+ * exponen en la pieza resultante con los nombres de la receta — por ejemplo
+ * TPS persiste `tronco_P1`, `tronco_P2`, `boca_derivacion`, XPS persiste
+ * `P1_x_neg`..`P4_z_pos`, CUPS persiste `P1_horizontal` / `P2_vertical`.
+ *
+ * `turnDirection` se usa para resolver la chiralidad en recetas con quiralidad
+ * geométrica relevante (hoy sólo curvas); para TPS/XPS/CUPS no modifica la
+ * colocación pero se mantiene en la firma para uniformidad con planAddCurve.
+ *
+ * Throws cuando compat.ok=false, el producto no tiene receta paramétrica, o
+ * la receta no acepta `entryPortName` (p. ej. normal con componente Y local).
+ */
+export function planAddAccessory(
+  entrada: TrayInput,
+  startPort: StartPort,
+  newProduct: Product,
+  compat: DirectCompatResult,
+  entryPortName: string,
+  turnDirection: 'left' | 'right',
+): PendingSegmentAddition {
+  if (!compat.ok) throw new Error('planAddAccessory: compat.ok must be true');
+
+  const parametricEntry = resolveRecipe(newProduct);
+  if (!parametricEntry) {
+    throw new Error(
+      `planAddAccessory: producto ${newProduct.sku ?? newProduct.producto_id} no tiene receta paramétrica habilitada`,
+    );
+  }
+
+  const pieceIds = new Set(entrada.piezas.map((p) => p.instancia_id));
+  const connIds = new Set(entrada.conexiones.map((c) => c.conexion_id));
+
+  const newId = generateCurveId(pieceIds);
+  const chirality = chiralityForTurn(turnDirection);
+  const placed = placeRecipe(
+    newProduct,
+    parametricEntry,
+    startPort.pos,
+    startPort.dir,
+    chirality,
+    undefined,
+    { entryPortName },
+  );
+
+  const puertos: Record<string, { posicion_mm: [number, number, number]; direccion: [number, number, number] }> = {};
+  for (const port of placed.ports) {
+    puertos[port.name] = {
+      posicion_mm: [port.pos[0], port.pos[1], port.pos[2]],
+      direccion: [port.outwardNormal[0], port.outwardNormal[1], port.outwardNormal[2]],
+    };
+  }
+
+  const newPiece: Piece = {
+    instancia_id: newId,
+    producto_id: newProduct.producto_id,
+    puertos,
+  };
+
+  const connId = generateConnectionId(connIds);
+  const newConnection = {
+    conexion_id: connId,
+    a: [startPort.pieceId, startPort.portName] as [string, string],
+    b: [newId, entryPortName] as [string, string],
+  };
+
+  const peExtension = findPeExtensionProposal(
+    entrada, startPort.pieceId, startPort.portName, newId,
+  );
+
+  return { kind: 'add_segment', newPiece, newConnection, resolution: compat, peExtension };
+}
+
+/**
  * Longitud de arco deducida del P1 y P2 reales colocados por el puente y del
  * ángulo nominal de la curva. R_chord = ‖P2−P1‖; R_centerline = chord / (2·sin(θ/2));
  * arc = R·θ. Se calcula en vez de aproximar al valor de fallback (300+ancho/2).

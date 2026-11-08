@@ -142,12 +142,14 @@ function ParametricPreview({
   entryDir,
   turnDirection,
   overrideLengthMm,
+  entryPortName,
 }: {
   product: Product;
   startPos: BridgeVec3;
   entryDir: BridgeVec3;
   turnDirection: 'left' | 'right';
   overrideLengthMm?: number | null;
+  entryPortName?: string | null;
 }) {
   const data = useMemo(() => {
     const entry = resolveRecipe(product);
@@ -159,7 +161,8 @@ function ParametricPreview({
       const chirality = entry.piece_kind === 'curva_horizontal'
         ? chiralityForTurn(turnDirection)
         : 'native';
-      const placed = placeRecipe(product, entry, startPos, entryDir, chirality, overrides);
+      const placeOptions = entryPortName ? { entryPortName } : undefined;
+      const placed = placeRecipe(product, entry, startPos, entryDir, chirality, overrides, placeOptions);
       const geom = buildLocalMesh(placed.recipe);
       const matrix = new THREE.Matrix4().multiplyMatrices(MM_TO_VIEWER, placed.matrix);
       logPlacement(`preview (${product.sku})`, {
@@ -176,7 +179,7 @@ function ParametricPreview({
     } catch {
       return null;
     }
-  }, [product, startPos[0], startPos[1], startPos[2], entryDir[0], entryDir[1], entryDir[2], turnDirection, overrideLengthMm]);
+  }, [product, startPos[0], startPos[1], startPos[2], entryDir[0], entryDir[1], entryDir[2], turnDirection, overrideLengthMm, entryPortName]);
 
   const meshRef = useRef<THREE.Mesh | null>(null);
 
@@ -252,6 +255,7 @@ export function RoutingObjects() {
   const snapToAxis      = useRoutingStore((s) => s.snapToAxis);
   const turnDirection   = useRoutingStore((s) => s.turnDirection);
   const selectedProductId = useRoutingStore((s) => s.selectedProductId);
+  const entryPortName   = useRoutingStore((s) => s.entryPortName);
   const hoverPiece      = useRoutingStore((s) => s.hoverPiece);
   const selectStartPort = useRoutingStore((s) => s.selectStartPort);
 
@@ -390,6 +394,7 @@ export function RoutingObjects() {
           entryDir={parametricPreview.entryDir}
           turnDirection={turnDirection}
           overrideLengthMm={parametricPreview.overrideLengthMm}
+          entryPortName={entryPortName}
         />
       )}
 

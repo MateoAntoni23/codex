@@ -4,7 +4,7 @@
  * Verifica la clasificación recommended / other y las razones explícitas
  * frente a:
  *   - compatibilidad catalográfica presente (recommended).
- *   - piece_kind no soportado hoy en el flujo interactivo (DCPS/XPS/CUPS):
+ *   - piece_kind no soportado hoy en el flujo interactivo (TPS/XPS/CUPS):
  *     aún con compat catálogo, se marca 'kind_pendiente_insercion'.
  *   - productos paramétricos SIN compat catálogo (other con razón
  *     'compat_no_documentada' + requiresException=true).
@@ -51,12 +51,12 @@ const CPS_300_45: Product = {
   familia_id: 'SAM-STP-Z',
 } as unknown as Product;
 
-const DCPS_300: Product = {
-  producto_id: 'SAM_DCPS-300-Z',
-  descripcion_original: 'DCPS-300-Z',
+const TPS_300: Product = {
+  producto_id: 'SAM_TPS-300-Z',
+  descripcion_original: 'TPS-300-Z',
   tipo_pieza: 'T',
   ancho_nominal_mm: 300,
-  sku: 'DCPS-300-Z',
+  sku: 'TPS-300-Z',
   ala_nominal_mm: 50,
   familia_id: 'SAM-STP-Z',
 } as unknown as Product;
@@ -88,7 +88,7 @@ const TRPS_450: Product = {
   ancho_nominal_mm: 450,
 } as unknown as Product;
 
-const CATALOG = [TRPS_300, CPS_300_45, CPS_300_90, DCPS_300, XPS_300, CUPS_300_A, TRPS_450];
+const CATALOG = [TRPS_300, CPS_300_45, CPS_300_90, TPS_300, XPS_300, CUPS_300_A, TRPS_450];
 
 describe('buildContinuationCandidates', () => {
   it('desde un recto (TRPS.P2) con compat para TRPS y CPS: ambos en recommended, TRPS primero', () => {
@@ -121,20 +121,18 @@ describe('buildContinuationCandidates', () => {
     expect(recommended[0].product.producto_id).toBe('SAM_TRPS-300-22-Z');
   });
 
-  it('compat declarado para DCPS pero piece_kind no habilitado: cae en other con kind_pendiente_insercion', () => {
-    const compat = new Set(['SAM_DCPS-300-Z']);
+  it('TPS con compat catálogo + piece_kind habilitado: cae en recommended e insertable', () => {
+    const compat = new Set(['SAM_TPS-300-Z']);
     const res = buildContinuationCandidates({
       existingProduct: TRPS_300,
       existingPortName: 'P2',
       catalogProducts: CATALOG,
       compatibleIds: compat,
     });
-    const dcps = res.find((c) => c.product.producto_id === 'SAM_DCPS-300-Z');
-    expect(dcps).toBeDefined();
-    expect(dcps!.category).toBe('other');
-    expect(dcps!.reasonCode).toBe('kind_pendiente_insercion');
-    expect(dcps!.hasParametricModel).toBe(true);
-    expect(dcps!.insertionSupported).toBe(false);
+    const tps = res.find((c) => c.product.producto_id === 'SAM_TPS-300-Z');
+    expect(tps).toBeDefined();
+    expect(tps!.category).toBe('recommended');
+    expect(tps!.insertionSupported).toBe(true);
   });
 
   it('producto paramétrico del mismo ancho SIN compat catálogo entra en other con compat_no_documentada', () => {
@@ -195,7 +193,7 @@ describe('buildContinuationCandidates', () => {
     expect(recommended[0].product.producto_id).toBe('SAM_TRPS-300-22-Z');
   });
 
-  it('CUPS vertical siempre entra en other (sin importar compat): piece_kind o motivo', () => {
+  it('CUPS con compat catálogo + piece_kind habilitado: cae en recommended; sin compat cae en other con excepción', () => {
     const compatWith = new Set(['SAM_CUPS-300-A-Z']);
     const resWith = buildContinuationCandidates({
       existingProduct: TRPS_300,
@@ -204,8 +202,8 @@ describe('buildContinuationCandidates', () => {
       compatibleIds: compatWith,
     });
     const cupsWith = resWith.find((c) => c.product.producto_id === 'SAM_CUPS-300-A-Z');
-    expect(cupsWith!.category).toBe('other');
-    expect(cupsWith!.insertionSupported).toBe(false);
+    expect(cupsWith!.category).toBe('recommended');
+    expect(cupsWith!.insertionSupported).toBe(true);
 
     const compatWithout = new Set<string>();
     const resWithout = buildContinuationCandidates({

@@ -30,6 +30,13 @@ export interface RoutingState {
   /** Turn direction for horizontal curve insertion. */
   turnDirection: 'left' | 'right';
 
+  /**
+   * Para accesorios con 3+ bocas (TPS, XPS, CUPS) — nombre del puerto de la
+   * pieza nueva por el que entra la conexión con el puerto origen. En
+   * rectos/curvas (2 puertos) se ignora y se asume 'P1'.
+   */
+  entryPortName: string | null;
+
   activate(): void;
   deactivate(): void;
   hoverPiece(id: string | null): void;
@@ -42,6 +49,7 @@ export interface RoutingState {
   setReductionLength(mm: number): void;
   setReductionPortToExisting(port: string): void;
   setTurnDirection(dir: 'left' | 'right'): void;
+  setEntryPortName(name: string | null): void;
   back(): void;
 }
 
@@ -57,9 +65,10 @@ export const useRoutingStore = create<RoutingState>((set) => ({
   reductionLengthMm: 300,
   reductionPortToExisting: '',
   turnDirection: 'left',
+  entryPortName: null,
 
   activate: () =>
-    set({ active: true, step: 'selectingPort', startPort: null, hoveredPieceId: null, selectedProductId: '' }),
+    set({ active: true, step: 'selectingPort', startPort: null, hoveredPieceId: null, selectedProductId: '', entryPortName: null }),
 
   deactivate: () =>
     set({
@@ -69,6 +78,7 @@ export const useRoutingStore = create<RoutingState>((set) => ({
       hoveredPieceId: null,
       reductionProductId: null,
       reductionPortToExisting: '',
+      entryPortName: null,
     }),
 
   hoverPiece: (id) => set({ hoveredPieceId: id }),
@@ -78,9 +88,9 @@ export const useRoutingStore = create<RoutingState>((set) => ({
   // preseleccionaba el producto de la pieza origen, lo que provocaba un
   // preview con la forma de la pieza origen incluso cuando el inspector
   // mostraba otro SKU: ver fix stale-preview y routingPreviewSwap spec).
-  selectStartPort: (port) => set({ startPort: port, step: 'configuringSegment', selectedProductId: '' }),
+  selectStartPort: (port) => set({ startPort: port, step: 'configuringSegment', selectedProductId: '', entryPortName: null }),
 
-  setProduct: (id) => set({ selectedProductId: id }),
+  setProduct: (id) => set({ selectedProductId: id, entryPortName: null }),
 
   setLength: (mm) => set({ previewLengthMm: mm }),
 
@@ -96,11 +106,13 @@ export const useRoutingStore = create<RoutingState>((set) => ({
 
   setTurnDirection: (dir) => set({ turnDirection: dir }),
 
+  setEntryPortName: (name) => set({ entryPortName: name }),
+
   back: () =>
     set((s) => {
       if (s.step === 'confirmingReduction') {
         return { step: 'configuringSegment' as RoutingStep };
       }
-      return { step: 'selectingPort' as RoutingStep, startPort: null, selectedProductId: '' };
+      return { step: 'selectingPort' as RoutingStep, startPort: null, selectedProductId: '', entryPortName: null };
     }),
 }));

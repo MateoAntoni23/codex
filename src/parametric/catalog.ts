@@ -268,31 +268,37 @@ const RAW_ENTRIES: readonly {
     volume_reconstruction_mm3: 2375093.49,
   },
   {
-    recipe: 'DCPS-300-Z.STEP',
+    // Identificación corregida por el usuario (2026-11): el archivo aportado
+    // `DCPS-300-Z.STEP` modela geométricamente un TPS-300-Z (tee simétrica,
+    // tronco cortado) y no un DCPS (derivación lateral sin corte del tronco
+    // principal). Los GLB en disco mantienen el nombre DCPS-* por ser el
+    // artefacto físico — se mantienen para no tocar tooling de step_parametric;
+    // la receta y el SKU operativo ya corresponden a TPS.
+    recipe: 'TPS-300-Z.STEP',
     piece_kind: 'derivacion_lateral',
     original_glb_url: '/parametric/originals_glb/DCPS-300-Z.glb',
     original_bbox_span_mm: [449.5, 65, 375.15],
     original_volume_mm3: 10378217.58,
     recon: {
       label: 'Reconstrucción paramétrica (polígono medido, 10 vértices)',
-      sku: 'DCPS-300-Z',
+      sku: 'TPS-300-Z',
       glb_url: '/parametric/reconstructions/DCPS-300-Z__recon.glb',
       params: { ancho_mm: 300, ala_mm: 50, espesor_mm: 0.71 },
       notes: [
         'Polígono faceteado del STEP de referencia con chaflanes 45° en esquinas interiores.',
         'Las TRES bocas tienen el ancho completo del fitting (el modelo previo truncaba las del tronco a 75 mm).',
         'ala_mm 50 por catálogo (familia SAM-STP-Z). bbox Y del STEP aportado = 65 mm — divergencia explícita.',
-        'IDENTIFICACIÓN EN REVISIÓN: el polígono medido es simétrico en X (v0↔v7, v1↔v6, v2↔v5, v3↔v4); un DCPS es asimétrico, una T simétrica (TPS) sí lo es. Archivo nombrado `DCPS-300-Z.STEP` pero forma compatible con TPS. SKU preservado hasta contrastar con maestro oficial SAMET (no afectar BOM/compatibilidades).',
+        'TPS (tee simétrica): el polígono medido es simétrico en X (v0↔v7, v1↔v6, v2↔v5, v3↔v4). Confirmado por el usuario. DCPS (derivación sin corte del tronco) queda pendiente — sin modelo paramétrico cargado.',
       ],
     },
     variant: {
       label: 'Variante ancho=450 (escala uniforme desde origen)',
-      sku: 'DCPS-450-Z',
+      sku: 'TPS-450-Z',
       glb_url: '/parametric/variants/DCPS-450-Z__variante.glb',
       params: { ancho_mm: 450, ala_mm: 50, espesor_mm: 0.71 },
       notes: [
         'Regla ESTIMADA (no medida): escala uniforme del polígono por ancho/300.',
-        'SAMET no publica DCPS de ancho≠300; valores sin verificación oficial — revisión técnica obligatoria.',
+        'SAMET no publica TPS de ancho≠300; valores sin verificación oficial — revisión técnica obligatoria.',
       ],
     },
     volume_reconstruction_mm3: 10378217.58,
