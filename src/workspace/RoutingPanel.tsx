@@ -445,6 +445,7 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
           </div>
         ) : (
           <select
+            data-codex-routing-product-select
             className="inspector-input"
             style={{ width: '100%' }}
             value={selectedProductId}

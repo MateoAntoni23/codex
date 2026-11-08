@@ -6,7 +6,7 @@
  *
  * Coordinate transform matches TrayObjects: [x/1000, z/1000, -y/1000]
  */
-import { useMemo } from 'react';
+import { useMemo, useLayoutEffect, useRef } from 'react';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three';
 import { useTrayStore } from '../tray/store';
@@ -178,25 +178,37 @@ function ParametricPreview({
     }
   }, [product, startPos[0], startPos[1], startPos[2], entryDir[0], entryDir[1], entryDir[2], turnDirection, overrideLengthMm]);
 
+  const meshRef = useRef<THREE.Mesh | null>(null);
+
+  // Mantener la malla sincronizada con `data` incluso cuando cambia el
+  // producto/rotación: `onUpdate` de R3F no vuelve a dispararse por
+  // cambios de closure, así que asignamos geometría, matriz y userData
+  // reactivamente aquí.
+  // Why: sin este efecto, el preview conservaba el SKU y la forma del
+  // producto inicialmente seleccionado al cambiar el <select> del inspector.
+  useLayoutEffect(() => {
+    const m = meshRef.current;
+    if (!m || !data) return;
+    if (m.geometry && m.geometry !== data.geom) {
+      m.geometry.dispose();
+    }
+    m.geometry = data.geom;
+    m.matrix.copy(data.matrix);
+    m.matrixWorldNeedsUpdate = true;
+    m.userData.codex = {
+      kind: 'parametric-preview',
+      sku: product.sku,
+      turnDirection,
+      mirrored: data.mirrored,
+      placedP1: data.placed.p1.pos,
+      placedP2: data.placed.p2.pos,
+    };
+  }, [data, product.sku, turnDirection]);
+
   if (!data) return null;
   return (
     <group>
-      <mesh
-        matrixAutoUpdate={false}
-        onUpdate={(m) => {
-          m.matrix.copy(data.matrix);
-          m.matrixWorldNeedsUpdate = true;
-          m.userData.codex = {
-            kind: 'parametric-preview',
-            sku: product.sku,
-            turnDirection,
-            mirrored: data.mirrored,
-            placedP1: data.placed.p1.pos,
-            placedP2: data.placed.p2.pos,
-          };
-        }}
-      >
-        <primitive object={data.geom} attach="geometry" />
+      <mesh ref={meshRef} matrixAutoUpdate={false}>
         <meshStandardMaterial
           color="#ff9900"
           transparent
