@@ -200,6 +200,18 @@ test.describe('Inserción interactiva de accesorios (TPS/XPS/CUPS)', () => {
 
       // El panel vuelve a montar el selector de producto en modo configuración.
       await page.locator('[data-codex-routing-product-select]').waitFor({ state: 'visible', timeout: 10_000 });
+
+      // Post-fix mapping explícito: el compat lookup de tronco_P1 y
+      // boca_derivacion ahora SÍ encuentra productos (traduce a P1/P3 del
+      // catálogo). El selector debe listar al menos un producto además del
+      // placeholder "— elegir —" (option sin value). Antes del fix, la lista
+      // quedaba vacía porque el catálogo desconocía esos nombres.
+      const compatCount = await page.evaluate(() => {
+        const sel = document.querySelector('[data-codex-routing-product-select]') as HTMLSelectElement | null;
+        if (!sel) return -1;
+        return Array.from(sel.options).filter((o) => !!o.value).length;
+      });
+      expect(compatCount, `compat list for ${portName} not empty`).toBeGreaterThan(0);
     }
   });
 
