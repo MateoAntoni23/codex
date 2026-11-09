@@ -59,6 +59,7 @@ const supportPanel: EquipmentElement = {
   manufacturer: UNKNOWN_DATUM,
   model: UNKNOWN_DATUM,
   version: 1,
+  importedRef: null,
   placementStatus: 'placed',
   transform: {
     positionMm: { x: 2000, y: -5000, z: 400 } as Vec3,
@@ -84,6 +85,7 @@ const childMotor: EquipmentElement = {
   manufacturer: UNKNOWN_DATUM,
   model: UNKNOWN_DATUM,
   version: 1,
+  importedRef: null,
   placementStatus: 'placed',
   transform: {
     positionMm: { x: 0, y: 800, z: 0 } as Vec3,
@@ -119,6 +121,7 @@ const fieldSensorNoDims: EquipmentElement = {
   manufacturer: UNKNOWN_DATUM,
   model: UNKNOWN_DATUM,
   version: 1,
+  importedRef: null,
   placementStatus: 'placed',
   transform: {
     positionMm: { x: -4000, y: -3000, z: 1000 } as Vec3,
@@ -149,6 +152,7 @@ const unplacedSensor: EquipmentElement = {
   manufacturer: UNKNOWN_DATUM,
   model: UNKNOWN_DATUM,
   version: 1,
+  importedRef: null,
   placementStatus: 'unplaced',
   transform: null,
   category: 'sensor',
@@ -177,6 +181,7 @@ const testSensorFlow: EquipmentElement = {
   manufacturer: { value: '[demo] Endress+Hauser', status: 'provided', evidenceIds: [] },
   model: { value: '[demo] Promag 300', status: 'provided', evidenceIds: [] },
   version: 1,
+  importedRef: null,
   placementStatus: 'placed',
   transform: {
     positionMm: { x: -2000, y: 3000, z: 1200 } as Vec3,

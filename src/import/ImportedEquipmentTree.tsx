@@ -13,6 +13,17 @@ export function ImportedEquipmentTree() {
   const catalog = useWorkspaceStore((s) => s.importedCatalog);
   const selectedId = useWorkspaceStore((s) => s.selectedImportedEquipoId);
   const selectImportedEquipo = useWorkspaceStore((s) => s.selectImportedEquipo);
+  const elements = useWorkspaceStore((s) => s.elements);
+
+  const linkedByEquipoId = useMemo(() => {
+    const map = new Map<string, 'placed' | 'unplaced'>();
+    for (const el of elements) {
+      const equipoId = el.importedRef?.equipoId;
+      if (!equipoId) continue;
+      map.set(equipoId, el.placementStatus);
+    }
+    return map;
+  }, [elements]);
 
   const [query, setQuery] = useState('');
   const [showRetirados, setShowRetirados] = useState(false);
@@ -84,11 +95,20 @@ export function ImportedEquipmentTree() {
           {equipos.map((e) => {
             const isSel = selectedId === e.equipoId;
             const isRet = e.estadoAlcance === 'RETIRADO';
+            const linkState = linkedByEquipoId.get(e.equipoId);
             const cls = [
               'imported-tree-item',
               isSel ? 'selected' : '',
               isRet ? 'retirado' : '',
+              linkState === 'placed' ? 'linked-placed' : '',
+              linkState === 'unplaced' ? 'linked-unplaced' : '',
             ].filter(Boolean).join(' ');
+            const badge =
+              linkState === 'placed'
+                ? { text: 'Colocado', color: '#7cf09b', testid: 'imp-badge-placed' }
+                : linkState === 'unplaced'
+                  ? { text: 'En proyecto', color: '#ffcc55', testid: 'imp-badge-unplaced' }
+                  : { text: 'Pendiente', color: '#8f9ba3', testid: 'imp-badge-pending' };
             return (
               <div
                 key={e.equipoId}
@@ -106,6 +126,12 @@ export function ImportedEquipmentTree() {
               >
                 <span className="tag">{e.tag}</span>
                 <span className="id">{e.equipoId}</span>
+                <span
+                  data-testid={badge.testid}
+                  style={{ marginLeft: 6, fontSize: 10, color: badge.color, border: `1px solid ${badge.color}`, borderRadius: 3, padding: '0 4px' }}
+                >
+                  {badge.text}
+                </span>
               </div>
             );
           })}

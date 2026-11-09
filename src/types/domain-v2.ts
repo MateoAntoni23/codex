@@ -259,6 +259,16 @@ export type EquipmentElementCommon = {
   manufacturer: Datum<string>;
   model: Datum<string>;
   version: number;
+  /**
+   * Vínculo opcional con un registro de un catálogo importado (ELS-IMP-EQCX).
+   *   equipoId: ID estable (EQ-NNNN) del equipo en ese libro — identidad externa.
+   *   libroId:  fileHash del libro que originó el vínculo — traza qué archivo lo creó.
+   * Si está presente, la ficha técnica se lee del catálogo vinculado. Si el libro cambia
+   * pero conserva el equipoId, la vinculación se mantiene (es un rename/modificación).
+   * Si el equipoId desaparece del libro reimportado, el elemento queda como huérfano
+   * y el usuario decide; nunca se elimina automáticamente.
+   */
+  importedRef: { equipoId: Id; libroId: string } | null;
 };
 
 /** EquipmentElementBase = campos comunes + Placement. */

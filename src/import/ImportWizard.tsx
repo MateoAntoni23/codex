@@ -372,18 +372,19 @@ function renderDiff(diff: ReimportDiff, hasPrev: boolean) {
           <div className="big">{diff.huerfanos.length}</div>
         </div>
         <div className="import-diff-card">
-          <div className="label">Renombres probables</div>
-          <div className="big">{diff.renombresProbables.length}</div>
+          <div className="label">Conciliaciones por TAG (requiere revisión)</div>
+          <div className="big">{diff.conciliacionesPorTag.length}</div>
         </div>
         <div className="import-diff-card">
           <div className="label">Pasaron a RETIRADO</div>
           <div className="big">{diff.pasaronARetirado.length}</div>
         </div>
       </div>
-      {(diff.huerfanos.length > 0 || diff.renombresProbables.length > 0) && (
+      {(diff.huerfanos.length > 0 || diff.conciliacionesPorTag.length > 0) && (
         <div style={{ fontSize: 11, color: '#8f9ba3', marginTop: 6 }}>
-          Nota: los huérfanos NO se eliminan automáticamente. Revisá los renombres probables en el
-          árbol una vez incorporado.
+          Nota: los huérfanos NO se eliminan automáticamente. Las conciliaciones por TAG
+          requieren revisión manual — distinto equipoId con TAG coincidente puede ser un rename
+          externo o un duplicado real; no se aplican de forma automática.
         </div>
       )}
     </div>

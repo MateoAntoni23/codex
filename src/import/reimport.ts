@@ -41,7 +41,7 @@ export function diffCatalogs(prev: ImportedCatalog | null, next: ImportedCatalog
     nuevos: [],
     modificados: [],
     huerfanos: [],
-    renombresProbables: [],
+    conciliacionesPorTag: [],
     pasaronARetirado: [],
     mismoHash: false,
   };
@@ -92,8 +92,9 @@ export function diffCatalogs(prev: ImportedCatalog | null, next: ImportedCatalog
     }
   }
 
-  // Renombres probables: un nuevo equipo cuyo TAG coincide con el TAG de un huérfano,
-  // o un alias cuyo alias resuelve a un huérfano.
+  // Conciliaciones por TAG: un equipo nuevo (distinto equipoId) cuyo TAG coincide con
+  // el TAG de un huérfano. Requiere revisión del usuario — NO se aplica automáticamente.
+  // Un "rename" real donde cambia sólo el TAG con el mismo equipoId ya cae en `modificados`.
   const huerfanosPorTag = new Map<string, { id: string; tag?: string }>();
   for (const h of diff.huerfanos) {
     if (h.kind === 'equipo' && h.tag) huerfanosPorTag.set(h.tag, h);
@@ -103,17 +104,16 @@ export function diffCatalogs(prev: ImportedCatalog | null, next: ImportedCatalog
     if (n.kind !== 'equipo' || !n.tag) continue;
     const match = huerfanosPorTag.get(n.tag);
     if (match) {
-      diff.renombresProbables.push({ kind: 'equipo', idNuevo: n.id, tagNuevo: n.tag, idHuerfano: match.id });
+      diff.conciliacionesPorTag.push({ kind: 'equipo', idNuevo: n.id, tagNuevo: n.tag, idHuerfano: match.id });
     }
   }
-  // Alias: si el alias del próximo libro resuelve a un equipo huérfano por TAG.
+  // Alias puente: si un alias del nuevo libro apunta a un equipoId huérfano y el nuevo
+  // libro tiene un equipo cuyo TAG = ese alias, también es candidato a conciliación.
   for (const al of next.alias) {
     if (huerfanoIds.has(al.equipoId)) {
-      // La propia alias no es "renombre", pero sí señala relación. Lo dejamos como hint
-      // en renombresProbables siempre que exista un nuevo equipo con el alias como TAG.
       const nvEquipo = next.equipos.find((e) => e.tag === al.alias);
       if (nvEquipo && !prevEquipos.has(nvEquipo.equipoId)) {
-        diff.renombresProbables.push({ kind: 'equipo', idNuevo: nvEquipo.equipoId, tagNuevo: nvEquipo.tag, idHuerfano: al.equipoId });
+        diff.conciliacionesPorTag.push({ kind: 'equipo', idNuevo: nvEquipo.equipoId, tagNuevo: nvEquipo.tag, idHuerfano: al.equipoId });
       }
     }
   }
@@ -156,7 +156,7 @@ export function summarizeDiff(d: ReimportDiff): string {
   if (d.nuevos.length) parts.push(`${d.nuevos.length} nuevos`);
   if (d.modificados.length) parts.push(`${d.modificados.length} modificados`);
   if (d.huerfanos.length) parts.push(`${d.huerfanos.length} huérfanos`);
-  if (d.renombresProbables.length) parts.push(`${d.renombresProbables.length} renombres probables`);
+  if (d.conciliacionesPorTag.length) parts.push(`${d.conciliacionesPorTag.length} conciliaciones por TAG (requiere revisión)`);
   if (d.pasaronARetirado.length) parts.push(`${d.pasaronARetirado.length} pasaron a RETIRADO`);
   return parts.length ? parts.join(' · ') : 'Sin cambios.';
 }

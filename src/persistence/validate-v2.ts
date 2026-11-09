@@ -705,13 +705,30 @@ function validateEquipmentElement(raw: unknown, index: number): EquipmentElement
   const placement = validatePlacement(obj, path);
   const category = assertOneOf(obj.category, CATEGORIES, `${path}.category`);
   const technical = validateTechnicalData(category, obj.technical, `${path}.technical`);
+  const importedRef = validateImportedRef(obj.importedRef, `${path}.importedRef`);
 
   const common = {
     id, name, tag, aliases, condition, lifecycle, parentId, mounting,
-    manufacturer, model, geometry, physicalLocation, version,
+    manufacturer, model, geometry, physicalLocation, version, importedRef,
   };
 
   return { ...common, ...placement, category, technical } as EquipmentElement;
+}
+
+/**
+ * importedRef vincula el elemento operativo con un equipo de un catálogo
+ * importado. Acepta `null`, `undefined` (archivos previos a la integración
+ * import→escena se tratan como "sin vínculo") o un objeto {equipoId, libroId}.
+ */
+function validateImportedRef(
+  raw: unknown,
+  path: string,
+): { equipoId: Id; libroId: string } | null {
+  if (raw === null || raw === undefined) return null;
+  const obj = assertObject(raw, path);
+  const equipoId = assertNonEmptyString(obj.equipoId, `${path}.equipoId`);
+  const libroId = assertString(obj.libroId, `${path}.libroId`);
+  return { equipoId, libroId };
 }
 
 // ---------------------------------------------------------------------------

@@ -513,12 +513,91 @@ function SupportCard({ support }: { support: Support }) {
 
 // ─── Equipment card wrapper (actions + editor) ────────────────────────────────
 
+function LinkedImportedPanel({ equipoId, onUnlink, onOpenInImportedTree }: {
+  equipoId: string;
+  onUnlink: () => void;
+  onOpenInImportedTree: () => void;
+}) {
+  const catalog = useWorkspaceStore((s) => s.importedCatalog);
+  const equipo = catalog?.equipos.find((e) => e.equipoId === equipoId);
+  if (!catalog) {
+    return (
+      <details className="imported-linked" open style={{ margin: '0 12px 8px', padding: '6px 10px', border: '1px solid #4a5570', borderRadius: 3, background: '#1e2338' }}>
+        <summary style={{ fontSize: 12, color: '#ebb0ff', cursor: 'pointer' }}>
+          Vinculado al catálogo importado · {equipoId}
+        </summary>
+        <div style={{ fontSize: 11, color: '#ffcc55', marginTop: 6 }}>
+          El libro origen no está cargado — reimportá el Excel para ver la ficha completa.
+        </div>
+        <div style={{ marginTop: 6 }}>
+          <button onClick={onUnlink} style={{ fontSize: 11, padding: '2px 8px', background: '#3a2a2a', color: '#ffd6d6', border: '1px solid #884444', borderRadius: 3, cursor: 'pointer' }}>
+            Desvincular
+          </button>
+        </div>
+      </details>
+    );
+  }
+  if (!equipo) {
+    return (
+      <details className="imported-linked imported-linked--orphan" open style={{ margin: '0 12px 8px', padding: '6px 10px', border: '1px solid #884444', borderRadius: 3, background: '#2a1e1e' }}>
+        <summary style={{ fontSize: 12, color: '#ffb0b0', cursor: 'pointer' }} data-testid="imported-linked-orphan">
+          Huérfano · {equipoId} no existe en el libro actual
+        </summary>
+        <div style={{ fontSize: 11, color: '#ffcc55', marginTop: 6, lineHeight: 1.4 }}>
+          El libro importado ya no contiene este equipoId. El elemento del proyecto se conserva
+          intacto; revisá si cambió de ID o fue retirado y decidí desvincular manualmente.
+        </div>
+        <div style={{ marginTop: 6 }}>
+          <button onClick={onUnlink} style={{ fontSize: 11, padding: '2px 8px', background: '#3a2a2a', color: '#ffd6d6', border: '1px solid #884444', borderRadius: 3, cursor: 'pointer' }}>
+            Desvincular
+          </button>
+        </div>
+      </details>
+    );
+  }
+  const atributos = catalog.atributos.filter((a) => a.equipoId === equipoId && !a.componenteId && a.vigente === 'SI');
+  return (
+    <details className="imported-linked" open style={{ margin: '0 12px 8px', padding: '6px 10px', border: '1px solid #4a5570', borderRadius: 3, background: '#1e2338' }}>
+      <summary style={{ fontSize: 12, color: '#ebb0ff', cursor: 'pointer' }} data-testid="imported-linked-summary">
+        Vinculado al catálogo importado · {equipo.tag ?? equipoId}
+      </summary>
+      <div style={{ fontSize: 11, color: '#8f9ba3', marginTop: 4 }}>
+        {equipo.descripcion} · {equipo.categoria} · {equipo.estadoAlcance}
+      </div>
+      {atributos.length > 0 && (
+        <div style={{ marginTop: 6, fontSize: 11, color: '#c0c0e0' }}>
+          {atributos.slice(0, 8).map((a) => (
+            <div key={a.atributoId}>
+              <span style={{ color: '#8f9ba3' }}>{a.atributo}: </span>
+              <span>{a.valorTexto ?? (a.valorNumero != null ? String(a.valorNumero) : '—')}</span>
+              {a.unidad ? <span style={{ color: '#8f9ba3' }}> {a.unidad}</span> : null}
+            </div>
+          ))}
+          {atributos.length > 8 && (
+            <div style={{ color: '#8f9ba3', marginTop: 2 }}>+{atributos.length - 8} más…</div>
+          )}
+        </div>
+      )}
+      <div style={{ marginTop: 6, display: 'flex', gap: 6 }}>
+        <button onClick={onOpenInImportedTree} style={{ fontSize: 11, padding: '2px 8px', background: '#3c4967', color: 'white', border: '1px solid #5566aa', borderRadius: 3, cursor: 'pointer' }} data-testid="imported-linked-open">
+          Ver ficha completa
+        </button>
+        <button onClick={onUnlink} style={{ fontSize: 11, padding: '2px 8px', background: '#3a2a2a', color: '#ffd6d6', border: '1px solid #884444', borderRadius: 3, cursor: 'pointer' }} data-testid="imported-linked-unlink">
+          Desvincular
+        </button>
+      </div>
+    </details>
+  );
+}
+
 function EquipmentCard() {
   const selectedEquipId = useWorkspaceStore((s) => s.selectedEquipId);
   const elements        = useWorkspaceStore((s) => s.elements);
   const updateElement   = useWorkspaceStore((s) => s.updateElement);
   const addEvidence     = useWorkspaceStore((s) => s.addEvidence);
   const removeElement   = useWorkspaceStore((s) => s.removeElement);
+  const unlinkElement   = useWorkspaceStore((s) => s.unlinkElement);
+  const selectImportedEquipo = useWorkspaceStore((s) => s.selectImportedEquipo);
   const projectOrigin   = useWorkspaceStore((s) => s.projectMeta.projectOrigin);
 
   const element = selectedEquipId ? elements.find((e) => e.id === selectedEquipId) ?? null : null;
@@ -556,6 +635,13 @@ function EquipmentCard() {
             Eliminar
           </button>
         </div>
+      )}
+      {element?.importedRef && (
+        <LinkedImportedPanel
+          equipoId={element.importedRef.equipoId}
+          onUnlink={() => unlinkElement(element.id)}
+          onOpenInImportedTree={() => selectImportedEquipo(element.importedRef!.equipoId)}
+        />
       )}
       <EquipmentEditorPanel
         element={element}

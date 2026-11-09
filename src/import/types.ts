@@ -320,7 +320,12 @@ export interface ReimportDiff {
   nuevos: Array<{ kind: EntityKind; id: string; tag?: string }>;
   modificados: Array<{ kind: EntityKind; id: string; tag?: string; campos: Array<{ campo: string; antes: unknown; nuevo: unknown }> }>;
   huerfanos: Array<{ kind: EntityKind; id: string; tag?: string }>;
-  renombresProbables: Array<{ kind: EntityKind; idNuevo: string; tagNuevo: string; idHuerfano: string }>;
+  /**
+   * Conciliaciones por TAG — distinto equipoId pero TAG coincidente contra un huérfano.
+   * NO se aplica automáticamente: el usuario debe revisar y decidir si se trata del
+   * mismo equipo físico (rename externo con cambio de ID) o de un duplicado real.
+   */
+  conciliacionesPorTag: Array<{ kind: EntityKind; idNuevo: string; tagNuevo: string; idHuerfano: string }>;
   pasaronARetirado: Array<{ kind: EntityKind; id: string; tag?: string }>;
   mismoHash: boolean;        // el archivo es idéntico a uno ya importado
 }

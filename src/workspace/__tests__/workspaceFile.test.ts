@@ -42,6 +42,7 @@ const ELEMENT: EquipmentElement = {
   manufacturer: DATUM_UNKNOWN,
   model: DATUM_UNKNOWN,
   version: 1,
+  importedRef: null,
   placementStatus: 'placed',
   transform: { positionMm: { x: 1000, y: 1000, z: 200 }, rotation: IDENTITY_QUATERNION },
   technical: {

@@ -7,7 +7,7 @@
  * - Componentes internos del equipo con sus propios atributos.
  * - Alias, pendientes del equipo y trazabilidad: paneles secundarios.
  */
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useWorkspaceStore } from '../workspace/useWorkspaceStore';
 import type {
   AtributoImportado,
@@ -15,6 +15,7 @@ import type {
   ImportedCatalog,
   ComponenteImportado,
 } from './types';
+import type { EquipmentElement } from '../types/domain-v2';
 
 function fmtValor(a: AtributoImportado): string {
   if (a.valorTexto !== undefined && a.valorTexto !== '') {
@@ -59,6 +60,72 @@ function AttrRow({ atr, def }: { atr: AtributoImportado; def?: CatalogoAtributo 
         <span className={`imported-attr-badge origen`} title="Origen del valor">{atr.origenValor}</span>
         <span className={`imported-attr-badge ${atr.estadoDato}`} title="Estado del dato">{atr.estadoDato}</span>
       </div>
+    </div>
+  );
+}
+
+function ImportedActionBar({
+  linkedElement,
+  linkCandidates,
+  onPlace,
+  onLink,
+  onSelectLinked,
+}: {
+  linkedElement: EquipmentElement | undefined;
+  linkCandidates: EquipmentElement[];
+  onPlace: () => void;
+  onLink: (elementId: string) => void;
+  onSelectLinked: (elementId: string) => void;
+}) {
+  const [pickOpen, setPickOpen] = useState(false);
+
+  if (linkedElement) {
+    const placed = linkedElement.placementStatus === 'placed';
+    return (
+      <div className="imported-action-bar" style={{ marginTop: 8, display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+        <span style={{ fontSize: 12, color: placed ? '#7cf09b' : '#ffcc55' }}>
+          {placed ? '✓ Colocado en escena' : '○ En proyecto (sin ubicar)'}
+        </span>
+        <button
+          type="button"
+          onClick={() => onSelectLinked(linkedElement.id)}
+          data-testid="imported-goto-element"
+        >
+          Ver en escena
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="imported-action-bar" style={{ marginTop: 8, display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+      <button type="button" onClick={onPlace} data-testid="imported-place">
+        Colocar en escena
+      </button>
+      <button type="button" onClick={() => setPickOpen((v) => !v)} data-testid="imported-link-toggle">
+        Vincular a elemento…
+      </button>
+      {pickOpen && (
+        <select
+          data-testid="imported-link-select"
+          defaultValue=""
+          onChange={(e) => {
+            const id = e.target.value;
+            if (id) {
+              onLink(id);
+              setPickOpen(false);
+            }
+          }}
+          style={{ marginLeft: 4 }}
+        >
+          <option value="">— elegir elemento —</option>
+          {linkCandidates.map((el) => (
+            <option key={el.id} value={el.id}>
+              {el.tag ? `${el.tag} · ` : ''}{el.name}
+            </option>
+          ))}
+        </select>
+      )}
     </div>
   );
 }
@@ -118,8 +185,16 @@ function ComponenteCard({
 export function ImportedEquipmentInspector() {
   const catalog = useWorkspaceStore((s) => s.importedCatalog);
   const selectedId = useWorkspaceStore((s) => s.selectedImportedEquipoId);
+  const elements = useWorkspaceStore((s) => s.elements);
+  const placeImportedEquipo = useWorkspaceStore((s) => s.placeImportedEquipo);
+  const linkImportedToElement = useWorkspaceStore((s) => s.linkImportedToElement);
+  const selectEquip = useWorkspaceStore((s) => s.selectEquip);
 
   const data = useMemo(() => buildEquipoView(catalog, selectedId), [catalog, selectedId]);
+  const linkedElement = useMemo(
+    () => (selectedId ? elements.find((e) => e.importedRef?.equipoId === selectedId || e.id === selectedId) : undefined),
+    [elements, selectedId],
+  );
 
   if (!catalog || !selectedId || !data) {
     return (
@@ -138,6 +213,25 @@ export function ImportedEquipmentInspector() {
 
   const groups = groupAttributes(atributosEquipo, catalog.catalogoAtributos);
 
+  function handlePlace() {
+    const newId = placeImportedEquipo(equipo.equipoId, null);
+    if (newId) selectEquip(newId);
+  }
+
+  function handleLink(targetId: string) {
+    linkImportedToElement(targetId, equipo.equipoId);
+    selectEquip(targetId);
+  }
+
+  // Candidatos para vincular: elementos SIN importedRef (o ya vinculados a este
+  // equipoId para permitir revinculación idempotente). Excluye otros vínculos
+  // activos para evitar robar el vínculo con un click.
+  const linkCandidates = elements.filter(
+    (e) =>
+      e.importedRef === null ||
+      e.importedRef.equipoId === equipo.equipoId,
+  );
+
   return (
     <div className="imported-inspector">
       <div>
@@ -151,6 +245,14 @@ export function ImportedEquipmentInspector() {
             {equipo.estadoAlcanceConfirmado === 'NO' ? ' (a confirmar)' : ''}
           </span>
         </div>
+        <ImportedActionBar
+          linkedElement={linkedElement}
+          linkCandidates={linkCandidates}
+          onPlace={handlePlace}
+          onLink={handleLink}
+          onSelectLinked={(id) => selectEquip(id)}
+        />
+
         <div className="cat" style={{ marginTop: 2 }}>
           ID: <span className="tag">{equipo.equipoId}</span>
           {equipo.planta ? ` · Planta: ${equipo.planta}` : ''}

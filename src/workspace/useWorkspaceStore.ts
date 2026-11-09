@@ -2,8 +2,9 @@ import { create } from 'zustand';
 import { PREVIEW_ELEMENTS, PREVIEW_EVIDENCE } from '../preview/previewData';
 import { evidenceToRemoveOnDelete, duplicateElement } from '../preview/previewCrud';
 import { DEFAULT_PROJECT_META, type ProjectMeta } from './workspaceFile';
-import type { EquipmentElement, FieldEvidence } from '../types/domain-v2';
+import type { EquipmentElement, FieldEvidence, Vec3 } from '../types/domain-v2';
 import type { ImportedCatalog } from '../import/types';
+import { buildElementFromImported } from '../import/placement';
 
 export type LayerKey = 'infrastructure' | 'equipment' | 'trays' | 'supports' | 'pe';
 
@@ -72,6 +73,25 @@ export interface WorkspaceState {
   // Catálogo importado
   setImportedCatalog: (c: ImportedCatalog | null) => void;
   selectImportedEquipo: (id: string | null) => void;
+
+  // Puente importado → operativo
+  /**
+   * Coloca un equipo del catálogo importado en la escena:
+   *  - Si ya existe un EquipmentElement con el mismo equipoId → selecciona.
+   *  - Si no, crea uno nuevo con id = equipoId, geometría por defecto para la
+   *    categoría y lo deja en 'placed' en positionMm (o 'unplaced' si null).
+   * Devuelve el id del elemento resultante, o null si el equipo no se encontró.
+   */
+  placeImportedEquipo: (equipoId: string, positionMm: Vec3 | null) => string | null;
+  /**
+   * Vincula un elemento existente con un equipo importado sin crear duplicados.
+   * Mantiene identidad, posición, geometría, jerarquía y ficha del elemento;
+   * sólo setea importedRef. Si otro elemento ya estaba vinculado al mismo
+   * equipoId, el vínculo se transfiere (el anterior queda desvinculado).
+   */
+  linkImportedToElement: (elementId: string, equipoId: string) => void;
+  /** Rompe el vínculo con el catálogo importado dejando el elemento operativo intacto. */
+  unlinkElement: (elementId: string) => void;
 }
 
 function copyElements(els: EquipmentElement[]): EquipmentElement[] {
@@ -188,6 +208,98 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       importedCatalog: null,
     }),
 
-  setImportedCatalog: (c) => set({ importedCatalog: c, dirty: true }),
+  setImportedCatalog: (c) =>
+    set((s) => {
+      if (!c) return { importedCatalog: null, dirty: true };
+      // Reconciliar elementos vinculados al catálogo que se reemplaza.
+      // Regla clave: la identidad se preserva (equipoId). El transform NUNCA se toca.
+      // Sólo se actualizan tag/name y el libroId para reflejar el libro actual.
+      const equiposById = new Map(c.equipos.map((e) => [e.equipoId, e] as const));
+      const newLibroId = c.meta.fileHash;
+      const elements = s.elements.map((el) => {
+        const equipoId = el.importedRef?.equipoId;
+        if (!equipoId) return el;
+        const eq = equiposById.get(equipoId);
+        if (!eq) return el; // Huérfano: no se toca; la UI lo muestra para que el usuario decida.
+        const nextName = eq.descripcion?.trim() || eq.tag || el.name;
+        const nextTag = eq.tag || null;
+        const changed = el.tag !== nextTag || el.name !== nextName || el.importedRef!.libroId !== newLibroId;
+        if (!changed) return el;
+        return {
+          ...el,
+          tag: nextTag,
+          name: nextName,
+          importedRef: { equipoId, libroId: newLibroId },
+        };
+      });
+      return { importedCatalog: c, elements, dirty: true };
+    }),
   selectImportedEquipo: (id) => set({ selectedImportedEquipoId: id, selectedEquipId: null, selectedTrayId: null, selectedSupportId: null }),
+
+  placeImportedEquipo: (equipoId, positionMm) => {
+    const s = get();
+    const catalog = s.importedCatalog;
+    if (!catalog) return null;
+    const equipo = catalog.equipos.find((e) => e.equipoId === equipoId);
+    if (!equipo) return null;
+
+    // Si ya existe un elemento vinculado a este equipoId, seleccionarlo (no duplicar).
+    const existing = s.elements.find(
+      (e) => e.importedRef?.equipoId === equipoId || e.id === equipoId,
+    );
+    if (existing) {
+      set({
+        selectedEquipId: existing.id,
+        selectedImportedEquipoId: null,
+        selectedTrayId: null,
+        selectedSupportId: null,
+      });
+      return existing.id;
+    }
+
+    const el = buildElementFromImported(equipo, {
+      libroId: catalog.meta.fileHash,
+      positionMm,
+    });
+    set({
+      elements: [...s.elements, el],
+      selectedEquipId: el.id,
+      selectedImportedEquipoId: null,
+      selectedTrayId: null,
+      selectedSupportId: null,
+      dirty: true,
+    });
+    return el.id;
+  },
+
+  linkImportedToElement: (elementId, equipoId) => {
+    const s = get();
+    const catalog = s.importedCatalog;
+    if (!catalog) return;
+    const equipo = catalog.equipos.find((e) => e.equipoId === equipoId);
+    if (!equipo) return;
+    const libroId = catalog.meta.fileHash;
+
+    const updated = s.elements.map((e) => {
+      // Rompe vínculo previo con el mismo equipoId para evitar dos elementos
+      // apuntando al mismo registro importado.
+      if (e.id !== elementId && e.importedRef?.equipoId === equipoId) {
+        return { ...e, importedRef: null };
+      }
+      if (e.id === elementId) {
+        return { ...e, importedRef: { equipoId, libroId } };
+      }
+      return e;
+    });
+    set({ elements: updated, dirty: true });
+  },
+
+  unlinkElement: (elementId) => {
+    set((s) => ({
+      elements: s.elements.map((e) =>
+        e.id === elementId ? { ...e, importedRef: null } : e,
+      ),
+      dirty: true,
+    }));
+  },
 }));

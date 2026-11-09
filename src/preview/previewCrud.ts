@@ -75,6 +75,7 @@ export function createNewElement(spec: AddElementSpec): EquipmentElement {
     manufacturer: unknownDatum<string>(),
     model: unknownDatum<string>(),
     version: 1,
+    importedRef: null as null,
     ...basePlacement,
   };
 

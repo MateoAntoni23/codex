@@ -21,6 +21,7 @@ function makeValidV2(): ProjectDataV2 {
     geometry: { kind: 'plane', widthMm: 10000, depthMm: 10000 },
     physicalLocation: { kind: 'unassigned', factoryId: null, subareaId: null, description: null },
     version: 1,
+    importedRef: null,
     placementStatus: 'placed',
     transform: {
       positionMm: { x: 0, y: 0, z: 0 },
@@ -106,6 +107,7 @@ describe('validateProjectDataV2', () => {
       geometry: { kind: 'plane', widthMm: 1000, depthMm: 1000 },
       physicalLocation: { kind: 'unassigned', factoryId: null, subareaId: null, description: null },
       version: 1,
+      importedRef: null,
       placementStatus: 'placed',
       transform: {
         positionMm: { x: 0, y: 0, z: 0 },

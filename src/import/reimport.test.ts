@@ -84,7 +84,7 @@ describe('diffCatalogs — reimport', () => {
     expect(d.huerfanos[0].id).toBe('EQ-0001');
   });
 
-  it('renombre probable: equipo nuevo con TAG de un huérfano', () => {
+  it('conciliación por TAG: equipo nuevo con TAG de un huérfano (distinto equipoId)', () => {
     const prev = emptyCatalog();
     const next = emptyCatalog();
     next.meta.fileHash = 'b'.repeat(64);
@@ -93,8 +93,8 @@ describe('diffCatalogs — reimport', () => {
     const d = diffCatalogs(prev, next);
     expect(d.huerfanos).toHaveLength(1);
     expect(d.nuevos.filter((n) => n.kind === 'equipo')).toHaveLength(1);
-    expect(d.renombresProbables).toHaveLength(1);
-    expect(d.renombresProbables[0]).toMatchObject({
+    expect(d.conciliacionesPorTag).toHaveLength(1);
+    expect(d.conciliacionesPorTag[0]).toMatchObject({
       idNuevo: 'EQ-0099',
       tagNuevo: 'M-01',
       idHuerfano: 'EQ-0001',

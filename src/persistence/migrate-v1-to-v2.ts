@@ -87,6 +87,7 @@ export function migrateV1ToV2(
         description: null as null,
       },
       version: 1,
+      importedRef: null as null,
       placementStatus: 'placed' as const,
       transform: {
         positionMm,
