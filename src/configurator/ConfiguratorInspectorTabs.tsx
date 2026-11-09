@@ -43,6 +43,8 @@ import {
   type AporteRule,
   type AporteRuleKind,
 } from './aporteTrazado';
+import { diffMappings, type MappingDiff, type PortEntryDiff } from './mappingDiff';
+import { calibrationHash } from './patternIdentity';
 
 export const TABS = [
   { id: 'producto', label: 'Producto / Familia' },
@@ -1686,6 +1688,233 @@ function MaestroTab({
   );
 }
 
+// ─── Prueba preview / Confirmado ────────────────────────────────────────────
+
+/**
+ * PruebaTab — diff operativo entre el mapping "preview" (lo que el store usa
+ * ahora mismo para cada placement/preview) y el mapping "confirmado" (snapshot
+ * capturado al aprobar). Se usa para que el usuario entienda EXACTAMENTE qué
+ * cambió desde la última validación cuando el banner marca "desactualizada",
+ * o para verificar antes de revalidar que las ediciones son las esperadas.
+ *
+ * Estados:
+ *   - Aprobado + snapshot presente: tabla de diffs (modelFrame + por boca).
+ *   - Aprobado sin snapshot (archivo legacy pre-hito-3): hint para revalidar.
+ *   - Sin aprobación: muestra que no hay baseline y sugiere aprobar primero.
+ *
+ * NOTA: NO modifica el mapping ni la aprobación — es sólo visualización. La
+ * aplicación efectiva de cambios ocurre al "Revalidar aprobación" desde el
+ * banner, que es la única puerta para congelar un nuevo snapshot.
+ */
+function PortDiffRow({ port }: { port: PortEntryDiff }) {
+  if (port.kind === 'unchanged') {
+    return (
+      <tr data-testid={`cfg-prueba-port-${port.recipePortName}`} data-kind="unchanged">
+        <td>
+          <code>{port.recipePortName}</code>
+        </td>
+        <td colSpan={3} className="cfg-tab-hint">
+          sin cambios
+        </td>
+      </tr>
+    );
+  }
+  if (port.kind === 'added' || port.kind === 'removed') {
+    const label = port.kind === 'added' ? 'Boca nueva en preview' : 'Boca removida en preview';
+    return (
+      <tr data-testid={`cfg-prueba-port-${port.recipePortName}`} data-kind={port.kind}>
+        <td>
+          <code>{port.recipePortName}</code>
+        </td>
+        <td colSpan={3} className="cfg-tab-note cfg-tab-note-warning">
+          {label}
+        </td>
+      </tr>
+    );
+  }
+  return (
+    <>
+      <tr data-testid={`cfg-prueba-port-${port.recipePortName}`} data-kind="changed">
+        <td rowSpan={1 + port.stringChanges.length + port.scalarChanges.length + port.vectorChanges.length}>
+          <code>{port.recipePortName}</code>
+        </td>
+        <td className="cfg-tab-hint" colSpan={3}>
+          {port.stringChanges.length + port.scalarChanges.length + port.vectorChanges.length} campo(s) con cambio
+        </td>
+      </tr>
+      {port.stringChanges.map((s) => (
+        <tr key={`s-${s.field}`}>
+          <td>{s.field}</td>
+          <td>{s.preview}</td>
+          <td>{s.confirmado}</td>
+        </tr>
+      ))}
+      {port.scalarChanges.map((sc) => (
+        <tr key={`sc-${sc.field}`}>
+          <td>{sc.field}</td>
+          <td>{sc.preview.toFixed(3)}</td>
+          <td>{sc.confirmado.toFixed(3)}</td>
+        </tr>
+      ))}
+      {port.vectorChanges.map((v) => (
+        <tr key={`v-${v.field}`}>
+          <td>{v.field}</td>
+          <td>{vec3Str(v.preview)}</td>
+          <td>{vec3Str(v.confirmado)}</td>
+        </tr>
+      ))}
+    </>
+  );
+}
+
+function PruebaTab({ product }: { product: Product }) {
+  // Refresh when overrides or approvals change (either side of the diff).
+  const overrides = useCatalogConfigStore((s) => s.overrides);
+  const approvals = useCatalogConfigStore((s) => s.approvals);
+  void overrides;
+  void approvals;
+
+  const previewMapping = useMemo(
+    () => getEffectiveMapping(product.producto_id),
+    // overrides is referenced to trigger refresh on edits
+    [product.producto_id, overrides],
+  );
+  const approval = approvals[product.producto_id];
+  const confirmadoMapping = approval?.approvedMapping ?? null;
+
+  const diff: MappingDiff | null = useMemo(() => {
+    if (!confirmadoMapping) return null;
+    return diffMappings(previewMapping, confirmadoMapping);
+  }, [previewMapping, confirmadoMapping]);
+
+  const currentHash = calibrationHash(previewMapping);
+  const confirmadoHash = approval?.approvedAtCalibrationHash;
+
+  if (!approval) {
+    return (
+      <div className="cfg-tab-content" data-testid="cfg-prueba-tab">
+        <h3 className="cfg-section-title">Prueba preview / Confirmado</h3>
+        <div className="cfg-tab-note">
+          Aún no aprobaste este patrón — no hay baseline "confirmado" para comparar. Ajustá el mapping
+          en las pestañas Orientación / Bocas y usá el banner superior para aprobar; a partir de ahí
+          este diff te muestra qué cambia cada edición.
+        </div>
+        <h4 className="cfg-section-title">Estado actual (preview)</h4>
+        <dl className="cfg-kv">
+          <dt>Hash de calibración</dt>
+          <dd>
+            <code data-testid="cfg-prueba-current-hash">{currentHash}</code>
+          </dd>
+          <dt>Origen del mapping</dt>
+          <dd>
+            <code>{previewMapping?.source ?? '—'}</code>
+          </dd>
+        </dl>
+      </div>
+    );
+  }
+
+  if (!confirmadoMapping) {
+    return (
+      <div className="cfg-tab-content" data-testid="cfg-prueba-tab">
+        <h3 className="cfg-section-title">Prueba preview / Confirmado</h3>
+        <div className="cfg-tab-note cfg-tab-note-warning" data-testid="cfg-prueba-legacy">
+          Esta aprobación es anterior a hito 3 y no tiene snapshot del mapping confirmado. Revalidá
+          la aprobación desde el banner para habilitar el diff detallado (los cambios futuros sí
+          quedarán comparables).
+        </div>
+        <dl className="cfg-kv">
+          <dt>Hash aprobado</dt>
+          <dd>
+            <code>{confirmadoHash}</code>
+          </dd>
+          <dt>Hash actual</dt>
+          <dd>
+            <code data-testid="cfg-prueba-current-hash">{currentHash}</code>
+          </dd>
+        </dl>
+      </div>
+    );
+  }
+
+  const hashesMatch = currentHash === confirmadoHash;
+  const changesLabel = diff?.hasChanges ? 'con diferencias' : 'coincide';
+
+  return (
+    <div className="cfg-tab-content" data-testid="cfg-prueba-tab">
+      <h3 className="cfg-section-title">Prueba preview / Confirmado</h3>
+      <div
+        className={`cfg-tab-note ${hashesMatch ? '' : 'cfg-tab-note-warning'}`}
+        data-testid="cfg-prueba-status"
+        data-hashes-match={hashesMatch ? 'true' : 'false'}
+      >
+        {hashesMatch
+          ? `El mapping preview coincide con el confirmado (hash ${currentHash}). Este producto se
+             comportará en preview, confirmado y recuperación exactamente como fue aprobado.`
+          : `El mapping preview difiere del confirmado (preview ${currentHash} vs confirmado ${confirmadoHash}).
+             Los cambios listados abajo sólo afectarán a los nuevos placements — las piezas ya colocadas
+             se re-resuelven con el mapping actual al recargar. Revalidá la aprobación para congelar el
+             nuevo baseline.`}
+      </div>
+
+      <h4 className="cfg-section-title">Marco del modelo (modelFrame) · {diff?.modelFrame.changed ? 'con cambios' : 'sin cambios'}</h4>
+      {diff && diff.modelFrame.changed ? (
+        <table className="cfg-table" data-testid="cfg-prueba-model-frame">
+          <thead>
+            <tr>
+              <th>Campo</th>
+              <th>Preview</th>
+              <th>Confirmado</th>
+            </tr>
+          </thead>
+          <tbody>
+            {diff.modelFrame.deltas.map((d) => (
+              <tr key={d.field}>
+                <td>{d.field}</td>
+                <td>{d.preview.toFixed(3)}</td>
+                <td>{d.confirmado.toFixed(3)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ) : (
+        <div className="cfg-tab-hint">
+          Marco del modelo sin diferencias (tx/ty/tz/rx/ry/rz idénticos dentro de tolerancia 1e-6).
+        </div>
+      )}
+
+      <h4 className="cfg-section-title">Bocas · {changesLabel}</h4>
+      <table className="cfg-table" data-testid="cfg-prueba-ports">
+        <thead>
+          <tr>
+            <th>Boca</th>
+            <th>Campo</th>
+            <th>Preview</th>
+            <th>Confirmado</th>
+          </tr>
+        </thead>
+        <tbody>
+          {diff?.ports.map((p) => <PortDiffRow key={p.recipePortName} port={p} />)}
+        </tbody>
+      </table>
+
+      <dl className="cfg-kv" style={{ marginTop: 12 }}>
+        <dt>Aprobado en revisión</dt>
+        <dd>
+          <code>{approval.approvedAtRevision}</code> · {approval.approvedAt.slice(0, 10)}
+        </dd>
+        <dt>Origen preview</dt>
+        <dd>
+          <code>{previewMapping?.source ?? '—'}</code>
+          {previewMapping?.inheritedFromProductId && (
+            <> (de <code>{previewMapping.inheritedFromProductId}</code>)</>
+          )}
+        </dd>
+      </dl>
+    </div>
+  );
+}
+
 // ─── Placeholders ───────────────────────────────────────────────────────────
 
 function PlaceholderTab({ tab }: { tab: TabId }) {
@@ -1697,7 +1926,7 @@ function PlaceholderTab({ tab }: { tab: TabId }) {
     bocas: '',
     orientacion: '',
     continuaciones: '',
-    prueba: 'Dos visores sincronizados: preview y confirmado con las operaciones reales del workspace. Pendiente.',
+    prueba: '',
     procedencia: 'Historial de cambios: versión, timestamp, autor, hash del archivo fuente. Pendiente.',
   };
   return (
@@ -1756,5 +1985,6 @@ export function InspectorTabContent({
       />
     );
   }
+  if (tab === 'prueba') return <PruebaTab product={product} />;
   return <PlaceholderTab tab={tab} />;
 }

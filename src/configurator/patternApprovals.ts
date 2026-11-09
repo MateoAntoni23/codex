@@ -18,7 +18,19 @@
  *     al aprobar. Si el usuario edita el mapping o la geometría de bocas
  *     después, la aprobación queda `outdated`.
  *   - `revokeApproval` borra la entrada por completo — vuelve a `none`.
+ *
+ * Snapshot (hito 3):
+ *   `approvedMapping` congela el `ProductPortMapping` efectivo al momento de
+ *   aprobar. Sirve como baseline "confirmado" para que el Configurador muestre
+ *   el diff campo a campo contra el mapping "preview" actual cuando el estado
+ *   es `outdated`. Es opcional porque:
+ *     - En tests y en aprobaciones legacy (archivos previos a hito 3) puede
+ *       faltar — la UI debe caer en modo "sin snapshot" sin romper nada.
+ *     - La aprobación sigue siendo válida sin snapshot: `approvedAtCalibrationHash`
+ *       basta para decidir vigencia. El snapshot sólo habilita el diff visual.
  */
+import type { ProductPortMapping } from '../workspace/catalogPortMapping';
+
 export interface PatternApproval {
   /** Revisión del maestro al momento de aprobar. */
   readonly approvedAtRevision: number;
@@ -26,6 +38,13 @@ export interface PatternApproval {
   readonly approvedAtCalibrationHash: string;
   /** Timestamp ISO del momento de aprobación. */
   readonly approvedAt: string;
+  /**
+   * Snapshot del mapping efectivo al aprobar. Opcional: aprobaciones legacy
+   * carecen de este campo y la UI lo muestra como "sin baseline — re-aprobar
+   * para habilitar diff". Clonado deeply al congelarse para que ediciones
+   * posteriores del store no muten la referencia.
+   */
+  readonly approvedMapping?: ProductPortMapping;
 }
 
 /**

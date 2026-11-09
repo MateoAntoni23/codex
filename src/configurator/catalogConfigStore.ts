@@ -47,6 +47,7 @@ import {
   type AporteRule,
 } from './aporteTrazado';
 import { findMasterForProduct, type MasterModel } from './masterModels';
+import { cloneMapping } from './mappingDiff';
 
 const STORAGE_KEY = 'codex:catalogConfig:v1';
 
@@ -214,10 +215,16 @@ export const useCatalogConfigStore = create<State>((set, get) => ({
   },
   approveProduct: (productId, masterRevision) => {
     const mapping = getEffectiveMapping(productId);
+    // Snapshot del mapping efectivo congelado al aprobar (hito 3). Clonamos
+    // deeply para que ediciones posteriores del store NO muten la referencia.
+    // Si no hay mapping efectivo (producto sin default ni override), el
+    // snapshot queda undefined y la UI del diff cae al modo "sin baseline".
+    const approvedMapping = mapping ? cloneMapping(mapping) : undefined;
     const approval: PatternApproval = {
       approvedAtRevision: masterRevision,
       approvedAtCalibrationHash: calibrationHash(mapping),
       approvedAt: new Date().toISOString(),
+      approvedMapping,
     };
     const nextApprovals = { ...get().approvals, [productId]: approval };
     writeStorage(get().overrides, nextApprovals, get().aporteOverrides);
