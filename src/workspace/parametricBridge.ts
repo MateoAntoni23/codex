@@ -30,6 +30,7 @@ import {
 import { buildPrism } from '../parametric/geometry/buildPrism';
 import type { GeometryRecipe, PortDef } from '../parametric/geometry/outlines';
 import type { Piece, Product, TrayPort } from '../tray/model';
+import { resolveRecipeForProduct } from './resolvedPortGeometry';
 
 // ─── Tipos del puente ────────────────────────────────────────────────────────
 
@@ -399,7 +400,13 @@ export function placeRecipe(
   overrides?: BuildRecipeOverrides,
   options?: PlaceOptions,
 ): PlacedRecipe {
-  const recipe = buildRecipeFromProduct(product, entry, overrides);
+  const rawRecipe = buildRecipeFromProduct(product, entry, overrides);
+  // Aplica overrides del Configurador (modelFrame + portGeometry por boca)
+  // ANTES de calcular la matriz local→mundo. Garantía: una única resolución
+  // geométrica compartida entre configurador, preview y pieza confirmada.
+  // preTransform lleva raw mesh → canonical. recipe tiene puertos ya resueltos.
+  const resolved = resolveRecipeForProduct(rawRecipe, product.producto_id);
+  const recipe = resolved.recipe;
   // Nota: ambos modos (extrudeAlongY true/false) comparten M_base. La única
   // restricción real es que la normal local del puerto de entrada no tenga
   // componente Y — eso se valida unos renglones más abajo via `entryDef.normal[1]`.
@@ -446,18 +453,29 @@ export function placeRecipe(
   );
 
   const mirrored = chirality === 'mirrored';
-  const finalMatrix = mirrored
+  // placementMatrix mapea COORDENADAS RESUELTAS (post-modelFrame) → mundo.
+  // Los puertos ya están resueltos en `recipe.ports`; aplicarlo directamente
+  // produce la posición mundo correcta.
+  const placementMatrix = mirrored
     ? householderMatrixAroundPoint(startPos, eDir).multiply(baseMatrix)
     : baseMatrix;
 
-  // Calcular TODOS los puertos mundo aplicando finalMatrix a los centros y
-  // rotando las normales con la parte lineal (sin traslación). Para una
-  // reflexión la parte lineal es ortogonal con det=−1 pero sigue preservando
-  // longitudes.
+  // Para la MALLA (construida con `buildLocalMesh(recipe)` → polígono RAW sin
+  // modelFrame aplicado), el consumidor necesita `placementMatrix · preTransform`
+  // para transformar vertex local-raw → mundo. Así preview, confirmado y motor
+  // ven la misma orientación (preTransform es la calibración del modelo que
+  // declaró el usuario en el Configurador).
+  const finalMatrix = resolved.isIdentity
+    ? placementMatrix
+    : placementMatrix.clone().multiply(resolved.preTransform);
+
+  // Calcular TODOS los puertos mundo aplicando placementMatrix a los centros/
+  // normales YA RESUELTOS. Para una reflexión la parte lineal es ortogonal con
+  // det=−1 pero sigue preservando longitudes.
   const placedPorts: PlacedPort[] = recipe.ports.map((port) => ({
     name: port.name,
-    pos: applyMatrixToPoint(finalMatrix, port.center),
-    outwardNormal: applyMatrixToDir(finalMatrix, port.normal),
+    pos: applyMatrixToPoint(placementMatrix, port.center),
+    outwardNormal: applyMatrixToDir(placementMatrix, port.normal),
     ancho_mm: port.ancho_mm,
     ala_mm: port.ala_mm,
   }));

@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
-import { useTrayStore } from '../tray/store';
+import { useTrayStore, toMotorEntrada } from '../tray/store';
 import { useWorkspaceStore } from './useWorkspaceStore';
 import { useRoutingStore } from './useRoutingStore';
 import { WorkspaceScene } from './WorkspaceScene';
@@ -218,6 +218,11 @@ export function UnifiedWorkspace() {
       trayStore: useTrayStore,
       workspaceStore: useWorkspaceStore,
       routingStore: useRoutingStore,
+      // Exposed for e2e: the acceptance test calibrates a piece in the Configurator,
+      // inserts it via routing, and must compare the motor payload. `toMotorEntrada`
+      // is the exact transformation used before dispatching to the Python engine.
+      catalogConfigStore: useCatalogConfigStore,
+      toMotorEntrada,
     };
     return () => { delete w.__codex; };
   }, []);

@@ -29,6 +29,7 @@ import type { Product } from '../tray/model';
 import { getEffectiveMapping, type ProductPortMapping } from '../workspace/catalogPortMapping';
 import { useCatalogConfigStore } from './catalogConfigStore';
 import { InspectorTabContent, TABS, type TabId } from './ConfiguratorInspectorTabs';
+import { ConfiguratorViewer } from './ConfiguratorViewer';
 import './configurator.css';
 
 type MappingStatus = 'default' | 'override' | 'sin-mapping';
@@ -135,30 +136,6 @@ function ProductList({
         })}
       </ul>
     </aside>
-  );
-}
-
-function ViewerPlaceholder({ product }: { product: Product | null }) {
-  return (
-    <section className="cfg-viewer">
-      {product ? (
-        <div className="cfg-viewer-head">
-          <h2>{product.sku}</h2>
-          <div className="cfg-viewer-sub">
-            {product.producto_id} · {product.tipo_pieza} ·
-            {' '}ancho: {product.ancho_nominal_mm ?? 'n/d'} mm
-          </div>
-        </div>
-      ) : (
-        <div className="cfg-viewer-head"><h2>Seleccioná un producto</h2></div>
-      )}
-      <div className="cfg-viewer-stage">
-        <div className="cfg-viewer-stage-hint">
-          Visor 3D pendiente (tarea #89). Aquí se montará WorkspaceScene en
-          modo configurador: vistas original / configurado / comparación.
-        </div>
-      </div>
-    </section>
   );
 }
 
@@ -338,7 +315,7 @@ export function ConfiguratorLayout() {
           setFilters={setFilters}
           tipoPiezaOptions={tipoPiezaOptions}
         />
-        <ViewerPlaceholder product={selectedProduct} />
+        <ConfiguratorViewer product={selectedProduct} />
         <Inspector product={selectedProduct} />
       </div>
     </div>
