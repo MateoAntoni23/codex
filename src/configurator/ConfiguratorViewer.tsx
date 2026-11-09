@@ -20,8 +20,8 @@
  * de entrada ni una dirección. El objetivo es mostrar EL MODELO, no una
  * instancia colocada.
  */
-import { Suspense, useMemo } from 'react';
-import { Canvas } from '@react-three/fiber';
+import { Suspense, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
+import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls, Line } from '@react-three/drei';
 import * as THREE from 'three';
 import type { Product } from '../tray/model';
@@ -60,6 +60,13 @@ function PortFrame({
     centerMm[2] + normalMm[2] * 80,
   ];
   const tipView = toViewer(tipMm);
+  const diagRef = useRef<THREE.Mesh | null>(null);
+  // Keep userData in sync even when position/normal change for the same port name.
+  useLayoutEffect(() => {
+    const m = diagRef.current;
+    if (!m) return;
+    m.userData.codex = { port: label, centerMm, normalMm };
+  }, [label, centerMm, normalMm]);
   return (
     <group>
       <mesh position={centerView}>
@@ -71,18 +78,14 @@ function PortFrame({
         <sphereGeometry args={[0.006, 8, 8]} />
         <meshBasicMaterial color={color} />
       </mesh>
-      <mesh
-        position={centerView}
-        onUpdate={(m) => {
-          m.userData.codex = { port: label, centerMm, normalMm };
-        }}
-      />
+      <mesh ref={diagRef} position={centerView} visible={false} />
     </group>
   );
 }
 
 function ProductMesh({ product }: { product: Product }) {
-  // Se suscribe a overrides para re-render al aplicar cambios.
+  // Se suscribe a overrides para recomputar la escena al aplicar cambios
+  // (modelFrame/portGeometry). Cambiar el producto también recomputa.
   const overrides = useCatalogConfigStore((s) => s.overrides);
 
   const scene = useMemo(() => {
@@ -112,22 +115,41 @@ function ProductMesh({ product }: { product: Product }) {
     }
   }, [product, overrides]);
 
+  // Why: `onUpdate` de R3F sólo se dispara de forma fiable al adjuntar hijos;
+  // asignar `geometry`/`matrix` desde allí deja la malla congelada cuando el
+  // memo recomputa (ej.: cambiar modelFrame o seleccionar otro producto en la
+  // lista). useLayoutEffect sí refresca la malla en cada cambio de `scene` y
+  // además dispone la geometría previa para no filtrar buffers.
+  const meshRef = useRef<THREE.Mesh | null>(null);
+  useLayoutEffect(() => {
+    const m = meshRef.current;
+    if (!m || !scene) return;
+    if (m.geometry && m.geometry !== scene.geom) {
+      m.geometry.dispose();
+    }
+    m.geometry = scene.geom;
+    m.matrixAutoUpdate = false;
+    m.matrix.copy(scene.matrix);
+    m.matrixWorldNeedsUpdate = true;
+    m.userData.codex = {
+      productoId: product.producto_id,
+      isIdentity: scene.isIdentity,
+      matrixElements: Array.from(scene.matrix.elements),
+    };
+  }, [scene, product.producto_id]);
+
+  useEffect(() => {
+    return () => {
+      const m = meshRef.current;
+      if (m?.geometry) m.geometry.dispose();
+    };
+  }, []);
+
   if (!scene) return null;
 
   return (
     <group>
-      <mesh
-        onUpdate={(m) => {
-          m.geometry = scene.geom;
-          m.matrix.copy(scene.matrix);
-          m.matrixAutoUpdate = false;
-          m.matrixWorldNeedsUpdate = true;
-          m.userData.codex = {
-            productoId: product.producto_id,
-            isIdentity: scene.isIdentity,
-          };
-        }}
-      >
+      <mesh ref={meshRef} matrixAutoUpdate={false}>
         <meshStandardMaterial
           color={scene.isIdentity ? '#50b8de' : '#ffcf33'}
           transparent
@@ -146,6 +168,62 @@ function ProductMesh({ product }: { product: Product }) {
       ))}
     </group>
   );
+}
+
+/**
+ * Bridge dev: expone el estado real de la escena del Configurador para que
+ * los e2e verifiquen `matrixWorld` y la bbox de la malla renderizada, no
+ * sólo bytes de screenshot. Devuelve `null` si no hay pieza paramétrica.
+ */
+function ConfiguratorSceneBridge() {
+  const scene = useThree((s) => s.scene);
+  useEffect(() => {
+    const w = window as typeof window & { __codex?: Record<string, unknown> };
+    if (!w.__codex) w.__codex = {};
+    w.__codex.configuratorMesh = () => {
+      let hit: Record<string, unknown> | null = null;
+      scene.traverse((obj) => {
+        const cd = (obj as THREE.Object3D).userData?.codex as
+          | { productoId?: string; isIdentity?: boolean; matrixElements?: number[] }
+          | undefined;
+        if (!cd || typeof cd.productoId !== 'string') return;
+        const mesh = obj as THREE.Mesh;
+        mesh.updateWorldMatrix(true, false);
+        if (mesh.geometry) {
+          if (!mesh.geometry.boundingBox) mesh.geometry.computeBoundingBox();
+          const bb = mesh.geometry.boundingBox;
+          hit = {
+            productoId: cd.productoId,
+            isIdentity: cd.isIdentity,
+            matrixElements: cd.matrixElements ?? null,
+            matrixWorld: mesh.matrixWorld.toArray(),
+            bboxMin: bb ? [bb.min.x, bb.min.y, bb.min.z] : null,
+            bboxMax: bb ? [bb.max.x, bb.max.y, bb.max.z] : null,
+            geometryUuid: mesh.geometry.uuid,
+          };
+        }
+      });
+      return hit;
+    };
+    w.__codex.configuratorPorts = () => {
+      const out: Array<Record<string, unknown>> = [];
+      scene.traverse((obj) => {
+        const cd = (obj as THREE.Object3D).userData?.codex as
+          | { port?: string; centerMm?: V3; normalMm?: V3 }
+          | undefined;
+        if (!cd || typeof cd.port !== 'string') return;
+        out.push({ port: cd.port, centerMm: cd.centerMm, normalMm: cd.normalMm });
+      });
+      return out;
+    };
+    return () => {
+      if (w.__codex) {
+        delete w.__codex.configuratorMesh;
+        delete w.__codex.configuratorPorts;
+      }
+    };
+  }, [scene]);
+  return null;
 }
 
 function AxisHelpers() {
@@ -188,6 +266,7 @@ export function ConfiguratorViewer({ product }: { product: Product | null }) {
               {product && <ProductMesh product={product} />}
             </Suspense>
             <AxisHelpers />
+            <ConfiguratorSceneBridge />
             <OrbitControls makeDefault />
           </Canvas>
         ) : (

@@ -15,7 +15,7 @@
  *     expone en el inspector como auditoría.
  *   - "Resetear" elimina el override — vuelve al default declarado.
  */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type {
   Product,
   CatalogFamily,
@@ -495,6 +495,21 @@ function OrientacionTab({
     buildDraftFromMapping(effective, recipePortNames));
   const [reason, setReason] = useState('');
   const [error, setError] = useState<string | null>(null);
+
+  // Al cambiar el producto seleccionado en el catálogo, descartar borrador y
+  // cargar el mapping efectivo del nuevo producto. Why: sin este reset, el
+  // usuario arrastraría ediciones a medio escribir entre productos distintos
+  // y los campos quedarían inconsistentes con el estado persistido.
+  useEffect(() => {
+    setEditMode(false);
+    setReason('');
+    setError(null);
+    setDraft(buildDraftFromMapping(effective, recipePortNames));
+    // Intencionalmente deps = [product.producto_id] para evitar que la
+    // recomposición de recipePortNames reinicie el borrador mientras el
+    // usuario edita el mismo producto.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [product.producto_id]);
 
   const startEdit = () => {
     setDraft(buildDraftFromMapping(effective, recipePortNames));
