@@ -35,11 +35,13 @@ const CATEGORY_COLOR: Record<string, string> = {
 function EquipmentObject({
   rp,
   isSelected,
+  moveActive,
   onSelect,
   meshRef,
 }: {
   rp: ElementRenderProps;
   isSelected: boolean;
+  moveActive: boolean;
   onSelect: () => void;
   meshRef?: React.Ref<THREE.Object3D>;
 }) {
@@ -47,8 +49,8 @@ function EquipmentObject({
   if (!positionViewer) return null;
 
   const color    = CATEGORY_COLOR[category] ?? '#888888';
-  const emissive = isSelected ? '#223366' : '#000000';
-  const emissiveIntensity = isSelected ? 2 : 0;
+  const emissive = moveActive ? '#44aa66' : isSelected ? '#223366' : '#000000';
+  const emissiveIntensity = moveActive ? 2.5 : isSelected ? 2 : 0;
   const quat     = (rotationViewer ?? [0, 0, 0, 1]) as Q4;
 
   const handleClick = (e: ThreeEvent<MouseEvent>) => {
@@ -56,9 +58,27 @@ function EquipmentObject({
     onSelect();
   };
 
+  // Cursor pointer al hover sobre el equipo (selección directa en canvas);
+  // en modo mover el cursor indica "mover" sobre la geometría del gizmo (drei
+  // lo administra). Esto da descubribilidad en escena sin pop-ups.
+  const handlePointerOver = (e: ThreeEvent<PointerEvent>) => {
+    e.stopPropagation();
+    document.body.style.cursor = 'pointer';
+  };
+  const handlePointerOut = () => {
+    document.body.style.cursor = '';
+  };
+
   if (geometryKind === 'box' && category === 'infrastructure') {
     return (
-      <mesh ref={meshRef as React.Ref<THREE.Mesh>} position={positionViewer} quaternion={quat} onClick={handleClick}>
+      <mesh
+        ref={meshRef as React.Ref<THREE.Mesh>}
+        position={positionViewer}
+        quaternion={quat}
+        onClick={handleClick}
+        onPointerOver={handlePointerOver}
+        onPointerOut={handlePointerOut}
+      >
         <boxGeometry args={sizeViewer ?? [1, 1, 1]} />
         <meshBasicMaterial color={isSelected ? '#aabbcc' : '#8899aa'} wireframe />
       </mesh>
@@ -67,7 +87,15 @@ function EquipmentObject({
 
   if (geometryKind === 'box' || geometryKind === 'asset') {
     return (
-      <mesh ref={meshRef as React.Ref<THREE.Mesh>} position={positionViewer} quaternion={quat} castShadow onClick={handleClick}>
+      <mesh
+        ref={meshRef as React.Ref<THREE.Mesh>}
+        position={positionViewer}
+        quaternion={quat}
+        castShadow
+        onClick={handleClick}
+        onPointerOver={handlePointerOver}
+        onPointerOut={handlePointerOut}
+      >
         <boxGeometry args={sizeViewer ?? [1, 1, 1]} />
         <meshStandardMaterial color={color} emissive={emissive} emissiveIntensity={emissiveIntensity} />
       </mesh>
@@ -77,7 +105,15 @@ function EquipmentObject({
   if (geometryKind === 'cylinder') {
     const [dx, dy] = sizeViewer ?? [0.3, 1, 0.3];
     return (
-      <mesh ref={meshRef as React.Ref<THREE.Mesh>} position={positionViewer} quaternion={quat} castShadow onClick={handleClick}>
+      <mesh
+        ref={meshRef as React.Ref<THREE.Mesh>}
+        position={positionViewer}
+        quaternion={quat}
+        castShadow
+        onClick={handleClick}
+        onPointerOver={handlePointerOver}
+        onPointerOut={handlePointerOut}
+      >
         <cylinderGeometry args={[dx / 2, dx / 2, dy, 24]} />
         <meshStandardMaterial color={color} emissive={emissive} emissiveIntensity={emissiveIntensity} />
       </mesh>
@@ -87,9 +123,9 @@ function EquipmentObject({
   // No geometry / unknown: placeholder
   return (
     <group ref={meshRef as React.Ref<THREE.Group>} position={positionViewer}>
-      <mesh onClick={handleClick}>
+      <mesh onClick={handleClick} onPointerOver={handlePointerOver} onPointerOut={handlePointerOut}>
         <boxGeometry args={[0.35, 0.35, 0.35]} />
-        <meshStandardMaterial color="#eeaa00" emissive="#ff8800" emissiveIntensity={isSelected ? 3 : 1.5} wireframe />
+        <meshStandardMaterial color="#eeaa00" emissive="#ff8800" emissiveIntensity={moveActive ? 3.5 : isSelected ? 3 : 1.5} wireframe />
       </mesh>
       <Html center distanceFactor={8} style={{ pointerEvents: 'none' }} position={[0, 0.45, 0]}>
         <div style={{ background: 'rgba(0,0,0,0.5)', color: '#ffcc44', fontSize: 10, padding: '2px 6px', borderRadius: 4 }}>
@@ -167,32 +203,57 @@ export function WorkspaceScene() {
   const selectedEquipId  = useWorkspaceStore((s) => s.selectedEquipId);
   const selectEquip      = useWorkspaceStore((s) => s.selectEquip);
   const layers           = useWorkspaceStore((s) => s.layers);
+  const moveMode         = useWorkspaceStore((s) => s.moveMode);
+  const setMoveMode      = useWorkspaceStore((s) => s.setMoveMode);
 
   const allRenderProps = useMemo(
     () => elements.map((el) => elementToRenderProps(el, elements)),
     [elements],
   );
 
-  // Drag gizmo sólo para el seleccionado, placed y sin padre rotado/compuesto.
   const selectedElement = selectedEquipId
     ? elements.find((e) => e.id === selectedEquipId) ?? null
     : null;
+  // Drag gizmo: elemento placed y sin padre (jerarquía compuesta no se maneja aún).
+  // Infrastructure se mueve igual — el usuario puede recolocar paredes/estructuras
+  // libremente; antes lo bloqueábamos por accidente.
   const canDragSelected = Boolean(
     selectedElement
       && selectedElement.placementStatus === 'placed'
-      && selectedElement.parentId === null
-      && selectedElement.category !== 'infrastructure',
+      && selectedElement.parentId === null,
   );
+
+  // Mesh del seleccionado para engancharle el gizmo. El ref callback dispara
+  // un re-render al montar/desmontar; NO reseteamos `meshReady` desde un
+  // useEffect dependiente de selectedEquipId porque el effect corre DESPUÉS
+  // de la fase de refs y pisa el `true` recién puesto por el nuevo ref —
+  // era por eso que el gizmo nunca aparecía al seleccionar un equipo.
   const selectedMeshRef = useRef<THREE.Object3D | null>(null);
-  // Dispara re-render cuando el mesh seleccionado se monta para que TransformControls pueda engancharse.
   const [meshReady, setMeshReady] = useReactState(false);
   const attachMesh = useCallback((obj: THREE.Object3D | null) => {
     selectedMeshRef.current = obj;
     setMeshReady(Boolean(obj));
   }, []);
+
+  // Si se apaga moveMode con Esc o cambia la selección, el gizmo se desmonta.
+  // Esc global: UX estándar para salir del modo mover.
   useEffect(() => {
-    setMeshReady(false);
-  }, [selectedEquipId]);
+    if (!moveMode) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMoveMode(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [moveMode, setMoveMode]);
+
+  // Si el elemento seleccionado pierde elegibilidad (deja de estar placed, se
+  // borra, cambia a infraestructura con padre), apagar el modo mover para no
+  // dejar un gizmo huérfano.
+  useEffect(() => {
+    if (moveMode && !canDragSelected) setMoveMode(false);
+  }, [moveMode, canDragSelected, setMoveMode]);
+
+  const showGizmo = moveMode && canDragSelected && !!selectedElement && meshReady && !!selectedMeshRef.current;
 
   return (
     <>
@@ -211,17 +272,46 @@ export function WorkspaceScene() {
             key={rp.id}
             rp={rp}
             isSelected={isSelected}
+            moveActive={isSelected && moveMode}
             onSelect={() => selectEquip(rp.id)}
             meshRef={isSelected && canDragSelected ? attachMesh : undefined}
           />
         );
       })}
 
-      {canDragSelected && selectedElement && meshReady && selectedMeshRef.current && (
+      {showGizmo && selectedElement && (
         <EquipmentDragControls
           targetElement={selectedElement}
-          targetObject={selectedMeshRef.current}
+          targetObject={selectedMeshRef.current!}
         />
+      )}
+
+      {/* Indicación on-screen: aparece sobre el equipo en modo mover. */}
+      {showGizmo && selectedElement?.placementStatus === 'placed' && (
+        <Html
+          position={[
+            selectedElement.transform.positionMm.x / 1000,
+            selectedElement.transform.positionMm.z / 1000 + 1.2,
+            -selectedElement.transform.positionMm.y / 1000,
+          ]}
+          center
+          style={{ pointerEvents: 'none' }}
+        >
+          <div
+            data-testid="move-mode-hint"
+            style={{
+              background: 'rgba(20, 80, 40, 0.92)',
+              color: '#aaffcc',
+              fontSize: 11,
+              padding: '4px 8px',
+              borderRadius: 4,
+              whiteSpace: 'nowrap',
+              boxShadow: '0 2px 6px rgba(0,0,0,0.4)',
+            }}
+          >
+            ✥ Modo mover · arrastrá los ejes XYZ · Esc para salir
+          </div>
+        </Html>
       )}
 
       {/* Tray objects — TrayObjects reads useTrayStore and useWorkspaceStore for layers/selection */}

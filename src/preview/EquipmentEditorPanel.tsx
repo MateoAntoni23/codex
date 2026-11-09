@@ -514,7 +514,7 @@ export function EquipmentEditorPanel({ element, elements, updateElement, addEvid
       </div>
       {element.parentId === null && element.placementStatus === 'placed' && (
         <p className="inspector-hint" style={{ padding: '2px 12px 4px', color: '#99aadd' }}>
-          También podés arrastrar el gizmo XYZ en la escena. Confirmá con <b>Aplicar</b> o descartá con <b>Cancelar</b>.
+          Para arrastrar en escena, activá <b>✥ Mover libremente</b> arriba y moveré los ejes XYZ (rojo X, verde Y, azul Z). Acá podés confirmar con <b>Aplicar</b> o descartar con <b>Cancelar</b>.
         </p>
       )}
       <EditField id="pi-pos-x" label="X" value={posDraft.x} error={posErrors.x}

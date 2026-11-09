@@ -42,6 +42,16 @@ export interface WorkspaceState {
   equipHistory: EquipmentElement[][];
   equipFuture: EquipmentElement[][];
 
+  /**
+   * Modo "Mover libremente" activo para el equipo seleccionado. Toggle explícito
+   * desde el inspector: sólo cuando está en true se monta el gizmo XYZ en escena.
+   * Se apaga automáticamente cuando cambia la selección, se carga archivo o se
+   * activa la herramienta de conexión — para que nunca quede atrapado en modo
+   * mover tras cambiar de contexto.
+   */
+  moveMode: boolean;
+  setMoveMode: (on: boolean) => void;
+
   // Equipment actions
   selectEquip: (id: string | null) => void;
   updateElement: (el: EquipmentElement) => void;
@@ -145,10 +155,21 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   selectedImportedEquipoId: null,
   equipHistory: [],
   equipFuture: [],
+  moveMode: false,
 
-  selectEquip: (id) => set({ selectedEquipId: id, selectedTrayId: null, selectedSupportId: null, selectedImportedEquipoId: null }),
-  selectTray: (id) => set({ selectedTrayId: id, selectedEquipId: null, selectedSupportId: null, selectedImportedEquipoId: null }),
-  selectSupport: (id) => set({ selectedSupportId: id, selectedEquipId: null, selectedTrayId: null, selectedImportedEquipoId: null }),
+  selectEquip: (id) => set((s) => ({
+    selectedEquipId: id,
+    selectedTrayId: null,
+    selectedSupportId: null,
+    selectedImportedEquipoId: null,
+    // Al cambiar de equipo se sale del modo mover para evitar arrastrar
+    // sin querer el que acaba de seleccionarse.
+    moveMode: id === s.selectedEquipId ? s.moveMode : false,
+  })),
+  selectTray: (id) => set({ selectedTrayId: id, selectedEquipId: null, selectedSupportId: null, selectedImportedEquipoId: null, moveMode: false }),
+  selectSupport: (id) => set({ selectedSupportId: id, selectedEquipId: null, selectedTrayId: null, selectedImportedEquipoId: null, moveMode: false }),
+
+  setMoveMode: (on) => set({ moveMode: on }),
 
   updateElement: (el) =>
     set((s) => ({
@@ -242,7 +263,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   toggleLayer: (key) =>
     set((s) => ({ layers: { ...s.layers, [key]: !s.layers[key] } })),
 
-  activateConnectionTool: () => set({ connectionToolActive: true, connectionPortA: null, selectedEquipId: null, selectedTrayId: null, selectedSupportId: null }),
+  activateConnectionTool: () => set({ connectionToolActive: true, connectionPortA: null, selectedEquipId: null, selectedTrayId: null, selectedSupportId: null, moveMode: false }),
   deactivateConnectionTool: () => set({ connectionToolActive: false, connectionPortA: null }),
   setConnectionPortA: (port) => set({ connectionPortA: port }),
 
@@ -263,6 +284,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       importedCatalog:     importedCatalog === undefined ? null : importedCatalog,
       equipHistory:        [],
       equipFuture:         [],
+      moveMode:            false,
     }),
 
   markDirty: () => set({ dirty: true }),
@@ -285,6 +307,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       importedCatalog: null,
       equipHistory:    [],
       equipFuture:     [],
+      moveMode:        false,
     }),
 
   setImportedCatalog: (c) =>

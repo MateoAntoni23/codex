@@ -624,10 +624,33 @@ function EquipmentCard() {
     }));
   };
 
+  const moveMode    = useWorkspaceStore((s) => s.moveMode);
+  const setMoveMode = useWorkspaceStore((s) => s.setMoveMode);
+  const canMove = Boolean(element && element.placementStatus === 'placed' && element.parentId === null);
+
   return (
     <div className="inspector-panel">
       {element && (
-        <div style={{ padding: '4px 12px 4px', display: 'flex', gap: 6 }}>
+        <div style={{ padding: '4px 12px 4px', display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          <button
+            data-testid="equip-move-toggle"
+            onClick={() => setMoveMode(!moveMode)}
+            disabled={!canMove}
+            title={canMove ? 'Mostrar/ocultar gizmo XYZ para mover el equipo en escena' : 'El equipo debe estar colocado y sin padre para moverse'}
+            style={{
+              fontSize: 11,
+              padding: '3px 10px',
+              background: moveMode ? '#2d7a4e' : '#3c4967',
+              color: 'white',
+              border: `1px solid ${moveMode ? '#6fd398' : '#5566aa'}`,
+              borderRadius: 3,
+              cursor: canMove ? 'pointer' : 'not-allowed',
+              fontWeight: moveMode ? 600 : 400,
+              opacity: canMove ? 1 : 0.5,
+            }}
+          >
+            {moveMode ? '✥ Mover (activo — Esc)' : '✥ Mover libremente'}
+          </button>
           <button onClick={handleDuplicate} style={{ fontSize: 11, padding: '3px 8px', background: '#3c4967', color: 'white', border: '1px solid #5566aa', borderRadius: 3, cursor: 'pointer' }}>
             Duplicar
           </button>
