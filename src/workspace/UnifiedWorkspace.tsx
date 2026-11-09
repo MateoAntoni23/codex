@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
@@ -16,6 +16,7 @@ import {
   getPortGeometryOverride,
   listOverriddenProductIds,
 } from './catalogPortMapping';
+import { ImportWizard } from '../import/ImportWizard';
 
 function SceneBridge() {
   const scene = useThree((s) => s.scene);
@@ -114,7 +115,7 @@ function StatusBar() {
   );
 }
 
-function Toolbar() {
+function Toolbar({ onOpenImportWizard }: { onOpenImportWizard: () => void }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleExport = () => {
@@ -125,8 +126,12 @@ function Toolbar() {
       alert('No hay trazado cargado para exportar.');
       return;
     }
-    // Incluir overrides del Configurador para portabilidad entre PCs.
-    const json = exportWorkspace(ws.elements, ws.evidence, ws.projectMeta, tray.entrada, cfg.overrides);
+    // Incluir overrides del Configurador y el catálogo importado para portabilidad
+    // entre PCs (A11: round-trip sin pérdida).
+    const json = exportWorkspace(
+      ws.elements, ws.evidence, ws.projectMeta, tray.entrada,
+      cfg.overrides, ws.importedCatalog,
+    );
     const blob = new Blob([json], { type: 'application/json' });
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement('a');
@@ -172,7 +177,10 @@ function Toolbar() {
       }
       // All validation passed — now update both stores atomically
       const { elements, evidence } = ws.projectV2;
-      useWorkspaceStore.getState().loadFile(elements, evidence, extractMeta(ws.projectV2), file.name);
+      useWorkspaceStore.getState().loadFile(
+        elements, evidence, extractMeta(ws.projectV2), file.name,
+        ws.importedCatalog?.catalog ?? null,
+      );
       // importEdit resets tray state and clears history/future so undo can't reach the previous project
       useTrayStore.getState().importEdit(ws.trayInput);
       // Cancel any active routing session since the tray was replaced
@@ -199,6 +207,7 @@ function Toolbar() {
       <button onClick={handleExport}>Exportar JSON</button>
       <button onClick={() => fileInputRef.current?.click()}>Importar JSON</button>
       <input ref={fileInputRef} type="file" accept=".json" style={{ display: 'none' }} onChange={handleImport} />
+      <button onClick={onOpenImportWizard} data-testid="open-import-wizard">Importar Excel</button>
       <a href="?configurator=v1" className="workspace-toolbar-link" data-testid="open-configurator">Configuración de biblioteca</a>
     </div>
   );
@@ -209,6 +218,7 @@ export function UnifiedWorkspace() {
   const selectTray     = useWorkspaceStore((s) => s.selectTray);
   const selectedEquipId = useWorkspaceStore((s) => s.selectedEquipId);
   const markDirty      = useWorkspaceStore((s) => s.markDirty);
+  const [importWizardOpen, setImportWizardOpen] = useState(false);
 
   // Initialize motor connection on mount
   useEffect(() => {
@@ -277,7 +287,7 @@ export function UnifiedWorkspace() {
 
   return (
     <div className="unified-workspace">
-      <Toolbar />
+      <Toolbar onOpenImportWizard={() => setImportWizardOpen(true)} />
       <StatusBar />
 
       <div className="unified-workspace-body">
@@ -297,6 +307,8 @@ export function UnifiedWorkspace() {
           <WorkspaceInspector />
         </aside>
       </div>
+
+      {importWizardOpen && <ImportWizard onClose={() => setImportWizardOpen(false)} />}
     </div>
   );
 }

@@ -6,6 +6,7 @@ import { WorkspaceLegend } from './WorkspaceLegend';
 import { computeGuideSteps } from './workspaceGuide';
 import { AddTraySegmentForm } from './AddTraySegmentForm';
 import { AddSupportForm } from './AddSupportForm';
+import { ImportedEquipmentTree } from '../import/ImportedEquipmentTree';
 import type { Category } from '../types/domain-v2';
 
 const LAYER_LABELS: Record<LayerKey, string> = {
@@ -292,6 +293,9 @@ export function WorkspaceTree() {
         ))}
         {!entrada && <p className="workspace-empty">Motor no conectado</p>}
       </section>
+
+      {/* Imported catalog (ELS-IMP-EQCX) — appears only when a catalog is loaded */}
+      <ImportedEquipmentTree />
 
       {/* Connections tool */}
       <ConnectionsSection />

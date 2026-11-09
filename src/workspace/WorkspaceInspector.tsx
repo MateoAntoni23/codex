@@ -13,6 +13,7 @@ import { useRoutingStore } from './useRoutingStore';
 import { RoutingPanel } from './RoutingPanel';
 import { EquipmentEditorPanel } from '../preview/EquipmentEditorPanel';
 import { TrayResults } from './TrayResults';
+import { ImportedEquipmentInspector } from '../import/ImportedEquipmentInspector';
 import { checkDeleteDependencies, duplicateElement } from '../preview/previewCrud';
 import type { Piece, Support, TrayInput } from '../tray/model';
 import { object } from '../tray/model';
@@ -653,11 +654,12 @@ function TrayHistoryControls() {
 // ─── Main inspector ───────────────────────────────────────────────────────────
 
 export function WorkspaceInspector() {
-  const selectedEquipId   = useWorkspaceStore((s) => s.selectedEquipId);
-  const selectedTrayId    = useWorkspaceStore((s) => s.selectedTrayId);
-  const selectedSupportId = useWorkspaceStore((s) => s.selectedSupportId);
-  const entrada           = useTrayStore((s) => s.entrada);
-  const routingActive     = useRoutingStore((s) => s.active);
+  const selectedEquipId        = useWorkspaceStore((s) => s.selectedEquipId);
+  const selectedTrayId         = useWorkspaceStore((s) => s.selectedTrayId);
+  const selectedSupportId      = useWorkspaceStore((s) => s.selectedSupportId);
+  const selectedImportedEquipId = useWorkspaceStore((s) => s.selectedImportedEquipoId);
+  const entrada                = useTrayStore((s) => s.entrada);
+  const routingActive          = useRoutingStore((s) => s.active);
 
   const piece   = selectedTrayId    ? entrada?.piezas.find((p) => p.instancia_id === selectedTrayId)        : null;
   const support = selectedSupportId ? entrada?.soportes.find((s) => s.soporte_id === selectedSupportId)    : null;
@@ -670,6 +672,8 @@ export function WorkspaceInspector() {
 
       {routingActive ? (
         <RoutingPanel />
+      ) : selectedImportedEquipId ? (
+        <ImportedEquipmentInspector />
       ) : selectedEquipId ? (
         <EquipmentCard />
       ) : piece ? (

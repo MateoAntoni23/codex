@@ -3,6 +3,7 @@ import type { TrayInput } from '../tray/model';
 import { assertInput } from '../tray/model';
 import { validateProjectDataV2 } from '../persistence/validate-v2';
 import type { ProductPortMapping } from './catalogPortMapping';
+import type { ImportedCatalog } from '../import/types';
 
 /**
  * The non-elements, non-evidence fields of ProjectDataV2.
@@ -43,12 +44,26 @@ export interface CatalogConfigBlock {
   overrides: Record<string, ProductPortMapping>;
 }
 
+/**
+ * Catálogo ELS-IMP-EQCX serializado como parte del proyecto (A11).
+ * Se guarda tal cual lo devuelve el parser — así no hay pérdida entre save/load,
+ * incluidos valores vigente=NO, PENDIENTES completos y trazabilidad.
+ *
+ * El `version` del bloque es independiente del `meta.formatoVersion`: el primero
+ * describe la forma de persistencia; el segundo, el formato Excel originador.
+ */
+export interface ImportedCatalogBlock {
+  version: 'codex:importedCatalog/1';
+  catalog: ImportedCatalog;
+}
+
 export interface WorkspaceFileV1 {
   fileVersion: 1;
   exportedAt: string;
   projectV2: ProjectDataV2;
   trayInput: TrayInput;
   catalogConfig?: CatalogConfigBlock;
+  importedCatalog?: ImportedCatalogBlock;
 }
 
 export function exportWorkspace(
@@ -57,6 +72,7 @@ export function exportWorkspace(
   meta: ProjectMeta,
   trayInput: TrayInput,
   catalogOverrides?: Record<string, ProductPortMapping>,
+  importedCatalog?: ImportedCatalog | null,
 ): string {
   const projectV2: ProjectDataV2 = {
     schemaVersion: 2,
@@ -76,6 +92,12 @@ export function exportWorkspace(
     file.catalogConfig = {
       version: 'codex:catalogConfig/1',
       overrides: catalogOverrides,
+    };
+  }
+  if (importedCatalog) {
+    file.importedCatalog = {
+      version: 'codex:importedCatalog/1',
+      catalog: importedCatalog,
     };
   }
   return JSON.stringify(file, null, 2);
@@ -104,6 +126,7 @@ export function importWorkspace(raw: string): WorkspaceFileV1 {
   assertInput(obj.trayInput);
 
   const catalogConfig = parseCatalogConfig(obj.catalogConfig);
+  const importedCatalog = parseImportedCatalog(obj.importedCatalog);
 
   return {
     fileVersion: 1,
@@ -111,6 +134,7 @@ export function importWorkspace(raw: string): WorkspaceFileV1 {
     projectV2,
     trayInput: obj.trayInput as TrayInput,
     ...(catalogConfig ? { catalogConfig } : {}),
+    ...(importedCatalog ? { importedCatalog } : {}),
   };
 }
 
@@ -138,6 +162,38 @@ function parseCatalogConfig(raw: unknown): CatalogConfigBlock | null {
     overrides[productId] = value as unknown as ProductPortMapping;
   }
   return { version: 'codex:catalogConfig/1', overrides };
+}
+
+function parseImportedCatalog(raw: unknown): ImportedCatalogBlock | null {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  const obj = raw as Record<string, unknown>;
+  if (obj.version !== 'codex:importedCatalog/1') {
+    throw new Error(`importedCatalog: versión no soportada (${String(obj.version)})`);
+  }
+  if (!obj.catalog || typeof obj.catalog !== 'object' || Array.isArray(obj.catalog)) {
+    throw new Error('importedCatalog: catalog debe ser un objeto');
+  }
+  const c = obj.catalog as Partial<ImportedCatalog>;
+  // Validación mínima estructural — el catálogo ya pasó por el parser+validator
+  // cuando se importó; acá sólo verificamos que las colecciones existan como arrays
+  // para no explotar al leer. Es decisión del contrato §9 que el libro manda; una
+  // revalidación completa al abrir el proyecto sería costosa y redundante.
+  const arrays: Array<keyof ImportedCatalog> = [
+    'equipos', 'componentes', 'atributos', 'conexiones', 'tendidos',
+    'alias', 'pendientes', 'trazabilidad', 'catalogoAtributos',
+  ];
+  for (const k of arrays) {
+    if (!Array.isArray(c[k])) {
+      throw new Error(`importedCatalog.catalog.${String(k)} debe ser array`);
+    }
+  }
+  if (!c.meta || typeof c.meta !== 'object') {
+    throw new Error('importedCatalog.catalog.meta inválido');
+  }
+  if (!c.listas || typeof c.listas !== 'object' || Array.isArray(c.listas)) {
+    throw new Error('importedCatalog.catalog.listas debe ser objeto');
+  }
+  return { version: 'codex:importedCatalog/1', catalog: c as ImportedCatalog };
 }
 
 /** Extract ProjectMeta from a validated ProjectDataV2. */
