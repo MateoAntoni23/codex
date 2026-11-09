@@ -396,3 +396,47 @@
   color: #8888cc;
   margin-bottom: 4px;
 }
+
+/* ─── Approval banner ──────────────────────────────────────────────── */
+
+.cfg-approval-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid #2a2a44;
+  background: #1a1a2a;
+}
+
+.cfg-approval-banner[data-status="none"] {
+  border-left: 3px solid #666688;
+}
+.cfg-approval-banner[data-status="current"] {
+  border-left: 3px solid #44aa66;
+  background: #142218;
+}
+.cfg-approval-banner[data-status="outdated"] {
+  border-left: 3px solid #ffaa44;
+  background: #241c10;
+}
+
+.cfg-approval-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #e0e0f0;
+}
+.cfg-approval-banner[data-status="current"] .cfg-approval-label { color: #88dd99; }
+.cfg-approval-banner[data-status="outdated"] .cfg-approval-label { color: #ffcc88; }
+
+.cfg-approval-detail {
+  font-size: 11px;
+  color: #8888aa;
+  flex-basis: 100%;
+}
+
+.cfg-approval-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 6px;
+}

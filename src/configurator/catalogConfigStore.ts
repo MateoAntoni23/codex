@@ -31,36 +31,57 @@
  */
 import { create } from 'zustand';
 import {
+  getEffectiveMapping,
   setPortMappingOverrides,
   type ProductPortMapping,
 } from '../workspace/catalogPortMapping';
+import { calibrationHash } from './patternIdentity';
+import {
+  computeApprovalInfo,
+  type ApprovalInfo,
+  type PatternApproval,
+} from './patternApprovals';
 
 const STORAGE_KEY = 'codex:catalogConfig:v1';
 
 interface Persisted {
   version: 'codex:catalogConfig/1';
   overrides: Record<string, ProductPortMapping>;
+  /** Aprobaciones por producto; ausente en archivos antiguos → sin aprobaciones. */
+  approvals?: Record<string, PatternApproval>;
   savedAt: string;
 }
 
-function readStorage(): Record<string, ProductPortMapping> {
-  if (typeof localStorage === 'undefined') return {};
+interface PersistedRead {
+  overrides: Record<string, ProductPortMapping>;
+  approvals: Record<string, PatternApproval>;
+}
+
+function readStorage(): PersistedRead {
+  if (typeof localStorage === 'undefined') return { overrides: {}, approvals: {} };
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return {};
+    if (!raw) return { overrides: {}, approvals: {} };
     const parsed = JSON.parse(raw) as Persisted;
-    if (parsed?.version !== 'codex:catalogConfig/1') return {};
-    return parsed.overrides ?? {};
+    if (parsed?.version !== 'codex:catalogConfig/1') return { overrides: {}, approvals: {} };
+    return {
+      overrides: parsed.overrides ?? {},
+      approvals: parsed.approvals ?? {},
+    };
   } catch {
-    return {};
+    return { overrides: {}, approvals: {} };
   }
 }
 
-function writeStorage(overrides: Record<string, ProductPortMapping>): void {
+function writeStorage(
+  overrides: Record<string, ProductPortMapping>,
+  approvals: Record<string, PatternApproval>,
+): void {
   if (typeof localStorage === 'undefined') return;
   const payload: Persisted = {
     version: 'codex:catalogConfig/1',
     overrides,
+    approvals,
     savedAt: new Date().toISOString(),
   };
   try {
@@ -72,6 +93,7 @@ function writeStorage(overrides: Record<string, ProductPortMapping>): void {
 
 interface State {
   overrides: Readonly<Record<string, ProductPortMapping>>;
+  approvals: Readonly<Record<string, PatternApproval>>;
   hydrated: boolean;
   /** Carga desde localStorage y sincroniza con el motor. Idempotente. */
   hydrate: () => void;
@@ -81,41 +103,87 @@ interface State {
   removeOverride: (productId: string) => void;
   /** Reemplaza todos los overrides (usar para import de archivo). */
   replaceAll: (overrides: Record<string, ProductPortMapping>) => void;
-  /** Serializa a JSON portable (tarea #90 completará export/import de UI). */
+  /**
+   * Aprueba el patrón para `productId` fijando la revisión del maestro y el
+   * hash de la calibración actual. Si no hay override, usa el default; igual
+   * queda aprobado (la aprobación es independiente de que haya override).
+   */
+  approveProduct: (productId: string, masterRevision: number) => void;
+  /** Revoca la aprobación de un producto (si existía). */
+  revokeApproval: (productId: string) => void;
+  /** Reemplaza todas las aprobaciones (usar para import de archivo). */
+  replaceApprovals: (approvals: Record<string, PatternApproval>) => void;
+  /**
+   * Devuelve el estado efectivo de aprobación para un producto: 'none' si no
+   * hay aprobación persistida; 'current' si coincide con la calibración y
+   * revisión actuales; 'outdated' si cambió algo desde la aprobación.
+   */
+  getApprovalInfo: (productId: string, masterRevision: number | undefined) => ApprovalInfo;
+  /** Serializa a JSON portable (overrides + approvals). */
   serialize: () => string;
 }
 
 export const useCatalogConfigStore = create<State>((set, get) => ({
   overrides: {},
+  approvals: {},
   hydrated: false,
   hydrate: () => {
     if (get().hydrated) return;
-    const overrides = readStorage();
+    const { overrides, approvals } = readStorage();
     setPortMappingOverrides(overrides);
-    set({ overrides, hydrated: true });
+    set({ overrides, approvals, hydrated: true });
   },
   upsertOverride: (productId, mapping) => {
     const next = { ...get().overrides, [productId]: mapping };
     setPortMappingOverrides(next);
-    writeStorage(next);
+    writeStorage(next, get().approvals);
     set({ overrides: next });
   },
   removeOverride: (productId) => {
     const next = { ...get().overrides };
     delete next[productId];
     setPortMappingOverrides(next);
-    writeStorage(next);
+    writeStorage(next, get().approvals);
     set({ overrides: next });
   },
   replaceAll: (overrides) => {
     setPortMappingOverrides(overrides);
-    writeStorage(overrides);
+    writeStorage(overrides, get().approvals);
     set({ overrides });
+  },
+  approveProduct: (productId, masterRevision) => {
+    const mapping = getEffectiveMapping(productId);
+    const approval: PatternApproval = {
+      approvedAtRevision: masterRevision,
+      approvedAtCalibrationHash: calibrationHash(mapping),
+      approvedAt: new Date().toISOString(),
+    };
+    const nextApprovals = { ...get().approvals, [productId]: approval };
+    writeStorage(get().overrides, nextApprovals);
+    set({ approvals: nextApprovals });
+  },
+  revokeApproval: (productId) => {
+    if (!(productId in get().approvals)) return;
+    const next = { ...get().approvals };
+    delete next[productId];
+    writeStorage(get().overrides, next);
+    set({ approvals: next });
+  },
+  replaceApprovals: (approvals) => {
+    writeStorage(get().overrides, approvals);
+    set({ approvals });
+  },
+  getApprovalInfo: (productId, masterRevision) => {
+    const stored = get().approvals[productId];
+    const mapping = getEffectiveMapping(productId);
+    const currentHash = calibrationHash(mapping);
+    return computeApprovalInfo(stored, masterRevision, currentHash);
   },
   serialize: () => {
     const payload: Persisted = {
       version: 'codex:catalogConfig/1',
       overrides: get().overrides,
+      approvals: get().approvals,
       savedAt: new Date().toISOString(),
     };
     return JSON.stringify(payload, null, 2);
