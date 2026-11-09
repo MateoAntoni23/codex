@@ -22,7 +22,173 @@ Todas las afirmaciones apuntan a `archivo:línea` cuando hablan de código.
 Los números son del snapshot HEAD del `work tree` a la fecha; si una línea
 cambia esto queda documentado como evidencia del momento de la auditoría.
 
-## 1. Resumen para el usuario
+## 0.bis — Addendum de corrección (2026-11-09)
+
+Una revisión externa sobre el commit `07b70da` detectó contradicciones entre
+las afirmaciones de la auditoría y el código real. Este addendum documenta
+las correcciones aplicadas. **La sección 1 "Cinco prioridades" original se
+sustituye por la lista corregida al final de este addendum.** Las secciones
+2–11 originales se conservan como contexto, pero sus afirmaciones deben
+leerse a la luz de este addendum y de los CSV actualizados en el mismo
+commit (`requirements-traceability.csv`, `module-disposition.csv`,
+`source-inventory.csv`).
+
+### Qué afirmaba 07b70da y qué muestra el código
+
+| # | Afirmación 07b70da | Realidad verificada | Evidencia |
+|---|--------------------|---------------------|-----------|
+| 1 | "EquipmentEditorPanel no está conectado" / "no hay editor interactivo real (preview estático con datos demo)" | `EquipmentEditorPanel` vive en `src/preview/EquipmentEditorPanel.tsx:295` y **está conectado** al UnifiedWorkspace via `WorkspaceInspector.tsx:14,559`. También lo usa `?preview=v2`. | `grep -n EquipmentEditorPanel src/workspace/WorkspaceInspector.tsx` |
+| 2 | "WorkspaceTree no edita circuitos; UI no acepta circuitos" | `WorkspaceTree.tsx:302-329` **edita circuitos inline** (cable_id, cantidad, recorrido). | `src/workspace/WorkspaceTree.tsx:58,70,302-329` |
+| 3 | "UI no genera soportes" | `AddSupportForm.tsx` crea soportes con `buildSupport` y los persiste en `trayStore`. | `src/workspace/AddSupportForm.tsx:1-182` |
+| 4 | "Motor calcula ocupación / cargas / corridas, falta exposición UI" (R-OCCUP-1, R-LOAD-1, R-LOAD-2) | Motor calcula ocupación por sección (`trazado.py:123-142`), cargas con tapas/PE/escenario (`trazado.py:146-161`), corridas + vanos (`trazado.py:163-179`) y cómputo (`trazado.py:187`). `TrayResults.tsx:48-101` **las presenta** con "Ocupación por pieza/boca", "PE y equipotencial" y "Cómputo de materiales" plegables. | `src/workspace/TrayResults.tsx:48-101` |
+| 5 | "`migrateV1ToV2` y `migration-backup` son módulos a añadir en E3" | **Ya existen e están testeados**: `src/persistence/migrate-v1-to-v2.ts:36` (230 LOC, 24 tests en `__tests__/migrate-v1-to-v2.test.ts`) y `src/persistence/migration-backup.ts:172` (569 LOC, suite completa). Son **puras** y no tienen call site productivo fuera de `src/preview/previewData.ts:35` y los tests. | `grep -rn migrateV1ToV2 src` |
+| 6 | "`source-inventory.csv` enumera top-level keys del snapshot" | 11 de las 16 claves citadas no existen en el snapshot. Las reales (python `json.load`) son: `APLICACIONES_SOPORTE, COMPATIBILIDADES, COMPONENTES_SOPORTE, COMPONENTES_UNION, FAMILIAS, FUENTES, IDS_PRODUCTOS, PRODUCTOS, PUERTOS_PRODUCTO, SISTEMAS_SOPORTE, TABLAS_CARGA, origen, tipo, version_formato`. | `python -c "import json;print(list(json.load(open('vendor/motor_bandejas/datos/catalogo/catalogo_bandejas_snapshot.json',encoding='utf-8')).keys()))"` |
+| 7 | "`src/workspace/exceptionStore.ts` persiste excepciones" (módulo citado en module-disposition) | **No existe tal archivo**. Las excepciones se persisten dentro de `workspaceFile` y se gestionan desde `RoutingPanel` + `continuationCandidates`. | `grep -r exceptionStore src` (0 matches) |
+| 8 | "Gizmo de rotación en `src/workspace/*RotationGizmo*`" | **No existe tal archivo**. La rotación se hace vía `RotatePieceControls` (panel numérico en `WorkspaceInspector.tsx:43`) sobre `pieceTransforms.ts`. No hay gizmo 3D interactivo. | `grep -r RotationGizmo src` (0 matches) |
+| 9 | "`src/types/workspace.ts` define los tipos" | **No existe**. Los tipos v2 están en `src/types/domain-v2.ts:248,472`. | `ls src/types/` |
+
+### Taxonomía nueva aplicada a las matrices
+
+En los CSV actualizados se sustituye la columna informal `disposition`/`gap_status`
+por una taxonomía explícita:
+
+- **existing-operational** — módulo presente y cableado al flujo productivo (ruta
+  `?workspace=bandejas`).
+- **existing-operational-legacy** — presente y vivo, pero asociado a un flujo
+  en retirada controlada (editor v1).
+- **existing-partial** — presente pero sólo en vistas experimentales
+  (`?preview=v2`, `?pilot=*`).
+- **existing-not-wired** — el módulo existe y está testeado, pero carece de
+  call site productivo (caso `migrate-v1-to-v2` y `migration-backup`).
+- **absent** — no existe en el repositorio; requiere creación.
+- **not-verified** — no se pudo comprobar en esta auditoría.
+
+### Decisiones del encargo que no se re-litigan
+
+Mantenidas tal como fueron tomadas por el usuario en el prompt maestro y
+confirmadas al revisar el motor:
+
+- El **catálogo editorial** manda sobre las dimensiones nominales del CAD; el
+  pipeline STEP no reemplaza al snapshot en la autoridad de `ancho`/`ala`.
+- **Bajadas**: la longitud manual **sustituye** a la calculada y **no se suma**
+  aparte; los accesorios no propagan longitud.
+- La **geometría compartida** de escalera Z/G **no fusiona** los productos
+  comerciales: el SKU y la mecánica permanecen separados aun con polígono
+  idéntico.
+
+### Tests y verificaciones ejecutadas en este commit
+
+- `grep -rn EquipmentEditorPanel src` → confirma conexión en `WorkspaceInspector`.
+- `grep -rn RotationGizmo src` → 0 matches.
+- `grep -rn exceptionStore src` → 0 matches.
+- `ls src/types/` → `domain.ts`, `domain-v2.ts` (no `workspace.ts`).
+- `grep -rn migrateV1ToV2 src` → 29 matches (módulo + tests + 1 call site demo).
+- `python json.load(...snapshot.json).keys()` → lista real de top-level keys.
+- `wc -l` sobre `AddSupportForm.tsx` (182), `TrayResults.tsx` (133),
+  `WorkspaceTree.tsx` (390), `WorkspaceInspector.tsx` (684),
+  `migrate-v1-to-v2.ts` (230), `migration-backup.ts` (569).
+- Lectura directa de `vendor/motor_bandejas/motor_bandejas/trazado.py:1-207`
+  para verificar que el motor calcula ocupación, cargas, corridas y cómputo.
+- Lectura de `src/App.tsx:28-46` para confirmar las rutas vivas.
+
+**No se corrieron suites nuevas de tests en este commit** (la entrega es de
+diagnóstico; el repositorio está en el mismo estado funcional que `07b70da`,
+sin cambios en código productivo). La única modificación son los cuatro
+documentos de `docs/strategy/`.
+
+### Cinco prioridades corregidas (reordenadas por dependencia, no por ruta)
+
+La reordenación respeta el principio "dependencias primero, ruta después":
+el cambio de la ruta `/` es **consecuencia**, no causa, del cableado real de
+la migración v1→v2. Se prefieren entregas completas que reutilicen
+capacidades existentes a trabajos nuevos de scaffolding.
+
+1. **Cablear la migración v1→v2 existente al EditorApp** — `migrate-v1-to-v2.ts`
+   y `migration-backup.ts` están implementados, puros y probados (24 tests +
+   suite completa de backup). Falta el **call site productivo** que:
+   (a) detecte proyectos v1 en IndexedDB al arrancar; (b) ofrezca al
+   usuario migrar con respaldo; (c) deposite el resultado en el
+   `UnifiedWorkspace`. Sin esto, cualquier promoción de `/` al workspace v2
+   deja a los usuarios con datos v1 sin acceso natural a sus proyectos.
+   Entrega observable: un usuario con proyecto v1 abre `/`, ve el prompt,
+   acepta, y queda en `UnifiedWorkspace` con el proyecto migrado y el
+   backup disponible para `restoreFromBackup`.
+
+2. **Promover `/` a `UnifiedWorkspace`** y mover el editor v1 a `?legacy=v1`
+   con enlace recíproco — **depende estrictamente de (1)**. Cambio de una
+   línea en `src/App.tsx:28-46`; el aviso y el banner son el 90 % del
+   trabajo. Entrega observable: `/` muestra el workspace v2; `?legacy=v1`
+   abre el editor antiguo con banner "herramienta en retirada".
+
+3. **BOM agregado por SKU y exportable** — módulo `src/workspace/bom/`
+   nuevo que reutiliza `computar()` del motor (ya devuelve `lineas`,
+   `resumen_cables`, `resumen_por_producto`). `TrayResults.tsx:87-101` ya
+   muestra `computo.lineas` por SKU; falta sumar por SKU en toda la escena
+   y exportar CSV/JSON. Entrega observable: un botón "BOM" en el
+   `WorkspaceInspector` abre una tabla con SKU, cantidad, unidad y
+   descripción; "Exportar" produce un CSV reproducible.
+
+4. **Ingesta real de equipos** — desbloquea R-LIB-2/3/4. La capacidad de
+   edición (`EquipmentEditorPanel`) ya existe y está conectada; lo que
+   falta es la **entrada de datos**. Depende de obtener
+   `ELS-SYC_Excel_General_Tecnico_RevB.xlsx` autoritativo (bloqueante
+   externo). Entrega observable: subir Excel → preview de reconciliación
+   TAG/alias/ID → confirmar → equipos aparecen en la escena v2 y son
+   editables con el panel existente.
+
+5. **Bajadas con longitud manual** (R-DROP-1/2) — decisión ya tomada: la
+   longitud manual **sustituye** a la calculada y no se suma. Entrega
+   sobre `parametricBridge` + `trayStore` sin crear módulo civil.
+   Entrega observable: seleccionar una pieza, declarar bajada con
+   longitud manual, ver que el `resumen_cables` suma esa longitud en
+   lugar de la geométrica; exportar/importar JSON conserva el valor.
+
+Explícitamente fuera de las cinco primeras (quedan en las fases PRÓXIMO y
+FUTURO del plan original de las secciones 8.2 y 8.3):
+
+- Civil 3D (DXF, extrusiones, capas).
+- Vistas predefinidas (frontal/posterior/superior/iso).
+- Edición por grupo con preview (R-OCCUP-2).
+- Hover 3D con detalle de ocupación (R-OCCUP-3).
+- Planos PDF (R-DOC-2) y app móvil de montaje (R-DOC-3).
+
+### Cambios concretos respecto de la primera auditoría
+
+- `requirements-traceability.csv`:
+  - R-LIB-4, R-OCCUP-1, R-LOAD-2, R-WIRE-1, R-DOC-1, R-SUPPORT-1, R-TRACE-3:
+    estado reclasificado (NO → partial/operational según evidencia real).
+  - R-POS-1: elimina referencia a `*RotationGizmo*` inexistente; cita
+    `RotatePieceControls` + `pieceTransforms.ts` reales.
+  - R-ENG-2: aclara que `migrate-v1-to-v2` y `migration-backup` existen
+    pero no están cableados.
+  - R-COMPAT-3: elimina referencia a `exceptionStore.ts` inexistente.
+  - R-ENTRY-1: añade nota de dependencia con (1) del plan corregido.
+
+- `module-disposition.csv`:
+  - Eliminadas afirmaciones sobre módulos inexistentes (`exceptionStore`,
+    `*RotationGizmo*`, `src/types/workspace.ts`).
+  - Añadidas filas para `EquipmentEditorPanel`, `WorkspaceInspector`,
+    `WorkspaceTree`, `TrayResults`, `AddSupportForm`, `pieceTransforms`,
+    `previewCrud`, `domain-v2` types.
+  - `migrateV1ToV2` y `migration-backup` reclasificados de "añadir (E3)"
+    a `existing-not-wired`.
+  - Nueva columna `evidence` (archivo:línea) obligatoria en todas las
+    filas.
+  - Nueva taxonomía `disposition` reemplaza al vocabulario informal
+    ("conservar"/"añadir"/"retirar").
+
+- `source-inventory.csv`:
+  - `S-CAT-SNAP`: top-level keys sustituidas por las reales verificadas
+    con `python json.load`.
+  - `S-USER-XLSX`: confirmada ausencia por búsqueda recursiva.
+
+- Este documento (`INTEGRATED-AUDIT-AND-EXECUTION-PLAN.md`):
+  - Añadido este addendum completo (sección 0.bis).
+  - Las secciones 1–11 conservan su texto original para trazabilidad;
+    las cinco prioridades corregidas aparecen al final de este
+    addendum.
+
+## 1. Resumen para el usuario (versión 07b70da — superseded por el addendum 0.bis)
 
 ### Qué funciona hoy (evidencia breve)
 
