@@ -17,6 +17,7 @@ import {
   listOverriddenProductIds,
 } from './catalogPortMapping';
 import { ImportWizard } from '../import/ImportWizard';
+import { elementToRenderProps } from '../scene/v2-adapter';
 
 function SceneBridge() {
   const scene = useThree((s) => s.scene);
@@ -61,6 +62,32 @@ function SceneBridge() {
       if (ctl?.update) ctl.update();
       return { center: [center.x, center.y, center.z], sizeM: size, distM: dist };
     };
+    w.__codex.focusElement = (elementId: string, opts?: { padding?: number }) => {
+      // Encuadra la cámara sobre un EquipmentElement colocado. Si el elemento
+      // no está colocado o no existe, devuelve null sin tocar la cámara.
+      const state = useWorkspaceStore.getState();
+      const el = state.elements.find((e) => e.id === elementId);
+      if (!el) return null;
+      const rp = elementToRenderProps(el, state.elements);
+      if (!rp.placed || !rp.positionViewer) return null;
+      const [cx, cy, cz] = rp.positionViewer;
+      const [sx, sy, sz] = rp.sizeViewer ?? [0.5, 0.5, 0.5];
+      // Tamaño mínimo para equipos muy pequeños (sensores de 10 cm) — asegura
+      // un encuadre útil sin invadir el equipo.
+      const sizeM = Math.max(sx, sy, sz, 0.5);
+      const pad = opts?.padding ?? 0.5;
+      const dist = Math.max(sizeM * 3 + pad, 2.5);
+      const cam = camera as THREE.PerspectiveCamera;
+      cam.position.set(cx + dist * 0.6, cy + dist * 0.6, cz + dist * 0.6);
+      cam.lookAt(cx, cy, cz);
+      cam.near = 0.01;
+      cam.far = 1000;
+      cam.updateProjectionMatrix();
+      const ctl = controls as { target?: THREE.Vector3; update?: () => void } | undefined;
+      if (ctl?.target) ctl.target.set(cx, cy, cz);
+      if (ctl?.update) ctl.update();
+      return { center: [cx, cy, cz], sizeM, distM: dist };
+    };
     w.__codex.dumpMeshes = () => {
       const out: Array<Record<string, unknown>> = [];
       const tmp = new THREE.Vector3();
@@ -84,6 +111,7 @@ function SceneBridge() {
         delete w.__codex.controls;
         delete w.__codex.dumpMeshes;
         delete w.__codex.focusTray;
+        delete w.__codex.focusElement;
       }
     };
   }, [scene, camera, controls]);

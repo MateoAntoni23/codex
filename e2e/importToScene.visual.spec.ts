@@ -137,17 +137,57 @@ test('aceptación 1–7 — importado → operativo → mover → round-trip →
   const originalHash = afterImport.importedCatalog!.fileHash;
 
   // ─── Paso 2: Colocar motor + instrumento ───────────────────────────────────
+  // Captura antes de colocar para contrastar la evidencia visual.
+  await page.locator('.unified-workspace-canvas canvas').screenshot({
+    path: resolve(OUT_DIR, 'canvas-antes-de-colocar.png'),
+  });
+
   // Motor S1-SOP101 (EQ-0026) desde la ficha del inspector importado.
   await selectImportedByTag(page, 'S1-SOP101');
   await expect(page.locator('.imported-inspector')).toContainText('S1-SOP101');
   await page.getByTestId('imported-place').click();
-  // El elemento queda unplaced porque placeImportedEquipo pasa null como position.
-  // Lo movemos a una posición conocida para el resto del flujo.
   const afterPlaceMotor = await readStore(page);
   const motorId = Object.keys(afterPlaceMotor.byId).find(
     (k) => afterPlaceMotor.byId[k].importedRef?.equipoId === 'EQ-0026',
   );
   expect(motorId).toBeTruthy();
+  // Verificación crítica del fix: el botón "Colocar en escena" debe dejar el
+  // elemento 'placed' con posición apoyada en el piso, no 'unplaced'. De lo
+  // contrario WorkspaceScene lo filtra y el usuario no lo ve.
+  expect(afterPlaceMotor.byId[motorId!].placementStatus).toBe('placed');
+  expect(afterPlaceMotor.byId[motorId!].positionMm?.z).toBe(250); // motor cylinder length/2
+  // Captura después de colocar — debe mostrar el cilindro en escena.
+  await page.locator('.unified-workspace-canvas canvas').screenshot({
+    path: resolve(OUT_DIR, 'canvas-despues-de-colocar.png'),
+  });
+  // Verificación adicional: la cámara apuntó al nuevo elemento. focusElement
+  // debe estar expuesta y haber movido el target de los controles al equipo.
+  const camInfo = await page.evaluate(() => {
+    const w = window as typeof window & {
+      __codex?: {
+        camera?: { position: { x: number; y: number; z: number } };
+        controls?: { target?: { x: number; y: number; z: number } };
+        focusElement?: unknown;
+      };
+    };
+    return {
+      hasFocus: typeof w.__codex?.focusElement === 'function',
+      target: w.__codex?.controls?.target
+        ? { x: w.__codex.controls.target.x, y: w.__codex.controls.target.y, z: w.__codex.controls.target.z }
+        : null,
+      camera: w.__codex?.camera?.position
+        ? { x: w.__codex.camera.position.x, y: w.__codex.camera.position.y, z: w.__codex.camera.position.z }
+        : null,
+    };
+  });
+  expect(camInfo.hasFocus).toBe(true);
+  // Motor en viewer: positionMm (0, 0, 250) → [0, 0.25, 0]. Target debe estar
+  // cerca de esa posición tras el focus automático.
+  expect(camInfo.target).not.toBeNull();
+  expect(Math.abs(camInfo.target!.x)).toBeLessThan(0.5);
+  expect(Math.abs(camInfo.target!.y - 0.25)).toBeLessThan(0.5);
+  expect(Math.abs(camInfo.target!.z)).toBeLessThan(0.5);
+  // Mover a una posición conocida para el resto del flujo.
   await moveElement(page, motorId!, { x: 1000, y: 2000, z: 0 });
 
   // Buscar y colocar un instrumento. Usamos el primer INSTRUMENTO del catálogo.

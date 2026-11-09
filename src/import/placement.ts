@@ -48,10 +48,20 @@ export function mapImportCategoria(c: string): Category {
   return CATEGORIA_TO_DOMAIN[c] ?? 'infrastructure';
 }
 
+/** Altura vertical (mm) del centro a la base, para apoyar el elemento en el piso (z_domain=0). */
+export function floorRestingHalfHeightMm(geom: Geometry): number {
+  switch (geom.kind) {
+    case 'box':      return geom.heightMm / 2;
+    case 'cylinder': return geom.lengthMm / 2;
+    case 'plane':    return 0;
+    case 'asset':    return geom.boundsMm.z / 2;
+  }
+}
+
 // ─── Geometría por defecto por categoría (mm) ────────────────────────────────
 // Valores conservadores; el usuario los ajusta en el inspector después de colocar.
 
-const DEFAULT_GEOMETRY: Record<Category, Geometry> = {
+export const DEFAULT_GEOMETRY: Record<Category, Geometry> = {
   electrical_panel: { kind: 'box', widthMm: 600, depthMm: 400, heightMm: 2000 },
   pneumatic_panel:  { kind: 'box', widthMm: 600, depthMm: 400, heightMm: 1800 },
   motor:            { kind: 'cylinder', diameterMm: 300, lengthMm: 500 },

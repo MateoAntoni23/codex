@@ -16,6 +16,30 @@ import type {
   ComponenteImportado,
 } from './types';
 import type { EquipmentElement } from '../types/domain-v2';
+import { DEFAULT_GEOMETRY, floorRestingHalfHeightMm, mapImportCategoria } from './placement';
+
+type CodexBridge = { focusElement?: (id: string) => unknown };
+function getCodexBridge(): CodexBridge | null {
+  const w = window as typeof window & { __codex?: CodexBridge };
+  return w.__codex ?? null;
+}
+
+/**
+ * Default placement: stagger imported-placed elements along +X so they don't overlap,
+ * and sit each element on the floor (z_domain = half vertical dimension).
+ * World units: mm. y_domain = 0 (centered on the row).
+ */
+function nextDefaultPositionForCategoria(
+  categoria: string,
+  placedImportedCount: number,
+): { x: number; y: number; z: number } {
+  const geom = DEFAULT_GEOMETRY[mapImportCategoria(categoria)];
+  return {
+    x: placedImportedCount * 1500,
+    y: 0,
+    z: floorRestingHalfHeightMm(geom),
+  };
+}
 
 function fmtValor(a: AtributoImportado): string {
   if (a.valorTexto !== undefined && a.valorTexto !== '') {
@@ -214,8 +238,23 @@ export function ImportedEquipmentInspector() {
   const groups = groupAttributes(atributosEquipo, catalog.catalogoAtributos);
 
   function handlePlace() {
-    const newId = placeImportedEquipo(equipo.equipoId, null);
-    if (newId) selectEquip(newId);
+    // Posición por defecto: escalonado en +X sobre el piso. Nunca colocar
+    // como 'unplaced' desde el botón — el filtro de renderizado lo haría
+    // invisible. El usuario reubica después con los controles del inspector.
+    const placedImportedCount = useWorkspaceStore.getState().elements.filter(
+      (e) => e.importedRef !== null && e.placementStatus === 'placed',
+    ).length;
+    const positionMm = nextDefaultPositionForCategoria(equipo.categoria, placedImportedCount);
+    const newId = placeImportedEquipo(equipo.equipoId, positionMm);
+    if (newId) {
+      selectEquip(newId);
+      // Encuadre: esperar al próximo frame para que la escena renderice el elemento
+      // antes de calcular bounds. requestAnimationFrame es suficiente — no hace falta
+      // setTimeout largo.
+      requestAnimationFrame(() => {
+        getCodexBridge()?.focusElement?.(newId);
+      });
+    }
   }
 
   function handleLink(targetId: string) {
@@ -250,7 +289,13 @@ export function ImportedEquipmentInspector() {
           linkCandidates={linkCandidates}
           onPlace={handlePlace}
           onLink={handleLink}
-          onSelectLinked={(id) => selectEquip(id)}
+          onSelectLinked={(id) => {
+            selectEquip(id);
+            // "Ver en escena" encuadra el elemento además de seleccionarlo.
+            requestAnimationFrame(() => {
+              getCodexBridge()?.focusElement?.(id);
+            });
+          }}
         />
 
         <div className="cat" style={{ marginTop: 2 }}>
