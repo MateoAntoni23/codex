@@ -92,32 +92,56 @@ export interface MasterSource {
 }
 
 /**
- * Estado de cierre del patrón — resultado efectivo de la regresión compartida
- * (no un juicio por visor). Fuente única para mostrar en el Configurador qué
- * patrones están listos para revisión visual y cuáles tienen limitaciones
- * conocidas.
+ * Estado de cierre por DIMENSIÓN — no se agrupan bajo un único "validado".
  *
- *   - 'validated'        Flush con rectos de referencia verificado en todas las
- *                        bocas documentadas del patrón; no se conocen
- *                        limitaciones operativas pendientes.
- *   - 'validated-scoped' Flush verificado pero sólo para un subconjunto de
- *                        escenarios (ver `limitations`). Ej.: CUPS cerrada sólo
- *                        en recorrido horizontal → vertical.
- *   - 'estimated'        Regla de variación es hipótesis visual; la junta flush
- *                        al ancho base pasa, pero no hay segundo STEP que valide
- *                        la escala.
- *   - 'pending'          Sin STEP medido o sin regresión — el patrón no debe
- *                        exponerse como operativo.
+ * El cierre de un patrón requiere comprobar tres dimensiones ortogonales,
+ * cada una con su regresión concreta. Agruparlas bajo un status único oculta
+ * vacíos de regresión; esta estructura fuerza a declarar qué está probado
+ * exactamente.
+ *
+ *   - 'validated' La regresión cubre la dimensión completa documentada.
+ *   - 'partial'   Hay regresión pero acota el alcance (ver `limitations`).
+ *                 P.ej. CUPS continuidad probada sólo en sentido H→V.
+ *   - 'pending'   Sin regresión para esta dimensión.
+ *   - 'n/a'       La dimensión no aplica al patrón (p.ej. variantes para un
+ *                 maestro sin variantes declaradas).
  */
-export type ClosureStatus = 'validated' | 'validated-scoped' | 'estimated' | 'pending';
+export type DimensionStatus = 'validated' | 'partial' | 'pending' | 'n/a';
 
-export interface MasterClosure {
-  readonly status: ClosureStatus;
-  /** Path(s) a specs que respaldan el estado; vacío para 'pending'. */
+export interface ClosureDimension {
+  readonly status: DimensionStatus;
+  /** Path(s) a specs que respaldan el estado; vacío para 'pending' / 'n/a'. */
   readonly regressionSpecs: readonly string[];
-  /** Limitaciones concretas que acotan el cierre; vacío cuando no las hay. */
+  /** Limitaciones concretas que acotan la dimensión; vacío cuando no las hay. */
   readonly limitations: readonly string[];
 }
+
+/**
+ * Cierre efectivo del patrón, desglosado por dimensión. El Configurador expone
+ * las tres dimensiones por separado — un "patrón cerrado" exige que las tres
+ * estén `validated` (o `n/a` donde corresponda).
+ *
+ *   - continuity  Flush de bocas con rectos de referencia (todas las bocas
+ *                 documentadas del patrón, en todos los sentidos declarados).
+ *   - fidelity    Las bocas están en las caras físicas correctas del polígono
+ *                 medido — no sólo marcos ortonormales.
+ *   - variants    La regla de variación de ancho/ala se comprueba end-to-end:
+ *                 el usuario configura un override en el configurador y una
+ *                 variante colocada en el workspace respeta la configuración,
+ *                 sobrevive preview → confirmado → export/import roundtrip.
+ */
+export interface MasterClosure {
+  readonly continuity: ClosureDimension;
+  readonly fidelity: ClosureDimension;
+  readonly variants: ClosureDimension;
+}
+
+/**
+ * @deprecated — se expuso un "closure.status" único como primer intento. La
+ * taxonomía definitiva es por dimensión; este alias existe sólo para no
+ * romper importaciones externas mientras se migran.
+ */
+export type ClosureStatus = DimensionStatus;
 
 export interface MasterModel {
   readonly id: string;
@@ -169,6 +193,25 @@ export interface MasterModel {
 const PATTERN_FLUSH_SPEC = 'src/workspace/__tests__/patternChainContinuity.test.ts';
 const CUPS_PORT_FRAME_SPEC = 'src/parametric/geometry/__tests__/cupsPortFrameRepro.test.ts';
 const CUPS_CHAIN_SPEC = 'src/workspace/__tests__/cupsChainWorldContinuity.test.ts';
+const PORT_FIDELITY_SPEC = 'src/configurator/__tests__/portFidelity.test.ts';
+const VARIANTS_CLOSURE_SPEC = 'src/configurator/__tests__/variantsClosure.test.ts';
+const PENDING_DIMENSION: ClosureDimension = Object.freeze({
+  status: 'pending',
+  regressionSpecs: [],
+  limitations: [],
+});
+
+const VALIDATED_FIDELITY_DIMENSION: ClosureDimension = Object.freeze({
+  status: 'validated',
+  regressionSpecs: Object.freeze([PORT_FIDELITY_SPEC]) as readonly string[],
+  limitations: [],
+});
+
+const NA_DIMENSION: ClosureDimension = Object.freeze({
+  status: 'n/a',
+  regressionSpecs: [],
+  limitations: [],
+});
 
 // ─── Maestros perforada SAM-STP-Z ────────────────────────────────────────────
 //
@@ -209,9 +252,19 @@ const MASTER_PERFORADA: readonly MasterModel[] = [
     },
     declaredVariantSkus: ['TRPS-450-20-Z'],
     closure: {
-      status: 'validated',
-      regressionSpecs: [PATTERN_FLUSH_SPEC],
-      limitations: [],
+      continuity: {
+        status: 'validated',
+        regressionSpecs: [PATTERN_FLUSH_SPEC],
+        limitations: [],
+      },
+      fidelity: VALIDATED_FIDELITY_DIMENSION,
+      variants: {
+        status: 'validated',
+        regressionSpecs: [VARIANTS_CLOSURE_SPEC],
+        limitations: [
+          'Cadena verificada para la variante declarada TRPS-450-22-Z (ancho-only-z, provenance=derived). Otras variantes dimensionales no declaradas requieren STEP propio para pasar de derived a measured.',
+        ],
+      },
     },
     revision: 1,
   },
@@ -246,11 +299,19 @@ const MASTER_PERFORADA: readonly MasterModel[] = [
     },
     declaredVariantSkus: ['CPS-450-45-Z'],
     closure: {
-      status: 'estimated',
-      regressionSpecs: [PATTERN_FLUSH_SPEC],
-      limitations: [
-        'Flush verificado sobre ancho base 300. La regla uniform-xz no fue validada contra un segundo STEP de otro ancho.',
-      ],
+      continuity: {
+        status: 'validated',
+        regressionSpecs: [PATTERN_FLUSH_SPEC],
+        limitations: ['Continuidad verificada sobre ancho base 300.'],
+      },
+      fidelity: VALIDATED_FIDELITY_DIMENSION,
+      variants: {
+        status: 'partial',
+        regressionSpecs: [],
+        limitations: [
+          'Regla uniform-xz es hipótesis visual (provenance=estimated); no fue validada contra un segundo STEP de otro ancho.',
+        ],
+      },
     },
     revision: 1,
   },
@@ -285,11 +346,19 @@ const MASTER_PERFORADA: readonly MasterModel[] = [
     },
     declaredVariantSkus: ['CPS-450-90-Z'],
     closure: {
-      status: 'estimated',
-      regressionSpecs: [PATTERN_FLUSH_SPEC],
-      limitations: [
-        'Flush verificado sobre ancho base 300. La regla uniform-xz no fue validada contra un segundo STEP de otro ancho.',
-      ],
+      continuity: {
+        status: 'validated',
+        regressionSpecs: [PATTERN_FLUSH_SPEC],
+        limitations: ['Continuidad verificada sobre ancho base 300.'],
+      },
+      fidelity: VALIDATED_FIDELITY_DIMENSION,
+      variants: {
+        status: 'partial',
+        regressionSpecs: [],
+        limitations: [
+          'Regla uniform-xz es hipótesis visual (provenance=estimated); no fue validada contra un segundo STEP de otro ancho.',
+        ],
+      },
     },
     revision: 1,
   },
@@ -324,15 +393,19 @@ const MASTER_PERFORADA: readonly MasterModel[] = [
     },
     declaredVariantSkus: ['CUPS-450-A-Z'],
     closure: {
-      status: 'validated-scoped',
-      regressionSpecs: [CUPS_PORT_FRAME_SPEC, CUPS_CHAIN_SPEC],
-      limitations: [
-        'Cerrado sólo en recorrido horizontal → CUPS (entrando por P1_horizontal) → vertical (saliendo por P2_vertical). El recorrido inverso no está regresionado.',
-        'Encadenamiento de dos curvas verticales consecutivas no está regresionado.',
-        'CUPS-B descendente pendiente — sin STEP publicado por SAMET.',
-        'Pendiente D7: sectionUp del tramo vertical se deriva por heurística (routingRules.computePortSectionUp). La ruta canónica (leer v_dir mundial del puerto fuente) ya está regresionada y daría el mismo resultado; la migración elimina la heurística.',
-        'Overrides del configurador con installRotationDeg sobre P1_horizontal o P2_vertical podrían invalidar la heurística D7; úsense con cuidado hasta migrar la fuente de sectionUp.',
-      ],
+      continuity: {
+        status: 'partial',
+        regressionSpecs: [CUPS_PORT_FRAME_SPEC, CUPS_CHAIN_SPEC],
+        limitations: [
+          'Cerrado sólo en recorrido horizontal → CUPS (entrando por P1_horizontal) → vertical (saliendo por P2_vertical). El recorrido inverso no está regresionado.',
+          'Encadenamiento de dos curvas verticales consecutivas no está regresionado.',
+          'CUPS-B descendente pendiente — sin STEP publicado por SAMET.',
+          'Pendiente D7: sectionUp del tramo vertical se deriva por heurística (routingRules.computePortSectionUp). La ruta canónica (leer v_dir mundial del puerto fuente) ya está regresionada y daría el mismo resultado; la migración elimina la heurística.',
+          'Overrides del configurador con installRotationDeg sobre P1_horizontal o P2_vertical podrían invalidar la heurística D7; úsense con cuidado hasta migrar la fuente de sectionUp.',
+        ],
+      },
+      fidelity: VALIDATED_FIDELITY_DIMENSION,
+      variants: PENDING_DIMENSION,
     },
     revision: 1,
   },
@@ -374,12 +447,22 @@ const MASTER_PERFORADA: readonly MasterModel[] = [
     },
     declaredVariantSkus: ['TPS-450-Z'],
     closure: {
-      status: 'estimated',
-      regressionSpecs: [PATTERN_FLUSH_SPEC],
-      limitations: [
-        'Flush de las 3 bocas verificado sobre ancho base 300. La regla uniform-xz no está validada con un segundo STEP.',
-        'Archivo STEP compartido con DCPS (nombre legacy del proveedor); discriminación por catalogSkuPrefixes.',
-      ],
+      continuity: {
+        status: 'validated',
+        regressionSpecs: [PATTERN_FLUSH_SPEC],
+        limitations: [
+          'Flush de las 3 bocas verificado sobre ancho base 300.',
+          'Archivo STEP compartido con DCPS (nombre legacy del proveedor); discriminación por catalogSkuPrefixes.',
+        ],
+      },
+      fidelity: VALIDATED_FIDELITY_DIMENSION,
+      variants: {
+        status: 'partial',
+        regressionSpecs: [],
+        limitations: [
+          'Regla uniform-xz es hipótesis visual (provenance=estimated); no fue validada con un segundo STEP.',
+        ],
+      },
     },
     revision: 2,
   },
@@ -420,11 +503,15 @@ const MASTER_PERFORADA: readonly MasterModel[] = [
     },
     declaredVariantSkus: [],
     closure: {
-      status: 'pending',
-      regressionSpecs: [],
-      limitations: [
-        'Sin STEP medido para DCPS. No debe exponerse como operativo hasta que SAMET publique el polígono.',
-      ],
+      continuity: {
+        status: 'pending',
+        regressionSpecs: [],
+        limitations: [
+          'Sin STEP medido para DCPS. No debe exponerse como operativo hasta que SAMET publique el polígono.',
+        ],
+      },
+      fidelity: PENDING_DIMENSION,
+      variants: PENDING_DIMENSION,
     },
     revision: 1,
   },
@@ -461,11 +548,19 @@ const MASTER_PERFORADA: readonly MasterModel[] = [
     },
     declaredVariantSkus: ['XPS-450-Z'],
     closure: {
-      status: 'estimated',
-      regressionSpecs: [PATTERN_FLUSH_SPEC],
-      limitations: [
-        'Flush de los 4 brazos verificado sobre ancho base 300. La regla uniform-xz no está validada con un segundo STEP.',
-      ],
+      continuity: {
+        status: 'validated',
+        regressionSpecs: [PATTERN_FLUSH_SPEC],
+        limitations: ['Flush de los 4 brazos verificado sobre ancho base 300.'],
+      },
+      fidelity: VALIDATED_FIDELITY_DIMENSION,
+      variants: {
+        status: 'partial',
+        regressionSpecs: [],
+        limitations: [
+          'Regla uniform-xz es hipótesis visual (provenance=estimated); no fue validada con un segundo STEP.',
+        ],
+      },
     },
     revision: 1,
   },
@@ -514,9 +609,13 @@ const MASTER_ESCALERA: readonly MasterModel[] = [
     },
     declaredVariantSkus: ['TRES-450-065-18-Z', 'TRES-300-090-18-Z'],
     closure: {
-      status: 'validated',
-      regressionSpecs: [PATTERN_FLUSH_SPEC],
-      limitations: [],
+      continuity: {
+        status: 'validated',
+        regressionSpecs: [PATTERN_FLUSH_SPEC],
+        limitations: [],
+      },
+      fidelity: VALIDATED_FIDELITY_DIMENSION,
+      variants: PENDING_DIMENSION,
     },
     revision: 2,
   },
@@ -550,11 +649,15 @@ const MASTER_ESCALERA: readonly MasterModel[] = [
     },
     declaredVariantSkus: [],
     closure: {
-      status: 'validated',
-      regressionSpecs: [PATTERN_FLUSH_SPEC],
-      limitations: [
-        'Polígono fijo medido sobre ancho 300 ala 65. Variantes de ancho no publicadas.',
-      ],
+      continuity: {
+        status: 'validated',
+        regressionSpecs: [PATTERN_FLUSH_SPEC],
+        limitations: [
+          'Polígono fijo medido sobre ancho 300 ala 65.',
+        ],
+      },
+      fidelity: VALIDATED_FIDELITY_DIMENSION,
+      variants: NA_DIMENSION,
     },
     revision: 1,
   },
@@ -588,11 +691,15 @@ const MASTER_ESCALERA: readonly MasterModel[] = [
     },
     declaredVariantSkus: [],
     closure: {
-      status: 'validated',
-      regressionSpecs: [PATTERN_FLUSH_SPEC],
-      limitations: [
-        'Polígono fijo medido sobre ancho 300 ala 65. Variantes de ancho no publicadas.',
-      ],
+      continuity: {
+        status: 'validated',
+        regressionSpecs: [PATTERN_FLUSH_SPEC],
+        limitations: [
+          'Polígono fijo medido sobre ancho 300 ala 65.',
+        ],
+      },
+      fidelity: VALIDATED_FIDELITY_DIMENSION,
+      variants: NA_DIMENSION,
     },
     revision: 1,
   },
@@ -627,11 +734,15 @@ const MASTER_ESCALERA: readonly MasterModel[] = [
     },
     declaredVariantSkus: [],
     closure: {
-      status: 'validated',
-      regressionSpecs: [PATTERN_FLUSH_SPEC],
-      limitations: [
-        'Polígono fijo medido sobre ancho 300 ala 65. Flush de las 3 bocas verificado con entrada por P2.',
-      ],
+      continuity: {
+        status: 'validated',
+        regressionSpecs: [PATTERN_FLUSH_SPEC],
+        limitations: [
+          'Polígono fijo medido sobre ancho 300 ala 65. Flush de las 3 bocas verificado con entrada por P2.',
+        ],
+      },
+      fidelity: VALIDATED_FIDELITY_DIMENSION,
+      variants: NA_DIMENSION,
     },
     revision: 1,
   },
@@ -667,11 +778,15 @@ const MASTER_ESCALERA: readonly MasterModel[] = [
     },
     declaredVariantSkus: [],
     closure: {
-      status: 'validated',
-      regressionSpecs: [PATTERN_FLUSH_SPEC],
-      limitations: [
-        'Polígono fijo medido sobre ancho 300 ala 65. Flush de los 4 brazos verificado con entrada por P4.',
-      ],
+      continuity: {
+        status: 'validated',
+        regressionSpecs: [PATTERN_FLUSH_SPEC],
+        limitations: [
+          'Polígono fijo medido sobre ancho 300 ala 65. Flush de los 4 brazos verificado con entrada por P4.',
+        ],
+      },
+      fidelity: VALIDATED_FIDELITY_DIMENSION,
+      variants: NA_DIMENSION,
     },
     revision: 1,
   },
@@ -705,14 +820,18 @@ const MASTER_ESCALERA: readonly MasterModel[] = [
     },
     declaredVariantSkus: [],
     closure: {
-      status: 'validated-scoped',
-      regressionSpecs: [PATTERN_FLUSH_SPEC],
-      limitations: [
-        'Marco orto-normal y convención común verificados a nivel receta vía buildRecipeByKey.',
-        'No participa en placeRecipe interactivo: masterPieceKindToParametric(reduccion_lateral) devuelve null; el viewer del configurador la consume directo.',
-        'Falta publicar TRES-150 para cerrar flush world-level de la boca 150 mm con un recto adyacente.',
-        'Otras reducciones (RCS-30-15, AMPS) no tienen STEP publicado.',
-      ],
+      continuity: {
+        status: 'partial',
+        regressionSpecs: [PATTERN_FLUSH_SPEC],
+        limitations: [
+          'Marco orto-normal y convención común verificados sólo a nivel receta vía buildRecipeByKey.',
+          'No participa en placeRecipe interactivo: masterPieceKindToParametric(reduccion_lateral) devuelve null; el viewer del configurador la consume directo.',
+          'Falta publicar TRES-150 para cerrar flush world-level de la boca 150 mm con un recto adyacente.',
+          'Otras reducciones (RCS-30-15, AMPS) no tienen STEP publicado.',
+        ],
+      },
+      fidelity: VALIDATED_FIDELITY_DIMENSION,
+      variants: NA_DIMENSION,
     },
     revision: 1,
   },

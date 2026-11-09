@@ -35,7 +35,7 @@ import {
 import { getCompatibleProductIds } from '../workspace/routingRules';
 import { useCatalogConfigStore } from './catalogConfigStore';
 import { enumerateVariantsForMaster, findMasterAndVariantForProduct, type MasterVariant } from './masterVariants';
-import { findMasterForProduct, type ClosureStatus } from './masterModels';
+import { findMasterForProduct, type DimensionStatus, type ClosureDimension } from './masterModels';
 
 export const TABS = [
   { id: 'producto', label: 'Producto / Familia' },
@@ -1175,30 +1175,83 @@ function provenanceLabel(provenance: 'measured' | 'derived' | 'estimated'): stri
   }
 }
 
-function closureLabel(status: ClosureStatus): string {
+function dimensionLabel(status: DimensionStatus): string {
   switch (status) {
     case 'validated':
       return 'Validado';
-    case 'validated-scoped':
-      return 'Validado (acotado)';
-    case 'estimated':
-      return 'Estimado';
+    case 'partial':
+      return 'Parcial';
     case 'pending':
       return 'Pendiente';
+    case 'n/a':
+      return 'No aplica';
   }
 }
 
-function closureBadgeClass(status: ClosureStatus): string {
+function dimensionBadgeClass(status: DimensionStatus): string {
   switch (status) {
     case 'validated':
       return 'cfg-status-recipe-default-identity';
-    case 'validated-scoped':
+    case 'partial':
       return 'cfg-status-recipe-default-mapping';
-    case 'estimated':
-      return 'cfg-status-recipe-override';
     case 'pending':
       return 'cfg-status-recipe-needs-mapping';
+    case 'n/a':
+      return 'cfg-status-recipe-override';
   }
+}
+
+interface DimensionRowProps {
+  readonly dimensionKey: 'continuity' | 'fidelity' | 'variants';
+  readonly label: string;
+  readonly description: string;
+  readonly dimension: ClosureDimension;
+}
+
+function ClosureDimensionRow({ dimensionKey, label, description, dimension }: DimensionRowProps) {
+  return (
+    <section
+      data-testid={`cfg-maestro-closure-${dimensionKey}`}
+      data-dimension-status={dimension.status}
+      style={{ marginBottom: 10 }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <strong>{label}</strong>
+        <span
+          className={`cfg-list-status ${dimensionBadgeClass(dimension.status)}`}
+          data-testid={`cfg-maestro-closure-${dimensionKey}-badge`}
+          title={description}
+        >
+          {dimensionLabel(dimension.status)}
+        </span>
+      </div>
+      <div className="cfg-tab-hint" style={{ margin: '2px 0 4px' }}>
+        {description}
+      </div>
+      {dimension.regressionSpecs.length > 0 && (
+        <div className="cfg-tab-hint" style={{ margin: '0 0 4px' }}>
+          Respaldo:{' '}
+          {dimension.regressionSpecs.map((spec, i) => (
+            <span key={spec}>
+              {i > 0 && ', '}
+              <code>{spec}</code>
+            </span>
+          ))}
+        </div>
+      )}
+      {dimension.limitations.length > 0 && (
+        <ul
+          className="cfg-tab-hint"
+          data-testid={`cfg-maestro-closure-${dimensionKey}-limitations`}
+          style={{ margin: '2px 0 0 18px', padding: 0, lineHeight: 1.45 }}
+        >
+          {dimension.limitations.map((lim, i) => (
+            <li key={i}>{lim}</li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
 }
 
 function MaestroTab({
@@ -1279,46 +1332,30 @@ function MaestroTab({
       </dl>
 
       <h3 className="cfg-section-title">Estado del patrón</h3>
-      <div data-testid="cfg-maestro-closure" style={{ marginBottom: 8 }}>
-        <span
-          className={`cfg-list-status ${closureBadgeClass(master.closure.status)}`}
-          data-testid="cfg-maestro-closure-badge"
-          data-closure-status={master.closure.status}
-          title={`Estado efectivo del patrón según la regresión compartida.`}
-        >
-          {closureLabel(master.closure.status)}
-        </span>
+      <div className="cfg-tab-hint" style={{ marginBottom: 8 }}>
+        El cierre se desglosa en tres dimensiones ortogonales. Un patrón sólo
+        queda totalmente cerrado cuando las tres están validadas (o no aplican).
       </div>
-      {master.closure.regressionSpecs.length > 0 && (
-        <div className="cfg-tab-hint" style={{ marginBottom: 6 }}>
-          Respaldo:{' '}
-          {master.closure.regressionSpecs.map((spec, i) => (
-            <span key={spec}>
-              {i > 0 && ', '}
-              <code>{spec}</code>
-            </span>
-          ))}
-        </div>
-      )}
-      {master.closure.limitations.length > 0 ? (
-        <ul
-          className="cfg-tab-hint"
-          data-testid="cfg-maestro-closure-limitations"
-          style={{ margin: '4px 0 12px 18px', padding: 0, lineHeight: 1.45 }}
-        >
-          {master.closure.limitations.map((lim, i) => (
-            <li key={i}>{lim}</li>
-          ))}
-        </ul>
-      ) : (
-        <div
-          className="cfg-tab-hint"
-          data-testid="cfg-maestro-closure-limitations-empty"
-          style={{ marginBottom: 12 }}
-        >
-          Sin limitaciones conocidas para este patrón.
-        </div>
-      )}
+      <div data-testid="cfg-maestro-closure">
+        <ClosureDimensionRow
+          dimensionKey="continuity"
+          label="Continuidad"
+          description="Flush de bocas con rectos de referencia para todas las bocas documentadas del patrón."
+          dimension={master.closure.continuity}
+        />
+        <ClosureDimensionRow
+          dimensionKey="fidelity"
+          label="Fidelidad geométrica"
+          description="Cada boca está sobre la cara física correcta del polígono medido, no solo marcos ortonormales."
+          dimension={master.closure.fidelity}
+        />
+        <ClosureDimensionRow
+          dimensionKey="variants"
+          label="Variantes"
+          description="La regla de ancho/ala se comprueba end-to-end: configurador → preview → confirmado → recuperación."
+          dimension={master.closure.variants}
+        />
+      </div>
 
       <h3 className="cfg-section-title">Puertos del maestro (base)</h3>
       <table className="cfg-table">

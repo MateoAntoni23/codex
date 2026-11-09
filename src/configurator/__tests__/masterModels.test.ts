@@ -37,40 +37,66 @@ describe('MASTER_MODELS inventory', () => {
     expect(cups!.pieceKind).toBe('curva_vertical');
   });
 
-  it('cada maestro declara closure (status + limitaciones + regresión respaldo)', () => {
-    // Fuente única por patrón del cierre efectivo (procedencia del juicio:
-    // regresiones de patternChainContinuity.test.ts y cupsChainWorldContinuity.test.ts).
-    // El Configurador consume esto tal cual — no hay corrección por visor.
+  it('cada maestro declara closure en 3 dimensiones (continuity / fidelity / variants)', () => {
+    // Taxonomía orthogonal: no se agrupa en un "validado" único. Cada dimensión
+    // tiene su propia regresión y limitaciones.
     for (const m of MASTER_MODELS) {
-      expect(['validated', 'validated-scoped', 'estimated', 'pending']).toContain(
-        m.closure.status,
-      );
-      if (m.closure.status === 'pending') {
-        expect(m.closure.regressionSpecs.length, `${m.id}: 'pending' no debe tener spec`).toBe(0);
-        expect(m.closure.limitations.length, `${m.id}: 'pending' debe listar causa`).toBeGreaterThan(0);
-      } else {
-        expect(m.closure.regressionSpecs.length, `${m.id}: estado no-pending exige spec`).toBeGreaterThan(0);
-      }
-      if (m.closure.status === 'validated-scoped') {
-        expect(
-          m.closure.limitations.length,
-          `${m.id}: 'validated-scoped' debe declarar alcance concreto`,
-        ).toBeGreaterThan(0);
+      const dims = [
+        ['continuity', m.closure.continuity] as const,
+        ['fidelity', m.closure.fidelity] as const,
+        ['variants', m.closure.variants] as const,
+      ];
+      for (const [name, dim] of dims) {
+        expect(['validated', 'partial', 'pending', 'n/a'], `${m.id}.${name}`).toContain(dim.status);
+        if (dim.status === 'pending' || dim.status === 'n/a') {
+          expect(
+            dim.regressionSpecs.length,
+            `${m.id}.${name}: estado ${dim.status} no debe tener spec`,
+          ).toBe(0);
+        }
+        if (dim.status === 'validated') {
+          expect(
+            dim.regressionSpecs.length,
+            `${m.id}.${name}: 'validated' exige regressionSpec`,
+          ).toBeGreaterThan(0);
+        }
+        if (dim.status === 'partial') {
+          expect(
+            dim.limitations.length,
+            `${m.id}.${name}: 'partial' debe declarar alcance concreto`,
+          ).toBeGreaterThan(0);
+        }
       }
     }
   });
 
-  it('CUPS declara closure validated-scoped con D7 como limitación concreta', () => {
+  it('CUPS declara continuity=partial con D7 como limitación concreta', () => {
     const cups = MASTER_MODELS.find((m) => m.id === 'master:perforada:curva_vertical_interior')!;
-    expect(cups.closure.status).toBe('validated-scoped');
-    expect(cups.closure.limitations.join('\n')).toMatch(/P1_horizontal.*P2_vertical/);
-    expect(cups.closure.limitations.join('\n')).toMatch(/D7|sectionUp/);
+    expect(cups.closure.continuity.status).toBe('partial');
+    expect(cups.closure.continuity.limitations.join('\n')).toMatch(/P1_horizontal.*P2_vertical/);
+    expect(cups.closure.continuity.limitations.join('\n')).toMatch(/D7|sectionUp/);
+    // Fidelidad regresionada (port en chaflán correcta); variantes sigue sin cadena E2E.
+    expect(cups.closure.fidelity.status).toBe('validated');
+    expect(cups.closure.fidelity.regressionSpecs.join('\n')).toMatch(/portFidelity/);
+    expect(cups.closure.variants.status).toBe('pending');
   });
 
-  it('DCPS sin STEP queda closure=pending', () => {
+  it('DCPS sin STEP queda pending en las 3 dimensiones', () => {
     const dcps = MASTER_MODELS.find((m) => m.id === 'master:perforada:derivacion_pendiente')!;
-    expect(dcps.closure.status).toBe('pending');
-    expect(dcps.closure.regressionSpecs).toEqual([]);
+    expect(dcps.closure.continuity.status).toBe('pending');
+    expect(dcps.closure.fidelity.status).toBe('pending');
+    expect(dcps.closure.variants.status).toBe('pending');
+    expect(dcps.closure.continuity.regressionSpecs).toEqual([]);
+  });
+
+  it('maestros sin declaredVariantSkus marcan variants=n/a', () => {
+    // CS-45, CS-90, TS, XS, RIS: polígono fijo sobre ancho 300 ala 65 sin variantes
+    // publicadas — la dimensión no aplica.
+    const noVariants = MASTER_MODELS.filter((m) => m.declaredVariantSkus.length === 0 && m.sistema === 'escalera' && m.pieceKind !== 'tramo_recto');
+    expect(noVariants.length).toBeGreaterThan(0);
+    for (const m of noVariants) {
+      expect(m.closure.variants.status, `${m.id}: variants debe ser n/a`).toBe('n/a');
+    }
   });
 
   it('TPS (tee simétrica) y DCPS (derivación pendiente) son maestros distintos', () => {
