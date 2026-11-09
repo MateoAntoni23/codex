@@ -42,109 +42,40 @@ import {
   classifyProductMapping,
   type MappingStatus,
 } from './productMappingStatus';
+import {
+  applyCascade,
+  buildFamiliasById,
+  computeFilterOptions,
+  EMPTY_FILTERS as EMPTY_BASE_FILTERS,
+  familiaIdOf,
+  formatAcabadoOption,
+  formatAlaOption,
+  formatAnchoOption,
+  formatEspesorOption,
+  matchesFilter as matchesBaseFilter,
+  type Filters as BaseFilters,
+  type FilterOptions,
+} from './productFilters';
 import './configurator.css';
 
-const ALA_NO_DECLARADA = '__sin_ala__';
-const ANCHO_NO_DECLARADO = '__sin_ancho__';
-const ACABADO_NO_DECLARADO = '__sin_acabado__';
-const ESPESOR_NO_DECLARADO = '__sin_espesor__';
-
-function alaOf(p: Product): string {
-  const raw = (p as Record<string, unknown>).ala_nominal_mm;
-  return typeof raw === 'number' && Number.isFinite(raw) ? String(raw) : ALA_NO_DECLARADA;
-}
-
-function anchoOf(p: Product): string {
-  return typeof p.ancho_nominal_mm === 'number' && Number.isFinite(p.ancho_nominal_mm)
-    ? String(p.ancho_nominal_mm)
-    : ANCHO_NO_DECLARADO;
-}
-
-function espesorOf(p: Product): string {
-  const raw = (p as Record<string, unknown>).espesor_chapa_mm;
-  return typeof raw === 'number' && Number.isFinite(raw) ? String(raw) : ESPESOR_NO_DECLARADO;
-}
-
-function familiaIdOf(p: Product): string | undefined {
-  const v = (p as Record<string, unknown>).familia_id;
-  return typeof v === 'string' ? v : undefined;
-}
-
-function acabadoOf(p: Product, familiasById: Map<string, CatalogFamily>): string {
-  const fid = familiaIdOf(p);
-  if (!fid) return ACABADO_NO_DECLARADO;
-  const fam = familiasById.get(fid);
-  const v = fam?.acabado_normalizado;
-  return typeof v === 'string' && v.length > 0 ? v : ACABADO_NO_DECLARADO;
-}
-
-interface Filters {
-  text: string;
-  sistema: Sistema | '';
-  tipoPieza: string;
-  ancho: string;
-  ala: string;
-  acabado: string;
-  espesor: string;
+// Filtros del Configurador = cascada compartida + filtro extra `estado` que es
+// específico de esta vista (semántica de mapping por producto). El base vive en
+// `productFilters.ts` para que el workspace (AddTraySegmentForm) use el mismo
+// motor de cascada sin duplicar reglas.
+interface Filters extends BaseFilters {
   estado: MappingStatus | '';
 }
+
+const EMPTY_FILTERS: Filters = { ...EMPTY_BASE_FILTERS, estado: '' };
 
 function matchesFilter(
   p: Product,
   f: Filters,
   familiasById: Map<string, CatalogFamily>,
 ): boolean {
-  if (f.sistema && classifySistema(familiaIdOf(p)) !== f.sistema) return false;
-  if (f.tipoPieza && p.tipo_pieza !== f.tipoPieza) return false;
-  if (f.ancho && anchoOf(p) !== f.ancho) return false;
-  if (f.ala && alaOf(p) !== f.ala) return false;
-  if (f.acabado && acabadoOf(p, familiasById) !== f.acabado) return false;
-  if (f.espesor && espesorOf(p) !== f.espesor) return false;
+  if (!matchesBaseFilter(p, f, familiasById)) return false;
   if (f.estado && classifyProductMapping(p).status !== f.estado) return false;
-  if (f.text) {
-    const q = f.text.toLowerCase();
-    const hay = [p.producto_id, p.sku, p.descripcion_original]
-      .map((s) => (s ?? '').toLowerCase())
-      .some((s) => s.includes(q));
-    if (!hay) return false;
-  }
   return true;
-}
-
-function formatAlaOption(k: string): string {
-  return k === ALA_NO_DECLARADA ? 'Ala no declarada' : `${k} mm`;
-}
-
-function formatAnchoOption(k: string): string {
-  return k === ANCHO_NO_DECLARADO ? 'Ancho no declarado' : `${k} mm`;
-}
-
-function formatAcabadoOption(k: string): string {
-  return k === ACABADO_NO_DECLARADO ? 'Acabado no declarado' : k;
-}
-
-function formatEspesorOption(k: string): string {
-  return k === ESPESOR_NO_DECLARADO ? 'Espesor no declarado' : `${k} mm`;
-}
-
-const EMPTY_FILTERS: Filters = {
-  text: '',
-  sistema: '',
-  tipoPieza: '',
-  ancho: '',
-  ala: '',
-  acabado: '',
-  espesor: '',
-  estado: '',
-};
-
-interface FilterOptions {
-  readonly sistemas: readonly Sistema[];
-  readonly tiposPieza: readonly string[];
-  readonly anchos: readonly string[];
-  readonly alas: readonly string[];
-  readonly acabados: readonly string[];
-  readonly espesores: readonly string[];
 }
 
 function ProductList({
@@ -194,14 +125,8 @@ function ProductList({
         <select
           value={filters.sistema}
           onChange={(e) => setFilters({
-            ...filters,
-            sistema: e.target.value as Sistema | '',
-            // Cascada: cambiar sistema invalida los filtros dependientes.
-            tipoPieza: '',
-            ancho: '',
-            ala: '',
-            acabado: '',
-            espesor: '',
+            ...applyCascade(filters, 'sistema', e.target.value),
+            estado: filters.estado,
           })}
           className="cfg-filter-select"
           aria-label="Filtrar por sistema"
@@ -220,12 +145,8 @@ function ProductList({
         <select
           value={filters.tipoPieza}
           onChange={(e) => setFilters({
-            ...filters,
-            tipoPieza: e.target.value,
-            ancho: '',
-            ala: '',
-            acabado: '',
-            espesor: '',
+            ...applyCascade(filters, 'tipoPieza', e.target.value),
+            estado: filters.estado,
           })}
           className="cfg-filter-select"
           aria-label="Filtrar por tipo de pieza"
@@ -239,11 +160,8 @@ function ProductList({
         <select
           value={filters.ancho}
           onChange={(e) => setFilters({
-            ...filters,
-            ancho: e.target.value,
-            ala: '',
-            acabado: '',
-            espesor: '',
+            ...applyCascade(filters, 'ancho', e.target.value),
+            estado: filters.estado,
           })}
           className="cfg-filter-select"
           aria-label="Filtrar por ancho nominal"
@@ -257,10 +175,8 @@ function ProductList({
         <select
           value={filters.ala}
           onChange={(e) => setFilters({
-            ...filters,
-            ala: e.target.value,
-            acabado: '',
-            espesor: '',
+            ...applyCascade(filters, 'ala', e.target.value),
+            estado: filters.estado,
           })}
           className="cfg-filter-select"
           aria-label="Filtrar por ala nominal"
@@ -273,7 +189,10 @@ function ProductList({
         </select>
         <select
           value={filters.acabado}
-          onChange={(e) => setFilters({ ...filters, acabado: e.target.value, espesor: '' })}
+          onChange={(e) => setFilters({
+            ...applyCascade(filters, 'acabado', e.target.value),
+            estado: filters.estado,
+          })}
           className="cfg-filter-select"
           aria-label="Filtrar por acabado"
           data-testid="cfg-filter-acabado"
@@ -494,7 +413,11 @@ function Inspector({ product }: { product: Product | null }) {
 function ConfigIO() {
   const serialize = useCatalogConfigStore((s) => s.serialize);
   const replaceAll = useCatalogConfigStore((s) => s.replaceAll);
+  const replaceApprovals = useCatalogConfigStore((s) => s.replaceApprovals);
+  const replaceAporteOverrides = useCatalogConfigStore((s) => s.replaceAporteOverrides);
   const overrides = useCatalogConfigStore((s) => s.overrides);
+  const approvals = useCatalogConfigStore((s) => s.approvals);
+  const aporteOverrides = useCatalogConfigStore((s) => s.aporteOverrides);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleExport = () => {
@@ -523,12 +446,26 @@ function ConfigIO() {
         if (!obj.overrides || typeof obj.overrides !== 'object' || Array.isArray(obj.overrides)) {
           throw new Error('overrides debe ser un objeto');
         }
-        const n = Object.keys(obj.overrides).length;
-        if (!confirm(`Importar ${n} override(s) desde "${file.name}"? Se reemplazarán los actuales.`)) {
+        const importedOverrides = obj.overrides as Record<string, ProductPortMapping>;
+        const importedApprovals =
+          obj.approvals && typeof obj.approvals === 'object' && !Array.isArray(obj.approvals)
+            ? (obj.approvals as Record<string, Parameters<typeof replaceApprovals>[0][string]>)
+            : {};
+        const importedAporte =
+          obj.aporteOverrides && typeof obj.aporteOverrides === 'object' && !Array.isArray(obj.aporteOverrides)
+            ? (obj.aporteOverrides as Record<string, Parameters<typeof replaceAporteOverrides>[0][string]>)
+            : {};
+        const nOverrides = Object.keys(importedOverrides).length;
+        const nApprovals = Object.keys(importedApprovals).length;
+        const nAporte = Object.keys(importedAporte).length;
+        const msg = `Importar ${nOverrides} override(s), ${nApprovals} aprobación(es) y ${nAporte} regla(s) de aporte desde "${file.name}"? Se reemplazarán los actuales.`;
+        if (!confirm(msg)) {
           e.target.value = '';
           return;
         }
-        replaceAll(obj.overrides as Record<string, ProductPortMapping>);
+        replaceAll(importedOverrides);
+        replaceApprovals(importedApprovals);
+        replaceAporteOverrides(importedAporte);
       } catch (err) {
         alert(`Error al importar: ${String(err)}`);
       }
@@ -541,12 +478,21 @@ function ConfigIO() {
     reader.readAsText(file);
   };
 
-  const count = Object.keys(overrides).length;
+  const count =
+    Object.keys(overrides).length +
+    Object.keys(approvals).length +
+    Object.keys(aporteOverrides).length;
+
+  const overrideCount = Object.keys(overrides).length;
+  const approvalCount = Object.keys(approvals).length;
+  const aporteCount = Object.keys(aporteOverrides).length;
 
   return (
     <div className="cfg-toolbar-io">
       <span className="cfg-toolbar-hint">
-        {count === 0 ? 'Sin overrides' : `${count} override(s) activos`}
+        {count === 0
+          ? 'Sin configuración'
+          : `${overrideCount} override(s) · ${approvalCount} aprob. · ${aporteCount} aporte`}
       </span>
       <button
         type="button"
@@ -624,60 +570,15 @@ export function ConfiguratorLayout() {
   }, []);
 
   const products = context?.productos ?? [];
-  const familiasById = useMemo(() => {
-    const m = new Map<string, CatalogFamily>();
-    for (const f of context?.familias ?? []) m.set(f.familia_id, f);
-    return m;
-  }, [context]);
+  const familiasById = useMemo(
+    () => buildFamiliasById(context?.familias ?? []),
+    [context],
+  );
 
-  const filterOptions = useMemo<FilterOptions>(() => {
-    // Cascada: cada nivel se calcula sobre el conjunto filtrado por los
-    // niveles anteriores en el orden sistema → tipo → ancho → ala → acabado →
-    // espesor. Garantiza que cada selector ofrezca opciones realmente
-    // existentes para la selección actual.
-    const bySistema = filters.sistema
-      ? products.filter((p) => classifySistema(familiaIdOf(p)) === filters.sistema)
-      : products;
-    const byTipo = filters.tipoPieza
-      ? bySistema.filter((p) => p.tipo_pieza === filters.tipoPieza)
-      : bySistema;
-    const byAncho = filters.ancho
-      ? byTipo.filter((p) => anchoOf(p) === filters.ancho)
-      : byTipo;
-    const byAla = filters.ala
-      ? byAncho.filter((p) => alaOf(p) === filters.ala)
-      : byAncho;
-    const byAcabado = filters.acabado
-      ? byAla.filter((p) => acabadoOf(p, familiasById) === filters.acabado)
-      : byAla;
-
-    const tipos = Array.from(new Set(bySistema.map((p) => p.tipo_pieza))).sort();
-    const anchos = Array.from(new Set(byTipo.map(anchoOf))).sort((a, b) => {
-      if (a === ANCHO_NO_DECLARADO) return 1;
-      if (b === ANCHO_NO_DECLARADO) return -1;
-      return Number(a) - Number(b);
-    });
-    const alas = Array.from(new Set(byAncho.map(alaOf))).sort((a, b) => {
-      if (a === ALA_NO_DECLARADA) return 1;
-      if (b === ALA_NO_DECLARADA) return -1;
-      return Number(a) - Number(b);
-    });
-    const acabados = Array.from(new Set(byAla.map((p) => acabadoOf(p, familiasById)))).sort();
-    const espesores = Array.from(new Set(byAcabado.map(espesorOf))).sort((a, b) => {
-      if (a === ESPESOR_NO_DECLARADO) return 1;
-      if (b === ESPESOR_NO_DECLARADO) return -1;
-      return Number(a) - Number(b);
-    });
-
-    return {
-      sistemas: SISTEMAS.map((s) => s.id),
-      tiposPieza: tipos,
-      anchos,
-      alas,
-      acabados,
-      espesores,
-    };
-  }, [products, familiasById, filters.sistema, filters.tipoPieza, filters.ancho, filters.ala, filters.acabado]);
+  const filterOptions = useMemo<FilterOptions>(
+    () => computeFilterOptions(products, filters, familiasById),
+    [products, familiasById, filters.sistema, filters.tipoPieza, filters.ancho, filters.ala, filters.acabado],
+  );
 
   const selectedProduct = useMemo(
     () => products.find((p) => p.producto_id === selected) ?? null,

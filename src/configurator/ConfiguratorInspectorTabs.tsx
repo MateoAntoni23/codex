@@ -36,6 +36,13 @@ import { getCompatibleProductIds } from '../workspace/routingRules';
 import { useCatalogConfigStore } from './catalogConfigStore';
 import { enumerateVariantsForMaster, findMasterAndVariantForProduct, type MasterVariant } from './masterVariants';
 import { findMasterForProduct, type DimensionStatus, type ClosureDimension } from './masterModels';
+import {
+  aporteRuleLabel,
+  defaultAporteForMaster,
+  isAporteRule,
+  type AporteRule,
+  type AporteRuleKind,
+} from './aporteTrazado';
 
 export const TABS = [
   { id: 'producto', label: 'Producto / Familia' },
@@ -50,6 +57,193 @@ export const TABS = [
 export type TabId = typeof TABS[number]['id'];
 
 // ─── Producto / Familia ─────────────────────────────────────────────────────
+
+/**
+ * AporteSection — configuración del aporte al trazado por producto.
+ *
+ * IMPORTANTE: es configuración persistente — NO está integrada al cómputo real
+ * todavía. La UI lo marca con el banner "configuración · no integrada al
+ * cómputo aún" para que el usuario no la confunda con totales activos. Se
+ * guarda y viaja con el proyecto (`codex:catalogConfig/1`) para que cuando se
+ * cablee al motor el proyecto ya tenga las reglas declaradas.
+ */
+function AporteSection({ product }: { product: Product }) {
+  // Suscribimos aporteOverrides para refrescar al editar; usamos el selector de
+  // store para derivar la regla efectiva (override o default-por-maestro).
+  const aporteOverrides = useCatalogConfigStore((s) => s.aporteOverrides);
+  const upsertAporte = useCatalogConfigStore((s) => s.upsertAporte);
+  const removeAporte = useCatalogConfigStore((s) => s.removeAporte);
+  const getEffectiveAporte = useCatalogConfigStore((s) => s.getEffectiveAporte);
+
+  const master = useMemo(
+    () => findMasterForProduct(product as unknown as Record<string, unknown>),
+    [product],
+  );
+  // Reference aporteOverrides so this re-renders on upsert/remove.
+  void aporteOverrides;
+  const effective = getEffectiveAporte(product.producto_id, master);
+  const hasOverride = product.producto_id in aporteOverrides;
+
+  // Draft local mientras el usuario edita. Inicializamos desde el efectivo
+  // (override o default); si no hay maestro, usamos 'longitud' como hipótesis
+  // conservadora. No se persiste hasta tocar "Guardar".
+  const initial = effective?.rule ?? { kind: 'longitud' as AporteRuleKind };
+  const [kind, setKind] = useState<AporteRuleKind>(initial.kind);
+  const [multiplier, setMultiplier] = useState<string>(
+    String(initial.kind === 'multiplo-ancho' ? initial.multiplier ?? 2 : 2),
+  );
+  const [valueMm, setValueMm] = useState<string>(
+    String(initial.kind === 'fijo-mm' ? initial.valueMm ?? 0 : 0),
+  );
+  const [error, setError] = useState<string | null>(null);
+
+  // Al cambiar de producto, resetear el draft al efectivo del nuevo producto.
+  useEffect(() => {
+    const r = effective?.rule ?? { kind: 'longitud' as AporteRuleKind };
+    setKind(r.kind);
+    setMultiplier(String(r.kind === 'multiplo-ancho' ? r.multiplier ?? 2 : 2));
+    setValueMm(String(r.kind === 'fijo-mm' ? r.valueMm ?? 0 : 0));
+    setError(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [product.producto_id]);
+
+  const handleSave = () => {
+    const rule: AporteRule = (() => {
+      if (kind === 'multiplo-ancho') {
+        const m = Number(multiplier);
+        return { kind, multiplier: m };
+      }
+      if (kind === 'fijo-mm') {
+        const v = Number(valueMm);
+        return { kind, valueMm: v };
+      }
+      return { kind };
+    })();
+    if (!isAporteRule(rule)) {
+      setError('Regla inválida: revisá el multiplicador o el valor fijo.');
+      return;
+    }
+    upsertAporte(product.producto_id, rule);
+    setError(null);
+  };
+
+  const handleReset = () => {
+    removeAporte(product.producto_id);
+    setError(null);
+  };
+
+  const effectiveLabel = effective ? aporteRuleLabel(effective.rule) : '—';
+  const sourceLabel = effective?.source === 'override' ? 'override' : 'default';
+
+  return (
+    <section data-testid="cfg-aporte-section">
+      <h3 className="cfg-section-title">Aporte al trazado</h3>
+      <div
+        className="cfg-tab-note cfg-tab-note-override"
+        data-testid="cfg-aporte-not-wired-banner"
+      >
+        <strong>Configuración · no integrada al cómputo aún.</strong>
+        {' '}
+        Se guarda con el proyecto y espera a ser cableada al motor. Editarlo
+        hoy deja la regla declarada para cuando se habilite el cómputo activo.
+      </div>
+
+      {!master && (
+        <div className="cfg-tab-hint" style={{ margin: '4px 0' }}>
+          Producto sin maestro asociado — el default no se puede derivar.
+          Podés configurar un override explícito igual.
+        </div>
+      )}
+
+      {master && (
+        <div className="cfg-tab-hint" style={{ margin: '4px 0' }}>
+          Default por maestro (<code>{master.pieceKind}</code>):
+          {' '}
+          <strong>{aporteRuleLabel(defaultAporteForMaster(master))}</strong>.
+        </div>
+      )}
+
+      <dl className="cfg-kv">
+        <dt>Regla efectiva</dt>
+        <dd data-testid="cfg-aporte-effective">
+          {effectiveLabel}
+          {' '}
+          <span className="cfg-tab-hint">(fuente: {sourceLabel})</span>
+        </dd>
+      </dl>
+
+      <label className="cfg-field">
+        <span className="cfg-field-label">Tipo de aporte</span>
+        <select
+          className="cfg-filter-select"
+          value={kind}
+          onChange={(e) => {
+            setKind(e.target.value as AporteRuleKind);
+            setError(null);
+          }}
+          data-testid="cfg-aporte-kind"
+        >
+          <option value="longitud">Por longitud del segmento</option>
+          <option value="multiplo-ancho">Múltiplo del ancho del patrón</option>
+          <option value="fijo-mm">Valor fijo en mm</option>
+        </select>
+      </label>
+
+      {kind === 'multiplo-ancho' && (
+        <label className="cfg-field">
+          <span className="cfg-field-label">Multiplicador (× ancho)</span>
+          <input
+            type="number"
+            step={0.1}
+            min={0.1}
+            value={multiplier}
+            onChange={(e) => { setMultiplier(e.target.value); setError(null); }}
+            className="cfg-filter-input"
+            data-testid="cfg-aporte-multiplier"
+          />
+        </label>
+      )}
+
+      {kind === 'fijo-mm' && (
+        <label className="cfg-field">
+          <span className="cfg-field-label">Valor fijo (mm)</span>
+          <input
+            type="number"
+            step={1}
+            min={1}
+            value={valueMm}
+            onChange={(e) => { setValueMm(e.target.value); setError(null); }}
+            className="cfg-filter-input"
+            data-testid="cfg-aporte-value-mm"
+          />
+        </label>
+      )}
+
+      {error && <div className="cfg-tab-note cfg-tab-note-error">{error}</div>}
+
+      <div className="cfg-actions">
+        <button
+          type="button"
+          className="cfg-btn cfg-btn-primary"
+          onClick={handleSave}
+          data-testid="cfg-aporte-save"
+        >
+          Guardar override
+        </button>
+        {hasOverride && (
+          <button
+            type="button"
+            className="cfg-btn cfg-btn-danger"
+            onClick={handleReset}
+            data-testid="cfg-aporte-reset"
+          >
+            Volver al default
+          </button>
+        )}
+      </div>
+    </section>
+  );
+}
 
 function ProductoFamiliaTab({ product, familia }: { product: Product; familia: CatalogFamily | null }) {
   const extra = product as Record<string, unknown>;
@@ -89,6 +283,8 @@ function ProductoFamiliaTab({ product, familia }: { product: Product; familia: C
           {familiaId && <> (referenciada: <code>{familiaId}</code>)</>}.
         </div>
       )}
+
+      <AporteSection product={product} />
     </div>
   );
 }

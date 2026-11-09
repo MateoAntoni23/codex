@@ -1,9 +1,33 @@
-import { useMemo, useState } from 'react';
+/**
+ * AddTraySegmentForm — formulario de creación de tramo recto.
+ *
+ * Decisión de diseño compartida con el Configurador:
+ *   El selector de producto usa la MISMA cascada de filtros
+ *   (sistema → tipo → ancho → ala → acabado → espesor) definida en
+ *   `configurator/productFilters.ts`. No se duplica la lógica — un cambio de
+ *   regla en el Configurador se refleja acá sin tocar este archivo.
+ *
+ * El indicador paramétrico (◆/○) se preserva como etiqueta visual porque
+ * depende de `parametricBridge` (orden real de recetas), no del catálogo.
+ */
+import { useEffect, useMemo, useState } from 'react';
 import { useTrayStore } from '../tray/store';
 import { useWorkspaceStore } from './useWorkspaceStore';
 import { validateSegmentInput, generateSegmentId, buildSegmentPiece, type Point3 } from './addTraySegment';
 import { hasParametricRecipe } from './parametricBridge';
-import type { Product } from '../tray/model';
+import {
+  applyCascade,
+  buildFamiliasById,
+  computeFilterOptions,
+  EMPTY_FILTERS,
+  formatAcabadoOption,
+  formatAlaOption,
+  formatAnchoOption,
+  formatEspesorOption,
+  matchesFilter,
+  type Filters,
+} from '../configurator/productFilters';
+import { SISTEMAS, type Sistema } from '../configurator/sistemaClassifier';
 
 const AXES = ['X', 'Y', 'Z'] as const;
 
@@ -35,6 +59,8 @@ function CoordField({
   );
 }
 
+const SELECT_STYLE: React.CSSProperties = { width: '100%', fontSize: 11, marginBottom: 3 };
+
 export function AddTraySegmentForm({ onClose }: { onClose: () => void }) {
   const context    = useTrayStore((s) => s.context);
   const entrada    = useTrayStore((s) => s.entrada);
@@ -42,58 +68,64 @@ export function AddTraySegmentForm({ onClose }: { onClose: () => void }) {
   const selectTray = useWorkspaceStore((s) => s.selectTray);
   const markDirty  = useWorkspaceStore((s) => s.markDirty);
 
-  const rectaProducts = (context?.productos ?? []).filter((p) => p.tipo_pieza === 'recta');
+  // El formulario de tramo opera siempre sobre `tipo_pieza === 'recta'`. Es el
+  // único piso duro — los demás niveles de la cascada son libres.
+  const rectaProducts = useMemo(
+    () => (context?.productos ?? []).filter((p) => p.tipo_pieza === 'recta'),
+    [context],
+  );
+  const familiasById = useMemo(
+    () => buildFamiliasById(context?.familias ?? []),
+    [context],
+  );
 
-  // Preferir productos con modelo paramétrico diseñado al inicializar el
-  // selector: así, al arrancar un trazado nuevo, el primer producto visible
-  // es uno cuya geometría coincide con el STEP original (TRPS-300-22-Z).
+  // Toggle "sólo paramétrico" independiente de la cascada: filtra sobre el
+  // conjunto ya reducido por los selectores para mantener coherencia con el
+  // indicador ◆/○ que aparece en las opciones.
   const [onlyParametric, setOnlyParametric] = useState<boolean>(() =>
     rectaProducts.some((p) => hasParametricRecipe(p)),
   );
-  const [productoId, setProductoId] = useState(
+
+  // Estado de filtros compartido con el Configurador (sin `estado`). Fijamos
+  // `tipoPieza = 'recta'` desde el arranque: es el único valor válido acá.
+  const [filters, setFilters] = useState<Filters>({ ...EMPTY_FILTERS, tipoPieza: 'recta' });
+
+  const filterOptions = useMemo(
+    () => computeFilterOptions(rectaProducts, filters, familiasById),
+    [rectaProducts, filters, familiasById],
+  );
+
+  const visibleProducts = useMemo(() => {
+    const base = rectaProducts.filter((p) => matchesFilter(p, filters, familiasById));
+    return onlyParametric ? base.filter((p) => hasParametricRecipe(p)) : base;
+  }, [rectaProducts, filters, familiasById, onlyParametric]);
+
+  const defaultProductId = useMemo(
     () =>
-      rectaProducts.find((p) => hasParametricRecipe(p))?.producto_id
+      visibleProducts.find((p) => hasParametricRecipe(p))?.producto_id
+      ?? visibleProducts[0]?.producto_id
+      ?? rectaProducts.find((p) => hasParametricRecipe(p))?.producto_id
       ?? rectaProducts[0]?.producto_id
       ?? '',
+    [visibleProducts, rectaProducts],
   );
+
+  const [productoId, setProductoId] = useState(defaultProductId);
   const [p1, setP1] = useState<Point3>([0, 0, 0]);
   const [p2, setP2] = useState<Point3>([3000, 0, 0]);
   const [error, setError] = useState<string | null>(null);
 
-  // Lista que se renderiza en el selector: respeta el toggle "sólo con
-  // modelo paramétrico" y agrupa por familia (así el usuario distingue
-  // SAM-STP-Z perforada vs SAM-STE-G/Z escalera sin inferir intercompat).
-  const visibleProducts = useMemo(
-    () => (onlyParametric ? rectaProducts.filter((p) => hasParametricRecipe(p)) : rectaProducts),
-    [rectaProducts, onlyParametric],
-  );
-
-  const familyGroups = useMemo(() => {
-    type FamEntry = { name: string; acabado: string | null; products: Product[] };
-    const groups = new Map<string, FamEntry>();
-    for (const p of visibleProducts) {
-      const famId = (p as Record<string, unknown>).familia_id as string | undefined ?? '__other__';
-      if (!groups.has(famId)) {
-        const fam = context?.familias?.find((f) => f.familia_id === famId);
-        groups.set(famId, {
-          name: fam?.nombre_familia ?? famId,
-          acabado: fam?.acabado_normalizado ?? null,
-          products: [],
-        });
-      }
-      groups.get(famId)!.products.push(p);
+  // Si la cascada deja fuera al producto actual, saltar al primer visible.
+  // Sin este efecto, el selector mostraría un valor que no está en la lista.
+  useEffect(() => {
+    if (!productoId) {
+      setProductoId(defaultProductId);
+      return;
     }
-    // Ordenar productos de cada familia: primero los que tienen receta.
-    for (const g of groups.values()) {
-      g.products.sort((a, b) => {
-        const ap = hasParametricRecipe(a) ? 0 : 1;
-        const bp = hasParametricRecipe(b) ? 0 : 1;
-        if (ap !== bp) return ap - bp;
-        return a.sku.localeCompare(b.sku);
-      });
+    if (!visibleProducts.some((p) => p.producto_id === productoId)) {
+      setProductoId(defaultProductId);
     }
-    return groups;
-  }, [visibleProducts, context?.familias]);
+  }, [visibleProducts, productoId, defaultProductId]);
 
   if (!context) {
     return (
@@ -119,7 +151,7 @@ export function AddTraySegmentForm({ onClose }: { onClose: () => void }) {
   const ala = (selectedProduct as Record<string, unknown>).ala_nominal_mm;
   const extraKeys: string[] = ['familia', 'material', 'acabado'];
   const hasRecipe = hasParametricRecipe(selectedProduct);
-  const parametricRectaCount = rectaProducts.filter((p) => hasParametricRecipe(p)).length;
+  const parametricCount = visibleProducts.filter((p) => hasParametricRecipe(p)).length;
 
   const dist = Math.hypot(p2[0] - p1[0], p2[1] - p1[1], p2[2] - p1[2]);
 
@@ -153,19 +185,130 @@ export function AddTraySegmentForm({ onClose }: { onClose: () => void }) {
     }
   };
 
+  // Para el select final (con ◆/○), agrupamos por familia como antes para que
+  // el usuario distinga variantes de material/acabado con la vista jerárquica.
+  const familyGroups = useMemo(() => {
+    const groups = new Map<string, {
+      name: string;
+      acabado: string | null;
+      products: typeof visibleProducts;
+    }>();
+    for (const p of visibleProducts) {
+      const famId = (p as Record<string, unknown>).familia_id as string | undefined ?? '__other__';
+      if (!groups.has(famId)) {
+        const fam = context?.familias?.find((f) => f.familia_id === famId);
+        groups.set(famId, {
+          name: fam?.nombre_familia ?? famId,
+          acabado: fam?.acabado_normalizado ?? null,
+          products: [],
+        });
+      }
+      groups.get(famId)!.products.push(p);
+    }
+    for (const g of groups.values()) {
+      g.products.sort((a, b) => {
+        const ap = hasParametricRecipe(a) ? 0 : 1;
+        const bp = hasParametricRecipe(b) ? 0 : 1;
+        if (ap !== bp) return ap - bp;
+        return a.sku.localeCompare(b.sku);
+      });
+    }
+    return groups;
+  }, [visibleProducts, context?.familias]);
+
   return (
     <div style={{ padding: '8px 12px', background: '#181b2e', border: '1px solid #2a2e55', borderRadius: 4, marginBottom: 6 }}>
-      {/* Product selector */}
       <div style={{ marginBottom: 8 }}>
         <label style={{ fontSize: 11, color: '#8888aa', display: 'block', marginBottom: 3 }}>
           Producto (sólo rectos del catálogo)
         </label>
 
-        {/* Filtro por modelo paramétrico diseñado */}
-        {parametricRectaCount > 0 && (
+        {/* Cascada de filtros compartida con el Configurador */}
+        <select
+          className="inspector-input"
+          style={SELECT_STYLE}
+          value={filters.sistema}
+          onChange={(e) => {
+            setFilters(applyCascade(filters, 'sistema', e.target.value as Sistema | ''));
+            setError(null);
+          }}
+          aria-label="Filtrar por sistema"
+          data-testid="add-filter-sistema"
+        >
+          <option value="">Todos los sistemas</option>
+          {SISTEMAS.map((s) => (
+            <option key={s.id} value={s.id}>{s.label}</option>
+          ))}
+        </select>
+        <select
+          className="inspector-input"
+          style={SELECT_STYLE}
+          value={filters.ancho}
+          onChange={(e) => {
+            setFilters(applyCascade(filters, 'ancho', e.target.value));
+            setError(null);
+          }}
+          aria-label="Filtrar por ancho"
+          data-testid="add-filter-ancho"
+        >
+          <option value="">Todos los anchos</option>
+          {filterOptions.anchos.map((w) => (
+            <option key={w} value={w}>{formatAnchoOption(w)}</option>
+          ))}
+        </select>
+        <select
+          className="inspector-input"
+          style={SELECT_STYLE}
+          value={filters.ala}
+          onChange={(e) => {
+            setFilters(applyCascade(filters, 'ala', e.target.value));
+            setError(null);
+          }}
+          aria-label="Filtrar por ala"
+          data-testid="add-filter-ala"
+        >
+          <option value="">Todas las alas</option>
+          {filterOptions.alas.map((a) => (
+            <option key={a} value={a}>{formatAlaOption(a)}</option>
+          ))}
+        </select>
+        <select
+          className="inspector-input"
+          style={SELECT_STYLE}
+          value={filters.acabado}
+          onChange={(e) => {
+            setFilters(applyCascade(filters, 'acabado', e.target.value));
+            setError(null);
+          }}
+          aria-label="Filtrar por acabado"
+          data-testid="add-filter-acabado"
+        >
+          <option value="">Todos los acabados</option>
+          {filterOptions.acabados.map((a) => (
+            <option key={a} value={a}>{formatAcabadoOption(a)}</option>
+          ))}
+        </select>
+        <select
+          className="inspector-input"
+          style={SELECT_STYLE}
+          value={filters.espesor}
+          onChange={(e) => {
+            setFilters(applyCascade(filters, 'espesor', e.target.value));
+            setError(null);
+          }}
+          aria-label="Filtrar por espesor"
+          data-testid="add-filter-espesor"
+        >
+          <option value="">Todos los espesores</option>
+          {filterOptions.espesores.map((s) => (
+            <option key={s} value={s}>{formatEspesorOption(s)}</option>
+          ))}
+        </select>
+
+        {parametricCount > 0 && (
           <label
             style={{
-              display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, marginBottom: 4,
+              display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, marginTop: 4, marginBottom: 4,
               color: onlyParametric ? '#99ccff' : '#8899bb', cursor: 'pointer',
             }}
           >
@@ -175,8 +318,8 @@ export function AddTraySegmentForm({ onClose }: { onClose: () => void }) {
               onChange={(e) => { setOnlyParametric(e.target.checked); setError(null); }}
             />
             <span>
-              Sólo con modelo paramétrico diseñado ({parametricRectaCount})
-              {onlyParametric ? '' : ` · ${rectaProducts.length} totales`}
+              Sólo con modelo paramétrico diseñado ({parametricCount}
+              {onlyParametric ? '' : ` / ${visibleProducts.length}`})
             </span>
           </label>
         )}
@@ -186,6 +329,7 @@ export function AddTraySegmentForm({ onClose }: { onClose: () => void }) {
           style={{ width: '100%' }}
           value={selectedProduct.producto_id}
           onChange={(e) => { setProductoId(e.target.value); setError(null); }}
+          data-testid="add-product-select"
         >
           {Array.from(familyGroups.entries()).map(([famId, { name, acabado, products }]) => (
             <optgroup key={famId} label={acabado ? `${name} (${acabado})` : name}>
@@ -204,7 +348,6 @@ export function AddTraySegmentForm({ onClose }: { onClose: () => void }) {
           ◆ modelo paramétrico diseñado · ○ sin modelo (render schemático)
         </div>
 
-        {/* Product details — only fields present in catalog, nothing invented */}
         <div style={{ fontSize: 10, color: '#6677aa', marginTop: 4, lineHeight: 1.6 }}>
           {selectedProduct.ancho_nominal_mm != null && (
             <span>Ancho: <strong>{selectedProduct.ancho_nominal_mm} mm</strong> · </span>
@@ -220,7 +363,6 @@ export function AddTraySegmentForm({ onClose }: { onClose: () => void }) {
           })}
         </div>
 
-        {/* Badge paramétrico */}
         <div
           style={{
             marginTop: 6, padding: '4px 6px', borderRadius: 3, fontSize: 10,
@@ -237,16 +379,13 @@ export function AddTraySegmentForm({ onClose }: { onClose: () => void }) {
         </div>
       </div>
 
-      {/* Axis legend */}
       <div style={{ fontSize: 10, color: '#5566aa', marginBottom: 6, lineHeight: 1.4 }}>
         Coordenadas globales en mm · X → Este · Y → Norte · Z → Vertical (arriba)
       </div>
 
-      {/* P1 / P2 inputs */}
       <CoordField label="P1 — extremo de referencia" coords={p1} onChange={(ax, v) => handleCoord('p1', ax, v)} />
       <CoordField label="P2 — extremo opuesto"       coords={p2} onChange={(ax, v) => handleCoord('p2', ax, v)} />
 
-      {/* Computed length */}
       <div style={{ fontSize: 11, color: '#7799cc', marginBottom: 8 }}>
         Longitud: <strong style={{ color: dist >= 1 ? '#99ddaa' : '#ff9955' }}>
           {Number.isFinite(dist) ? `${dist.toFixed(1)} mm` : '—'}
@@ -254,14 +393,12 @@ export function AddTraySegmentForm({ onClose }: { onClose: () => void }) {
         {dist < 1 && dist > 0 && <span style={{ color: '#ff9955' }}> (mínimo 1 mm)</span>}
       </div>
 
-      {/* Error */}
       {error && (
         <div style={{ fontSize: 11, color: '#ff7755', marginBottom: 6, lineHeight: 1.4 }}>
           {error}
         </div>
       )}
 
-      {/* Actions */}
       <div style={{ display: 'flex', gap: 6 }}>
         <button
           style={{ flex: 1, padding: '5px 0', fontSize: 12, background: '#2a5533', color: 'white', border: '1px solid #44aa66', borderRadius: 3, cursor: 'pointer' }}
