@@ -4,7 +4,7 @@
  * Contains all editing logic from PreviewInspector; accepts store callbacks
  * as props so it works with any store (PreviewStore, WorkspaceStore, etc.)
  */
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { elementToRenderProps, resolveGlobalTransform } from '../scene/v2-adapter';
 import {
   parseName, parsePositionDraft, parseBoxSizeDraft, parseCylinderSizeDraft,
@@ -334,6 +334,42 @@ export function EquipmentEditorPanel({ element, elements, updateElement, addEvid
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [element?.id]);
 
+  // Resync del draft de posición cuando la posición del store cambia por una
+  // vía externa al propio draft (p.ej. drag en escena, undo/redo). No piso la
+  // escritura en curso del usuario: sólo auto-sincronizo si no hay errores
+  // pendientes Y el draft parseado coincide con los valores antes del cambio.
+  const lastSeenPosRef = useRef<{ x: number; y: number; z: number } | null>(null);
+  const gtPos = element != null && element.placementStatus === 'placed'
+    ? resolveGlobalTransform(element.id, elements)?.positionMm ?? null
+    : null;
+  useEffect(() => {
+    if (!gtPos) { lastSeenPosRef.current = null; return; }
+    const prev = lastSeenPosRef.current;
+    lastSeenPosRef.current = { ...gtPos };
+    if (!prev) return;
+    if (prev.x === gtPos.x && prev.y === gtPos.y && prev.z === gtPos.z) return;
+    // Posición del store cambió. ¿El draft reflejaba la posición previa?
+    const draftParsed = {
+      x: parseFloat(posDraft.x),
+      y: parseFloat(posDraft.y),
+      z: parseFloat(posDraft.z),
+    };
+    const noErrors = !posErrors.x && !posErrors.y && !posErrors.z;
+    const matchesPrev =
+      noErrors
+      && draftParsed.x === prev.x - origin.x
+      && draftParsed.y === prev.y - origin.y
+      && draftParsed.z === prev.z - origin.z;
+    if (matchesPrev) {
+      setPosDraft({
+        x: String(gtPos.x - origin.x),
+        y: String(gtPos.y - origin.y),
+        z: String(gtPos.z - origin.z),
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gtPos?.x, gtPos?.y, gtPos?.z]);
+
   const handleCancel = () => {
     if (element == null || !canEdit(element)) return;
     syncDraft(element, elements, origin);
@@ -476,6 +512,11 @@ export function EquipmentEditorPanel({ element, elements, updateElement, addEvid
         Posición en mm (relativa al origen{origin.x !== 0 || origin.y !== 0 || origin.z !== 0
           ? ` ${origin.x}, ${origin.y}, ${origin.z}` : ''})
       </div>
+      {element.parentId === null && element.placementStatus === 'placed' && (
+        <p className="inspector-hint" style={{ padding: '2px 12px 4px', color: '#99aadd' }}>
+          También podés arrastrar el gizmo XYZ en la escena. Confirmá con <b>Aplicar</b> o descartá con <b>Cancelar</b>.
+        </p>
+      )}
       <EditField id="pi-pos-x" label="X" value={posDraft.x} error={posErrors.x}
         onChange={(v) => { setPosDraft((d) => ({ ...d, x: v })); setPosErrors((e) => ({ ...e, x: undefined })); }} />
       <EditField id="pi-pos-y" label="Y" value={posDraft.y} error={posErrors.y}

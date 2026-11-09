@@ -223,6 +223,25 @@ test('aceptación 1–7 — importado → operativo → mover → round-trip →
   expect(afterMove.byId[motorId!].positionMm).toEqual({ x: 1500, y: 2500, z: 300 });
 
   // ─── Paso 5: Exportar + recargar ───────────────────────────────────────────
+  // El botón "Exportar JSON" exige tray.entrada != null (lo setea el motor Python
+  // al iniciar). Si el motor no está arriba, seedeamos un TrayInput mínimo válido
+  // para que la UI serialice por su pipeline real sin depender del backend.
+  await page.evaluate(() => {
+    const w = window as typeof window & { __codex?: { trayStore?: { getState: () => unknown } } };
+    const ts = w.__codex!.trayStore!.getState() as {
+      entrada: unknown;
+      importEdit: (input: unknown) => void;
+    };
+    if (ts.entrada) return;
+    ts.importEdit({
+      version_contrato: 'trazado/1',
+      piezas: [],
+      conexiones: [],
+      circuitos: [],
+      soportes: [],
+      pe: { seccion_requerida_mm2: 0, cable_id: '', origen_requisito: 'test-e2e', conductores: [] },
+    });
+  });
   const [download] = await Promise.all([
     page.waitForEvent('download'),
     page.getByRole('button', { name: /Exportar JSON/ }).click(),

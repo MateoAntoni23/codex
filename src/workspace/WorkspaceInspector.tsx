@@ -709,30 +709,72 @@ function TrayHistoryControls() {
   const trayRedo  = useTrayStore((s) => s.redo);
   const history   = useTrayStore((s) => s.history);
   const future    = useTrayStore((s) => s.future);
+  const equipUndo        = useWorkspaceStore((s) => s.undoEquip);
+  const equipRedo        = useWorkspaceStore((s) => s.redoEquip);
+  const equipHistory     = useWorkspaceStore((s) => s.equipHistory);
+  const equipFuture      = useWorkspaceStore((s) => s.equipFuture);
   const markDirty = useWorkspaceStore((s) => s.markDirty);
   const canUndo   = history.length > 0;
   const canRedo   = future.length > 0;
+  const canUndoEquip = equipHistory.length > 0;
+  const canRedoEquip = equipFuture.length > 0;
 
-  if (!canUndo && !canRedo) return null;
+  if (!canUndo && !canRedo && !canUndoEquip && !canRedoEquip) return null;
+
+  const btnStyle = (enabled: boolean) => ({
+    fontSize: 11, padding: '2px 8px',
+    background: enabled ? '#2a3344' : '#1e2233',
+    color: enabled ? '#99aadd' : '#445566',
+    border: '1px solid #334455', borderRadius: 2,
+    cursor: enabled ? ('pointer' as const) : ('default' as const),
+  });
 
   return (
-    <div style={{ display: 'flex', gap: 4, padding: '4px 12px 5px', borderBottom: '1px solid #2a2e44' }}>
-      <button
-        title={canUndo ? `Deshacer (${history.length} disponibles)` : 'Sin operaciones para deshacer'}
-        style={{ fontSize: 11, padding: '2px 8px', background: canUndo ? '#2a3344' : '#1e2233', color: canUndo ? '#99aadd' : '#445566', border: '1px solid #334455', borderRadius: 2, cursor: canUndo ? 'pointer' : 'default' }}
-        onClick={() => { if (canUndo) { trayUndo(); markDirty(); } }}
-        disabled={!canUndo}
-      >
-        ↩ {canUndo ? history.length : '—'}
-      </button>
-      <button
-        title={canRedo ? `Rehacer (${future.length} disponibles)` : 'Sin operaciones para rehacer'}
-        style={{ fontSize: 11, padding: '2px 8px', background: canRedo ? '#2a3344' : '#1e2233', color: canRedo ? '#99aadd' : '#445566', border: '1px solid #334455', borderRadius: 2, cursor: canRedo ? 'pointer' : 'default' }}
-        onClick={() => { if (canRedo) { trayRedo(); markDirty(); } }}
-        disabled={!canRedo}
-      >
-        ↪ {canRedo ? future.length : '—'}
-      </button>
+    <div style={{ display: 'flex', gap: 4, padding: '4px 12px 5px', borderBottom: '1px solid #2a2e44', flexWrap: 'wrap', alignItems: 'center' }}>
+      {(canUndo || canRedo) && (
+        <>
+          <span style={{ fontSize: 10, color: '#667' }}>Bandejas</span>
+          <button
+            title={canUndo ? `Deshacer bandeja (${history.length})` : 'Sin cambios de bandejas para deshacer'}
+            style={btnStyle(canUndo)}
+            onClick={() => { if (canUndo) { trayUndo(); markDirty(); } }}
+            disabled={!canUndo}
+          >
+            ↩ {canUndo ? history.length : '—'}
+          </button>
+          <button
+            title={canRedo ? `Rehacer bandeja (${future.length})` : 'Sin cambios de bandejas para rehacer'}
+            style={btnStyle(canRedo)}
+            onClick={() => { if (canRedo) { trayRedo(); markDirty(); } }}
+            disabled={!canRedo}
+          >
+            ↪ {canRedo ? future.length : '—'}
+          </button>
+        </>
+      )}
+      {(canUndoEquip || canRedoEquip) && (
+        <>
+          <span style={{ fontSize: 10, color: '#667', marginLeft: (canUndo || canRedo) ? 6 : 0 }}>Equipos</span>
+          <button
+            data-testid="equip-undo"
+            title={canUndoEquip ? `Deshacer equipo (${equipHistory.length})` : 'Sin cambios de equipos para deshacer'}
+            style={btnStyle(canUndoEquip)}
+            onClick={() => { if (canUndoEquip) equipUndo(); }}
+            disabled={!canUndoEquip}
+          >
+            ↩ {canUndoEquip ? equipHistory.length : '—'}
+          </button>
+          <button
+            data-testid="equip-redo"
+            title={canRedoEquip ? `Rehacer equipo (${equipFuture.length})` : 'Sin cambios de equipos para rehacer'}
+            style={btnStyle(canRedoEquip)}
+            onClick={() => { if (canRedoEquip) equipRedo(); }}
+            disabled={!canRedoEquip}
+          >
+            ↪ {canRedoEquip ? equipFuture.length : '—'}
+          </button>
+        </>
+      )}
     </div>
   );
 }

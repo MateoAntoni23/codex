@@ -38,6 +38,10 @@ export interface WorkspaceState {
   importedCatalog: ImportedCatalog | null;
   selectedImportedEquipoId: string | null;
 
+  // Historial equipment-only (posición + alta/baja + vínculo importado)
+  equipHistory: EquipmentElement[][];
+  equipFuture: EquipmentElement[][];
+
   // Equipment actions
   selectEquip: (id: string | null) => void;
   updateElement: (el: EquipmentElement) => void;
@@ -45,6 +49,19 @@ export interface WorkspaceState {
   removeElement: (id: string) => void;
   addEvidence: (ev: FieldEvidence) => void;
   duplicateEquip: (id: string) => void;
+  undoEquip: () => void;
+  redoEquip: () => void;
+  /**
+   * Toma un snapshot del estado actual de `elements` y lo empuja al historial
+   * SIN mutar `elements`. Se usa al comenzar un drag en escena para que la
+   * secuencia completa de movimientos sea un único paso deshacible.
+   */
+  beginEquipCheckpoint: () => void;
+  /**
+   * Actualiza un elemento sin tocar el historial. Pensado para los frames
+   * intermedios de un drag: el checkpoint ya quedó empujado al iniciar.
+   */
+  updateElementTransient: (el: EquipmentElement) => void;
 
   // Tray / support selection
   selectTray: (id: string | null) => void;
@@ -98,6 +115,12 @@ function copyElements(els: EquipmentElement[]): EquipmentElement[] {
   return els.map((e) => ({ ...e }));
 }
 
+/** Snapshot previo a una mutación de elementos. Cap MAX_HIST para no crecer sin fin. */
+const MAX_HIST = 20;
+function pushEquipHistory(history: EquipmentElement[][], current: EquipmentElement[]) {
+  return [...history.slice(-(MAX_HIST - 1)), copyElements(current)];
+}
+
 const DEFAULT_LAYERS: Record<LayerKey, boolean> = {
   infrastructure: true,
   equipment: true,
@@ -120,6 +143,8 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   connectionPortA: null,
   importedCatalog: null,
   selectedImportedEquipoId: null,
+  equipHistory: [],
+  equipFuture: [],
 
   selectEquip: (id) => set({ selectedEquipId: id, selectedTrayId: null, selectedSupportId: null, selectedImportedEquipoId: null }),
   selectTray: (id) => set({ selectedTrayId: id, selectedEquipId: null, selectedSupportId: null, selectedImportedEquipoId: null }),
@@ -127,21 +152,27 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
 
   updateElement: (el) =>
     set((s) => ({
-      elements: s.elements.map((e) => (e.id === el.id ? el : e)),
-      dirty: true,
+      equipHistory: pushEquipHistory(s.equipHistory, s.elements),
+      equipFuture:  [],
+      elements:     s.elements.map((e) => (e.id === el.id ? el : e)),
+      dirty:        true,
     })),
 
   addElement: (el) =>
     set((s) => ({
-      elements: [...s.elements, el],
+      equipHistory:    pushEquipHistory(s.equipHistory, s.elements),
+      equipFuture:     [],
+      elements:        [...s.elements, el],
       selectedEquipId: el.id,
-      dirty: true,
+      dirty:           true,
     })),
 
   removeElement: (id) =>
     set((s) => {
       const toRemove = new Set(evidenceToRemoveOnDelete(id, s.elements, s.evidence));
       return {
+        equipHistory:    pushEquipHistory(s.equipHistory, s.elements),
+        equipFuture:     [],
         elements:        s.elements.filter((e) => e.id !== id),
         evidence:        s.evidence.filter((ev) => !toRemove.has(ev.id)),
         selectedEquipId: s.selectedEquipId === id ? null : s.selectedEquipId,
@@ -157,12 +188,56 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     if (!el) return;
     const { duplicate, provenance } = duplicateElement(el, s.elements);
     set({
+      equipHistory:    pushEquipHistory(s.equipHistory, s.elements),
+      equipFuture:     [],
       elements:        [...s.elements, duplicate],
       evidence:        [...s.evidence, provenance],
       selectedEquipId: duplicate.id,
       dirty:           true,
     });
   },
+
+  undoEquip: () => {
+    const { elements, equipHistory, equipFuture, selectedEquipId } = get();
+    if (!equipHistory.length) return;
+    const prev = equipHistory[equipHistory.length - 1];
+    const nextFuture = [...equipFuture, copyElements(elements)].slice(-MAX_HIST);
+    const stillExists = selectedEquipId && prev.some((e) => e.id === selectedEquipId);
+    set({
+      elements:        prev,
+      equipHistory:    equipHistory.slice(0, -1),
+      equipFuture:     nextFuture,
+      selectedEquipId: stillExists ? selectedEquipId : null,
+      dirty:           true,
+    });
+  },
+
+  redoEquip: () => {
+    const { elements, equipHistory, equipFuture, selectedEquipId } = get();
+    if (!equipFuture.length) return;
+    const next = equipFuture[equipFuture.length - 1];
+    const nextHistory = [...equipHistory, copyElements(elements)].slice(-MAX_HIST);
+    const stillExists = selectedEquipId && next.some((e) => e.id === selectedEquipId);
+    set({
+      elements:        next,
+      equipHistory:    nextHistory,
+      equipFuture:     equipFuture.slice(0, -1),
+      selectedEquipId: stillExists ? selectedEquipId : null,
+      dirty:           true,
+    });
+  },
+
+  beginEquipCheckpoint: () =>
+    set((s) => ({
+      equipHistory: pushEquipHistory(s.equipHistory, s.elements),
+      equipFuture:  [],
+    })),
+
+  updateElementTransient: (el) =>
+    set((s) => ({
+      elements: s.elements.map((e) => (e.id === el.id ? el : e)),
+      dirty:    true,
+    })),
 
   toggleLayer: (key) =>
     set((s) => ({ layers: { ...s.layers, [key]: !s.layers[key] } })),
@@ -186,6 +261,8 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       connectionPortA:     null,
       // `undefined` = sin cambios respecto a lo cargado. `null` o un catálogo = reemplazar.
       importedCatalog:     importedCatalog === undefined ? null : importedCatalog,
+      equipHistory:        [],
+      equipFuture:         [],
     }),
 
   markDirty: () => set({ dirty: true }),
@@ -206,6 +283,8 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       connectionToolActive: false,
       connectionPortA: null,
       importedCatalog: null,
+      equipHistory:    [],
+      equipFuture:     [],
     }),
 
   setImportedCatalog: (c) =>
@@ -262,7 +341,9 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       positionMm,
     });
     set({
-      elements: [...s.elements, el],
+      equipHistory: pushEquipHistory(s.equipHistory, s.elements),
+      equipFuture:  [],
+      elements:     [...s.elements, el],
       selectedEquipId: el.id,
       selectedImportedEquipoId: null,
       selectedTrayId: null,
@@ -291,15 +372,22 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       }
       return e;
     });
-    set({ elements: updated, dirty: true });
+    set({
+      equipHistory: pushEquipHistory(s.equipHistory, s.elements),
+      equipFuture:  [],
+      elements:     updated,
+      dirty:        true,
+    });
   },
 
   unlinkElement: (elementId) => {
     set((s) => ({
-      elements: s.elements.map((e) =>
+      equipHistory: pushEquipHistory(s.equipHistory, s.elements),
+      equipFuture:  [],
+      elements:     s.elements.map((e) =>
         e.id === elementId ? { ...e, importedRef: null } : e,
       ),
-      dirty: true,
+      dirty:        true,
     }));
   },
 }));
