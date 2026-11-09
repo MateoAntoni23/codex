@@ -70,15 +70,19 @@ describe('MASTER_MODELS inventory', () => {
     }
   });
 
-  it('CUPS declara continuity=partial con D7 como limitación concreta', () => {
+  it('CUPS declara continuity=partial con el alcance H→V y limitaciones restantes documentadas', () => {
     const cups = MASTER_MODELS.find((m) => m.id === 'master:perforada:curva_vertical_interior')!;
     expect(cups.closure.continuity.status).toBe('partial');
     expect(cups.closure.continuity.limitations.join('\n')).toMatch(/P1_horizontal.*P2_vertical/);
-    expect(cups.closure.continuity.limitations.join('\n')).toMatch(/D7|sectionUp/);
-    // Fidelidad regresionada (port en chaflán correcta); variantes sigue sin cadena E2E.
+    expect(cups.closure.continuity.limitations.join('\n')).toMatch(/inverso|descendente|dos curvas/);
+    // D7 ya migrado: la continuidad referencia cupsSectionUpPersistence (regresión de v_dir persistido).
+    expect(cups.closure.continuity.regressionSpecs.join('\n')).toMatch(/cupsSectionUpPersistence/);
+    // Fidelidad regresionada (port en chaflán correcta).
     expect(cups.closure.fidelity.status).toBe('validated');
     expect(cups.closure.fidelity.regressionSpecs.join('\n')).toMatch(/portFidelity/);
-    expect(cups.closure.variants.status).toBe('pending');
+    // Variantes validadas con depth-only (CUPS-450-A-Z).
+    expect(cups.closure.variants.status).toBe('validated');
+    expect(cups.closure.variants.regressionSpecs.join('\n')).toMatch(/cupsVariantsClosure/);
   });
 
   it('DCPS sin STEP queda pending en las 3 dimensiones', () => {

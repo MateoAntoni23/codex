@@ -315,10 +315,12 @@ export function planAddCurve(
         P1: {
           posicion_mm: [placed.p1.pos[0], placed.p1.pos[1], placed.p1.pos[2]],
           direccion: [placed.p1.outwardNormal[0], placed.p1.outwardNormal[1], placed.p1.outwardNormal[2]],
+          orientacion_seccion_ws: [placed.p1.vDir[0], placed.p1.vDir[1], placed.p1.vDir[2]],
         },
         P2: {
           posicion_mm: [placed.p2.pos[0], placed.p2.pos[1], placed.p2.pos[2]],
           direccion: [placed.p2.outwardNormal[0], placed.p2.outwardNormal[1], placed.p2.outwardNormal[2]],
+          orientacion_seccion_ws: [placed.p2.vDir[0], placed.p2.vDir[1], placed.p2.vDir[2]],
         },
       },
     };
@@ -392,11 +394,12 @@ export function planAddAccessory(
     { entryPortName, ...(startPort.sectionUp ? { sectionUp: startPort.sectionUp } : {}) },
   );
 
-  const puertos: Record<string, { posicion_mm: [number, number, number]; direccion: [number, number, number] }> = {};
+  const puertos: Record<string, { posicion_mm: [number, number, number]; direccion: [number, number, number]; orientacion_seccion_ws: [number, number, number] }> = {};
   for (const port of placed.ports) {
     puertos[port.name] = {
       posicion_mm: [port.pos[0], port.pos[1], port.pos[2]],
       direccion: [port.outwardNormal[0], port.outwardNormal[1], port.outwardNormal[2]],
+      orientacion_seccion_ws: [port.vDir[0], port.vDir[1], port.vDir[2]],
     };
   }
 

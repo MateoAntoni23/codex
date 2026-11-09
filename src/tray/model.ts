@@ -1,6 +1,12 @@
 /** Global domain coordinates are millimetres, Z up. No viewer coordinates cross HTTP. */
 export type Point = [number, number, number];
-export interface TrayPort { posicion_mm: Point; direccion: Point }
+/**
+ * orientacion_seccion_ws: eje "arriba de sección" en mundo (v_dir del marco de
+ * la boca rotado al mundo). Opcional para compatibilidad con proyectos previos;
+ * cuando está presente, `routingRules.getFreePorts` lo consume directamente y
+ * evita la heurística `computePortSectionUp`. Ver `docs/pattern-models-reconciliation.md` §D7.
+ */
+export interface TrayPort { posicion_mm: Point; direccion: Point; orientacion_seccion_ws?: Point }
 export interface Piece { instancia_id: string; producto_id: string; longitud_mm?: number; longitud_eje_mm?: number; puertos: Record<string, TrayPort> }
 export interface Circuit { circuito_id: string; funcion: string; cable_id: string; cantidad: number; separado: boolean; recorrido: string[] }
 export interface Support { soporte_id: string; instancia_id: string; producto_id: string; sistema_soporte_id: string; distancia_desde_P1_mm: number }
@@ -65,6 +71,10 @@ export function assertInput(raw:unknown): asserts raw is TrayInput {
   ids.add(p.instancia_id);
   for(const port of Object.values(p.puertos)){
    if(!object(port)||!Array.isArray(port.posicion_mm)||port.posicion_mm.length!==3||!port.posicion_mm.every(x=>typeof x==='number'&&Number.isFinite(x))||!Array.isArray(port.direccion)||port.direccion.length!==3||!port.direccion.every(x=>typeof x==='number'&&Number.isFinite(x))||Math.abs(Math.hypot(...port.direccion as number[])-1)>1e-6)throw Error('ENTRADA_INVALIDA: puertos globales mm y dirección unitaria requeridos');
+   if(port.orientacion_seccion_ws!==undefined){
+    const v=port.orientacion_seccion_ws;
+    if(!Array.isArray(v)||v.length!==3||!v.every(x=>typeof x==='number'&&Number.isFinite(x))||Math.abs(Math.hypot(...v as number[])-1)>1e-3)throw Error('ENTRADA_INVALIDA: orientacion_seccion_ws debe ser vector unitario de 3 componentes');
+   }
   }
  }
  // Full engineering validation remains in Python; reject non-finite numbers before JSON serialization.

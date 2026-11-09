@@ -46,11 +46,12 @@ export function getOccupiedPorts(conexiones: Connection[]): Set<string> {
 const VERTICAL_DIR_TOLERANCE = 1e-3;
 
 /**
- * Deriva el `sectionUp` mundial de un puerto a partir de la pieza y su boca
- * pareja horizontal (si existe). Mantiene legacy horizontal exacto devolviendo
- * [0,0,1] cuando el puerto es horizontal.
+ * Fallback para piezas legadas sin `orientacion_seccion_ws` persistido (proyectos
+ * previos a la migración D7). Deriva el `sectionUp` mundial de la pieza y su
+ * boca pareja horizontal. Nuevas inserciones persisten el valor canónico
+ * (`PlacedPort.vDir`); esta heurística sólo se usa como fallback.
  */
-function computePortSectionUp(
+function fallbackPortSectionUp(
   dir: Point3,
   pos: Point3,
   horizontalPairPos: Point3 | null,
@@ -86,12 +87,18 @@ export function getFreePorts(pieces: Piece[], conexiones: Connection[]): FreePor
       if (!occupied.has(`${piece.instancia_id}:${portName}`)) {
         const pos = port.posicion_mm as Point3;
         const dir = port.direccion as Point3;
+        // Ruta canónica D7: leer el `v_dir` del puerto persistido en la pieza.
+        // Las piezas insertadas después de la migración llevan el valor correcto
+        // computado por `placeRecipe` (= `PlacedPort.vDir`). Para piezas legadas
+        // sin el campo, caemos al fallback heurístico.
+        const persisted = (port as { orientacion_seccion_ws?: Point3 }).orientacion_seccion_ws;
+        const sectionUp: Point3 = persisted ?? fallbackPortSectionUp(dir, pos, horizontalPairPos);
         free.push({
           pieceId: piece.instancia_id,
           portName,
           pos,
           dir,
-          sectionUp: computePortSectionUp(dir, pos, horizontalPairPos),
+          sectionUp,
         });
       }
     }

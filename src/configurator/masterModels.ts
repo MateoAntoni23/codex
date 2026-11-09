@@ -193,6 +193,8 @@ export interface MasterModel {
 const PATTERN_FLUSH_SPEC = 'src/workspace/__tests__/patternChainContinuity.test.ts';
 const CUPS_PORT_FRAME_SPEC = 'src/parametric/geometry/__tests__/cupsPortFrameRepro.test.ts';
 const CUPS_CHAIN_SPEC = 'src/workspace/__tests__/cupsChainWorldContinuity.test.ts';
+const CUPS_SECTION_UP_PERSISTENCE_SPEC = 'src/workspace/__tests__/cupsSectionUpPersistence.test.ts';
+const CUPS_VARIANTS_CLOSURE_SPEC = 'src/configurator/__tests__/cupsVariantsClosure.test.ts';
 const PORT_FIDELITY_SPEC = 'src/configurator/__tests__/portFidelity.test.ts';
 const VARIANTS_CLOSURE_SPEC = 'src/configurator/__tests__/variantsClosure.test.ts';
 const PENDING_DIMENSION: ClosureDimension = Object.freeze({
@@ -395,19 +397,23 @@ const MASTER_PERFORADA: readonly MasterModel[] = [
     closure: {
       continuity: {
         status: 'partial',
-        regressionSpecs: [CUPS_PORT_FRAME_SPEC, CUPS_CHAIN_SPEC],
+        regressionSpecs: [CUPS_PORT_FRAME_SPEC, CUPS_CHAIN_SPEC, CUPS_SECTION_UP_PERSISTENCE_SPEC],
         limitations: [
           'Cerrado sólo en recorrido horizontal → CUPS (entrando por P1_horizontal) → vertical (saliendo por P2_vertical). El recorrido inverso no está regresionado.',
           'Encadenamiento de dos curvas verticales consecutivas no está regresionado.',
           'CUPS-B descendente pendiente — sin STEP publicado por SAMET.',
-          'Pendiente D7: sectionUp del tramo vertical se deriva por heurística (routingRules.computePortSectionUp). La ruta canónica (leer v_dir mundial del puerto fuente) ya está regresionada y daría el mismo resultado; la migración elimina la heurística.',
-          'Overrides del configurador con installRotationDeg sobre P1_horizontal o P2_vertical podrían invalidar la heurística D7; úsense con cuidado hasta migrar la fuente de sectionUp.',
         ],
       },
       fidelity: VALIDATED_FIDELITY_DIMENSION,
-      variants: PENDING_DIMENSION,
+      variants: {
+        status: 'validated',
+        regressionSpecs: [CUPS_VARIANTS_CLOSURE_SPEC],
+        limitations: [
+          'Cadena verificada para la variante declarada CUPS-450-A-Z (depth-only, provenance=derived). Otras variantes dimensionales no declaradas requieren STEP propio para pasar de derived a measured.',
+        ],
+      },
     },
-    revision: 1,
+    revision: 2,
   },
   {
     // TPS = tee simétrica (T diseñada con tronco cortado). STEP medido; el
