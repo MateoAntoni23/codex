@@ -37,6 +37,42 @@ describe('MASTER_MODELS inventory', () => {
     expect(cups!.pieceKind).toBe('curva_vertical');
   });
 
+  it('cada maestro declara closure (status + limitaciones + regresión respaldo)', () => {
+    // Fuente única por patrón del cierre efectivo (procedencia del juicio:
+    // regresiones de patternChainContinuity.test.ts y cupsChainWorldContinuity.test.ts).
+    // El Configurador consume esto tal cual — no hay corrección por visor.
+    for (const m of MASTER_MODELS) {
+      expect(['validated', 'validated-scoped', 'estimated', 'pending']).toContain(
+        m.closure.status,
+      );
+      if (m.closure.status === 'pending') {
+        expect(m.closure.regressionSpecs.length, `${m.id}: 'pending' no debe tener spec`).toBe(0);
+        expect(m.closure.limitations.length, `${m.id}: 'pending' debe listar causa`).toBeGreaterThan(0);
+      } else {
+        expect(m.closure.regressionSpecs.length, `${m.id}: estado no-pending exige spec`).toBeGreaterThan(0);
+      }
+      if (m.closure.status === 'validated-scoped') {
+        expect(
+          m.closure.limitations.length,
+          `${m.id}: 'validated-scoped' debe declarar alcance concreto`,
+        ).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it('CUPS declara closure validated-scoped con D7 como limitación concreta', () => {
+    const cups = MASTER_MODELS.find((m) => m.id === 'master:perforada:curva_vertical_interior')!;
+    expect(cups.closure.status).toBe('validated-scoped');
+    expect(cups.closure.limitations.join('\n')).toMatch(/P1_horizontal.*P2_vertical/);
+    expect(cups.closure.limitations.join('\n')).toMatch(/D7|sectionUp/);
+  });
+
+  it('DCPS sin STEP queda closure=pending', () => {
+    const dcps = MASTER_MODELS.find((m) => m.id === 'master:perforada:derivacion_pendiente')!;
+    expect(dcps.closure.status).toBe('pending');
+    expect(dcps.closure.regressionSpecs).toEqual([]);
+  });
+
   it('TPS (tee simétrica) y DCPS (derivación pendiente) son maestros distintos', () => {
     const tps = MASTER_MODELS.find((m) => m.id === 'master:perforada:tee_simetrica');
     const dcps = MASTER_MODELS.find((m) => m.id === 'master:perforada:derivacion_pendiente');

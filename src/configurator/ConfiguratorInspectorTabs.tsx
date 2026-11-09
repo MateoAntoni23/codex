@@ -35,7 +35,7 @@ import {
 import { getCompatibleProductIds } from '../workspace/routingRules';
 import { useCatalogConfigStore } from './catalogConfigStore';
 import { enumerateVariantsForMaster, findMasterAndVariantForProduct, type MasterVariant } from './masterVariants';
-import { findMasterForProduct } from './masterModels';
+import { findMasterForProduct, type ClosureStatus } from './masterModels';
 
 export const TABS = [
   { id: 'producto', label: 'Producto / Familia' },
@@ -1175,6 +1175,32 @@ function provenanceLabel(provenance: 'measured' | 'derived' | 'estimated'): stri
   }
 }
 
+function closureLabel(status: ClosureStatus): string {
+  switch (status) {
+    case 'validated':
+      return 'Validado';
+    case 'validated-scoped':
+      return 'Validado (acotado)';
+    case 'estimated':
+      return 'Estimado';
+    case 'pending':
+      return 'Pendiente';
+  }
+}
+
+function closureBadgeClass(status: ClosureStatus): string {
+  switch (status) {
+    case 'validated':
+      return 'cfg-status-recipe-default-identity';
+    case 'validated-scoped':
+      return 'cfg-status-recipe-default-mapping';
+    case 'estimated':
+      return 'cfg-status-recipe-override';
+    case 'pending':
+      return 'cfg-status-recipe-needs-mapping';
+  }
+}
+
 function MaestroTab({
   product,
   productos,
@@ -1251,6 +1277,48 @@ function MaestroTab({
         </dd>
         <dt>Revisión</dt><dd>r{master.revision}</dd>
       </dl>
+
+      <h3 className="cfg-section-title">Estado del patrón</h3>
+      <div data-testid="cfg-maestro-closure" style={{ marginBottom: 8 }}>
+        <span
+          className={`cfg-list-status ${closureBadgeClass(master.closure.status)}`}
+          data-testid="cfg-maestro-closure-badge"
+          data-closure-status={master.closure.status}
+          title={`Estado efectivo del patrón según la regresión compartida.`}
+        >
+          {closureLabel(master.closure.status)}
+        </span>
+      </div>
+      {master.closure.regressionSpecs.length > 0 && (
+        <div className="cfg-tab-hint" style={{ marginBottom: 6 }}>
+          Respaldo:{' '}
+          {master.closure.regressionSpecs.map((spec, i) => (
+            <span key={spec}>
+              {i > 0 && ', '}
+              <code>{spec}</code>
+            </span>
+          ))}
+        </div>
+      )}
+      {master.closure.limitations.length > 0 ? (
+        <ul
+          className="cfg-tab-hint"
+          data-testid="cfg-maestro-closure-limitations"
+          style={{ margin: '4px 0 12px 18px', padding: 0, lineHeight: 1.45 }}
+        >
+          {master.closure.limitations.map((lim, i) => (
+            <li key={i}>{lim}</li>
+          ))}
+        </ul>
+      ) : (
+        <div
+          className="cfg-tab-hint"
+          data-testid="cfg-maestro-closure-limitations-empty"
+          style={{ marginBottom: 12 }}
+        >
+          Sin limitaciones conocidas para este patrón.
+        </div>
+      )}
 
       <h3 className="cfg-section-title">Puertos del maestro (base)</h3>
       <table className="cfg-table">
