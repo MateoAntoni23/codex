@@ -74,6 +74,9 @@ export function assertInput(raw:unknown): asserts raw is TrayInput {
    if(port.orientacion_seccion_ws!==undefined){
     const v=port.orientacion_seccion_ws;
     if(!Array.isArray(v)||v.length!==3||!v.every(x=>typeof x==='number'&&Number.isFinite(x))||Math.abs(Math.hypot(...v as number[])-1)>1e-3)throw Error('ENTRADA_INVALIDA: orientacion_seccion_ws debe ser vector unitario de 3 componentes');
+    const d=port.direccion as number[];
+    const dot=v[0]*d[0]+v[1]*d[1]+v[2]*d[2];
+    if(Math.abs(dot)>1e-3)throw Error('ENTRADA_INVALIDA: orientacion_seccion_ws debe ser perpendicular a direccion');
    }
   }
  }

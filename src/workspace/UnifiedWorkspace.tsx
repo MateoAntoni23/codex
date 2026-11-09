@@ -243,6 +243,25 @@ function Toolbar({ onOpenImportWizard }: { onOpenImportWizard: () => void }) {
       >
         Cargar escenario de prueba
       </button>
+      <button
+        onClick={() => {
+          const current = useTrayStore.getState().entrada;
+          if (!current) {
+            alert('Primero inicializá el motor (Reconectar motor).');
+            return;
+          }
+          // Carga aditiva: trps300→cups300→trps300 + trps450→cups450→trps450.
+          // No toca lo existente; idempotente al segundo click.
+          import('./cupsTestChain').then(({ addCupsTestChains }) => {
+            const next = addCupsTestChains(current);
+            useTrayStore.getState().edit(next);
+          });
+        }}
+        data-testid="load-cups-chains"
+        title="Agrega dos cadenas CUPS cerradas (TRPS-300→CUPS-300→TRPS-300 y TRPS-450→CUPS-450→TRPS-450) sin tocar piezas existentes. Idempotente."
+      >
+        Cargar cadenas CUPS
+      </button>
       <a href="?configurator=v1" className="workspace-toolbar-link" data-testid="open-configurator">Configuración de biblioteca</a>
     </div>
   );

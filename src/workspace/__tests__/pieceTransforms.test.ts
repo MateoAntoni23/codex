@@ -162,6 +162,102 @@ describe('translatePiece', () => {
     expect(r.puertos.P2.posicion_mm).toEqual([3100, 200, 400]);
     expect(r.puertos.P1.direccion).toEqual([-1, 0, 0]);
   });
+
+  it('preserva orientacion_seccion_ws intacta tras trasladar', () => {
+    const p: Piece = {
+      instancia_id: 'T-up',
+      producto_id: 'TEST',
+      puertos: {
+        P1: { posicion_mm: [0, 0, 0], direccion: [-1, 0, 0], orientacion_seccion_ws: [0, 0, 1] },
+        P2: { posicion_mm: [3000, 0, 0], direccion: [1, 0, 0], orientacion_seccion_ws: [0, 0, 1] },
+      },
+    };
+    const r = translatePiece(p, [500, -200, 100]);
+    for (const name of ['P1', 'P2'] as const) {
+      expect(r.puertos[name].orientacion_seccion_ws).toEqual([0, 0, 1]);
+    }
+  });
+});
+
+describe('orientacion_seccion_ws — transformación bajo rotación', () => {
+  /**
+   * Regresión #220: toda rotación de pieza DEBE transformar el vector
+   * orientacion_seccion_ws coherentemente con la dirección del puerto, para
+   * que el campo persistido no quede desactualizado tras mover/girar. Caso
+   * crítico: rotación 90° alrededor de Z sobre una boca horizontal:
+   * vDir=[0,0,1] y direccion=[1,0,0]. Tras rotar 90° en Z, direccion pasa a
+   * [0,1,0] y vDir DEBE seguir siendo [0,0,1] (es perpendicular a Z, no rota).
+   * Caso complementario: rotación 90° en X debe mandar vDir de [0,0,1] a
+   * [0,-1,0] (siguiendo el mismo convenio de la matriz).
+   */
+  function makeWithVDir(): Piece {
+    return {
+      instancia_id: 'V-1',
+      producto_id: 'TEST',
+      puertos: {
+        P1: { posicion_mm: [0, 0, 100], direccion: [-1, 0, 0], orientacion_seccion_ws: [0, 0, 1] },
+        P2: { posicion_mm: [3000, 0, 100], direccion: [1, 0, 0], orientacion_seccion_ws: [0, 0, 1] },
+      },
+    };
+  }
+
+  it('rotatePiece 90° en Z deja vDir invariante y lo mantiene perpendicular a direccion', () => {
+    const p = makeWithVDir();
+    const r = rotatePiece(p, 'Z', 90, { kind: 'centroid' });
+    for (const name of ['P1', 'P2'] as const) {
+      const v = r.puertos[name].orientacion_seccion_ws!;
+      expect(v[0]).toBeCloseTo(0, 6);
+      expect(v[1]).toBeCloseTo(0, 6);
+      expect(v[2]).toBeCloseTo(1, 6);
+      const d = r.puertos[name].direccion;
+      expect(Math.abs(v[0] * d[0] + v[1] * d[1] + v[2] * d[2])).toBeLessThan(1e-6);
+    }
+  });
+
+  it('rotatePiece 90° en X transforma vDir de [0,0,1] a [0,-1,0]', () => {
+    const p = makeWithVDir();
+    const r = rotatePiece(p, 'X', 90, { kind: 'centroid' });
+    const v = r.puertos.P1.orientacion_seccion_ws!;
+    expect(v[0]).toBeCloseTo(0, 6);
+    expect(v[1]).toBeCloseTo(-1, 6);
+    expect(v[2]).toBeCloseTo(0, 6);
+  });
+
+  it('rotatePiece preserva la unitariedad de orientacion_seccion_ws bajo ángulo arbitrario', () => {
+    const p = makeWithVDir();
+    const r = rotatePiece(p, 'Y', 37.3, { kind: 'centroid' });
+    const v = r.puertos.P1.orientacion_seccion_ws!;
+    expect(Math.hypot(v[0], v[1], v[2])).toBeCloseTo(1, 6);
+  });
+
+  it('rotatePieceAroundAxis preserva la unitariedad y aplica rodrigues al vector', () => {
+    const p = makeWithVDir();
+    // Rotación alrededor del eje de P1 (−X) por 90°: vDir=[0,0,1] rotado
+    // alrededor de k=(−1,0,0) por 90° con Rodrigues: v·0 + (k×v)·1 + k·(k·v)·1
+    // k×v = (−1,0,0)×(0,0,1) = (0·1 − 0·0, 0·0 − (−1)·1, (−1)·0 − 0·0) = (0, 1, 0).
+    // Resultado: [0, 1, 0].
+    const r = rotatePieceAroundAxis(p, [-1, 0, 0], 90, [0, 0, 100]);
+    const v = r.puertos.P1.orientacion_seccion_ws!;
+    expect(Math.hypot(v[0], v[1], v[2])).toBeCloseTo(1, 6);
+    expect(v[0]).toBeCloseTo(0, 6);
+    expect(v[1]).toBeCloseTo(1, 6);
+    expect(v[2]).toBeCloseTo(0, 6);
+  });
+
+  it('rotación coherente: tras rotar, vDir sigue perpendicular a direccion', () => {
+    const p = makeWithVDir();
+    for (const axis of ['X', 'Y', 'Z'] as const) {
+      for (const angle of [37, 90, 123, -45]) {
+        const r = rotatePiece(p, axis, angle, { kind: 'centroid' });
+        for (const name of ['P1', 'P2'] as const) {
+          const v = r.puertos[name].orientacion_seccion_ws!;
+          const d = r.puertos[name].direccion;
+          const dot = v[0] * d[0] + v[1] * d[1] + v[2] * d[2];
+          expect(Math.abs(dot), `axis=${axis} angle=${angle} ${name} dot=${dot}`).toBeLessThan(1e-6);
+        }
+      }
+    }
+  });
 });
 
 describe('normalizeDeg', () => {

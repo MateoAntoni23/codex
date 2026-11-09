@@ -98,13 +98,20 @@ export function rotatePiece(piece: Piece, axis: AxisKey, angleDeg: number, pivot
   if (Math.abs(rad) < EPS) return piece;
   const M = rotMatrix(axis, rad);
 
-  const newPorts: Record<string, { posicion_mm: Vec3; direccion: Vec3 }> = {};
+  const newPorts: Record<string, { posicion_mm: Vec3; direccion: Vec3; orientacion_seccion_ws?: Vec3 }> = {};
   for (const [portId, port] of Object.entries(piece.puertos)) {
     const relative = subV(port.posicion_mm, pivotMm);
     const rotatedRel = applyMatrix(M, relative);
     const newPos = addV(pivotMm, rotatedRel);
     const newDir = normV(applyMatrix(M, port.direccion));
-    newPorts[portId] = { posicion_mm: newPos, direccion: newDir };
+    const entry: { posicion_mm: Vec3; direccion: Vec3; orientacion_seccion_ws?: Vec3 } = {
+      posicion_mm: newPos,
+      direccion: newDir,
+    };
+    if (port.orientacion_seccion_ws) {
+      entry.orientacion_seccion_ws = normV(applyMatrix(M, port.orientacion_seccion_ws));
+    }
+    newPorts[portId] = entry;
   }
 
   return {
@@ -172,7 +179,7 @@ export function rotatePieceAroundAxis(
   const axisN = normV(axis);
   if (axisN[0] === 0 && axisN[1] === 0 && axisN[2] === 0) return piece;
 
-  const newPorts: Record<string, { posicion_mm: Vec3; direccion: Vec3 }> = {};
+  const newPorts: Record<string, { posicion_mm: Vec3; direccion: Vec3; orientacion_seccion_ws?: Vec3 }> = {};
   for (const [portId, port] of Object.entries(piece.puertos)) {
     const relative = subV(port.posicion_mm, pivotMm);
     const rotatedRel = rodrigues(relative, axisN, rad);
@@ -182,7 +189,14 @@ export function rotatePieceAroundAxis(
       pivotMm[2] + rotatedRel[2],
     ];
     const newDir = normV(rodrigues(port.direccion, axisN, rad));
-    newPorts[portId] = { posicion_mm: newPos, direccion: newDir };
+    const entry: { posicion_mm: Vec3; direccion: Vec3; orientacion_seccion_ws?: Vec3 } = {
+      posicion_mm: newPos,
+      direccion: newDir,
+    };
+    if (port.orientacion_seccion_ws) {
+      entry.orientacion_seccion_ws = normV(rodrigues(port.orientacion_seccion_ws, axisN, rad));
+    }
+    newPorts[portId] = entry;
   }
 
   return {
@@ -195,12 +209,20 @@ export function rotatePieceAroundAxis(
  * Traslada una pieza por `delta_mm`. Las direcciones no cambian.
  */
 export function translatePiece(piece: Piece, deltaMm: Vec3): Piece {
-  const newPorts: Record<string, { posicion_mm: Vec3; direccion: Vec3 }> = {};
+  const newPorts: Record<string, { posicion_mm: Vec3; direccion: Vec3; orientacion_seccion_ws?: Vec3 }> = {};
   for (const [portId, port] of Object.entries(piece.puertos)) {
-    newPorts[portId] = {
+    const entry: { posicion_mm: Vec3; direccion: Vec3; orientacion_seccion_ws?: Vec3 } = {
       posicion_mm: addV(port.posicion_mm, deltaMm),
       direccion: [port.direccion[0], port.direccion[1], port.direccion[2]],
     };
+    if (port.orientacion_seccion_ws) {
+      entry.orientacion_seccion_ws = [
+        port.orientacion_seccion_ws[0],
+        port.orientacion_seccion_ws[1],
+        port.orientacion_seccion_ws[2],
+      ];
+    }
+    newPorts[portId] = entry;
   }
   return {
     ...piece,

@@ -409,7 +409,9 @@ const MASTER_PERFORADA: readonly MasterModel[] = [
         status: 'validated',
         regressionSpecs: [CUPS_VARIANTS_CLOSURE_SPEC],
         limitations: [
-          'Cadena verificada para la variante declarada CUPS-450-A-Z (depth-only, provenance=derived). Otras variantes dimensionales no declaradas requieren STEP propio para pasar de derived a measured.',
+          'Alcance de "validated": la propagación de la regla depth-only a CUPS-450-A-Z está comprobada por regresión (perfil XY fijo, Z escala por ancho). NO es fidelidad geométrica medida: no hay STEP de SAMET publicado para CUPS-450-A-Z que podamos contrastar punto a punto, por eso provenance=derived.',
+          'Diferencia operativa: "propagación comprobada" (esta cadena) ≠ "geometría medida" (lo que exige provenance=measured). Para auditoría con planos del proveedor, marcar la variante como pendiente de STEP.',
+          'Otras variantes dimensionales no declaradas (otros anchos, otro ala, CUPS-B descendente) requieren STEP propio para pasar de derived a measured.',
         ],
       },
     },

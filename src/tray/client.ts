@@ -7,9 +7,34 @@ export async function getJson(path:string,init?:RequestInit):Promise<unknown>{
  if(!response.ok){const e=object(data)&&object(data.error)?data.error:null;throw Error(`HTTP_${response.status} ${e?.codigo??''}: ${e?.mensaje??'Servicio no disponible'} ${e?.campo??''}`)}
  return data;
 }
+/**
+ * Serializa una Solicitud para el motor, eliminando claves que el contrato
+ * `trazado/1` no acepta en puertos (p. ej. `orientacion_seccion_ws`, agregada
+ * por el frontend para D7 y NO reconocida por `trazado_entrada.py`). El motor
+ * rechaza con `claves desconocidas` cualquier campo fuera de `{posicion_mm,
+ * direccion}`; por eso traducimos aquí en lugar de en el modelo.
+ */
+function stripMotorUnknownFields(s:Solicitud):Solicitud{
+ const entrada=s.entrada as Record<string,unknown>;
+ if(!Array.isArray(entrada.piezas))return s;
+ const piezas=(entrada.piezas as Array<Record<string,unknown>>).map(p=>{
+  const puertos=p.puertos as Record<string,Record<string,unknown>>|undefined;
+  if(!puertos)return p;
+  const cleanPuertos:Record<string,Record<string,unknown>>={};
+  for(const [name,port] of Object.entries(puertos)){
+   const {orientacion_seccion_ws:_omit,...rest}=port;
+   void _omit;
+   cleanPuertos[name]=rest;
+  }
+  return {...p,puertos:cleanPuertos};
+ });
+ return {...s,entrada:{...entrada,piezas}};
+}
+
 export async function transport(s:Solicitud):Promise<unknown>{
  if(s.version_contrato!=='1.0'||!object(s.entrada)||!Number.isInteger(s.revision_entrada))throw Error('SOLICITUD_INVALIDA');
- const data=await getJson('calcular',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(s)});
+ const serializable=stripMotorUnknownFields(s);
+ const data=await getJson('calcular',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(serializable)});
  if(object(data)&&data.estado==='ok'){
   if(data.version_motor!=='0.2.2')throw Error('VERSION_MOTOR_INCOMPATIBLE');
   readResult(data.resultado,s.tipo);
