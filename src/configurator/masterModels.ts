@@ -47,10 +47,29 @@ export type VariationRuleKind =
   | 'ala-independent'   // Escalera: ancho escala X,Z; ala escala Y independiente.
   | 'none';             // Sin regla codificada; solo ancho base.
 
+/**
+ * Procedencia de la regla de generación de variantes:
+ *   - 'measured':  validada por ≥2 STEP medidos a distintos parámetros
+ *                  (exige un segundo STEP real — no cubierto por ninguno de
+ *                  nuestros maestros al día de hoy).
+ *   - 'derived':   construida geométricamente desde el STEP base sin
+ *                  ambigüedad (polígono rectangular paramétrico, perfil fijo
+ *                  con extrusión en una dimensión). No valida la regla contra
+ *                  una segunda medición pero es constructivamente correcta.
+ *   - 'estimated': hipótesis visual (p.ej. escala uniforme por ancho/300 en
+ *                  curvas mitradas). No validada ni derivable sin suposiciones.
+ *
+ * Nota: la dimensión nominal de la variante (ancho_mm, ala_mm) la publica el
+ * catálogo SAMET independientemente de la procedencia de la regla. "Variante
+ * medida" sólo corresponde a `provenance === 'measured'`; si sólo se midió el
+ * modelo base, la variante proyectada es `derived` o `estimated`.
+ */
+export type RuleProvenance = 'measured' | 'derived' | 'estimated';
+
 export interface MasterVariationRule {
   readonly kind: VariationRuleKind;
-  /** True si la regla fue medida contra otro STEP; false si es extrapolación. */
-  readonly measured: boolean;
+  /** Procedencia de la regla — ver `RuleProvenance`. */
+  readonly provenance: RuleProvenance;
   /** Dimensiones que varían. Sirve para generar variantes legibles. */
   readonly varies: readonly ('ancho' | 'ala' | 'longitud' | 'angulo')[];
   /** Explicación corta para UI. */
@@ -147,9 +166,9 @@ const MASTER_PERFORADA: readonly MasterModel[] = [
     ],
     variationRule: {
       kind: 'ancho-only-z',
-      measured: true,
+      provenance: 'derived',
       varies: ['ancho', 'longitud'],
-      rationale: 'TRPS escala sólo la dimensión Z (ancho) y acepta longitud comercial del catálogo. Ala fija 50 mm.',
+      rationale: 'TRPS escala sólo la dimensión Z (ancho) y acepta longitud comercial del catálogo. Ala fija 50 mm. Regla derivada por construcción del polígono rectangular — no se ha medido un segundo STEP de ancho≠300 para validarla como \'measured\'.',
     },
     declaredVariantSkus: ['TRPS-450-20-Z'],
     revision: 1,
@@ -179,7 +198,7 @@ const MASTER_PERFORADA: readonly MasterModel[] = [
     ],
     variationRule: {
       kind: 'uniform-xz',
-      measured: false,
+      provenance: 'estimated',
       varies: ['ancho', 'angulo'],
       rationale: 'SAMET no publica CPS de ancho≠300. Regla asumida: escala uniforme del polígono por ancho/300.',
     },
@@ -211,7 +230,7 @@ const MASTER_PERFORADA: readonly MasterModel[] = [
     ],
     variationRule: {
       kind: 'uniform-xz',
-      measured: false,
+      provenance: 'estimated',
       varies: ['ancho'],
       rationale: 'SAMET no publica CPS 90° de ancho≠300. Regla asumida: escala uniforme del polígono por ancho/300.',
     },
@@ -243,9 +262,9 @@ const MASTER_PERFORADA: readonly MasterModel[] = [
     ],
     variationRule: {
       kind: 'depth-only',
-      measured: false,
+      provenance: 'derived',
       varies: ['ancho'],
-      rationale: 'SAMET no publica CUPS de ancho≠300. Regla asumida: perfil XY fijo, sólo profundidad Z escala por ancho.',
+      rationale: 'Perfil XY fijo (giro canónico +45° sobre polígono cuadrado), sólo profundidad Z escala por ancho. Derivada del STEP base — no hay segundo STEP de ancho≠300 para validarla como \'measured\'.',
     },
     declaredVariantSkus: ['CUPS-450-A-Z'],
     revision: 1,
@@ -282,7 +301,7 @@ const MASTER_PERFORADA: readonly MasterModel[] = [
     ],
     variationRule: {
       kind: 'uniform-xz',
-      measured: false,
+      provenance: 'estimated',
       varies: ['ancho'],
       rationale: 'SAMET no publica TPS de ancho≠300. Hipótesis visual: escala uniforme por ancho/300; no validada como regla constructiva.',
     },
@@ -320,7 +339,7 @@ const MASTER_PERFORADA: readonly MasterModel[] = [
     ],
     variationRule: {
       kind: 'none',
-      measured: false,
+      provenance: 'estimated',
       varies: [],
       rationale: 'DCPS geometría distinta de TPS (sin corte del tronco). Sin STEP medido — la asociación de los SKUs SAM_DCPS-*-Z queda explícita como PENDIENTE. No se genera variante hasta disponer del polígono.',
     },
@@ -354,7 +373,7 @@ const MASTER_PERFORADA: readonly MasterModel[] = [
     ],
     variationRule: {
       kind: 'uniform-xz',
-      measured: false,
+      provenance: 'estimated',
       varies: ['ancho'],
       rationale: 'SAMET no publica XPS de ancho≠300. Regla asumida: escala uniforme por ancho/300.',
     },
@@ -400,9 +419,9 @@ const MASTER_ESCALERA: readonly MasterModel[] = [
       // depende de otro STEP para ser válida; una variante 450×65 o 300×90 se
       // genera con factores exactos sobre las aristas medidas.
       kind: 'ala-independent',
-      measured: true,
+      provenance: 'derived',
       varies: ['ancho', 'ala', 'longitud'],
-      rationale: 'TRES polígono rectangular medido (ancho=300, ala=65, longitud=3000). La geometría se extiende sin ambigüedad: ancho escala Z, ala escala Y, longitud escala X. Variantes 450/600 ×  alas 65/90/115 generables con factores exactos.',
+      rationale: 'TRES polígono rectangular medido (ancho=300, ala=65, longitud=3000). La geometría se extiende sin ambigüedad: ancho escala Z, ala escala Y, longitud escala X. Variantes 450/600 × alas 65/90/115 generables con factores exactos — procedencia \'derived\' (no \'measured\') porque no se validó contra un segundo STEP de dimensiones distintas.',
     },
     declaredVariantSkus: ['TRES-450-065-18-Z', 'TRES-300-090-18-Z'],
     revision: 2,
@@ -431,9 +450,9 @@ const MASTER_ESCALERA: readonly MasterModel[] = [
     ],
     variationRule: {
       kind: 'none',
-      measured: true,
+      provenance: 'derived',
       varies: [],
-      rationale: 'Polígono medido 8 vértices sobre STEP ancho=300 ala=65. Sin segundo STEP para derivar regla.',
+      rationale: 'Polígono medido 8 vértices sobre STEP ancho=300 ala=65. Sin segundo STEP para derivar regla de escala — las variantes se marcan \'derived\' por reproducción geométrica directa.',
     },
     declaredVariantSkus: [],
     revision: 1,
@@ -462,9 +481,9 @@ const MASTER_ESCALERA: readonly MasterModel[] = [
     ],
     variationRule: {
       kind: 'none',
-      measured: true,
+      provenance: 'derived',
       varies: [],
-      rationale: 'Polígono medido 8 vértices sobre STEP ancho=300 ala=65.',
+      rationale: 'Polígono medido 8 vértices sobre STEP ancho=300 ala=65. Variantes \'derived\' por reproducción geométrica directa del polígono base.',
     },
     declaredVariantSkus: [],
     revision: 1,
@@ -494,9 +513,9 @@ const MASTER_ESCALERA: readonly MasterModel[] = [
     ],
     variationRule: {
       kind: 'none',
-      measured: true,
+      provenance: 'derived',
       varies: [],
-      rationale: 'Polígono medido 10 vértices sobre STEP ancho=300 ala=65.',
+      rationale: 'Polígono medido 10 vértices sobre STEP ancho=300 ala=65. Variantes \'derived\' por reproducción geométrica directa.',
     },
     declaredVariantSkus: [],
     revision: 1,
@@ -527,9 +546,9 @@ const MASTER_ESCALERA: readonly MasterModel[] = [
     ],
     variationRule: {
       kind: 'none',
-      measured: true,
+      provenance: 'derived',
       varies: [],
-      rationale: 'Polígono medido 16 vértices sobre STEP ancho=300 ala=65.',
+      rationale: 'Polígono medido 16 vértices sobre STEP ancho=300 ala=65. Variantes \'derived\' por reproducción geométrica directa.',
     },
     declaredVariantSkus: [],
     revision: 1,
@@ -558,7 +577,7 @@ const MASTER_ESCALERA: readonly MasterModel[] = [
     ],
     variationRule: {
       kind: 'none',
-      measured: true,
+      provenance: 'derived',
       varies: [],
       rationale: 'Polígono medido 6 vértices; transición ancho 300→150 específica. Otras reducciones (RCS-30-15) tienen STEP sin cara superior plana y quedan pendientes.',
     },
@@ -600,7 +619,11 @@ export function findMasterForProduct(product: {
   const candidates = MASTER_MODELS.filter((m) => {
     if (!m.catalogMatch.familiaIds.includes(familiaId)) return false;
     if (m.catalogMatch.catalogTipoPieza !== tipo) return false;
-    if (m.catalogMatch.catalogAlaMm !== ala) return false;
+    // Filtro por ala: estricto EXCEPTO cuando la variationRule marca `ala`
+    // como eje que varía (p.ej. ala-independent de TRES). En ese caso el
+    // maestro cubre por construcción otros alas y la variante debe resolverlo.
+    const alaVaries = m.variationRule.varies.includes('ala');
+    if (!alaVaries && m.catalogMatch.catalogAlaMm !== ala) return false;
     if (m.catalogMatch.catalogSkuPrefixes && skuPrefix) {
       return m.catalogMatch.catalogSkuPrefixes.some((pref) => skuPrefix.startsWith(pref));
     }

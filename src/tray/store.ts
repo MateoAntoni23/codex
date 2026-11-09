@@ -1,7 +1,12 @@
 import { create } from 'zustand';
 import { createManager, loadContext } from './client';
 import { assertInput, readResult, type Context, type TrayInput } from './model';
-import { recipePortToCatalogPort } from '../workspace/catalogPortMapping';
+import {
+  recipePortToCatalogPort,
+  setMasterResolver,
+  setProductCatalogIndex,
+} from '../workspace/catalogPortMapping';
+import { findMasterForProduct } from '../configurator/masterModels';
 const manager=createManager();
 let callSequence=0;
 
@@ -81,7 +86,7 @@ interface State {
 export const useTrayStore=create<State>((set,get)=>({
  context:null,entrada:null,revision:0,selected:null,resultSelection:null,result:null,status:'sin_calcular',error:null,
  history:[],future:[],
- initialize:async()=>{try{const context=await loadContext();const prev=get().context;if(prev&&prev.versions!==context.versions){manager.invalidar('trazado');set({revision:get().revision+1,status:'desactualizado',selected:null,resultSelection:null})}set({context,error:null});if(!get().entrada)get().edit(context.ejemplos.trazado_derivacion_pe)}catch(e){set({error:String(e),status:get().result?'desactualizado':'error',selected:null});manager.invalidar('trazado');set({revision:get().revision+1})}},
+ initialize:async()=>{try{const context=await loadContext();const prev=get().context;if(prev&&prev.versions!==context.versions){manager.invalidar('trazado');set({revision:get().revision+1,status:'desactualizado',selected:null,resultSelection:null})}set({context,error:null});setProductCatalogIndex(context.productos);setMasterResolver((p)=>findMasterForProduct(p as Record<string,unknown>));if(!get().entrada)get().edit(context.ejemplos.trazado_derivacion_pe)}catch(e){set({error:String(e),status:get().result?'desactualizado':'error',selected:null});manager.invalidar('trazado');set({revision:get().revision+1})}},
  edit:(input)=>{
   assertInput(input);
   manager.invalidar('trazado');

@@ -47,7 +47,9 @@ describe('MASTER_MODELS inventory', () => {
     // DCPS carece de STEP medido — declaración explícita pendiente.
     expect(dcps!.source.stepHashShort).toBe('--------');
     expect(dcps!.variationRule.kind).toBe('none');
-    expect(dcps!.variationRule.measured).toBe(false);
+    // Sin STEP ni polígono: no se puede derivar; la asociación queda como
+    // hipótesis explícita → procedencia 'estimated'.
+    expect(dcps!.variationRule.provenance).toBe('estimated');
   });
 });
 

@@ -117,7 +117,10 @@ describe('#121 variante NO copia desplazamientos absolutos del maestro', () => {
     const master = findMasterById('master:escalera:tramo_recto');
     expect(master).toBeTruthy();
     expect(master!.variationRule.kind).toBe('ala-independent');
-    expect(master!.variationRule.measured).toBe(true);
+    // Regla 'derived' (no 'measured'): se extiende por construcción desde el
+    // polígono rectangular medido en ancho=300 ala=65; no hay segundo STEP
+    // validando 450/090 todavía.
+    expect(master!.variationRule.provenance).toBe('derived');
     const productos: Product[] = [
       makeProduct({
         producto_id: 'SAM_TRES-300-065-18-Z',

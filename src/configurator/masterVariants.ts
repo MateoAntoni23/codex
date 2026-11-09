@@ -8,14 +8,20 @@
  * maestro. Las reglas no medidas quedan marcadas `estimated` para que la UI
  * pueda señalarlas sin ocultar que son extrapolación.
  *
- * Cinco orígenes posibles por variante:
+ * Seis orígenes posibles por variante (alineados con `RuleProvenance`):
  *   - `base`           : ancho/ala del producto == maestro. Usa la receta medida.
  *   - `declared`       : variante listada en `declaredVariantSkus` del maestro
  *                        (p.ej. TRPS-450-22-Z, CPS-450-45-Z). Mismo motor que
- *                        rule-derived pero marcada como "declarada por el
+ *                        derived/estimated pero marcada como "declarada por el
  *                        catálogo paramétrico" (no sólo generable por regla).
- *   - `rule-derived`   : la regla aplica Y está marcada `measured: true`.
- *   - `estimated`      : la regla aplica pero `measured: false` (extrapolación).
+ *   - `measured`       : la regla aplica Y el maestro tiene
+ *                        `provenance: 'measured'` (validada contra ≥2 STEP).
+ *                        Hoy ningún maestro cumple — reservado para cuando se
+ *                        incorpore un segundo STEP real.
+ *   - `derived`        : la regla aplica Y `provenance: 'derived'` (construible
+ *                        geométricamente sin ambigüedad desde el STEP base).
+ *   - `estimated`      : la regla aplica pero `provenance: 'estimated'`
+ *                        (hipótesis visual sin segundo STEP).
  *   - `requires-master`: la regla es `none` para esa combinación de ancho/ala,
  *                        o el delta no es representable por la regla. El
  *                        producto necesita su propio STEP+receta.
@@ -46,7 +52,8 @@ type Vec3Readonly = readonly [number, number, number];
 export type MasterVariantOrigin =
   | 'base'
   | 'declared'
-  | 'rule-derived'
+  | 'measured'
+  | 'derived'
   | 'estimated'
   | 'requires-master';
 
@@ -422,14 +429,21 @@ function classifyOrigin(
   const alaOk = deltaAla === 0 || canHandleAla;
   const anchoOk = deltaAncho === 0 || canHandleAncho;
   if (!alaOk || !anchoOk) return 'requires-master';
-  return rule.measured ? 'rule-derived' : 'estimated';
+  switch (rule.provenance) {
+    case 'measured':
+      return 'measured';
+    case 'derived':
+      return 'derived';
+    case 'estimated':
+      return 'estimated';
+  }
 }
 
 // ─── API pública ─────────────────────────────────────────────────────────────
 
 /**
  * Enumera las variantes aplicables al maestro cruzando el snapshot de
- * productos. Cada entrada declara su origen (base/declared/rule-derived/
+ * productos. Cada entrada declara su origen (base/declared/measured/derived/
  * estimated/requires-master) y proyección geométrica cuando el motor sabe
  * fabricarla. Ordenada por ancho ascendente y luego por SKU alfabético.
  */
@@ -498,10 +512,16 @@ export function enumerateVariantsForMaster(
     }
     if (
       (origin === 'estimated' || origin === 'declared') &&
-      !master.variationRule.measured &&
+      master.variationRule.provenance !== 'measured' &&
       (deltaAncho !== 0 || deltaAla !== 0)
     ) {
-      warnings.push('Variante proyectada por regla no medida — dimensionales sin verificación oficial.');
+      const label =
+        master.variationRule.provenance === 'estimated'
+          ? 'regla estimada (hipótesis visual sin segundo STEP)'
+          : 'regla derivada (construida desde el STEP base; no validada contra un segundo STEP)';
+      warnings.push(
+        `Variante proyectada por ${label} — las dimensiones nominales (ancho, ala) las publica el catálogo SAMET, pero la geometría generada no está verificada oficialmente.`,
+      );
     }
 
     let ports: readonly ProjectedPort[] = [];
@@ -541,9 +561,14 @@ export function enumerateVariantsForMaster(
         'Maestro sin dispatcher paramétrico: sólo se publican dimensiones proyectadas, no coordenadas de bocas.',
       );
     }
-    if (master.sistema !== 'perforada' && !master.variationRule.measured && (deltaAncho !== 0 || deltaAla !== 0)) {
-      // Para escalera no medida (curvas/T/cruz), señalar la hipótesis.
-      // (TRES tiene `measured: true` → no se marca.)
+    if (
+      master.sistema !== 'perforada' &&
+      master.variationRule.provenance === 'estimated' &&
+      (deltaAncho !== 0 || deltaAla !== 0)
+    ) {
+      // Para escalera estimada (curvas/T/cruz hipotéticas), señalar.
+      // TRES (derived) no se marca aquí: ya emitimos el aviso específico
+      // de derived arriba cuando corresponde.
       const already = warnings.some((w) => /hipótesis|estim/i.test(w));
       if (!already) {
         warnings.push(

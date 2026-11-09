@@ -11,6 +11,11 @@ import { WorkspaceInspector } from './WorkspaceInspector';
 import { exportWorkspace, importWorkspace, extractMeta } from './workspaceFile';
 import { RoutingStatusBadge } from './RoutingPanel';
 import { useCatalogConfigStore } from '../configurator/catalogConfigStore';
+import {
+  getModelFrameOverride,
+  getPortGeometryOverride,
+  listOverriddenProductIds,
+} from './catalogPortMapping';
 
 function SceneBridge() {
   const scene = useThree((s) => s.scene);
@@ -223,6 +228,11 @@ export function UnifiedWorkspace() {
       // is the exact transformation used before dispatching to the Python engine.
       catalogConfigStore: useCatalogConfigStore,
       toMotorEntrada,
+      // Same-module bindings for the resolver. See note in ConfiguratorLayout
+      // about Vite dev-server double-loading when tests use `await import()`.
+      getModelFrameOverride,
+      getPortGeometryOverride,
+      listOverriddenProductIds,
     };
     return () => { delete w.__codex; };
   }, []);

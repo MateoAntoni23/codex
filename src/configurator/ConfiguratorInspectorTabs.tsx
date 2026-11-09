@@ -1136,9 +1136,10 @@ function ContinuacionesTab({
 //
 // Muestra el MasterModel asociado al producto seleccionado y sus variantes
 // aplicables lado a lado. Cada variante trae su origen (base, declared,
-// rule-derived, estimated, requires-master) con las dimensiones proyectadas
-// por la regla del maestro. Usa `findMasterAndVariantForProduct` para
-// resolver el producto actual y resaltar su fila.
+// measured, derived, estimated, requires-master) con las dimensiones
+// proyectadas por la regla del maestro. Usa
+// `findMasterAndVariantForProduct` para resolver el producto actual y
+// resaltar su fila.
 
 function vec3Str(v: readonly [number, number, number] | null): string {
   if (!v) return '—';
@@ -1152,12 +1153,25 @@ function originBadgeClass(origin: MasterVariant['origin']): string {
       return 'cfg-status-recipe-default-identity';
     case 'declared':
       return 'cfg-status-recipe-default-mapping';
-    case 'rule-derived':
+    case 'measured':
+      return 'cfg-status-recipe-default-identity';
+    case 'derived':
       return 'cfg-status-recipe-default-mapping';
     case 'estimated':
       return 'cfg-status-recipe-override';
     case 'requires-master':
       return 'cfg-status-recipe-needs-mapping';
+  }
+}
+
+function provenanceLabel(provenance: 'measured' | 'derived' | 'estimated'): string {
+  switch (provenance) {
+    case 'measured':
+      return 'medida (validada contra ≥2 STEP)';
+    case 'derived':
+      return 'derivada (construida desde el STEP base; dimensión nominal del catálogo)';
+    case 'estimated':
+      return 'estimada (hipótesis visual sin segundo STEP)';
   }
 }
 
@@ -1228,7 +1242,9 @@ function MaestroTab({
         <dt>Regla</dt>
         <dd>
           <code>{master.variationRule.kind}</code>{' '}
-          {master.variationRule.measured ? '(medida)' : '(estimada)'}
+          <span data-testid="cfg-maestro-provenance">
+            ({provenanceLabel(master.variationRule.provenance)})
+          </span>
           <div className="cfg-tab-hint" style={{ marginTop: 4 }}>
             {master.variationRule.rationale}
           </div>

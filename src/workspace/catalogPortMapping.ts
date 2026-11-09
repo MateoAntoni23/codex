@@ -195,12 +195,121 @@ const DEFAULT_MAPPINGS: Readonly<Record<string, readonly PortMappingEntry[]>> = 
 
 let _overrides: Readonly<Record<string, ProductPortMapping>> = {};
 
+// ─── Herencia maestro → variantes ────────────────────────────────────────────
+//
+// Cuando el usuario configura el "producto base" de un maestro (p.ej.
+// SAM_TRPS-300-22-Z para el maestro TRPS perforada), las variantes
+// (SAM_TRPS-450-20-Z, …) deben heredar esa configuración sin re-pedirla.
+//
+// Contrato de herencia:
+//   - `modelFrame`: se hereda TAL CUAL. Es una corrección del marco del modelo
+//     en ejes globales (rotación/traslación), por tanto válida para todas las
+//     variantes dimensionales del mismo maestro.
+//   - `geometry.normal / uDir / vDir`: se heredan TAL CUAL. Son vectores
+//     unitarios configurados en ejes globales — reemplazarlos por los ejes
+//     por defecto borraría la corrección hecha por el usuario.
+//   - `geometry.centerMm`: NO se hereda automáticamente. Es un punto absoluto
+//     en el marco del maestro base; la variante tiene dimensiones distintas y
+//     su centro por defecto ya cae sobre su propia arista. Heredar el centro
+//     del maestro colocaría la boca fuera del cuerpo de la variante.
+//   - `geometry.installRotationDeg`: se hereda.
+//
+// Para que la herencia funcione sin pasar snapshots por todos los puntos de
+// uso, `setProductCatalogIndex` siembra un índice `productId → metadatos del
+// catálogo` que se consulta en runtime. El store de workspace lo llama al
+// cargar el contexto.
+
+type ProductIndexEntry = {
+  readonly producto_id: string;
+  readonly familia_id?: string | null;
+  readonly tipo_pieza?: string | null;
+  readonly ala_nominal_mm?: number | null;
+  readonly ancho_nominal_mm?: number | null;
+  readonly angulo_grados?: number | null;
+  readonly sku?: string | null;
+};
+
+let _productIndex: Readonly<Record<string, ProductIndexEntry>> = {};
+
 export function setPortMappingOverrides(overrides: Record<string, ProductPortMapping>): void {
   _overrides = { ...overrides };
 }
 
 export function clearPortMappingOverrides(): void {
   _overrides = {};
+}
+
+/**
+ * Siembra el índice `productId → catálogo` que habilita la herencia
+ * maestro → variantes. Idempotente: la última llamada gana. El store de
+ * workspace lo llama al cargar `context.productos`.
+ */
+export function setProductCatalogIndex(products: readonly ProductIndexEntry[]): void {
+  const idx: Record<string, ProductIndexEntry> = {};
+  for (const p of products) {
+    if (p?.producto_id) idx[p.producto_id] = p;
+  }
+  _productIndex = idx;
+}
+
+export function clearProductCatalogIndex(): void {
+  _productIndex = {};
+}
+
+/**
+ * Resolver inyectable para `findMasterForProduct`. Se inyecta desde un módulo
+ * de wiring (no desde este archivo) para evitar que `catalogPortMapping` (en
+ * `workspace/`) importe `configurator/masterModels` directamente — eso cerraría
+ * un ciclo cuando `masterModels` evolucione.
+ */
+type MasterResolver = (product: ProductIndexEntry) => {
+  id: string;
+  baseParams: { ancho_mm: number; ala_mm: number; angulo_deg?: number };
+} | null;
+
+let _masterResolver: MasterResolver | null = null;
+
+export function setMasterResolver(resolver: MasterResolver | null): void {
+  _masterResolver = resolver;
+}
+
+/**
+ * Dado un productId, devuelve el productId del "producto base" del maestro
+ * al que pertenece — es decir, otro productId del mismo maestro cuyo override
+ * debe heredar la variante. Retorna null si:
+ *   - no hay índice de catálogo sembrado;
+ *   - no hay resolver de maestro inyectado;
+ *   - el producto no mapea a un maestro;
+ *   - ningún otro producto del mismo maestro tiene override declarado.
+ *
+ * Criterio de desempate: se prefiere el productId cuyas dimensiones nominales
+ * (ancho, ala, ángulo) coincidan con `master.baseParams`. Esto garantiza que
+ * la herencia venga del modelo base medido, no de otra variante secundaria.
+ */
+function findMasterBaseProductIdFor(productId: string): string | null {
+  if (!_masterResolver) return null;
+  const direct = _productIndex[productId];
+  if (!direct) return null;
+  const master = _masterResolver(direct);
+  if (!master) return null;
+  let best: { id: string; score: number } | null = null;
+  for (const [id, entry] of Object.entries(_productIndex)) {
+    if (id === productId) continue;
+    if (!_overrides[id]) continue; // Sólo heredamos de productos con override.
+    const candMaster = _masterResolver(entry);
+    if (candMaster?.id !== master.id) continue;
+    let score = 0;
+    if (entry.ancho_nominal_mm === master.baseParams.ancho_mm) score += 4;
+    if (entry.ala_nominal_mm === master.baseParams.ala_mm) score += 2;
+    if (
+      master.baseParams.angulo_deg === undefined ||
+      entry.angulo_grados === master.baseParams.angulo_deg
+    ) {
+      score += 1;
+    }
+    if (!best || score > best.score) best = { id, score };
+  }
+  return best?.id ?? null;
 }
 
 export function getEffectiveMapping(productId: string): ProductPortMapping | null {
@@ -276,27 +385,55 @@ export function listOverriddenProductIds(): readonly string[] {
 /**
  * Devuelve la transformación de modelo para un producto (si está declarada).
  * Side-effect free; la aplicación concreta la hace el consumidor (viewer o motor).
+ *
+ * Herencia: si el producto no tiene override directo, se consulta el
+ * "producto base" del mismo maestro. El modelFrame es una rotación/traslación
+ * en ejes globales, válida para todas las variantes dimensionales del maestro.
  */
 export function getModelFrameOverride(productId: string): ModelFrameOverride | null {
-  const mapping = getEffectiveMapping(productId);
-  if (!mapping?.modelFrame) return null;
-  if (isIdentityModelFrame(mapping.modelFrame)) return null;
-  return mapping.modelFrame;
+  const direct = _overrides[productId]?.modelFrame;
+  if (direct && !isIdentityModelFrame(direct)) return direct;
+  const baseId = findMasterBaseProductIdFor(productId);
+  if (!baseId) return null;
+  const inherited = _overrides[baseId]?.modelFrame;
+  if (!inherited || isIdentityModelFrame(inherited)) return null;
+  return inherited;
 }
 
 /**
  * Devuelve el override geométrico para una boca específica (recipe port
  * name). Si no hay override o es identidad, devuelve null. El consumidor
  * aplica la mezcla con los datos de la receta.
+ *
+ * Herencia: si el producto no tiene override directo para la boca, se
+ * consulta el override del "producto base" del mismo maestro. Para evitar
+ * centros absolutos incorrectos en variantes dimensionales, se heredan
+ * sólo `normal / uDir / vDir / installRotationDeg` — el `centerMm` se omite.
  */
 export function getPortGeometryOverride(
   productId: string,
   recipePortName: string,
 ): PortGeometryOverride | null {
   const mapping = getEffectiveMapping(productId);
-  if (!mapping) return null;
-  const hit = mapping.entries.find((e) => e.recipePortName === recipePortName);
-  if (!hit?.geometry) return null;
-  if (isIdentityPortGeometry(hit.geometry)) return null;
-  return hit.geometry;
+  const directHit = mapping?.entries.find((e) => e.recipePortName === recipePortName);
+  const direct = directHit?.geometry;
+  if (direct && !isIdentityPortGeometry(direct)) return direct;
+  // Fallback por herencia del maestro: hereda sólo direcciones/giros, NO el
+  // centro (el centro absoluto del maestro no vale para variantes de otras
+  // dimensiones; la receta de la variante ya coloca el centro correcto).
+  const baseId = findMasterBaseProductIdFor(productId);
+  if (!baseId) return null;
+  const inheritedMapping = _overrides[baseId];
+  const inheritedHit = inheritedMapping?.entries.find((e) => e.recipePortName === recipePortName);
+  const inherited = inheritedHit?.geometry;
+  if (!inherited || isIdentityPortGeometry(inherited)) return null;
+  const projected: PortGeometryOverride = {};
+  if (inherited.normal) (projected as { normal?: readonly [number, number, number] }).normal = inherited.normal;
+  if (inherited.uDir) (projected as { uDir?: readonly [number, number, number] }).uDir = inherited.uDir;
+  if (inherited.vDir) (projected as { vDir?: readonly [number, number, number] }).vDir = inherited.vDir;
+  if ((inherited.installRotationDeg ?? 0) !== 0) {
+    (projected as { installRotationDeg?: number }).installRotationDeg = inherited.installRotationDeg;
+  }
+  if (isIdentityPortGeometry(projected)) return null;
+  return projected;
 }

@@ -26,7 +26,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTrayStore } from '../tray/store';
 import type { Product } from '../tray/model';
-import { type ProductPortMapping } from '../workspace/catalogPortMapping';
+import {
+  getModelFrameOverride,
+  getPortGeometryOverride,
+  listOverriddenProductIds,
+  type ProductPortMapping,
+} from '../workspace/catalogPortMapping';
+import { resolveParametricEntry } from '../workspace/parametricBridge';
 import { useCatalogConfigStore } from './catalogConfigStore';
 import { InspectorTabContent, TABS, type TabId } from './ConfiguratorInspectorTabs';
 import { ConfiguratorViewer } from './ConfiguratorViewer';
@@ -412,6 +418,40 @@ export function ConfiguratorLayout() {
     // correctamente el estado por producto (default vs override) y el
     // workspace/motor reciban los overrides persistidos sin extra wiring.
     useCatalogConfigStore.getState().hydrate();
+    // Dev-only diagnostic hook: expose the same store/trayStore instances
+    // the UI uses, so Playwright can read overrides without relying on a
+    // dynamic `import()` that Vite may resolve to a second module copy.
+    const w = window as typeof window & { __codex?: Record<string, unknown> };
+    if (!w.__codex) w.__codex = {};
+    w.__codex.catalogConfigStore = useCatalogConfigStore;
+    w.__codex.trayStore = useTrayStore;
+    // Expose resolver functions from the SAME module instance the UI uses.
+    // Why: in Vite dev, a dynamic `import('/src/.../catalogPortMapping.ts')`
+    // can resolve to a second module copy (parallel singleton) — tests would
+    // then read an empty state. Exposing the functions here guarantees the
+    // test sees the exact bindings the configurator Apply button mutated.
+    w.__codex.getModelFrameOverride = getModelFrameOverride;
+    w.__codex.getPortGeometryOverride = getPortGeometryOverride;
+    w.__codex.listOverriddenProductIds = listOverriddenProductIds;
+    // Fail-fast helper para E2E: devuelve si existe receta paramétrica para el
+    // producto. Permite a Playwright detectar "producto sin receta" antes de
+    // esperar 180 s por un Canvas que no va a aparecer — y falla con mensaje
+    // útil en vez de time-out.
+    w.__codex.hasParametricRecipe = (productId: string): boolean => {
+      const ctx = useTrayStore.getState().context;
+      const p = ctx?.productos.find((x) => x.producto_id === productId);
+      return !!p && !!resolveParametricEntry(p);
+    };
+    return () => {
+      if (w.__codex) {
+        delete w.__codex.catalogConfigStore;
+        delete w.__codex.trayStore;
+        delete w.__codex.getModelFrameOverride;
+        delete w.__codex.getPortGeometryOverride;
+        delete w.__codex.listOverriddenProductIds;
+        delete w.__codex.hasParametricRecipe;
+      }
+    };
   }, []);
 
   const products = context?.productos ?? [];

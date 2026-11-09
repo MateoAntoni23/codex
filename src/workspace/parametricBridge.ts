@@ -21,8 +21,10 @@ import * as THREE from 'three';
 import {
   PARAMETRIC_CATALOG,
   type ParametricEntry,
+  type ParametricVariantView,
 } from '../parametric/catalog';
 import {
+  buildRecipeByKey,
   buildRecipeFor,
   type PieceKind,
   type RawParams,
@@ -30,6 +32,7 @@ import {
 import { buildPrism } from '../parametric/geometry/buildPrism';
 import type { GeometryRecipe, PortDef } from '../parametric/geometry/outlines';
 import type { Piece, Product, TrayPort } from '../tray/model';
+import { findMasterForProduct, type MasterModel } from '../configurator/masterModels';
 import { resolveRecipeForProduct } from './resolvedPortGeometry';
 
 // ─── Tipos del puente ────────────────────────────────────────────────────────
@@ -112,6 +115,179 @@ const SUPPORTED_PIECE_KINDS: ReadonlySet<PieceKind> = new Set([
   'curva_vertical',
 ]);
 
+type SyntheticProductLike = {
+  readonly sku?: unknown;
+  readonly producto_id?: unknown;
+  readonly familia_id?: unknown;
+  readonly tipo_pieza?: unknown;
+  readonly ancho_nominal_mm?: unknown;
+  readonly ala_nominal_mm?: unknown;
+  readonly longitud_comercial_mm?: unknown;
+  readonly angulo_grados?: unknown;
+};
+
+/**
+ * Mapea el `pieceKind` taxonómico del maestro al `PieceKind` paramétrico que
+ * acepta el dispatcher legacy `buildRecipeFor`. Para escalera + reducción el
+ * caller debe usar `buildRecipeByKey` con el recipeKey del maestro, no esta
+ * función — este map es solo para conservar el `piece_kind` de la entrada
+ * sintética (campo usado por `isParametricInsertable`/`resolveRecipe`).
+ */
+function masterPieceKindToParametric(master: MasterModel): PieceKind | null {
+  switch (master.pieceKind) {
+    case 'tramo_recto':
+    case 'curva_horizontal':
+    case 'curva_vertical':
+    case 'cruz':
+      return master.pieceKind;
+    case 'tee_simetrica':
+    case 'derivacion_lateral':
+      return 'derivacion_lateral';
+    case 'reduccion_lateral':
+      // No tiene PieceKind legacy — los consumidores que requieren PieceKind
+      // (p.ej. SUPPORTED_PIECE_KINDS) no aceptan reducción, lo cual es
+      // correcto: no la colocamos interactivamente aún. El viewer SÍ la
+      // acepta porque sólo pide `resolveParametricEntry`.
+      return null;
+  }
+}
+
+function numOr(value: unknown, fallback: number): number {
+  return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+}
+
+function paramsForMaster(master: MasterModel, product: SyntheticProductLike): RawParams {
+  const params: Record<string, number | string | null> = {
+    ancho_mm: numOr(product.ancho_nominal_mm, master.baseParams.ancho_mm),
+    ala_mm: numOr(product.ala_nominal_mm, master.baseParams.ala_mm),
+  };
+  if (master.baseParams.longitud_mm !== undefined) {
+    params.longitud_mm = numOr(product.longitud_comercial_mm, master.baseParams.longitud_mm);
+  }
+  if (master.baseParams.angulo_deg !== undefined) {
+    params.angulo_deg = numOr(product.angulo_grados, master.baseParams.angulo_deg);
+  }
+  return params as RawParams;
+}
+
+function syntheticVariantView(
+  label: string,
+  sku: string,
+  recipe: GeometryRecipe,
+  params: RawParams,
+  notes: readonly string[],
+): ParametricVariantView {
+  return {
+    label,
+    sku,
+    glb_url: '',
+    params,
+    ports: recipe.ports.map((p) => ({
+      name: p.name,
+      center: p.center,
+      normal: p.normal,
+      ancho_mm: p.ancho_mm,
+      ala_mm: p.ala_mm,
+      u_dir: p.u_dir,
+      v_dir: p.v_dir,
+      kind: p.kind,
+    })),
+    notes,
+    bbox_span_mm: [
+      recipe.bboxMax[0] - recipe.bboxMin[0],
+      recipe.bboxMax[1] - recipe.bboxMin[1],
+      recipe.bboxMax[2] - recipe.bboxMin[2],
+    ] as const,
+  };
+}
+
+const SYNTHETIC_ENTRY_CACHE = new Map<string, ParametricEntry>();
+
+/**
+ * Construye una `ParametricEntry` sintética a partir del maestro y los dims
+ * del producto. Útil cuando el SKU no está en `ENTRY_BY_SKU` pero existe un
+ * `MasterModel` que lo cubre por regla de variación (TRES-450-090 heredando
+ * del maestro TRES-300-065 con regla `ala-independent`; variantes escalera
+ * en general; declaredVariantSkus con SKU que no matchea el índice legacy).
+ *
+ * El caller NO debe usar `original_bbox_span_mm` ni `fidelity` de la entrada
+ * sintética como medición: son valores derivados del polígono (no del STEP
+ * del producto real). El `piece_kind` se mapea al dispatcher legacy para
+ * compat; el `recipe` (nombre) codifica el `recipeKey` del maestro para que
+ * `buildRecipeFromProduct` pueda despacharlo correctamente a `buildRecipeByKey`.
+ */
+export function resolveParametricEntryViaMaster(
+  product: SyntheticProductLike,
+): ParametricEntry | null {
+  const skuKey =
+    typeof product.sku === 'string' && product.sku
+      ? product.sku
+      : typeof product.producto_id === 'string'
+      ? product.producto_id
+      : null;
+  if (!skuKey) return null;
+  const cached = SYNTHETIC_ENTRY_CACHE.get(skuKey);
+  if (cached) return cached;
+
+  const master = findMasterForProduct({
+    familia_id: product.familia_id,
+    tipo_pieza: product.tipo_pieza,
+    ala_nominal_mm: product.ala_nominal_mm,
+    angulo_grados: product.angulo_grados,
+    sku: product.sku,
+    producto_id: product.producto_id,
+  });
+  if (!master) return null;
+
+  const pieceKind = masterPieceKindToParametric(master);
+  if (!pieceKind) return null;
+
+  const params = paramsForMaster(master, product);
+  let recipe: GeometryRecipe;
+  try {
+    recipe = buildRecipeByKey(master.recipeKey, params);
+  } catch {
+    return null;
+  }
+  const bboxSpan: Vec3 = [
+    recipe.bboxMax[0] - recipe.bboxMin[0],
+    recipe.bboxMax[1] - recipe.bboxMin[1],
+    recipe.bboxMax[2] - recipe.bboxMin[2],
+  ];
+  const notes: readonly string[] = [
+    `Entrada sintética derivada del maestro ${master.id} vía buildRecipeByKey('${master.recipeKey}').`,
+    `Procedencia de la regla: ${master.variationRule.provenance} (${master.variationRule.kind}).`,
+  ];
+  const view: ParametricVariantView = syntheticVariantView(
+    `${master.label} — ${skuKey}`,
+    skuKey,
+    recipe,
+    params,
+    notes,
+  );
+  const entry: ParametricEntry = {
+    recipe: master.recipeKey,
+    piece_kind: pieceKind,
+    original_glb_url: master.source.glbUrl ?? '',
+    original_bbox_span_mm: bboxSpan,
+    original_volume_mm3: 0,
+    reconstruction: view,
+    variant: view,
+    fidelity: {
+      span_original_mm: bboxSpan,
+      span_reconstruction_mm: bboxSpan,
+      span_delta_pct: [0, 0, 0],
+      volume_original_mm3: 0,
+      volume_reconstruction_mm3: 0,
+      volume_delta_pct: 0,
+    },
+    canonical_bbox_mm: { min: recipe.bboxMin, max: recipe.bboxMax },
+    source_version: `master:${master.id}#${master.revision}`,
+  };
+  SYNTHETIC_ENTRY_CACHE.set(skuKey, entry);
+  return entry;
+}
+
 /**
  * Devuelve la entrada paramétrica aplicable al producto o `null` si no hay
  * receta medida para él (ya sea por SKU no incluido, o por tipo de pieza fuera
@@ -120,8 +296,7 @@ const SUPPORTED_PIECE_KINDS: ReadonlySet<PieceKind> = new Set([
 export function resolveRecipe(
   product: { sku?: string | null } | null | undefined,
 ): ParametricEntry | null {
-  if (!product || typeof product.sku !== 'string' || !product.sku) return null;
-  const entry = ENTRY_BY_SKU.get(product.sku);
+  const entry = resolveParametricEntry(product);
   if (!entry) return null;
   if (!SUPPORTED_PIECE_KINDS.has(entry.piece_kind)) return null;
   return entry;
@@ -137,12 +312,29 @@ export function hasParametricRecipe(
  * Devuelve la entrada paramétrica de un producto SIN filtrar por
  * SUPPORTED_PIECE_KINDS — útil para que el UI sepa que existe un modelo
  * (p.ej. DCPS, XPS, CUPS) aunque el flujo interactivo aún no lo coloque.
+ *
+ * Resolución común:
+ *  1. Si el SKU está indexado en `ENTRY_BY_SKU` (PARAMETRIC_CATALOG) devuelve
+ *     esa entrada — la ruta histórica.
+ *  2. Si no, busca un maestro aplicable (findMasterForProduct) y construye una
+ *     entrada sintética via `buildRecipeByKey`. Cubre:
+ *       - variantes reales del catálogo no listadas como recon/variant en el
+ *         índice legacy (p.ej. TRPS-450-20-Z publicada por el maestro),
+ *       - toda la familia escalera (ningún maestro escalera tenía entrada en
+ *         `PARAMETRIC_CATALOG`).
+ *     La entrada sintética carga el `recipeKey` del maestro en `entry.recipe`
+ *     para que `buildRecipeFromProduct` reutilice el mismo dispatcher.
  */
 export function resolveParametricEntry(
-  product: { sku?: string | null } | null | undefined,
+  product: SyntheticProductLike | null | undefined,
 ): ParametricEntry | null {
-  if (!product || typeof product.sku !== 'string' || !product.sku) return null;
-  return ENTRY_BY_SKU.get(product.sku) ?? null;
+  if (!product) return null;
+  const sku = typeof product.sku === 'string' ? product.sku : null;
+  if (sku) {
+    const hit = ENTRY_BY_SKU.get(sku);
+    if (hit) return hit;
+  }
+  return resolveParametricEntryViaMaster(product);
 }
 
 /**
@@ -189,7 +381,21 @@ export function buildRecipeFromProduct(
     params.ala_mm = ala;
   }
 
-  if (entry.piece_kind === 'tramo_recto') {
+  // Dispatcher: las entradas legacy traen `entry.recipe` como nombre de archivo
+  // (termina en `.STEP`) y usan `entry.piece_kind` como clave del dispatcher
+  // perforada. Las entradas sintéticas derivadas de un MasterModel cargan en
+  // `entry.recipe` el `recipeKey` del maestro (p.ej. 'escalera:tramo_recto') y
+  // deben despacharse por ese valor — su `piece_kind` fue mapeado al dispatcher
+  // legacy sólo para consumidores que filtran por PieceKind.
+  const isRecipeKey =
+    typeof entry.recipe === 'string' && !entry.recipe.endsWith('.STEP');
+
+  // `piece_kind` legacy que recibe longitud comercial: tramo_recto.
+  // Para escalera el recipeKey es 'escalera:tramo_recto' pero piece_kind
+  // también quedó mapeado a 'tramo_recto' — ambos caminos aceptan longitud_mm.
+  const takesLongitud =
+    entry.piece_kind === 'tramo_recto' || entry.recipe === 'escalera:tramo_recto';
+  if (takesLongitud) {
     const longOverride = overrides?.longitud_mm;
     if (typeof longOverride === 'number' && Number.isFinite(longOverride) && longOverride > 0) {
       params.longitud_mm = longOverride;
@@ -201,14 +407,18 @@ export function buildRecipeFromProduct(
     }
   }
 
-  if (entry.piece_kind === 'curva_horizontal') {
+  const takesAngulo =
+    entry.piece_kind === 'curva_horizontal' || entry.recipe === 'escalera:curva_horizontal';
+  if (takesAngulo) {
     const ang = (product as Record<string, unknown>).angulo_grados;
     if (typeof ang === 'number' && Number.isFinite(ang) && ang > 0) {
       params.angulo_deg = ang;
     }
   }
 
-  return buildRecipeFor(entry.piece_kind, params as RawParams);
+  return isRecipeKey
+    ? buildRecipeByKey(entry.recipe, params as RawParams)
+    : buildRecipeFor(entry.piece_kind, params as RawParams);
 }
 
 // ─── Transformación local → mundo ───────────────────────────────────────────
