@@ -47,6 +47,20 @@ export interface PlacedPort {
   readonly pos: Vec3;
   /** Normal exterior (apunta "hacia afuera" del cuerpo de la pieza). */
   readonly outwardNormal: Vec3;
+  /**
+   * Orientación de la sección en mundo (v_dir del marco local del puerto,
+   * rotado al mundo). Es el eje "arriba" de la sección transversal — perpendicular
+   * a `outwardNormal`. Se propaga a la siguiente pieza vía `PlaceOptions.sectionUp`
+   * cuando la continuación es vertical. Para puertos horizontales clásicos
+   * (TRPS/CPS/DCPS/XPS) ≈ (0,0,1).
+   */
+  readonly vDir: Vec3;
+  /**
+   * Tercer eje del marco (uDir = vDir × outwardNormal cuando el puerto es
+   * native; para `mirrored` el signo queda invertido). Se expone principalmente
+   * para diagnóstico — las continuaciones sólo necesitan `vDir`.
+   */
+  readonly uDir: Vec3;
   readonly ancho_mm: number;
   readonly ala_mm: number;
 }
@@ -576,6 +590,17 @@ export interface PlaceOptions {
    * de 3+ puertos (TPS, XPS, CUPS) DEBEN pasar este parámetro explícitamente.
    */
   readonly entryPortName?: string;
+  /**
+   * Orientación del eje "arriba" de la sección en el mundo. Sólo se consulta
+   * cuando la ruta requiere la colocación frame-based (entryDir vertical).
+   * Para entradas horizontales, la ruta legacy impone implícitamente world-Z
+   * y este campo se ignora (mantiene exactitud bit-a-bit con la calibración
+   * previa: TRPS, CPS, DCPS, XPS, CUPS por boca horizontal).
+   *
+   * Debe ser unitario y NO paralelo a `entryDir`. Si lo es, placeRecipe lanza
+   * para evitar producir un marco degenerado.
+   */
+  readonly sectionUp?: Vec3;
 }
 
 function resolveEntryPort(
@@ -601,6 +626,111 @@ function resolveEntryPort(
   );
 }
 
+function cross(a: Vec3, b: Vec3): Vec3 {
+  return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+}
+
+/**
+ * Construye la matriz de colocación (local → mundo) a partir del marco de la
+ * boca de entrada y un sectionUp mundial. Garantiza:
+ *   R · entryDef.normal   = -entryDir
+ *   R · entryDef.v_dir    = sectionUp proyectado perp a entryDir (unitario)
+ *   R · entryDef.u_dir    = ±(v_W × n_W) (- si mirrored)
+ *   t · entryDef.center   → startPos
+ *
+ * Si el caller pasa `sectionUpInput` explícito y resulta paralelo a entryDir,
+ * lanza — es un bug del caller (el marco pedido es degenerado). Si NO pasa
+ * `sectionUpInput` (ej. render de una pieza confirmada sin contexto de puerto
+ * vecino), la rotación alrededor de entryDir es cosmética para secciones
+ * rectangulares, así que elegimos un fallback estable perpendicular a entryDir
+ * en vez de fallar: primero world-Z (apropiado para entradas horizontales,
+ * conserva el comportamiento legacy para toda pieza no-vertical), y si también
+ * fuera paralelo (entradas verticales), caemos a world-X.
+ */
+function buildFramePlacement(
+  entryDir: readonly [number, number, number],
+  entryDef: PortDef,
+  sectionUpInput: Vec3 | undefined,
+  startPos: readonly [number, number, number],
+  mirrored: boolean,
+): THREE.Matrix4 {
+  const eDir = unit(entryDir);
+  const projectPerp = (candidate: Vec3): { v: Vec3 | null; len: number } => {
+    const c = unit(candidate);
+    const dot = c[0] * eDir[0] + c[1] * eDir[1] + c[2] * eDir[2];
+    const raw: Vec3 = [c[0] - dot * eDir[0], c[1] - dot * eDir[1], c[2] - dot * eDir[2]];
+    const len = Math.hypot(raw[0], raw[1], raw[2]);
+    if (len < 1e-6) return { v: null, len };
+    return { v: [raw[0] / len, raw[1] / len, raw[2] / len], len };
+  };
+  let vW: Vec3;
+  if (sectionUpInput !== undefined) {
+    const projected = projectPerp(sectionUpInput);
+    if (projected.v === null) {
+      throw new Error(
+        `parametricBridge.placeRecipe: sectionUp (${unit(sectionUpInput).join(', ')}) es paralelo a entryDir (${eDir.join(', ')}); no se puede construir el marco del puerto en mundo`,
+      );
+    }
+    vW = projected.v;
+  } else {
+    const zFallback = projectPerp([0, 0, 1]);
+    if (zFallback.v !== null) {
+      vW = zFallback.v;
+    } else {
+      const xFallback = projectPerp([1, 0, 0]);
+      if (xFallback.v === null) {
+        // entryDir unitario que no sea paralelo ni a Z ni a X no existe en R³ real,
+        // pero por completitud defensiva, cualquier otro vector perpendicular.
+        const yFallback = projectPerp([0, 1, 0]);
+        if (yFallback.v === null) {
+          throw new Error(
+            `parametricBridge.placeRecipe: entryDir (${eDir.join(', ')}) sin eje perpendicular — numérica inconsistente`,
+          );
+        }
+        vW = yFallback.v;
+      } else {
+        vW = xFallback.v;
+      }
+    }
+  }
+  const nW: Vec3 = [-eDir[0], -eDir[1], -eDir[2]];
+  const uWRaw = cross(vW, nW);
+  const uW: Vec3 = mirrored ? [-uWRaw[0], -uWRaw[1], -uWRaw[2]] : uWRaw;
+
+  const uL = entryDef.u_dir as Vec3;
+  const vL = entryDef.v_dir as Vec3;
+  const nL = entryDef.normal as Vec3;
+
+  // R[i][j] = uW[i]·uL[j] + vW[i]·vL[j] + nW[i]·nL[j].
+  // Con R así, R·uL = uW, R·vL = vW, R·nL = nW (verificado para marcos
+  // ortonormales locales; recipe garantiza orto-normalidad por construcción).
+  const r00 = uW[0] * uL[0] + vW[0] * vL[0] + nW[0] * nL[0];
+  const r01 = uW[0] * uL[1] + vW[0] * vL[1] + nW[0] * nL[1];
+  const r02 = uW[0] * uL[2] + vW[0] * vL[2] + nW[0] * nL[2];
+  const r10 = uW[1] * uL[0] + vW[1] * vL[0] + nW[1] * nL[0];
+  const r11 = uW[1] * uL[1] + vW[1] * vL[1] + nW[1] * nL[1];
+  const r12 = uW[1] * uL[2] + vW[1] * vL[2] + nW[1] * nL[2];
+  const r20 = uW[2] * uL[0] + vW[2] * vL[0] + nW[2] * nL[0];
+  const r21 = uW[2] * uL[1] + vW[2] * vL[1] + nW[2] * nL[1];
+  const r22 = uW[2] * uL[2] + vW[2] * vL[2] + nW[2] * nL[2];
+
+  // t = startPos - R · entryDef.center.
+  const c = entryDef.center;
+  const rc0 = r00 * c[0] + r01 * c[1] + r02 * c[2];
+  const rc1 = r10 * c[0] + r11 * c[1] + r12 * c[2];
+  const rc2 = r20 * c[0] + r21 * c[1] + r22 * c[2];
+  const tx = startPos[0] - rc0;
+  const ty = startPos[1] - rc1;
+  const tz = startPos[2] - rc2;
+
+  return new THREE.Matrix4().set(
+    r00, r01, r02, tx,
+    r10, r11, r12, ty,
+    r20, r21, r22, tz,
+    0,   0,   0,   1,
+  );
+}
+
 export function placeRecipe(
   product: Product,
   entry: ParametricEntry,
@@ -617,58 +747,77 @@ export function placeRecipe(
   // preTransform lleva raw mesh → canonical. recipe tiene puertos ya resueltos.
   const resolved = resolveRecipeForProduct(rawRecipe, product.producto_id);
   const recipe = resolved.recipe;
-  // Nota: ambos modos (extrudeAlongY true/false) comparten M_base. La única
-  // restricción real es que la normal local del puerto de entrada no tenga
-  // componente Y — eso se valida unos renglones más abajo via `entryDef.normal[1]`.
-  // Antes se bloqueaba toda receta vertical aquí; se removió porque CUPS
-  // (extrudeAlongY=false) se coloca correctamente cuando se entra por su
-  // boca horizontal (P1_horizontal, normal (-1,0,0) sin componente Y).
-  if (Math.abs(entryDir[2]) > HORIZONTAL_ENTRY_TOLERANCE) {
-    throw new Error(
-      `parametricBridge.placeRecipe: entryDir no horizontal (Z=${entryDir[2]}); scope actual sólo acepta direcciones en el plano XY`,
-    );
-  }
 
   const entryDef = resolveEntryPort(recipe, options?.entryPortName);
-  // La entrada por un puerto cuya normal tenga componente Y en el marco local
-  // implica una conexión vertical (pieza que entra desde arriba/abajo). Esto
-  // requiere un marco base distinto que todavía no está habilitado.
-  if (Math.abs(entryDef.normal[1]) > HORIZONTAL_ENTRY_TOLERANCE) {
-    throw new Error(
-      `parametricBridge.placeRecipe: puerto '${entryDef.name}' tiene normal con componente Y local (${entryDef.normal.join(', ')}); entrada vertical pendiente de habilitar`,
-    );
-  }
-
-  const eDir = unit([entryDir[0], entryDir[1], 0]);
-
-  // Rotación alrededor de +Z mundo que alinea M_base · entry.normal con −eDir.
-  const { cos, sin } = phiForAlignment(entryDef.normal, eDir);
-
-  // Traslación para que world(entry.center) = startPos.
-  const entryWorldPre = rotateZ(applyMBase(entryDef.center), cos, sin);
-  const tx = startPos[0] - entryWorldPre[0];
-  const ty = startPos[1] - entryWorldPre[1];
-  const tz = startPos[2] - entryWorldPre[2];
-
-  // Transform base (local → mundo) como Matrix4 columna-major de THREE.
-  // Columns are images of local basis vectors in world coordinates AFTER Rz(φ):
-  //   local x → Rz · (1, 0, 0) → (cos, sin, 0)       (M_base images local-x at world-x)
-  //   local y → Rz · (0, 0, 1) → (0, 0, 1)           (M_base images local-y at world-z)
-  //   local z → Rz · (0, -1, 0) → (sin, -cos, 0)      (M_base images local-z at -world-y)
-  const baseMatrix = new THREE.Matrix4().set(
-    cos, 0,  sin, tx,
-    sin, 0, -cos, ty,
-    0,   1,  0,   tz,
-    0,   0,  0,   1,
-  );
-
   const mirrored = chirality === 'mirrored';
-  // placementMatrix mapea COORDENADAS RESUELTAS (post-modelFrame) → mundo.
-  // Los puertos ya están resueltos en `recipe.ports`; aplicarlo directamente
-  // produce la posición mundo correcta.
-  const placementMatrix = mirrored
-    ? householderMatrixAroundPoint(startPos, eDir).multiply(baseMatrix)
-    : baseMatrix;
+
+  // Selección de ruta: dos caminos geométricamente equivalentes para entrada
+  // horizontal (preservan calibraciones y la colocación de todas las piezas
+  // existentes: TRPS, CPS, DCPS, XPS, CUPS por P1_horizontal), pero el camino
+  // frame-based maneja también entradas verticales (p. ej. continuar desde
+  // CUPS P2_vertical hacia un tramo recto vertical).
+  //
+  // Criterio de disparo: si entryDir tiene componente Z significativa (vertical
+  // o mayormente vertical) tomamos la ruta frame-based; si es horizontal,
+  // seguimos usando M_base + Rz(φ) para no alterar bit a bit las piezas ya
+  // calibradas.
+  let placementMatrix: THREE.Matrix4;
+  if (Math.abs(entryDir[2]) < HORIZONTAL_ENTRY_TOLERANCE) {
+    // Ruta legacy — entrada horizontal.
+    // La entrada por un puerto cuya normal tenga componente Y en el marco local
+    // implica una pieza colocada "de canto": M_base no sabe rotar a ese marco
+    // porque Rz sólo gira en XY del mundo. Cuando entryDir es horizontal esto
+    // no puede suceder con las piezas del catálogo (todas las bocas que miran
+    // ±Y local corresponden a salidas verticales en el mundo, y el entryDir
+    // para entrar por ellas tendría componente Z). Lo seguimos reportando como
+    // configuración inválida por si llega un dato inconsistente.
+    if (Math.abs(entryDef.normal[1]) > HORIZONTAL_ENTRY_TOLERANCE) {
+      throw new Error(
+        `parametricBridge.placeRecipe: entryDir horizontal pero el puerto '${entryDef.name}' tiene normal con componente Y local (${entryDef.normal.join(', ')}); configuración inconsistente`,
+      );
+    }
+    const eDir = unit([entryDir[0], entryDir[1], 0]);
+
+    // Rotación alrededor de +Z mundo que alinea M_base · entry.normal con −eDir.
+    const { cos, sin } = phiForAlignment(entryDef.normal, eDir);
+
+    // Traslación para que world(entry.center) = startPos.
+    const entryWorldPre = rotateZ(applyMBase(entryDef.center), cos, sin);
+    const tx = startPos[0] - entryWorldPre[0];
+    const ty = startPos[1] - entryWorldPre[1];
+    const tz = startPos[2] - entryWorldPre[2];
+
+    // Transform base (local → mundo) como Matrix4 columna-major de THREE.
+    // Columns are images of local basis vectors in world coordinates AFTER Rz(φ):
+    //   local x → Rz · (1, 0, 0) → (cos, sin, 0)       (M_base images local-x at world-x)
+    //   local y → Rz · (0, 0, 1) → (0, 0, 1)           (M_base images local-y at world-z)
+    //   local z → Rz · (0, -1, 0) → (sin, -cos, 0)      (M_base images local-z at -world-y)
+    const baseMatrix = new THREE.Matrix4().set(
+      cos, 0,  sin, tx,
+      sin, 0, -cos, ty,
+      0,   1,  0,   tz,
+      0,   0,  0,   1,
+    );
+
+    // placementMatrix mapea COORDENADAS RESUELTAS (post-modelFrame) → mundo.
+    // Los puertos ya están resueltos en `recipe.ports`; aplicarlo directamente
+    // produce la posición mundo correcta.
+    placementMatrix = mirrored
+      ? householderMatrixAroundPoint(startPos, eDir).multiply(baseMatrix)
+      : baseMatrix;
+  } else {
+    // Ruta frame-based — entrada vertical o con componente Z significativa.
+    // Construye una rotación general SO(3) R tal que R·marcoLocal = marcoMundo,
+    // donde el marco mundo del puerto se arma a partir de entryDir y sectionUp.
+    //
+    // n_W  = -entryDir             (la normal exterior del puerto mira "atrás")
+    // v_W  = sectionUp proyectado perpendicular a n_W y renormalizado
+    // u_W  = v_W × n_W             (right-handed; mirrored lo invierte)
+    //
+    // La rotación es R = Σ (col_W_k ⊗ col_L_k), que preserva longitudes y
+    // mapea cada eje local al correspondiente eje mundial del puerto.
+    placementMatrix = buildFramePlacement(entryDir, entryDef, options?.sectionUp, startPos, mirrored);
+  }
 
   // Para la MALLA (construida con `buildLocalMesh(recipe)` → polígono RAW sin
   // modelFrame aplicado), el consumidor necesita `placementMatrix · preTransform`
@@ -686,6 +835,8 @@ export function placeRecipe(
     name: port.name,
     pos: applyMatrixToPoint(placementMatrix, port.center),
     outwardNormal: applyMatrixToDir(placementMatrix, port.normal),
+    vDir: applyMatrixToDir(placementMatrix, port.v_dir),
+    uDir: applyMatrixToDir(placementMatrix, port.u_dir),
     ancho_mm: port.ancho_mm,
     ala_mm: port.ala_mm,
   }));

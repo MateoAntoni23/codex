@@ -177,11 +177,73 @@ describe('parametricBridge.placeRecipe — invariantes de colocación', () => {
     expect(chiralityForTurn('left')).toBe('mirrored');
   });
 
-  it('rechaza entryDir con componente vertical significativa', () => {
+  it('entryDir vertical sin sectionUp elige un eje perpendicular estable (no lanza)', () => {
+    // El render de piezas confirmadas (TrayObjects.ParametricMesh) llama a
+    // placeRecipe sin sectionUp — no tiene contexto del puerto vecino. Para
+    // secciones rectangulares la rotación alrededor de entryDir es cosmética,
+    // así que el bridge debe degradar a un fallback estable en vez de fallar.
+    // Caller que SÍ pasa sectionUp paralelo sigue recibiendo el throw estricto
+    // (ver test siguiente).
+    const entry = resolveRecipe(TRPS_300)!;
+    const placed = placeRecipe(TRPS_300, entry, startPos, [0, 0, 1], 'native');
+    // vDir debe ser unitario y perpendicular a entryDir.
+    const v = placed.p1.vDir;
+    const dot = v[0] * 0 + v[1] * 0 + v[2] * 1;
+    expect(Math.abs(dot)).toBeLessThan(1e-6);
+    const len = Math.hypot(v[0], v[1], v[2]);
+    expect(Math.abs(len - 1)).toBeLessThan(1e-6);
+    // P1 world normal = −entryDir = (0,0,−1); P2 está 3000 mm sobre P1 en Z.
+    expect(near(placed.p1.outwardNormal[2], -1, EPS_DIR)).toBe(true);
+    const dz = placed.p2.pos[2] - placed.p1.pos[2];
+    expect(near(dz, 3000, 1)).toBe(true);
+  });
+
+  it('entryDir vertical con sectionUp ortogonal coloca el recto hacia arriba', () => {
+    // Objetivo: continuar desde una salida vertical (por ejemplo, de CUPS) con
+    // un tramo recto. El puerto origen en mundo aporta sectionUp = (+1,0,0).
+    const entry = resolveRecipe(TRPS_300)!;
+    const placed = placeRecipe(
+      TRPS_300,
+      entry,
+      [0, 0, 0],
+      [0, 0, 1],
+      'native',
+      undefined,
+      { sectionUp: [1, 0, 0] },
+    );
+    // P1 world normal = −entryDir = (0,0,−1): el recto arranca hacia +Z.
+    expect(near(placed.p1.outwardNormal[0], 0, EPS_DIR)).toBe(true);
+    expect(near(placed.p1.outwardNormal[1], 0, EPS_DIR)).toBe(true);
+    expect(near(placed.p1.outwardNormal[2], -1, EPS_DIR)).toBe(true);
+    // El centro de P1 coincide con startPos.
+    expect(near(placed.p1.pos[0], 0, EPS_POS)).toBe(true);
+    expect(near(placed.p1.pos[1], 0, EPS_POS)).toBe(true);
+    expect(near(placed.p1.pos[2], 0, EPS_POS)).toBe(true);
+    // P2 está a 3000 mm sobre P1 en la dirección +Z (longitud del catálogo).
+    expect(near(placed.p2.pos[0], 0, 1)).toBe(true);
+    expect(near(placed.p2.pos[1], 0, 1)).toBe(true);
+    expect(near(placed.p2.pos[2], 3000, 1)).toBe(true);
+    // P2 mira hacia +Z (misma dirección de avance).
+    expect(near(placed.p2.outwardNormal[2], 1, EPS_DIR)).toBe(true);
+    // vDir de P1 en mundo coincide con sectionUp (proyectado perpendicular a entryDir ya está).
+    expect(near(placed.p1.vDir[0], 1, 1e-6)).toBe(true);
+    expect(near(placed.p1.vDir[1], 0, 1e-6)).toBe(true);
+    expect(near(placed.p1.vDir[2], 0, 1e-6)).toBe(true);
+  });
+
+  it('entryDir vertical con sectionUp paralelo a entryDir lanza mensaje legible', () => {
     const entry = resolveRecipe(TRPS_300)!;
     expect(() =>
-      placeRecipe(TRPS_300, entry, startPos, [0, 0, 1], 'native'),
-    ).toThrow(/entryDir/);
+      placeRecipe(
+        TRPS_300,
+        entry,
+        [0, 0, 0],
+        [0, 0, 1],
+        'native',
+        undefined,
+        { sectionUp: [0, 0, 1] },
+      ),
+    ).toThrow(/sectionUp.*paralelo a entryDir/);
   });
 });
 

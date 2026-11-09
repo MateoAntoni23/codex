@@ -13,6 +13,21 @@ export interface FreePort {
   portName: string;
   pos: Point3;
   dir: Point3;
+  /**
+   * Eje "arriba de sección" en mundo (v_dir del marco local del puerto rotado
+   * al mundo). Se propaga como `PlaceOptions.sectionUp` al colocar la siguiente
+   * pieza para que el puente arme el marco completo sin suponer que la sección
+   * está siempre en el plano horizontal.
+   *
+   * Heurística (sin tocar la persistencia TrayPort — sólo guarda posición y
+   * dirección):
+   *   - Puerto horizontal (|dir[2]| ≈ 0): [0,0,1] (eje Z mundo).
+   *   - Puerto vertical: vector del puerto horizontal pareja de la misma pieza
+   *     hacia este puerto, proyectado al plano XY y normalizado. Captura la
+   *     orientación en planta de la sección transversal de CUPS (y análogos).
+   *   - Fallback cuando no hay pareja o la proyección degenera: [1,0,0].
+   */
+  sectionUp: Point3;
 }
 
 type Connection = { conexion_id: string; a: [string, string]; b: [string, string] };
@@ -27,18 +42,56 @@ export function getOccupiedPorts(conexiones: Connection[]): Set<string> {
   return occupied;
 }
 
+/** Tolerancia para clasificar un puerto como "horizontal" por su componente Z. */
+const VERTICAL_DIR_TOLERANCE = 1e-3;
+
+/**
+ * Deriva el `sectionUp` mundial de un puerto a partir de la pieza y su boca
+ * pareja horizontal (si existe). Mantiene legacy horizontal exacto devolviendo
+ * [0,0,1] cuando el puerto es horizontal.
+ */
+function computePortSectionUp(
+  dir: Point3,
+  pos: Point3,
+  horizontalPairPos: Point3 | null,
+): Point3 {
+  if (Math.abs(dir[2]) < VERTICAL_DIR_TOLERANCE) return [0, 0, 1];
+  if (horizontalPairPos) {
+    const dx = pos[0] - horizontalPairPos[0];
+    const dy = pos[1] - horizontalPairPos[1];
+    const len = Math.hypot(dx, dy);
+    if (len > 1e-6) return [dx / len, dy / len, 0];
+  }
+  return [1, 0, 0];
+}
+
+/** Devuelve la posición del primer puerto horizontal de la pieza, o null. */
+function findHorizontalPortPos(piece: Piece): Point3 | null {
+  for (const port of Object.values(piece.puertos)) {
+    const dir = port.direccion as Point3;
+    if (Math.abs(dir[2]) < VERTICAL_DIR_TOLERANCE) {
+      return port.posicion_mm as Point3;
+    }
+  }
+  return null;
+}
+
 /** Returns all ports that are not part of any existing connection. */
 export function getFreePorts(pieces: Piece[], conexiones: Connection[]): FreePort[] {
   const occupied = getOccupiedPorts(conexiones);
   const free: FreePort[] = [];
   for (const piece of pieces) {
+    const horizontalPairPos = findHorizontalPortPos(piece);
     for (const [portName, port] of Object.entries(piece.puertos)) {
       if (!occupied.has(`${piece.instancia_id}:${portName}`)) {
+        const pos = port.posicion_mm as Point3;
+        const dir = port.direccion as Point3;
         free.push({
           pieceId: piece.instancia_id,
           portName,
-          pos: port.posicion_mm as Point3,
-          dir: port.direccion as Point3,
+          pos,
+          dir,
+          sectionUp: computePortSectionUp(dir, pos, horizontalPairPos),
         });
       }
     }
@@ -550,6 +603,14 @@ export interface StartPort {
   portName: string;
   pos: Point3;
   dir: Point3;
+  /**
+   * Eje "arriba de sección" en mundo, propagado desde el FreePort elegido.
+   * Opcional por compatibilidad con fixtures de tests existentes y para que
+   * selectores que sólo tienen pos/dir no rompan tipos. Cuando está ausente
+   * el puente usa el default implícito [0,0,1] — correcto para toda entrada
+   * horizontal del catálogo actual.
+   */
+  sectionUp?: Point3;
 }
 
 /**

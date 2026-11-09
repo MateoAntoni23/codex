@@ -268,7 +268,7 @@ test.describe('Inserción interactiva de accesorios (TPS/XPS/CUPS)', () => {
     expect(conn!.b[1]).toBe('P4_z_pos');
   });
 
-  test('CUPS: P2_vertical deshabilitado; P1_horizontal insertable', async ({ page }) => {
+  test('CUPS: ambas bocas P1_horizontal y P2_vertical ahora son elegibles (frame-based placement)', async ({ page }) => {
     const productSelect = await bootstrap(page);
 
     await page.waitForFunction(() => {
@@ -279,9 +279,13 @@ test.describe('Inserción interactiva de accesorios (TPS/XPS/CUPS)', () => {
     await productSelect.selectOption('SAM_CUPS-300-A-Z');
     await page.waitForTimeout(300);
 
+    // El puente paramétrico ahora acepta el marco completo del puerto; ambas
+    // bocas quedan habilitadas. La combinación geométricamente inconsistente
+    // (p. ej. P2_vertical con entryDir horizontal) se bloquea por el guard de
+    // consistencia al confirmar, no por deshabilitar el botón.
     const vertical = page.locator('[data-codex-routing-entry-port="P2_vertical"]');
     const horizontal = page.locator('[data-codex-routing-entry-port="P1_horizontal"]');
-    await expect(vertical).toBeDisabled();
+    await expect(vertical).toBeEnabled();
     await expect(horizontal).toBeEnabled();
 
     const motive = page.locator('[data-codex-routing-exception-motive]');

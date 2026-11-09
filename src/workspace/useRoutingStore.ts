@@ -8,6 +8,12 @@ export interface StartPort {
   portName: string;
   pos: Point3;
   dir: Point3;
+  /**
+   * Eje "arriba de sección" en mundo propagado del FreePort seleccionado.
+   * Necesario para que planAddSegment/Curve/Accessory armen el marco del
+   * puerto cuando la continuación es vertical (p.ej. salida de CUPS).
+   */
+  sectionUp?: Point3;
 }
 
 export interface RoutingState {

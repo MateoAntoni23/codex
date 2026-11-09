@@ -741,11 +741,81 @@ describe('planAddAccessory', () => {
     expect(Math.abs(pv[2])).toBeGreaterThan(0.5);
   });
 
-  it('CUPS entering via P2_vertical: lanza error por normal con componente Y local', () => {
+  it('cadena vertical: CUPS por P1_horizontal + recto por P2_vertical conserva unión y dirección', () => {
+    // Objetivo del encargo: recto horizontal → CUPS → recto vertical construido
+    // a través del pipeline interactivo (planAdd*). La boca P2_vertical de CUPS
+    // debe permitir seguir con un tramo recto vertical propagando sectionUp del
+    // frame de la boca, sin agregar rotaciones ad-hoc.
+    const entrada = makeTrayInput({ piezas: [makePiece('SEG-1')] });
+    // 1) Entra la CUPS por P1_horizontal desde el P2 horizontal del recto previo.
+    const cupsOp = planAddAccessory(
+      entrada, START_FROM_TRPS, CUPS_PRODUCT, COMPAT_OK, 'P1_horizontal', 'left',
+    );
+    const entradaAfterCups = applyOperation(entrada, cupsOp, 'reject');
+    // Encontrar la boca P2_vertical de la CUPS y derivar el StartPort análogo
+    // al que produciría getFreePorts (sectionUp heurístico desde la pareja
+    // horizontal).
+    const cupsPiece = entradaAfterCups.piezas.find((p) => p.producto_id === CUPS_PRODUCT.producto_id)!;
+    const pv = cupsPiece.puertos['P2_vertical'];
+    const ph = cupsPiece.puertos['P1_horizontal'];
+    const dx = pv.posicion_mm[0] - ph.posicion_mm[0];
+    const dy = pv.posicion_mm[1] - ph.posicion_mm[1];
+    const len = Math.hypot(dx, dy);
+    const sectionUp: [number, number, number] = len > 1e-6
+      ? [dx / len, dy / len, 0]
+      : [1, 0, 0];
+    expect(Math.abs(pv.direccion[2])).toBeGreaterThan(0.9); // efectivamente vertical
+    const verticalStart: StartPort = {
+      pieceId: cupsPiece.instancia_id,
+      portName: 'P2_vertical',
+      pos: pv.posicion_mm as Point3,
+      dir: pv.direccion as Point3,
+      sectionUp,
+    };
+    // 2) Insertar un recto TRPS por P1 (no paramétrico-dependiente para longitud).
+    const TRPS: import('../../tray/model').Product = {
+      producto_id: 'SAM_TRPS-300-22-Z',
+      descripcion_original: 'TRPS-300-22-Z',
+      tipo_pieza: 'recta',
+      ancho_nominal_mm: 300,
+      sku: 'TRPS-300-22-Z',
+      ala_nominal_mm: 50,
+      longitud_comercial_mm: 3000,
+      familia_id: 'SAM-STP-Z',
+    } as unknown as import('../../tray/model').Product;
+    const rectoOp = planAddSegment(
+      entradaAfterCups, verticalStart, TRPS, COMPAT_OK, 1500, verticalStart.dir,
+    );
+    const finalInput = applyOperation(entradaAfterCups, rectoOp, 'reject');
+    // Debe haber 3 piezas y 2 conexiones.
+    expect(finalInput.piezas).toHaveLength(3);
+    expect(finalInput.conexiones).toHaveLength(2);
+    // El nuevo recto tiene uno de sus puertos exactamente en la P2_vertical de CUPS.
+    const nuevoRecto = finalInput.piezas.find((p) => p.instancia_id === rectoOp.newPiece.instancia_id)!;
+    const entryPoint = Object.values(nuevoRecto.puertos).find((prt) =>
+      Math.hypot(
+        prt.posicion_mm[0] - pv.posicion_mm[0],
+        prt.posicion_mm[1] - pv.posicion_mm[1],
+        prt.posicion_mm[2] - pv.posicion_mm[2],
+      ) < 1e-3,
+    );
+    expect(entryPoint).toBeDefined();
+    // El otro puerto sigue la dirección vertical desde el punto de entrada.
+    const otro = Object.values(nuevoRecto.puertos).find((prt) => prt !== entryPoint)!;
+    const dz = otro.posicion_mm[2] - entryPoint!.posicion_mm[2];
+    expect(Math.abs(dz)).toBeCloseTo(1500, 3);
+  });
+
+  it('CUPS entering via P2_vertical desde entryDir horizontal queda bloqueado por guard de consistencia', () => {
+    // La ruta legacy (entryDir horizontal) detecta que el puerto de entrada
+    // tiene normal con componente Y local — colocar CUPS "de canto" por su
+    // boca vertical no tiene sentido físico y se rechaza con mensaje claro.
+    // Nota: entrar por P2_vertical SÍ es válido cuando el puerto origen es
+    // vertical (startPort.dir con componente Z); se cubre en tests de puente.
     const entrada = makeTrayInput({ piezas: [makePiece('SEG-1')] });
     expect(() =>
       planAddAccessory(entrada, START_FROM_TRPS, CUPS_PRODUCT, COMPAT_OK, 'P2_vertical', 'left'),
-    ).toThrow(/vertical pendiente/);
+    ).toThrow(/componente Y local/);
   });
 
   it('does not mutate the entrada', () => {

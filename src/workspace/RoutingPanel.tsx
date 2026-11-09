@@ -350,22 +350,19 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
     );
   }, [selectedRecipe]);
 
-  // Bocas candidatas para entrada: todas las operacionales de la receta. Las
-  // que tienen componente Y local en la normal se marcan como no disponibles
-  // (entrada vertical pendiente de habilitar en el puente).
+  // Bocas candidatas para entrada: todas las operacionales de la receta.
+  // El puente ahora arma el marco completo (centro + normal + sectionUp) y
+  // acepta bocas con normal vertical siempre que el puerto origen propague
+  // un sectionUp compatible (no paralelo a entryDir). Dejar `supported`
+  // siempre en true permite insertar accesorios por su boca vertical.
   const entryPortOptions = useMemo(() => {
     if (!selectedRecipe) return [];
-    return selectedRecipe.recipe.ports.map((p) => {
-      const hasYNormal = Math.abs(p.normal[1]) > 1e-3;
-      return {
-        name: p.name,
-        normal: p.normal,
-        supported: !hasYNormal,
-        reasonUnsupported: hasYNormal
-          ? 'Entrada por boca con normal vertical (pendiente de habilitar).'
-          : null,
-      };
-    });
+    return selectedRecipe.recipe.ports.map((p) => ({
+      name: p.name,
+      normal: p.normal,
+      supported: true as const,
+      reasonUnsupported: null as string | null,
+    }));
   }, [selectedRecipe]);
 
   // Preseleccionar boca al elegir un producto que la exija. Preferimos la
@@ -416,7 +413,15 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
     if (parametricEntry.piece_kind !== 'curva_horizontal') return null;
     try {
       const chirality = chiralityForTurn(turnDirection);
-      const placed = placeRecipe(selectedProduct, parametricEntry, startPort.pos, startPort.dir, chirality);
+      const placed = placeRecipe(
+        selectedProduct,
+        parametricEntry,
+        startPort.pos,
+        startPort.dir,
+        chirality,
+        undefined,
+        startPort.sectionUp ? { sectionUp: startPort.sectionUp } : undefined,
+      );
       const dx = placed.p2.pos[0] - placed.p1.pos[0];
       const dy = placed.p2.pos[1] - placed.p1.pos[1];
       const dz = placed.p2.pos[2] - placed.p1.pos[2];
@@ -841,6 +846,7 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
             Longitud del tramo (mm)
           </label>
           <input
+            data-codex-routing-length-input
             type="number"
             className="inspector-input"
             style={{ width: '100%' }}

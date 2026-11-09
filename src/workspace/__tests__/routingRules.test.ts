@@ -129,6 +129,35 @@ describe('getFreePorts', () => {
     expect(p1Port.pos).toEqual([0, 0, 0]);
     expect(p1Port.dir).toEqual([-1, 0, 0]);
   });
+
+  it('puertos horizontales reciben sectionUp = [0,0,1]', () => {
+    const free = getFreePorts([piece1], []);
+    for (const fp of free) expect(fp.sectionUp).toEqual([0, 0, 1]);
+  });
+
+  it('puerto vertical deriva sectionUp del par horizontal (CUPS-like)', () => {
+    // Pieza con una boca horizontal P1 (cara -X) y una vertical P2 (cara -Z),
+    // separadas en +X — la heurística debería dar sectionUp ≈ (+1,0,0) para P2.
+    const cupsLike = makePiece('CUPS-1', {
+      P1: { pos: [0, 0, 0], dir: [-1, 0, 0] },
+      P2: { pos: [300, 0, 300], dir: [0, 0, -1] },
+    });
+    const free = getFreePorts([cupsLike], []);
+    const p1 = free.find((f) => f.portName === 'P1') as FreePort;
+    const p2 = free.find((f) => f.portName === 'P2') as FreePort;
+    expect(p1.sectionUp).toEqual([0, 0, 1]);
+    expect(p2.sectionUp[0]).toBeCloseTo(1, 6);
+    expect(p2.sectionUp[1]).toBeCloseTo(0, 6);
+    expect(p2.sectionUp[2]).toBeCloseTo(0, 6);
+  });
+
+  it('puerto vertical sin par horizontal cae al fallback [1,0,0]', () => {
+    const onlyVertical = makePiece('V', {
+      P1: { pos: [0, 0, 0], dir: [0, 0, 1] },
+    });
+    const free = getFreePorts([onlyVertical], []);
+    expect(free[0].sectionUp).toEqual([1, 0, 0]);
+  });
 });
 
 // ─── snapDirectionToAxis ──────────────────────────────────────────────────────

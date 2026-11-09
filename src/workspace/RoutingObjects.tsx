@@ -143,6 +143,7 @@ function ParametricPreview({
   turnDirection,
   overrideLengthMm,
   entryPortName,
+  sectionUp,
 }: {
   product: Product;
   startPos: BridgeVec3;
@@ -150,6 +151,7 @@ function ParametricPreview({
   turnDirection: 'left' | 'right';
   overrideLengthMm?: number | null;
   entryPortName?: string | null;
+  sectionUp?: BridgeVec3 | null;
 }) {
   const data = useMemo(() => {
     const entry = resolveRecipe(product);
@@ -161,7 +163,13 @@ function ParametricPreview({
       const chirality = entry.piece_kind === 'curva_horizontal'
         ? chiralityForTurn(turnDirection)
         : 'native';
-      const placeOptions = entryPortName ? { entryPortName } : undefined;
+      const placeOptions =
+        entryPortName || sectionUp
+          ? {
+              ...(entryPortName ? { entryPortName } : {}),
+              ...(sectionUp ? { sectionUp } : {}),
+            }
+          : undefined;
       const placed = placeRecipe(product, entry, startPos, entryDir, chirality, overrides, placeOptions);
       const geom = buildLocalMesh(placed.recipe);
       const matrix = new THREE.Matrix4().multiplyMatrices(MM_TO_VIEWER, placed.matrix);
@@ -179,7 +187,15 @@ function ParametricPreview({
     } catch {
       return null;
     }
-  }, [product, startPos[0], startPos[1], startPos[2], entryDir[0], entryDir[1], entryDir[2], turnDirection, overrideLengthMm, entryPortName]);
+  }, [
+    product,
+    startPos[0], startPos[1], startPos[2],
+    entryDir[0], entryDir[1], entryDir[2],
+    turnDirection,
+    overrideLengthMm,
+    entryPortName,
+    sectionUp?.[0], sectionUp?.[1], sectionUp?.[2],
+  ]);
 
   const meshRef = useRef<THREE.Mesh | null>(null);
 
@@ -286,6 +302,9 @@ export function RoutingObjects() {
       startPort.pos[1],
       startPort.pos[2],
     ];
+    const sectionUp: BridgeVec3 | null = startPort.sectionUp
+      ? [startPort.sectionUp[0], startPort.sectionUp[1], startPort.sectionUp[2]]
+      : null;
     // Para rectos, usar previewLengthMm si se configuró; si no, longitud catalogo.
     const overrideLengthMm = entry.piece_kind === 'tramo_recto' && previewLengthMm > 0
       ? previewLengthMm
@@ -294,6 +313,7 @@ export function RoutingObjects() {
       product: selectedProduct,
       startPos,
       entryDir,
+      sectionUp,
       overrideLengthMm,
     };
   }, [startPort, step, selectedProduct, previewLengthMm]);
@@ -392,6 +412,7 @@ export function RoutingObjects() {
           product={parametricPreview.product}
           startPos={parametricPreview.startPos}
           entryDir={parametricPreview.entryDir}
+          sectionUp={parametricPreview.sectionUp}
           turnDirection={turnDirection}
           overrideLengthMm={parametricPreview.overrideLengthMm}
           entryPortName={entryPortName}

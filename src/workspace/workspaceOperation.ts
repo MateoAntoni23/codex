@@ -297,7 +297,15 @@ export function planAddCurve(
   let newPiece: Piece;
   if (parametricEntry && parametricEntry.piece_kind === 'curva_horizontal') {
     const chirality = chiralityForTurn(turnDirection);
-    const placed = placeRecipe(newProduct, parametricEntry, startPort.pos, entryDir, chirality);
+    const placed = placeRecipe(
+      newProduct,
+      parametricEntry,
+      startPort.pos,
+      entryDir,
+      chirality,
+      undefined,
+      startPort.sectionUp ? { sectionUp: startPort.sectionUp } : undefined,
+    );
     const arcLenMm = radiansToArcLengthForPlacement(placed.p1.pos, placed.p2.pos, angleDeg);
     newPiece = {
       instancia_id: newId,
@@ -381,7 +389,7 @@ export function planAddAccessory(
     startPort.dir,
     chirality,
     undefined,
-    { entryPortName },
+    { entryPortName, ...(startPort.sectionUp ? { sectionUp: startPort.sectionUp } : {}) },
   );
 
   const puertos: Record<string, { posicion_mm: [number, number, number]; direccion: [number, number, number] }> = {};
