@@ -53,7 +53,7 @@ export const TABS = [
   { id: 'bocas', label: 'Bocas / Asociaciones' },
   { id: 'orientacion', label: 'Orientación / Colocación' },
   { id: 'continuaciones', label: 'Continuaciones / Compatibilidad' },
-  { id: 'prueba', label: 'Prueba preview / Confirmado' },
+  { id: 'prueba', label: 'Configuración actual / Patrón aprobado' },
   { id: 'procedencia', label: 'Procedencia / Historial' },
 ] as const;
 export type TabId = typeof TABS[number]['id'];
@@ -1688,14 +1688,19 @@ function MaestroTab({
   );
 }
 
-// ─── Prueba preview / Confirmado ────────────────────────────────────────────
+// ─── Configuración actual / Patrón aprobado ─────────────────────────────────
 
 /**
- * PruebaTab — diff operativo entre el mapping "preview" (lo que el store usa
- * ahora mismo para cada placement/preview) y el mapping "confirmado" (snapshot
+ * PruebaTab — diff operativo entre la "configuración actual" (lo que el store
+ * usa ahora mismo para cada placement/preview) y el "patrón aprobado" (snapshot
  * capturado al aprobar). Se usa para que el usuario entienda EXACTAMENTE qué
  * cambió desde la última validación cuando el banner marca "desactualizada",
  * o para verificar antes de revalidar que las ediciones son las esperadas.
+ *
+ * NO es la comparación visual preview-de-inserción vs pieza-confirmada en el
+ * workspace — esa invariante se verifica con el harness Playwright
+ * `e2e/previewConfirmedPipeline.visual.spec.ts` recorriendo los pipelines
+ * reales. Este tab trabaja sólo sobre configuración persistente.
  *
  * Estados:
  *   - Aprobado + snapshot presente: tabla de diffs (modelFrame + por boca).
@@ -1793,7 +1798,7 @@ function PruebaTab({ product }: { product: Product }) {
   if (!approval) {
     return (
       <div className="cfg-tab-content" data-testid="cfg-prueba-tab">
-        <h3 className="cfg-section-title">Prueba preview / Confirmado</h3>
+        <h3 className="cfg-section-title">Configuración actual / Patrón aprobado</h3>
         <div className="cfg-tab-note">
           Aún no aprobaste este patrón — no hay baseline "confirmado" para comparar. Ajustá el mapping
           en las pestañas Orientación / Bocas y usá el banner superior para aprobar; a partir de ahí
@@ -1817,7 +1822,7 @@ function PruebaTab({ product }: { product: Product }) {
   if (!confirmadoMapping) {
     return (
       <div className="cfg-tab-content" data-testid="cfg-prueba-tab">
-        <h3 className="cfg-section-title">Prueba preview / Confirmado</h3>
+        <h3 className="cfg-section-title">Configuración actual / Patrón aprobado</h3>
         <div className="cfg-tab-note cfg-tab-note-warning" data-testid="cfg-prueba-legacy">
           Esta aprobación es anterior a hito 3 y no tiene snapshot del mapping confirmado. Revalidá
           la aprobación desde el banner para habilitar el diff detallado (los cambios futuros sí
@@ -1842,7 +1847,7 @@ function PruebaTab({ product }: { product: Product }) {
 
   return (
     <div className="cfg-tab-content" data-testid="cfg-prueba-tab">
-      <h3 className="cfg-section-title">Prueba preview / Confirmado</h3>
+      <h3 className="cfg-section-title">Configuración actual / Patrón aprobado</h3>
       <div
         className={`cfg-tab-note ${hashesMatch ? '' : 'cfg-tab-note-warning'}`}
         data-testid="cfg-prueba-status"
