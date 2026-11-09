@@ -489,8 +489,20 @@ export function buildCUPSRecipe(params: {
   };
 
   // P1_horizontal — chaflán V4→V5, vertical, normal (−1, 0, 0).
-  // u = (0,0,−1) y v = dirección de la arista V4→V5 (hacia −Y esperado) para
-  // que u×v = normal.
+  //
+  // Convención unificada con TRPS/CPS/portOnEdgeXZ: en toda boca con normal
+  // (−1,0,0) elegimos u=(0,0,+1) y v=(0,+1,0) de modo que u×v = normal y v
+  // es el eje "ala/arriba de sección" coherente entre piezas vecinas. Antes
+  // de esta normalización CUPS exponía la elección inversa (u=(0,0,−1),
+  // v=(0,−1,0)) — algebraicamente válida porque u×v=n se preserva, pero
+  // geométricamente equivalía a rotar 180° el marco alrededor de la normal.
+  // El efecto visual era el cuerpo de CUPS invertido respecto al recto
+  // horizontal entrante (ala apuntando hacia −Z mundo mientras el recto la
+  // deja apuntando a +Z). Ver docs/pattern-models-reconciliation.md §D6.
+  //
+  // p1EdgeDx/p1EdgeDy se conservan como evidencia numérica de la arista
+  // medida (p1EdgeDy ≈ −1, p1EdgeDx ≈ 0) pero el signo se invierte al
+  // asignar v_dir para alinear con la convención TRPS (v = +Y local).
   const p1EdgeDx = (v5[0] - v4[0]) / p1EdgeLen; // 0 esperado
   const p1EdgeDy = (v5[1] - v4[1]) / p1EdgeLen; // −1 esperado
   const bocaHorizontal: PortDef = {
@@ -499,8 +511,8 @@ export function buildCUPSRecipe(params: {
     normal: [-1, 0, 0],
     ancho_mm,
     ala_mm: p1EdgeLen,
-    u_dir: [0, 0, -1],
-    v_dir: [p1EdgeDx, p1EdgeDy, 0],
+    u_dir: [0, 0, 1],
+    v_dir: [-p1EdgeDx, -p1EdgeDy, 0],
     kind: 'operational',
   };
 
