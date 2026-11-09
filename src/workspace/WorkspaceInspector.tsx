@@ -10,6 +10,8 @@ import { useState } from 'react';
 import { useWorkspaceStore } from './useWorkspaceStore';
 import { useTrayStore } from '../tray/store';
 import { useRoutingStore } from './useRoutingStore';
+import { useTrayMoveState } from './useTrayMoveState';
+import { findBrokenConnections, pieceCentroid, removeConnections } from './trayMovement';
 import { RoutingPanel } from './RoutingPanel';
 import { EquipmentEditorPanel } from '../preview/EquipmentEditorPanel';
 import { TrayResults } from './TrayResults';
@@ -291,11 +293,191 @@ const rotButtonStyle: React.CSSProperties = {
 
 // ─── Tray piece card ──────────────────────────────────────────────────────────
 
+/**
+ * Edición numérica (mm) del centroide del tramo. Cada confirmación aplica un
+ * delta a TODAS las bocas simultáneamente, reutilizando el mismo camino que el
+ * gizmo (incluida la detección de uniones rotas via `onTranslate`).
+ */
+function TrayCentroidEditor({
+  piece,
+  centroidMm,
+  onTranslate,
+}: {
+  piece: Piece;
+  centroidMm: readonly [number, number, number];
+  onTranslate: (delta: [number, number, number]) => void;
+}) {
+  const [draft, setDraft] = useState<[string, string, string]>([
+    String(Math.round(centroidMm[0])),
+    String(Math.round(centroidMm[1])),
+    String(Math.round(centroidMm[2])),
+  ]);
+  // Sincroniza el borrador cuando cambia la pieza seleccionada o el centroide
+  // tras un drag — así los inputs siempre reflejan la posición actual al
+  // volver a esta pieza.
+  const [pieceId, setPieceId] = useState(piece.instancia_id);
+  const [snapCx, setSnapCx] = useState(centroidMm[0]);
+  const [snapCy, setSnapCy] = useState(centroidMm[1]);
+  const [snapCz, setSnapCz] = useState(centroidMm[2]);
+  if (pieceId !== piece.instancia_id || snapCx !== centroidMm[0] || snapCy !== centroidMm[1] || snapCz !== centroidMm[2]) {
+    setPieceId(piece.instancia_id);
+    setSnapCx(centroidMm[0]);
+    setSnapCy(centroidMm[1]);
+    setSnapCz(centroidMm[2]);
+    setDraft([
+      String(Math.round(centroidMm[0])),
+      String(Math.round(centroidMm[1])),
+      String(Math.round(centroidMm[2])),
+    ]);
+  }
+
+  const handleApply = () => {
+    const target: [number, number, number] = [
+      Number(draft[0]), Number(draft[1]), Number(draft[2]),
+    ];
+    if (!target.every(Number.isFinite)) return;
+    const delta: [number, number, number] = [
+      target[0] - centroidMm[0],
+      target[1] - centroidMm[1],
+      target[2] - centroidMm[2],
+    ];
+    onTranslate(delta);
+  };
+
+  return (
+    <fieldset
+      data-testid="tray-centroid-editor"
+      style={{ margin: '4px 12px', border: '1px solid #4a5570', padding: '4px 8px', borderRadius: 3, background: '#1e2338' }}
+    >
+      <legend style={{ fontSize: 11, color: '#99aacc', padding: '0 4px' }}>Posición del tramo (mm)</legend>
+      <div style={{ fontSize: 10, color: '#8899cc', marginBottom: 4, lineHeight: 1.4 }}>
+        Centroide global en mm (Z-up). Al aplicar se trasladan TODAS las bocas por el delta;
+        las uniones que pierdan coincidencia dispararán el aviso para confirmar o cancelar.
+      </div>
+      <div style={{ display: 'flex', gap: 4, alignItems: 'end' }}>
+        {(['X', 'Y', 'Z'] as const).map((axis, i) => (
+          <label key={axis} style={{ flex: 1, fontSize: 11, color: '#8899bb' }}>
+            {axis}
+            <input
+              type="number"
+              step="10"
+              data-testid={`tray-centroid-input-${axis}`}
+              className="inspector-input"
+              value={draft[i]}
+              onChange={(e) => {
+                const next = [...draft] as [string, string, string];
+                next[i] = e.target.value;
+                setDraft(next);
+              }}
+            />
+          </label>
+        ))}
+        <button
+          data-testid="tray-centroid-apply"
+          onClick={handleApply}
+          style={{
+            fontSize: 11,
+            padding: '3px 10px',
+            background: '#3c4967',
+            color: 'white',
+            border: '1px solid #5566aa',
+            borderRadius: 3,
+            cursor: 'pointer',
+          }}
+        >
+          Aplicar
+        </button>
+      </div>
+    </fieldset>
+  );
+}
+
+/**
+ * Modal flotante en el inspector que aparece cuando un movimiento dejó
+ * uniones sin coincidencia. El usuario puede:
+ *  - Aceptar: confirma el movimiento Y descarta las conexiones afectadas
+ *    (una sola entrada en history).
+ *  - Cancelar: restaura la entrada previa al drag (sin history).
+ */
+function BrokenConnectionsModal() {
+  const pending  = useTrayMoveState((s) => s.pending);
+  const clear    = useTrayMoveState((s) => s.clear);
+  const entrada  = useTrayStore((s) => s.entrada);
+  const setRaw   = useTrayStore((s) => s.setEntradaRaw);
+  const edit     = useTrayStore((s) => s.edit);
+  const markDirty = useWorkspaceStore((s) => s.markDirty);
+
+  if (!pending || !entrada) return null;
+
+  const onAccept = () => {
+    const postDrag = useTrayStore.getState().entrada;
+    if (!postDrag) { clear(); return; }
+    const cleaned = removeConnections(postDrag, pending.brokenConexionIds);
+    // Push snapshot to history then set entrada to cleaned post-drag state.
+    setRaw(pending.snapshot);
+    edit(cleaned);
+    markDirty();
+    clear();
+  };
+  const onCancel = () => {
+    setRaw(pending.snapshot);
+    markDirty();
+    clear();
+  };
+
+  return (
+    <div
+      data-testid="tray-broken-modal"
+      style={{
+        margin: '6px 12px',
+        padding: 10,
+        background: '#3a1f1f',
+        border: '1px solid #cc6644',
+        borderRadius: 4,
+      }}
+    >
+      <div style={{ fontSize: 12, color: '#ffccaa', marginBottom: 6, fontWeight: 600 }}>
+        ⚠ Mover el tramo desconectará {pending.brokenConexionIds.length} unión(es)
+      </div>
+      <div style={{ fontSize: 11, color: '#ffe0cc', marginBottom: 8, lineHeight: 1.5 }}>
+        Las siguientes conexiones perdieron la coincidencia entre sus bocas.
+        Si aceptás, el movimiento queda confirmado Y esas uniones se descartan
+        para evitar que el modelo las trate como válidas:
+        <ul style={{ margin: '4px 0 0', paddingLeft: 18 }}>
+          {pending.brokenConexionIds.map((id) => (
+            <li key={id} data-testid={`broken-conn-${id}`} style={{ fontFamily: 'monospace', color: '#ffbb99' }}>
+              {id}
+            </li>
+          ))}
+        </ul>
+      </div>
+      <div style={{ display: 'flex', gap: 8 }}>
+        <button
+          data-testid="tray-broken-accept"
+          onClick={onAccept}
+          style={{ fontSize: 12, padding: '4px 12px', background: '#8b4422', color: 'white', border: '1px solid #cc6644', borderRadius: 3, cursor: 'pointer' }}
+        >
+          Aceptar y desconectar
+        </button>
+        <button
+          data-testid="tray-broken-cancel"
+          onClick={onCancel}
+          style={{ fontSize: 12, padding: '4px 12px', background: '#2a3344', color: '#ccd6e6', border: '1px solid #556688', borderRadius: 3, cursor: 'pointer' }}
+        >
+          Cancelar movimiento
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function PieceCard({ piece }: { piece: Piece }) {
   const context = useTrayStore((s) => s.context);
   const edit    = useTrayStore((s) => s.edit);
   const entrada = useTrayStore((s) => s.entrada);
   const markDirty = useWorkspaceStore((s) => s.markDirty);
+  const trayMoveMode     = useWorkspaceStore((s) => s.trayMoveMode);
+  const setTrayMoveMode  = useWorkspaceStore((s) => s.setTrayMoveMode);
 
   if (!entrada) return null;
 
@@ -308,8 +490,41 @@ function PieceCard({ piece }: { piece: Piece }) {
     markDirty();
   };
 
+  // Traslada la pieza entera por un delta (mm) usando el camino atómico
+  // (snapshot → edit): una sola entrada en history que abarca TODOS los
+  // puertos. Si la operación desconecta uniones, reporta cuáles mediante el
+  // modal, igual que el gizmo.
+  const translateWhole = (delta: [number, number, number]) => {
+    if (!delta[0] && !delta[1] && !delta[2]) return;
+    const snapshot = structuredClone(entrada);
+    const next = structuredClone(entrada);
+    const target = next.piezas.find((p) => p.instancia_id === piece.instancia_id);
+    if (!target) return;
+    for (const port of Object.values(target.puertos)) {
+      port.posicion_mm[0] += delta[0];
+      port.posicion_mm[1] += delta[1];
+      port.posicion_mm[2] += delta[2];
+    }
+    // Reutilizamos la misma lógica del gizmo: detectar rotas y pedir
+    // confirmación o aplicar directo.
+    const broken = findBrokenConnections(next, piece.instancia_id);
+    if (broken.length === 0) {
+      edit(next);
+      markDirty();
+    } else {
+      useTrayStore.getState().setEntradaRaw(next);
+      markDirty();
+      useTrayMoveState.getState().requestConfirm({
+        pieceId: piece.instancia_id,
+        snapshot,
+        brokenConexionIds: broken,
+      });
+    }
+  };
+
   const ports = Object.entries(piece.puertos);
   const product = context?.productos.find((p) => p.producto_id === piece.producto_id);
+  const centroid = pieceCentroid(piece);
 
   return (
     <div className="inspector-panel">
@@ -317,6 +532,34 @@ function PieceCard({ piece }: { piece: Piece }) {
         <span className="inspector-category">Pieza de bandeja</span>
         <span className="inspector-title">{piece.instancia_id}</span>
       </div>
+
+      <BrokenConnectionsModal />
+
+      <div style={{ padding: '4px 12px', display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+        <button
+          data-testid="tray-move-toggle"
+          onClick={() => setTrayMoveMode(!trayMoveMode)}
+          title="Mostrar/ocultar gizmo XYZ para mover la pieza completa en planta y altura"
+          style={{
+            fontSize: 11,
+            padding: '3px 10px',
+            background: trayMoveMode ? '#a97014' : '#3c4967',
+            color: 'white',
+            border: `1px solid ${trayMoveMode ? '#f0b65e' : '#5566aa'}`,
+            borderRadius: 3,
+            cursor: 'pointer',
+            fontWeight: trayMoveMode ? 600 : 400,
+          }}
+        >
+          {trayMoveMode ? '✥ Mover tramo (activo — Esc)' : '✥ Mover tramo'}
+        </button>
+      </div>
+
+      <TrayCentroidEditor
+        piece={piece}
+        centroidMm={centroid}
+        onTranslate={translateWhole}
+      />
 
       <div className="inspector-field">
         <span className="inspector-label">Producto</span>

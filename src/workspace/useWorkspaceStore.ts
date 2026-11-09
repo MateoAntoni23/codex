@@ -61,6 +61,14 @@ export interface WorkspaceState {
    */
   moveMode: boolean;
   setMoveMode: (on: boolean) => void;
+  /**
+   * Modo "Mover tramo" para la pieza de bandeja seleccionada. Análogo a
+   * moveMode pero sobre `selectedTrayId`: monta el gizmo XYZ que traslada
+   * TODOS los puertos de la pieza por el mismo delta. Es excluyente con
+   * moveMode (equipos) y con la herramienta de conexión.
+   */
+  trayMoveMode: boolean;
+  setTrayMoveMode: (on: boolean) => void;
 
   // Equipment actions
   selectEquip: (id: string | null) => void;
@@ -202,6 +210,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   equipHistory: [],
   equipFuture: [],
   moveMode: false,
+  trayMoveMode: false,
 
   selectEquip: (id) => set((s) => ({
     selectedEquipId: id,
@@ -211,11 +220,18 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     // Al cambiar de equipo se sale del modo mover para evitar arrastrar
     // sin querer el que acaba de seleccionarse.
     moveMode: id === s.selectedEquipId ? s.moveMode : false,
+    trayMoveMode: false,
   })),
-  selectTray: (id) => set({ selectedTrayId: id, selectedEquipId: null, selectedSupportId: null, selectedImportedEquipoId: null, moveMode: false }),
-  selectSupport: (id) => set({ selectedSupportId: id, selectedEquipId: null, selectedTrayId: null, selectedImportedEquipoId: null, moveMode: false }),
+  selectTray: (id) => set((s) => ({
+    selectedTrayId: id, selectedEquipId: null, selectedSupportId: null, selectedImportedEquipoId: null,
+    moveMode: false,
+    // Mantener trayMoveMode sólo si la pieza seleccionada sigue siendo la misma.
+    trayMoveMode: id === s.selectedTrayId ? s.trayMoveMode : false,
+  })),
+  selectSupport: (id) => set({ selectedSupportId: id, selectedEquipId: null, selectedTrayId: null, selectedImportedEquipoId: null, moveMode: false, trayMoveMode: false }),
 
-  setMoveMode: (on) => set({ moveMode: on }),
+  setMoveMode: (on) => set({ moveMode: on, trayMoveMode: on ? false : get().trayMoveMode }),
+  setTrayMoveMode: (on) => set({ trayMoveMode: on, moveMode: on ? false : get().moveMode }),
 
   updateElement: (el) =>
     set((s) => ({
@@ -336,7 +352,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   toggleLayer: (key) =>
     set((s) => ({ layers: { ...s.layers, [key]: !s.layers[key] } })),
 
-  activateConnectionTool: () => set({ connectionToolActive: true, connectionPortA: null, selectedEquipId: null, selectedTrayId: null, selectedSupportId: null, moveMode: false }),
+  activateConnectionTool: () => set({ connectionToolActive: true, connectionPortA: null, selectedEquipId: null, selectedTrayId: null, selectedSupportId: null, moveMode: false, trayMoveMode: false }),
   deactivateConnectionTool: () => set({ connectionToolActive: false, connectionPortA: null }),
   setConnectionPortA: (port) => set({ connectionPortA: port }),
 
@@ -358,6 +374,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       equipHistory:        [],
       equipFuture:         [],
       moveMode:            false,
+      trayMoveMode:        false,
     }),
 
   markDirty: () => set({ dirty: true }),
@@ -381,6 +398,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       equipHistory:    [],
       equipFuture:     [],
       moveMode:        false,
+      trayMoveMode:    false,
     }),
 
   setImportedCatalog: (c) =>

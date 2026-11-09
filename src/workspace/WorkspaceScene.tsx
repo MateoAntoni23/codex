@@ -9,10 +9,18 @@ import { Html, TransformControls } from '@react-three/drei';
 import type { ThreeEvent } from '@react-three/fiber';
 import { elementToRenderProps } from '../scene/v2-adapter';
 import { useWorkspaceStore } from './useWorkspaceStore';
+import { useTrayStore } from '../tray/store';
+import { useTrayMoveState } from './useTrayMoveState';
+import {
+  pieceCentroid,
+  translatePiece,
+  findBrokenConnections,
+} from './trayMovement';
 import { TrayObjects } from './TrayObjects';
 import { RoutingObjects } from './RoutingObjects';
 import type { ElementRenderProps } from '../scene/v2-adapter';
 import type { EquipmentElement } from '../types/domain-v2';
+import type { TrayInput } from '../tray/model';
 
 type Q4 = [number, number, number, number];
 
@@ -198,13 +206,179 @@ function EquipmentDragControls({
   return <TransformControls ref={controlsRef} object={targetObject} mode="translate" size={0.8} />;
 }
 
+/**
+ * Convierte centroide (mm, Z-up) → posición viewer (m, Y-up).
+ */
+function centroidMmToViewer(mm: readonly [number, number, number]): [number, number, number] {
+  return [mm[0] / 1000, mm[2] / 1000, -mm[1] / 1000];
+}
+/** Inverso de `centroidMmToViewer`. */
+function viewerToCentroidMm(obj: THREE.Object3D): [number, number, number] {
+  return [obj.position.x * 1000, -obj.position.z * 1000, obj.position.y * 1000];
+}
+
+/**
+ * TrayDragControls — gizmo XYZ para trasladar una pieza de bandeja completa.
+ *
+ * Una pieza NO tiene transform propio: su posición está codificada en los
+ * `posicion_mm` de sus puertos. Por eso el gizmo opera sobre un proxy
+ * invisible anclado inicialmente al centroide; en cada `objectChange`
+ * convertimos la pose del proxy a mm, calculamos el delta vs el centroide
+ * pre-drag, y aplicamos `translatePiece` a la entrada mediante
+ * `setEntradaRaw` (bypass del history — las posiciones intermedias no entran).
+ *
+ * Al soltar:
+ *   - Si no hay uniones rotas → commit atómico (restaura snapshot y llama
+ *     `edit(post)` para que la history guarde una sola entrada).
+ *   - Si hay rotas → se expone `pending` en `useTrayMoveState` para que el
+ *     inspector pinte el modal con Aceptar/Cancelar.
+ */
+function TrayDragControls({ pieceId }: { pieceId: string }) {
+  const [proxy, setProxy] = useReactState<THREE.Object3D | null>(null);
+  const controlsRef = useRef<THREE.Object3D & {
+    addEventListener: (ev: string, fn: (e: { value?: boolean }) => void) => void;
+    removeEventListener: (ev: string, fn: (e: { value?: boolean }) => void) => void;
+  }>(null);
+  // Snapshot de la entrada al iniciar el drag — restaurar aquí si se cancela,
+  // o pushear a history al confirmar.
+  const snapshotRef = useRef<TrayInput | null>(null);
+  // Centroide (mm) del momento inicial — base para calcular el delta aplicado.
+  const startCentroidMmRef = useRef<[number, number, number] | null>(null);
+  // Guarda si hubo movimiento real: evita confirmar/restaurar cuando el usuario
+  // toca el gizmo sin arrastrarlo.
+  const didMoveRef = useRef(false);
+
+  const attachProxy = useCallback((obj: THREE.Object3D | null) => {
+    if (!obj) { setProxy(null); return; }
+    const entrada = useTrayStore.getState().entrada;
+    const piece = entrada?.piezas.find((p) => p.instancia_id === pieceId);
+    if (!piece) { setProxy(null); return; }
+    const c = pieceCentroid(piece);
+    const [vx, vy, vz] = centroidMmToViewer(c);
+    obj.position.set(vx, vy, vz);
+    setProxy(obj);
+  }, [pieceId]);
+
+  const onObjectChange = useCallback(() => {
+    if (!proxy) return;
+    const snapshot = snapshotRef.current;
+    const startMm = startCentroidMmRef.current;
+    if (!snapshot || !startMm) return;
+    const newMm = viewerToCentroidMm(proxy);
+    const delta: [number, number, number] = [
+      newMm[0] - startMm[0],
+      newMm[1] - startMm[1],
+      newMm[2] - startMm[2],
+    ];
+    if (Math.abs(delta[0]) < 1e-3 && Math.abs(delta[1]) < 1e-3 && Math.abs(delta[2]) < 1e-3) return;
+    didMoveRef.current = true;
+    const next = translatePiece(snapshot, pieceId, delta);
+    useTrayStore.getState().setEntradaRaw(next);
+    useWorkspaceStore.getState().markDirty();
+  }, [proxy, pieceId]);
+
+  useEffect(() => {
+    const controls = controlsRef.current;
+    if (!controls || !proxy) return;
+    const onDraggingChanged = (e: { value?: boolean }) => {
+      if (e.value) {
+        const entrada = useTrayStore.getState().entrada;
+        if (!entrada) return;
+        const piece = entrada.piezas.find((p) => p.instancia_id === pieceId);
+        if (!piece) return;
+        snapshotRef.current = structuredClone(entrada);
+        startCentroidMmRef.current = pieceCentroid(piece);
+        didMoveRef.current = false;
+      } else {
+        const snapshot = snapshotRef.current;
+        const postDrag = useTrayStore.getState().entrada;
+        snapshotRef.current = null;
+        startCentroidMmRef.current = null;
+        if (!snapshot || !postDrag || !didMoveRef.current) return;
+        const broken = findBrokenConnections(postDrag, pieceId);
+        if (broken.length === 0) {
+          // Commit atómico: restaurar snapshot y luego edit(post) empuja
+          // snapshot a history dejando entrada en post.
+          useTrayStore.getState().setEntradaRaw(snapshot);
+          useTrayStore.getState().edit(postDrag);
+        } else {
+          // Dejar entrada en post; el inspector mostrará un modal con
+          // Aceptar/Cancelar que termina de resolver via useTrayMoveState.
+          useTrayMoveState.getState().requestConfirm({
+            pieceId,
+            snapshot,
+            brokenConexionIds: broken,
+          });
+        }
+      }
+    };
+    controls.addEventListener('dragging-changed', onDraggingChanged);
+    controls.addEventListener('objectChange', onObjectChange);
+    return () => {
+      controls.removeEventListener('dragging-changed', onDraggingChanged);
+      controls.removeEventListener('objectChange', onObjectChange);
+    };
+  }, [proxy, pieceId, onObjectChange]);
+
+  return (
+    <>
+      <group ref={attachProxy}>
+        <mesh visible={false}>
+          <boxGeometry args={[0.001, 0.001, 0.001]} />
+          <meshBasicMaterial transparent opacity={0} />
+        </mesh>
+      </group>
+      {proxy && (
+        // @ts-expect-error — drei TransformControls accepts a ref + object prop; types are permissive at runtime.
+        <TransformControls ref={controlsRef} object={proxy} mode="translate" size={0.8} />
+      )}
+    </>
+  );
+}
+
+/**
+ * Mensaje flotante sobre la pieza mientras el modo mover tramo está activo.
+ * Replica la UX del hint de equipos.
+ */
+function TrayMoveHint({ pieceId }: { pieceId: string }) {
+  const entrada = useTrayStore((s) => s.entrada);
+  const piece = entrada?.piezas.find((p) => p.instancia_id === pieceId);
+  if (!piece) return null;
+  const [cx, cy, cz] = pieceCentroid(piece);
+  return (
+    <Html
+      position={[cx / 1000, cz / 1000 + 1.2, -cy / 1000]}
+      center
+      style={{ pointerEvents: 'none' }}
+    >
+      <div
+        data-testid="tray-move-mode-hint"
+        style={{
+          background: 'rgba(80, 60, 20, 0.92)',
+          color: '#ffe0aa',
+          fontSize: 11,
+          padding: '4px 8px',
+          borderRadius: 4,
+          whiteSpace: 'nowrap',
+          boxShadow: '0 2px 6px rgba(0,0,0,0.4)',
+        }}
+      >
+        ✥ Mover tramo · arrastrá los ejes XYZ · Esc para salir
+      </div>
+    </Html>
+  );
+}
+
 export function WorkspaceScene() {
   const elements         = useWorkspaceStore((s) => s.elements);
   const selectedEquipId  = useWorkspaceStore((s) => s.selectedEquipId);
+  const selectedTrayId   = useWorkspaceStore((s) => s.selectedTrayId);
   const selectEquip      = useWorkspaceStore((s) => s.selectEquip);
   const layers           = useWorkspaceStore((s) => s.layers);
   const moveMode         = useWorkspaceStore((s) => s.moveMode);
   const setMoveMode      = useWorkspaceStore((s) => s.setMoveMode);
+  const trayMoveMode     = useWorkspaceStore((s) => s.trayMoveMode);
+  const setTrayMoveMode  = useWorkspaceStore((s) => s.setTrayMoveMode);
 
   const allRenderProps = useMemo(
     () => elements.map((el) => elementToRenderProps(el, elements)),
@@ -245,6 +419,15 @@ export function WorkspaceScene() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [moveMode, setMoveMode]);
+
+  useEffect(() => {
+    if (!trayMoveMode) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setTrayMoveMode(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [trayMoveMode, setTrayMoveMode]);
 
   // Si el elemento seleccionado pierde elegibilidad (deja de estar placed, se
   // borra, cambia a infraestructura con padre), apagar el modo mover para no
@@ -316,6 +499,13 @@ export function WorkspaceScene() {
 
       {/* Tray objects — TrayObjects reads useTrayStore and useWorkspaceStore for layers/selection */}
       <TrayObjects />
+
+      {trayMoveMode && selectedTrayId && (
+        <>
+          <TrayDragControls pieceId={selectedTrayId} />
+          <TrayMoveHint pieceId={selectedTrayId} />
+        </>
+      )}
 
       {/* Routing objects — port markers + preview mesh when routing tool is active */}
       <RoutingObjects />

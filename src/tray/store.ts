@@ -80,6 +80,16 @@ interface State {
   initialize:()=>Promise<void>; edit:(input:unknown)=>void;
   /** Replaces tray state on project import — clears history/future so undo never crosses project boundaries. */
   importEdit:(input:unknown)=>void;
+  /**
+   * Replaces `entrada` sin tocar history/future. Pensado para drags de UI:
+   * el componente guarda un snapshot propio al iniciar el arrastre y emite
+   * ráfagas de setEntradaRaw durante el drag; al soltar, decide si:
+   *  (a) descartar (restaura con otro setEntradaRaw), o
+   *  (b) confirmar (restaura temporal y luego `edit(final)` para que history
+   *      quede con UNA sola entrada que abarca move + eventual desconexión).
+   * Why: distinguir "agitar la vista" de "cambios atómicos en history".
+   */
+  setEntradaRaw:(input:unknown)=>void;
   undo:()=>void; redo:()=>void;
   select:(id:string|null)=>void; calculate:()=>Promise<void>;
 }
@@ -101,6 +111,12 @@ export const useTrayStore=create<State>((set,get)=>({
   manager.invalidar('trazado');
   set({history:[],future:[],entrada:structuredClone(input),revision:get().revision+1,
        status:'sin_calcular',result:null,resultSelection:null,selected:null,error:null});
+ },
+ setEntradaRaw:(input)=>{
+  assertInput(input);
+  manager.invalidar('trazado');
+  set({entrada:structuredClone(input),revision:get().revision+1,
+       status:get().result?'desactualizado':'sin_calcular',resultSelection:null,error:null});
  },
  undo:()=>{
   const {entrada,history,future,selected}=get();
