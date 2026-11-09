@@ -235,9 +235,25 @@ export const useCatalogConfigStore = create<State>((set, get) => ({
     set({ approvals });
   },
   getApprovalInfo: (productId, masterRevision) => {
-    const stored = get().approvals[productId];
+    const approvals = get().approvals;
+    let stored = approvals[productId];
+    // Si no hay aprobación directa, buscamos una aprobación en un SKU que
+    // comparta calibración efectiva: calibration hash igual ⇒ geometría +
+    // bocas + marco iguales ⇒ aprobar uno vale para todos. Se recorren
+    // alfabéticamente para que el resultado sea estable entre sesiones.
     const mapping = getEffectiveMapping(productId);
     const currentHash = calibrationHash(mapping);
+    if (!stored) {
+      const candidateIds = Object.keys(approvals).sort();
+      for (const id of candidateIds) {
+        if (id === productId) continue;
+        const candidateApproval = approvals[id];
+        if (candidateApproval.approvedAtCalibrationHash === currentHash) {
+          stored = candidateApproval;
+          break;
+        }
+      }
+    }
     return computeApprovalInfo(stored, masterRevision, currentHash);
   },
   upsertAporte: (productId, rule) => {

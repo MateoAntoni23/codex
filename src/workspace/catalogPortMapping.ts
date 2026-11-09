@@ -92,7 +92,23 @@ export interface ModelFrameOverride {
 export interface ProductPortMapping {
   readonly productId: string;
   readonly entries: readonly PortMappingEntry[];
-  readonly source: 'default' | 'override';
+  /**
+   * Procedencia del mapping efectivo:
+   *   - 'default'   proviene de DEFAULT_MAPPINGS (datos de fábrica).
+   *   - 'override'  override directo guardado para este productId.
+   *   - 'inherited' no hay override directo, se adopta el de un sibling con
+   *                 la misma identidad de variante (misma geometría y mismas
+   *                 bocas, distinto acabado/espesor/comercial). Permite que
+   *                 configurar Z propague automáticamente a G y a otros
+   *                 espesores sin re-pedir la calibración.
+   */
+  readonly source: 'default' | 'override' | 'inherited';
+  /**
+   * Cuando `source === 'inherited'`, productId del sibling de donde se
+   * tomó el override. Permite mostrar "Calibración heredada de X" en UI y
+   * trazar la cadena de herencia.
+   */
+  readonly inheritedFromProductId?: string;
   /** Motivo del override cuando source === 'override'. */
   readonly overrideReason?: string;
   readonly overrideAt?: string;
@@ -226,6 +242,13 @@ type ProductIndexEntry = {
   readonly ala_nominal_mm?: number | null;
   readonly ancho_nominal_mm?: number | null;
   readonly angulo_grados?: number | null;
+  /**
+   * Longitud comercial declarada en el catálogo. Participa en la identidad
+   * de variante para que dos SKUs con misma geometría pero largos distintos
+   * no compartan calibración (p.ej. un TRES-300-065-18 de 2.4 m no es
+   * geométricamente equivalente a uno de 3.0 m).
+   */
+  readonly longitud_comercial_mm?: number | null;
   readonly sku?: string | null;
 };
 
@@ -312,9 +335,70 @@ function findMasterBaseProductIdFor(productId: string): string | null {
   return best?.id ?? null;
 }
 
+/**
+ * Busca un sibling con override que comparta IDENTIDAD DE VARIANTE: mismo
+ * maestro + mismas dimensiones nominales (ancho, ala, ángulo, longitud).
+ *
+ * Esta herencia es más fuerte que la de `findMasterBaseProductIdFor`: dos
+ * productos con misma identidad de variante son geométricamente equivalentes
+ * (solo difieren en acabado, espesor y datos comerciales), así que pueden
+ * compartir la calibración completa — incluyendo `centerMm` absoluto, que
+ * NO sobrevive al pasar del maestro a una variante de otras dimensiones.
+ *
+ * Heurística determinista: si hay varios candidatos empatados, se usa el
+ * `producto_id` menor alfabéticamente para que el resultado sea estable
+ * entre sesiones.
+ */
+function findSameVariantProductIdFor(productId: string): string | null {
+  if (!_masterResolver) return null;
+  const direct = _productIndex[productId];
+  if (!direct) return null;
+  const master = _masterResolver(direct);
+  if (!master) return null;
+  const sortedIds = Object.keys(_productIndex).sort();
+  for (const id of sortedIds) {
+    if (id === productId) continue;
+    if (!_overrides[id]) continue;
+    const entry = _productIndex[id];
+    const candMaster = _masterResolver(entry);
+    if (candMaster?.id !== master.id) continue;
+    // Variante exacta: todas las dimensiones nominales que estén declaradas
+    // deben coincidir. Si una está ausente en uno de los dos lados, no se
+    // considera match seguro.
+    if (entry.ancho_nominal_mm !== direct.ancho_nominal_mm) continue;
+    if (entry.ala_nominal_mm !== direct.ala_nominal_mm) continue;
+    if ((entry.angulo_grados ?? null) !== (direct.angulo_grados ?? null)) continue;
+    if (
+      (entry.longitud_comercial_mm ?? null) !==
+      (direct.longitud_comercial_mm ?? null)
+    ) {
+      continue;
+    }
+    return id;
+  }
+  return null;
+}
+
 export function getEffectiveMapping(productId: string): ProductPortMapping | null {
   const ov = _overrides[productId];
   if (ov) return ov;
+  // Herencia por variante: si otro SKU con misma geometría tiene override,
+  // lo adoptamos como si fuera propio del producto consultado. Es lo que
+  // permite que al configurar Z, el G/distinto espesor hereden la calibración
+  // sin duplicarla.
+  const siblingId = findSameVariantProductIdFor(productId);
+  if (siblingId) {
+    const sibling = _overrides[siblingId];
+    if (sibling) {
+      return {
+        productId,
+        entries: sibling.entries,
+        source: 'inherited',
+        inheritedFromProductId: siblingId,
+        modelFrame: sibling.modelFrame,
+      };
+    }
+  }
   const def = DEFAULT_MAPPINGS[productId];
   if (!def) return null;
   return { productId, entries: def, source: 'default' };
@@ -393,6 +477,13 @@ export function listOverriddenProductIds(): readonly string[] {
 export function getModelFrameOverride(productId: string): ModelFrameOverride | null {
   const direct = _overrides[productId]?.modelFrame;
   if (direct && !isIdentityModelFrame(direct)) return direct;
+  // Herencia por variante exacta tiene prioridad sobre la herencia por maestro:
+  // dos SKUs geométricamente equivalentes comparten el marco completo.
+  const siblingId = findSameVariantProductIdFor(productId);
+  if (siblingId) {
+    const inherited = _overrides[siblingId]?.modelFrame;
+    if (inherited && !isIdentityModelFrame(inherited)) return inherited;
+  }
   const baseId = findMasterBaseProductIdFor(productId);
   if (!baseId) return null;
   const inherited = _overrides[baseId]?.modelFrame;
@@ -414,10 +505,20 @@ export function getPortGeometryOverride(
   productId: string,
   recipePortName: string,
 ): PortGeometryOverride | null {
-  const mapping = getEffectiveMapping(productId);
-  const directHit = mapping?.entries.find((e) => e.recipePortName === recipePortName);
+  // Lectura directa sobre el override del productId, SIN pasar por
+  // getEffectiveMapping — ese último devuelve entradas heredadas de un
+  // sibling y nos haría reportar "direct" a lo que en realidad es herencia.
+  const directHit = _overrides[productId]?.entries.find((e) => e.recipePortName === recipePortName);
   const direct = directHit?.geometry;
   if (direct && !isIdentityPortGeometry(direct)) return direct;
+  // Herencia por variante exacta: mismas dimensiones → `centerMm` sigue
+  // siendo válido (el punto absoluto cae en la misma arista física).
+  const siblingId = findSameVariantProductIdFor(productId);
+  if (siblingId) {
+    const sibHit = _overrides[siblingId]?.entries.find((e) => e.recipePortName === recipePortName);
+    const sib = sibHit?.geometry;
+    if (sib && !isIdentityPortGeometry(sib)) return sib;
+  }
   // Fallback por herencia del maestro: hereda sólo direcciones/giros, NO el
   // centro (el centro absoluto del maestro no vale para variantes de otras
   // dimensiones; la receta de la variante ya coloca el centro correcto).
