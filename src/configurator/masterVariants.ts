@@ -31,6 +31,11 @@
 import type { Product } from '../tray/model';
 import { buildRecipeFor, type PieceKind } from '../parametric/geometry/recipes';
 import {
+  ESCALERA_OUTLINES_BY_SKU,
+  type EscaleraOutline,
+  type MeasuredEdge,
+} from '../parametric/geometry/escaleraOutlines';
+import {
   findMasterForProduct,
   type MasterModel,
   type MasterVariationRule,
@@ -107,31 +112,84 @@ function matchesCatalog(product: Product, master: MasterModel): boolean {
 
 // ─── Proyección por regla ────────────────────────────────────────────────────
 
-function piecesSupportedByBuildRecipe(pieceKind: string): pieceKind is PieceKind {
-  return (
-    pieceKind === 'tramo_recto' ||
-    pieceKind === 'curva_horizontal' ||
-    pieceKind === 'curva_vertical' ||
-    pieceKind === 'derivacion_lateral' ||
-    pieceKind === 'cruz'
-  );
+/**
+ * Mapea el `pieceKind` taxonómico del maestro al `PieceKind` paramétrico del
+ * dispatcher `buildRecipeFor`. Un maestro TPS (`tee_simetrica`) reutiliza
+ * `buildDCPSRecipe` porque el polígono medido del archivo físico DCPS-*.STEP
+ * corresponde geométricamente a una tee simétrica. Un maestro DCPS puro
+ * (`derivacion_lateral`) devuelve `null` — no hay STEP ni polígono.
+ *
+ * Para escalera se consulta el dispatcher paralelo en escaleraRecipes.
+ * Devuelve `null` si el maestro no puede ejecutar receta en este dispatcher.
+ */
+function recipeKeyForMaster(master: MasterModel): PieceKind | null {
+  if (master.sistema !== 'perforada') return null;
+  switch (master.pieceKind) {
+    case 'tramo_recto':
+    case 'curva_horizontal':
+    case 'curva_vertical':
+    case 'cruz':
+      return master.pieceKind;
+    case 'tee_simetrica':
+      return 'derivacion_lateral';
+    case 'derivacion_lateral':
+      // DCPS puro — sin STEP medido; no se ejecuta receta.
+      return null;
+    case 'reduccion_lateral':
+      return null;
+  }
 }
 
+interface ScaleContext {
+  readonly master: MasterModel;
+  readonly baseAncho: number;
+  readonly targetAncho: number;
+  readonly baseAla: number;
+  readonly targetAla: number;
+  readonly baseLongitud: number | null;
+  readonly targetLongitud: number | null;
+}
+
+/**
+ * Factor por eje LOCAL del maestro. Para maestros de perforada el marco
+ * local es el del polígono XZ con extrusión Y=ala (exceptuando CUPS, que es
+ * extruido por ancho en Z y es rotado 45°). Para escalera el polígono vive
+ * también en XZ con extrusión Y=ala.
+ *
+ * Reglas:
+ *   - ancho-only-z: TRPS (perforada) — ancho escala Z, Y/X fijos.
+ *   - uniform-xz: curvas/T/cruz — hipótesis visual explícita de escala
+ *     uniforme por ancho/base. NO valida como regla constructiva.
+ *   - depth-only: CUPS — profundidad Z escala por ancho/base, perfil XY fijo.
+ *   - ala-independent (tramo_recto escalera): rectángulo paramétrico puro.
+ *     longitud escala X, ancho escala Z, ala escala Y — cada eje independiente.
+ *   - ala-independent (no tramo_recto): fallback conservador — uniform-xz por
+ *     ancho, Y por ala. Mantenido para compat; las curvas/T/cruz usan la
+ *     hipótesis uniform-xz.
+ *   - none: sin regla aplicable; devuelve identidad.
+ */
 function scaleOfRule(
   rule: MasterVariationRule,
-  baseAncho: number,
-  targetAncho: number,
+  ctx: ScaleContext,
 ): { x: number; y: number; z: number } {
-  const factor = baseAncho > 0 ? targetAncho / baseAncho : 1;
+  const anchoFactor = ctx.baseAncho > 0 ? ctx.targetAncho / ctx.baseAncho : 1;
+  const alaFactor = ctx.baseAla > 0 ? ctx.targetAla / ctx.baseAla : 1;
+  const longFactor =
+    ctx.baseLongitud !== null && ctx.targetLongitud !== null && ctx.baseLongitud > 0
+      ? ctx.targetLongitud / ctx.baseLongitud
+      : 1;
   switch (rule.kind) {
     case 'ancho-only-z':
-      return { x: 1, y: 1, z: factor };
+      return { x: longFactor, y: 1, z: anchoFactor };
     case 'uniform-xz':
-      return { x: factor, y: 1, z: factor };
+      return { x: anchoFactor, y: 1, z: anchoFactor };
     case 'depth-only':
-      return { x: 1, y: 1, z: factor };
+      return { x: 1, y: 1, z: anchoFactor };
     case 'ala-independent':
-      return { x: factor, y: 1, z: factor };
+      if (ctx.master.pieceKind === 'tramo_recto') {
+        return { x: longFactor, y: alaFactor, z: anchoFactor };
+      }
+      return { x: anchoFactor, y: alaFactor, z: anchoFactor };
     case 'none':
       return { x: 1, y: 1, z: 1 };
   }
@@ -148,18 +206,22 @@ function projectPortsViaRecipe(
   targetLongitud: number | null,
   targetAngulo: number | null,
 ): { ports: ProjectedPort[]; bbox: MasterVariant['bbox'] } | null {
-  if (!piecesSupportedByBuildRecipe(master.pieceKind)) return null;
+  if (master.sistema === 'escalera') {
+    return projectPortsFromEscaleraOutline(master, targetAncho, targetAla, targetLongitud, targetAngulo);
+  }
+  const key = recipeKeyForMaster(master);
+  if (!key) return null;
   const params: Record<string, number | string | null> = {
     ancho_mm: targetAncho,
     ala_mm: targetAla,
   };
-  if (master.pieceKind === 'tramo_recto' && targetLongitud !== null) {
+  if (key === 'tramo_recto' && targetLongitud !== null) {
     params.longitud_mm = targetLongitud;
   }
-  if (master.pieceKind === 'curva_horizontal' && targetAngulo !== null) {
+  if (key === 'curva_horizontal' && targetAngulo !== null) {
     params.angulo_deg = targetAngulo;
   }
-  const recipe = buildRecipeFor(master.pieceKind, params);
+  const recipe = buildRecipeFor(key, params);
   const portByRecipeName = new Map(recipe.ports.map((p) => [p.name, p]));
   const projected: ProjectedPort[] = master.ports.map((mp) => {
     const rp = portByRecipeName.get(mp.recipePortName);
@@ -167,13 +229,173 @@ function projectPortsViaRecipe(
       recipePortName: mp.recipePortName,
       catalogPortName: mp.catalogPortName,
       physicalLabel: mp.physicalLabel,
-      centerMm: rp ? (rp.center as Vec3Readonly) : null,
-      normal: rp ? (rp.normal as Vec3Readonly) : null,
+      centerMm: rp ? reorthoNormalizedCenter(rp.center, master.variationRule) : null,
+      normal: rp ? normalizeDir(rp.normal) : null,
     };
   });
   return {
     ports: projected,
     bbox: { min: recipe.bboxMin as Vec3Readonly, max: recipe.bboxMax as Vec3Readonly },
+  };
+}
+
+// Normales deben permanecer unitarias — buildRecipeFor ya las produce unitarias
+// pero la variante puede introducir ruido numérico si alguna coordenada se
+// reescaló por otro factor. Reortonormalizar aquí blinda contra regresión.
+function normalizeDir(d: readonly [number, number, number]): Vec3Readonly {
+  const L = Math.hypot(d[0], d[1], d[2]);
+  if (L < 1e-9 || Math.abs(L - 1) < 1e-9) return [d[0], d[1], d[2]] as const;
+  return [d[0] / L, d[1] / L, d[2] / L] as const;
+}
+
+// Para variantes con scale no uniforme (ancho-only-z, depth-only) la receta
+// ya recibió el `ancho_mm` objetivo y buildRecipeFor emite centers escalados
+// coherentemente. No se re-escala aquí para evitar doble transformación.
+function reorthoNormalizedCenter(
+  c: readonly [number, number, number],
+  _rule: MasterVariationRule,
+): Vec3Readonly {
+  return [c[0], c[1], c[2]] as const;
+}
+
+// ─── Proyección de puertos para maestros escalera ────────────────────────────
+//
+// No hay dispatcher paramétrico publicado para escalera, pero cada maestro
+// escalera lleva un outline medido (`escaleraOutlines.ts`) con los centros 2D
+// de las bocas en el plano XZ local y la altura Y del ala. Proyectamos esos
+// centros a ancho/ala objetivo según una regla editable, reflejando la
+// decisión del usuario:
+//   - TRES (tramo_recto): regla `ala-independent` MEDIDA (polígono rectangular;
+//     Z escala por ancho/300, X escala por longitud/3000, Y escala por ala/65).
+//   - CS/TS/XS (no tramo_recto): hipótesis visual `uniform-xz` por ancho/300,
+//     Y independiente por ala/65 — EXPLÍCITA como no validada.
+//   - RIS (reducción): sin regla (baseParams.ancho_mm fijo 300→150), no se
+//     proyecta hacia otro ancho sin STEP.
+function escaleraBaseSku(master: MasterModel): string | null {
+  switch (master.id) {
+    case 'master:escalera:tramo_recto':
+      return 'SAM_TRES-300-065-18-Z';
+    case 'master:escalera:curva_horizontal_45':
+      return 'SAM_CS-300-45-065-18-Z';
+    case 'master:escalera:curva_horizontal_90':
+      return 'SAM_CS-300-90-065-18-Z';
+    case 'master:escalera:derivacion_lateral':
+      return 'SAM_TS-300-065-18-Z';
+    case 'master:escalera:cruz':
+      return 'SAM_XS-300-065-18-Z';
+    case 'master:escalera:reduccion_lateral':
+      return 'SAM_RIS-15-065-18-Z';
+    default:
+      return null;
+  }
+}
+
+function getEscaleraOutlineForMaster(master: MasterModel): EscaleraOutline | null {
+  const sku = escaleraBaseSku(master);
+  if (!sku) return null;
+  const outline = (ESCALERA_OUTLINES_BY_SKU as Record<string, EscaleraOutline>)[sku];
+  return outline ?? null;
+}
+
+/**
+ * Proyecta un `MeasuredEdge` del outline (plano XZ, ala en Y) a un centro 3D
+ * (x, y, z) aplicando factores por eje. La ala se centra en Y: midpoint.y =
+ * ala / 2 (los puertos están en el plano medio del extruido).
+ *
+ * `factorX` escala X del polígono (longitud para TRES; ancho/300 en la
+ * hipótesis uniform-xz para el resto). `factorZ` escala Z del polígono. No
+ * aplicamos escala a la NORMAL — la outward_normal es ortonormal por
+ * construcción y una escala no uniforme la distorsionaría; la mantenemos
+ * literal porque una boca queda perpendicular a su arista también después
+ * del escalado (las aristas candidatas están alineadas con x_min/x_max/
+ * z_min/z_max, i.e. ejes puros).
+ */
+function projectEscaleraEdge(
+  edge: MeasuredEdge,
+  factorX: number,
+  factorZ: number,
+  targetAla: number,
+): { center: Vec3Readonly; normal: Vec3Readonly } {
+  const cxLocal = edge.midpoint[0] * factorX;
+  const czLocal = edge.midpoint[1] * factorZ;
+  // Marco del maestro escalera: polígono en XZ local, Y = ala. Para que la
+  // boca quede centrada en la altura del ala, Y = ala/2.
+  const centerY = targetAla / 2;
+  return {
+    center: [cxLocal, centerY, czLocal] as const,
+    normal: [edge.outward_normal[0], 0, edge.outward_normal[1]] as const,
+  };
+}
+
+function projectPortsFromEscaleraOutline(
+  master: MasterModel,
+  targetAncho: number,
+  targetAla: number,
+  targetLongitud: number | null,
+  _targetAngulo: number | null,
+): { ports: ProjectedPort[]; bbox: MasterVariant['bbox'] } | null {
+  const outline = getEscaleraOutlineForMaster(master);
+  if (!outline) return null;
+
+  const baseAncho = master.baseParams.ancho_mm;
+  const baseLong = master.baseParams.longitud_mm ?? null;
+
+  // Determinar escala por eje según el tipo de maestro.
+  let factorX = 1;
+  let factorZ = 1;
+  if (master.pieceKind === 'tramo_recto') {
+    // TRES: longitud escala X; ancho escala Z (regla ala-independent medida).
+    if (baseLong !== null && targetLongitud !== null && baseLong > 0) {
+      factorX = targetLongitud / baseLong;
+    }
+    if (baseAncho > 0) {
+      factorZ = targetAncho / baseAncho;
+    }
+  } else {
+    // Curvas, T, cruz: hipótesis visual uniform-xz (explícita).
+    if (baseAncho > 0) {
+      factorX = targetAncho / baseAncho;
+      factorZ = targetAncho / baseAncho;
+    }
+  }
+
+  // Si hay ≤2 aristas de boundary con normal eje, están garantizadas como
+  // ortonormales (son los boundaries x_min/x_max/z_min/z_max). Para curvas
+  // mitereadas con bocas que no caen sobre bordes rectos, se marcaría; no es
+  // el caso en los outlines medidos actuales.
+  const projectedByBoundary = new Map<string, { center: Vec3Readonly; normal: Vec3Readonly }>();
+  for (const edge of outline.boundary_edges) {
+    if (!edge.boundary) continue;
+    projectedByBoundary.set(edge.boundary, projectEscaleraEdge(edge, factorX, factorZ, targetAla));
+  }
+
+  // Mapear los puertos declarados por el maestro a los boundaries medidos. El
+  // maestro usa nombres P1/P2/P3/P4; los boundary_edges del outline están
+  // listados en el orden P1→P2→… (ver escaleraOutlines.ts). Mantenemos ese
+  // orden como contrato — si un maestro renombra su physicalLabel debe
+  // preservarlo coherentemente.
+  const boundariesInOrder: ('x_min' | 'x_max' | 'z_min' | 'z_max' | null)[] =
+    outline.boundary_edges.map((e) => e.boundary);
+  const projected: ProjectedPort[] = master.ports.map((mp, idx) => {
+    const boundary = boundariesInOrder[idx] ?? null;
+    const geom = boundary ? projectedByBoundary.get(boundary) : null;
+    return {
+      recipePortName: mp.recipePortName,
+      catalogPortName: mp.catalogPortName,
+      physicalLabel: mp.physicalLabel,
+      centerMm: geom ? geom.center : null,
+      normal: geom ? geom.normal : null,
+    };
+  });
+
+  const bboxMax: Vec3Readonly = [
+    outline.bbox_local.x_max * factorX,
+    targetAla,
+    outline.bbox_local.z_max * factorZ,
+  ] as const;
+  return {
+    ports: projected,
+    bbox: { min: [0, 0, 0] as const, max: bboxMax },
   };
 }
 
@@ -258,7 +480,15 @@ export function enumerateVariantsForMaster(
     const deltaAng = (angulo ?? baseAng) - baseAng;
 
     const origin = classifyOrigin(master, product, deltaAncho, deltaAla);
-    const scale = scaleOfRule(master.variationRule, baseAncho, ancho);
+    const scale = scaleOfRule(master.variationRule, {
+      master,
+      baseAncho,
+      targetAncho: ancho,
+      baseAla,
+      targetAla: effectiveAla,
+      baseLongitud: master.baseParams.longitud_mm ?? null,
+      targetLongitud: longitud,
+    });
 
     const warnings: string[] = [];
     if (ala !== null && deltaAla !== 0 && !master.variationRule.varies.includes('ala')) {
@@ -299,10 +529,27 @@ export function enumerateVariantsForMaster(
         master.variationRule.rationale;
     }
 
-    if (!ports.length && origin !== 'requires-master' && !piecesSupportedByBuildRecipe(master.pieceKind)) {
+    if (
+      !ports.length &&
+      origin !== 'requires-master' &&
+      recipeKeyForMaster(master) === null &&
+      master.sistema !== 'escalera'
+    ) {
+      // Sin receta ejecutable y sin outline de escalera disponible → sólo
+      // publicamos dimensiones proyectadas (no bocas).
       warnings.push(
-        'Maestro sin dispatcher paramétrico (escalera): sólo se publican dimensiones proyectadas, no coordenadas de bocas.',
+        'Maestro sin dispatcher paramétrico: sólo se publican dimensiones proyectadas, no coordenadas de bocas.',
       );
+    }
+    if (master.sistema !== 'perforada' && !master.variationRule.measured && (deltaAncho !== 0 || deltaAla !== 0)) {
+      // Para escalera no medida (curvas/T/cruz), señalar la hipótesis.
+      // (TRES tiene `measured: true` → no se marca.)
+      const already = warnings.some((w) => /hipótesis|estim/i.test(w));
+      if (!already) {
+        warnings.push(
+          'Escalera no-rectilínea: proyección bajo hipótesis visual uniform-xz, no validada como regla constructiva.',
+        );
+      }
     }
 
     variants.push({

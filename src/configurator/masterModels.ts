@@ -35,7 +35,8 @@ export type MasterPieceKind =
   | 'tramo_recto'
   | 'curva_horizontal'
   | 'curva_vertical'
-  | 'derivacion_lateral'
+  | 'tee_simetrica'        // TPS: T con tronco cortado (simétrica en X).
+  | 'derivacion_lateral'   // DCPS: derivación sin corte del tronco (geometría distinta).
   | 'cruz'
   | 'reduccion_lateral';
 
@@ -93,6 +94,13 @@ export interface MasterModel {
     readonly catalogTipoPieza: string;
     /** `ala_nominal_mm` del snapshot que vincula con este maestro. */
     readonly catalogAlaMm: number;
+    /**
+     * Prefijos de SKU admitidos — discrimina entre maestros con el mismo
+     * (familia, tipo_pieza, ala) pero geometría distinta (TPS vs DCPS).
+     * Ejemplo: ['TPS-'] para la tee simétrica, ['DCPS-'] para la derivación
+     * lateral. Omitir para "cualquier SKU que cumpla familia/tipo/ala".
+     */
+    readonly catalogSkuPrefixes?: readonly string[];
   };
   readonly ports: readonly {
     readonly recipePortName: string;
@@ -243,23 +251,29 @@ const MASTER_PERFORADA: readonly MasterModel[] = [
     revision: 1,
   },
   {
-    id: 'master:perforada:derivacion_lateral',
+    // TPS = tee simétrica (T diseñada con tronco cortado). STEP medido; el
+    // archivo físico en disco se nombra DCPS-300-Z.STEP por legado del
+    // proveedor, pero el polígono corresponde a TPS (confirmado por el
+    // usuario en 2026-11). Los GLB mantienen el nombre DCPS-* para no romper
+    // el tooling de step_parametric.
+    id: 'master:perforada:tee_simetrica',
     label: 'Perforada — tee simétrica (TPS)',
     sistema: 'perforada',
-    pieceKind: 'derivacion_lateral',
+    pieceKind: 'tee_simetrica',
     source: {
-      stepFile: 'DCPS-300-Z.STEP', // nombre físico; identificación geométrica: TPS
+      stepFile: 'DCPS-300-Z.STEP',
       stepHashShort: 'c567bd3a',
       reportJsonPath: 'tools/step_parametric/report/DCPS-300-Z.json',
       glbUrl: '/parametric/originals_glb/DCPS-300-Z.glb',
     },
-    recipeKey: 'derivacion_lateral',
+    recipeKey: 'tee_simetrica',
     baseParams: { ancho_mm: 300, ala_mm: 50 },
     canonicalRotationZDeg: 0,
     catalogMatch: {
       familiaIds: PERFORADA_FAMILIAS,
       catalogTipoPieza: 'T',
       catalogAlaMm: 50,
+      catalogSkuPrefixes: ['TPS-'],
     },
     ports: [
       { recipePortName: 'tronco_P1', physicalLabel: 'Tronco (entrada)', catalogPortName: 'P1' },
@@ -270,9 +284,47 @@ const MASTER_PERFORADA: readonly MasterModel[] = [
       kind: 'uniform-xz',
       measured: false,
       varies: ['ancho'],
-      rationale: 'SAMET no publica TPS de ancho≠300. Regla asumida: escala uniforme por ancho/300.',
+      rationale: 'SAMET no publica TPS de ancho≠300. Hipótesis visual: escala uniforme por ancho/300; no validada como regla constructiva.',
     },
     declaredVariantSkus: ['TPS-450-Z'],
+    revision: 2,
+  },
+  {
+    // DCPS = derivación lateral (sin corte del tronco principal). GEOMETRÍA
+    // DISTINTA a TPS: el tronco se mantiene entero y la derivación sale por
+    // uno de los flancos. No tenemos STEP ni polígono medido — pendiente. Se
+    // modela para que el Configurador no asocie DCPS al STEP de TPS por
+    // confusión histórica.
+    id: 'master:perforada:derivacion_pendiente',
+    label: 'Perforada — derivación lateral DCPS (pendiente)',
+    sistema: 'perforada',
+    pieceKind: 'derivacion_lateral',
+    source: {
+      stepFile: '(pendiente — SAMET no publicó STEP para DCPS)',
+      stepHashShort: '--------',
+      reportJsonPath: '(pendiente)',
+    },
+    recipeKey: 'derivacion_lateral',
+    baseParams: { ancho_mm: 300, ala_mm: 50 },
+    canonicalRotationZDeg: 0,
+    catalogMatch: {
+      familiaIds: PERFORADA_FAMILIAS,
+      catalogTipoPieza: 'T',
+      catalogAlaMm: 50,
+      catalogSkuPrefixes: ['DCPS-'],
+    },
+    ports: [
+      { recipePortName: 'tronco_P1', physicalLabel: 'Tronco (entrada)', catalogPortName: 'P1' },
+      { recipePortName: 'tronco_P2', physicalLabel: 'Tronco (salida)', catalogPortName: 'P2' },
+      { recipePortName: 'boca_derivacion', physicalLabel: 'Boca de derivación lateral', catalogPortName: 'P3' },
+    ],
+    variationRule: {
+      kind: 'none',
+      measured: false,
+      varies: [],
+      rationale: 'DCPS geometría distinta de TPS (sin corte del tronco). Sin STEP medido — la asociación de los SKUs SAM_DCPS-*-Z queda explícita como PENDIENTE. No se genera variante hasta disponer del polígono.',
+    },
+    declaredVariantSkus: [],
     revision: 1,
   },
   {
@@ -343,13 +395,17 @@ const MASTER_ESCALERA: readonly MasterModel[] = [
       { recipePortName: 'P2', physicalLabel: 'Boca x_max', catalogPortName: 'P2' },
     ],
     variationRule: {
-      kind: 'none',
+      // TRES tiene polígono rectangular — la regla se deriva por construcción:
+      // ancho escala Z, ala escala Y independientemente, longitud escala X. No
+      // depende de otro STEP para ser válida; una variante 450×65 o 300×90 se
+      // genera con factores exactos sobre las aristas medidas.
+      kind: 'ala-independent',
       measured: true,
-      varies: [],
-      rationale: 'Polígono medido en TRES-300-065-18-Z (ancho=300, ala=65). SAMET no publica regla de variación; cualquier variante ≠300 o ≠65 queda estimada hasta medir otro STEP.',
+      varies: ['ancho', 'ala', 'longitud'],
+      rationale: 'TRES polígono rectangular medido (ancho=300, ala=65, longitud=3000). La geometría se extiende sin ambigüedad: ancho escala Z, ala escala Y, longitud escala X. Variantes 450/600 ×  alas 65/90/115 generables con factores exactos.',
     },
-    declaredVariantSkus: [],
-    revision: 1,
+    declaredVariantSkus: ['TRES-450-065-18-Z', 'TRES-300-090-18-Z'],
+    revision: 2,
   },
   {
     id: 'master:escalera:curva_horizontal_45',
@@ -526,27 +582,44 @@ export function findMasterForProduct(product: {
   tipo_pieza?: unknown;
   ala_nominal_mm?: unknown;
   angulo_grados?: unknown;
+  sku?: unknown;
+  producto_id?: unknown;
 }): MasterModel | null {
   const familiaId = typeof product.familia_id === 'string' ? product.familia_id : null;
   const tipo = typeof product.tipo_pieza === 'string' ? product.tipo_pieza : null;
   const ala = typeof product.ala_nominal_mm === 'number' ? product.ala_nominal_mm : null;
   if (!familiaId || !tipo || ala === null) return null;
 
-  const candidates = MASTER_MODELS.filter(
-    (m) =>
-      m.catalogMatch.familiaIds.includes(familiaId) &&
-      m.catalogMatch.catalogTipoPieza === tipo &&
-      m.catalogMatch.catalogAlaMm === ala,
-  );
+  const sku = typeof product.sku === 'string' ? product.sku : null;
+  const productoId = typeof product.producto_id === 'string' ? product.producto_id : null;
+  // Para discriminar TPS vs DCPS (mismo tipo_pieza='T') usamos el prefijo del
+  // SKU o del producto_id. producto_id puede venir como `SAM_TPS-300-Z`, sku
+  // como `TPS-300-Z`.
+  const skuPrefix = sku ?? productoId?.replace(/^SAM_/, '') ?? null;
+
+  const candidates = MASTER_MODELS.filter((m) => {
+    if (!m.catalogMatch.familiaIds.includes(familiaId)) return false;
+    if (m.catalogMatch.catalogTipoPieza !== tipo) return false;
+    if (m.catalogMatch.catalogAlaMm !== ala) return false;
+    if (m.catalogMatch.catalogSkuPrefixes && skuPrefix) {
+      return m.catalogMatch.catalogSkuPrefixes.some((pref) => skuPrefix.startsWith(pref));
+    }
+    return true;
+  });
   if (candidates.length === 0) return null;
-  if (candidates.length === 1) return candidates[0];
+  // Si hay un candidato con prefijo específico que matchea, preferirlo sobre
+  // los "agnósticos" (sin catalogSkuPrefixes) — evita que un producto TPS
+  // caiga en un maestro sin discriminador cuando existe uno específico.
+  const withPrefix = candidates.filter((m) => m.catalogMatch.catalogSkuPrefixes);
+  const effective = withPrefix.length > 0 ? withPrefix : candidates;
+  if (effective.length === 1) return effective[0];
   // Para curva_horizontal hay dos (45° y 90°): desempatar por angulo_grados.
   const angulo = typeof product.angulo_grados === 'number' ? product.angulo_grados : null;
   if (angulo !== null) {
-    const byAngle = candidates.find((m) => m.baseParams.angulo_deg === angulo);
+    const byAngle = effective.find((m) => m.baseParams.angulo_deg === angulo);
     if (byAngle) return byAngle;
   }
-  return candidates[0];
+  return effective[0];
 }
 
 export function findMasterById(id: string): MasterModel | null {

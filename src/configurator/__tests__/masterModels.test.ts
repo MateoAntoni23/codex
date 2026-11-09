@@ -14,9 +14,11 @@ function makeProduct(partial: Partial<Product> & { producto_id: string; sku: str
 }
 
 describe('MASTER_MODELS inventory', () => {
-  it('tiene 12 maestros (6 perforada + 6 escalera)', () => {
-    expect(MASTER_MODELS.length).toBe(12);
-    expect(MASTER_MODELS.filter((m) => m.sistema === 'perforada').length).toBe(6);
+  it('tiene 13 maestros (7 perforada + 6 escalera)', () => {
+    // 7 perforada = 6 geometrías medidas + 1 "derivación lateral pendiente"
+    // (DCPS) que queda declarada pero sin STEP para no confundirla con TPS.
+    expect(MASTER_MODELS.length).toBe(13);
+    expect(MASTER_MODELS.filter((m) => m.sistema === 'perforada').length).toBe(7);
     expect(MASTER_MODELS.filter((m) => m.sistema === 'escalera').length).toBe(6);
   });
 
@@ -27,6 +29,25 @@ describe('MASTER_MODELS inventory', () => {
 
   it('findMasterById devuelve null para id inexistente', () => {
     expect(findMasterById('master:no-existe')).toBeNull();
+  });
+
+  it('CUPS queda clasificada como curva_vertical, no derivación', () => {
+    const cups = MASTER_MODELS.find((m) => m.id === 'master:perforada:curva_vertical_interior');
+    expect(cups).toBeTruthy();
+    expect(cups!.pieceKind).toBe('curva_vertical');
+  });
+
+  it('TPS (tee simétrica) y DCPS (derivación pendiente) son maestros distintos', () => {
+    const tps = MASTER_MODELS.find((m) => m.id === 'master:perforada:tee_simetrica');
+    const dcps = MASTER_MODELS.find((m) => m.id === 'master:perforada:derivacion_pendiente');
+    expect(tps).toBeTruthy();
+    expect(dcps).toBeTruthy();
+    expect(tps!.pieceKind).toBe('tee_simetrica');
+    expect(dcps!.pieceKind).toBe('derivacion_lateral');
+    // DCPS carece de STEP medido — declaración explícita pendiente.
+    expect(dcps!.source.stepHashShort).toBe('--------');
+    expect(dcps!.variationRule.kind).toBe('none');
+    expect(dcps!.variationRule.measured).toBe(false);
   });
 });
 
@@ -142,7 +163,7 @@ describe('enumerateVariantsForMaster — CPS-45 (regla uniform-xz estimada)', ()
   });
 });
 
-describe('enumerateVariantsForMaster — escalera sin regla (variationRule.kind = none)', () => {
+describe('enumerateVariantsForMaster — TRES (regla ala-independent MEDIDA)', () => {
   const master = findMasterById('master:escalera:tramo_recto')!;
   const productos: Product[] = [
     // Mismo ancho+ala → base.
@@ -155,7 +176,7 @@ describe('enumerateVariantsForMaster — escalera sin regla (variationRule.kind 
       ala_nominal_mm: 65,
       longitud_comercial_mm: 3000,
     }),
-    // Ancho distinto → requires-master (la regla es `none`).
+    // Ancho distinto → regla ala-independent cubre; además está declared.
     makeProduct({
       producto_id: 'SAM_TRES-450-065-18-Z',
       sku: 'TRES-450-065-18-Z',
@@ -165,7 +186,7 @@ describe('enumerateVariantsForMaster — escalera sin regla (variationRule.kind 
       ala_nominal_mm: 65,
       longitud_comercial_mm: 3000,
     }),
-    // Ala distinta → también requires-master.
+    // Ala distinta → regla ala-independent cubre también.
     makeProduct({
       producto_id: 'SAM_TRES-300-090-18-Z',
       sku: 'TRES-300-090-18-Z',
@@ -178,18 +199,78 @@ describe('enumerateVariantsForMaster — escalera sin regla (variationRule.kind 
   ];
   const variants = enumerateVariantsForMaster(master, productos);
 
-  it('ancho=300 ala=65 queda base', () => {
-    expect(variants.find((v) => v.sku === 'TRES-300-065-18-Z')?.origin).toBe('base');
+  it('ancho=300 ala=65 queda base y proyecta puertos vía outline', () => {
+    const v = variants.find((v) => v.sku === 'TRES-300-065-18-Z')!;
+    expect(v.origin).toBe('base');
+    // Puertos proyectados desde escaleraOutlines (TRES polígono rectangular).
+    expect(v.ports.length).toBe(2);
+    expect(v.ports[0].centerMm).not.toBeNull();
+    expect(v.ports[0].normal).not.toBeNull();
   });
 
-  it('ancho=450 ala=65 queda requires-master', () => {
-    expect(variants.find((v) => v.sku === 'TRES-450-065-18-Z')?.origin).toBe('requires-master');
+  it('ancho=450 ala=65 queda declared y proyecta Z por 450/300=1.5', () => {
+    const v = variants.find((v) => v.sku === 'TRES-450-065-18-Z')!;
+    expect(v.origin).toBe('declared');
+    expect(v.scale.x).toBe(1);       // longitud no cambia
+    expect(v.scale.z).toBeCloseTo(1.5, 3);
+    expect(v.scale.y).toBe(1);
+    // Puertos proyectados con factorZ=1.5 aplicado al ancho_nominal de la boca.
+    expect(v.ports.length).toBe(2);
+    const p1 = v.ports[0];
+    expect(p1.centerMm).not.toBeNull();
+    // La ala centra el puerto en Y=ala/2 (65/2=32.5 — no cambia con ancho).
+    expect(p1.centerMm![1]).toBeCloseTo(32.5, 3);
   });
 
-  it('ancho=300 ala=90 queda requires-master y advierte sobre el ala', () => {
+  it('ancho=300 ala=90 queda declared, scale.y=90/65 y centra Y en ala/2=45', () => {
     const v = variants.find((v) => v.sku === 'TRES-300-090-18-Z')!;
+    expect(v.origin).toBe('declared');
+    expect(v.scale.z).toBe(1);                    // ancho no cambia
+    expect(v.scale.y).toBeCloseTo(90 / 65, 3);   // ala-independent escala Y por ala/baseAla
+    const p1 = v.ports[0];
+    expect(p1.centerMm).not.toBeNull();
+    expect(p1.centerMm![1]).toBeCloseTo(45, 3);
+  });
+});
+
+describe('DCPS producto sin STEP medido → master pendiente', () => {
+  it('SAM_DCPS-300-Z resuelve al master derivacion_pendiente, no a tee_simetrica', () => {
+    const m = findMasterForProduct({
+      familia_id: 'SAM-STP-Z',
+      tipo_pieza: 'T',
+      ala_nominal_mm: 50,
+      sku: 'DCPS-300-Z',
+      producto_id: 'SAM_DCPS-300-Z',
+    });
+    expect(m?.id).toBe('master:perforada:derivacion_pendiente');
+  });
+
+  it('SAM_TPS-300-Z resuelve al master tee_simetrica (no pendiente)', () => {
+    const m = findMasterForProduct({
+      familia_id: 'SAM-STP-Z',
+      tipo_pieza: 'T',
+      ala_nominal_mm: 50,
+      sku: 'TPS-300-Z',
+      producto_id: 'SAM_TPS-300-Z',
+    });
+    expect(m?.id).toBe('master:perforada:tee_simetrica');
+  });
+
+  it('DCPS-450 queda requires-master por regla "none" (sin STEP)', () => {
+    const master = findMasterById('master:perforada:derivacion_pendiente')!;
+    const productos: Product[] = [
+      makeProduct({
+        producto_id: 'SAM_DCPS-450-Z',
+        sku: 'DCPS-450-Z',
+        familia_id: 'SAM-STP-Z',
+        tipo_pieza: 'T',
+        ancho_nominal_mm: 450,
+        ala_nominal_mm: 50,
+      }),
+    ];
+    const variants = enumerateVariantsForMaster(master, productos);
+    const v = variants.find((v) => v.sku === 'DCPS-450-Z')!;
     expect(v.origin).toBe('requires-master');
-    expect(v.warnings.join(' ')).toMatch(/ala/i);
   });
 });
 
