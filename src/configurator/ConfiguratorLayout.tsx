@@ -26,29 +26,51 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTrayStore } from '../tray/store';
 import type { Product } from '../tray/model';
-import { getEffectiveMapping, type ProductPortMapping } from '../workspace/catalogPortMapping';
+import { type ProductPortMapping } from '../workspace/catalogPortMapping';
 import { useCatalogConfigStore } from './catalogConfigStore';
 import { InspectorTabContent, TABS, type TabId } from './ConfiguratorInspectorTabs';
 import { ConfiguratorViewer } from './ConfiguratorViewer';
+import { classifySistema, SISTEMAS, type Sistema } from './sistemaClassifier';
+import {
+  classifyProductMapping,
+  type MappingStatus,
+} from './productMappingStatus';
 import './configurator.css';
 
-type MappingStatus = 'default' | 'override' | 'sin-mapping';
+const ALA_NO_DECLARADA = '__sin_ala__';
+const ANCHO_NO_DECLARADO = '__sin_ancho__';
 
-function mappingStatusFor(productoId: string): MappingStatus {
-  const m = getEffectiveMapping(productoId);
-  if (!m) return 'sin-mapping';
-  return m.source;
+function alaOf(p: Product): string {
+  const raw = (p as Record<string, unknown>).ala_nominal_mm;
+  return typeof raw === 'number' && Number.isFinite(raw) ? String(raw) : ALA_NO_DECLARADA;
+}
+
+function anchoOf(p: Product): string {
+  return typeof p.ancho_nominal_mm === 'number' && Number.isFinite(p.ancho_nominal_mm)
+    ? String(p.ancho_nominal_mm)
+    : ANCHO_NO_DECLARADO;
+}
+
+function familiaIdOf(p: Product): string | undefined {
+  const v = (p as Record<string, unknown>).familia_id;
+  return typeof v === 'string' ? v : undefined;
 }
 
 interface Filters {
   text: string;
-  tipoPieza: string; // '' = todos
+  sistema: Sistema | '';
+  ala: string; // '', número en texto, o ALA_NO_DECLARADA
+  ancho: string; // '', número en texto, o ANCHO_NO_DECLARADO
+  tipoPieza: string;
   estado: MappingStatus | '';
 }
 
 function matchesFilter(p: Product, f: Filters): boolean {
+  if (f.sistema && classifySistema(familiaIdOf(p)) !== f.sistema) return false;
+  if (f.ala && alaOf(p) !== f.ala) return false;
+  if (f.ancho && anchoOf(p) !== f.ancho) return false;
   if (f.tipoPieza && p.tipo_pieza !== f.tipoPieza) return false;
-  if (f.estado && mappingStatusFor(p.producto_id) !== f.estado) return false;
+  if (f.estado && classifyProductMapping(p).status !== f.estado) return false;
   if (f.text) {
     const q = f.text.toLowerCase();
     const hay = [p.producto_id, p.sku, p.descripcion_original]
@@ -59,20 +81,44 @@ function matchesFilter(p: Product, f: Filters): boolean {
   return true;
 }
 
+function formatAlaOption(k: string): string {
+  return k === ALA_NO_DECLARADA ? 'Ala no declarada' : `${k} mm`;
+}
+
+function formatAnchoOption(k: string): string {
+  return k === ANCHO_NO_DECLARADO ? 'Ancho no declarado' : `${k} mm`;
+}
+
+const EMPTY_FILTERS: Filters = {
+  text: '',
+  sistema: '',
+  ala: '',
+  ancho: '',
+  tipoPieza: '',
+  estado: '',
+};
+
+interface FilterOptions {
+  readonly sistemas: readonly Sistema[];
+  readonly alas: readonly string[];
+  readonly anchos: readonly string[];
+  readonly tiposPieza: readonly string[];
+}
+
 function ProductList({
   products,
   selected,
   onSelect,
   filters,
   setFilters,
-  tipoPiezaOptions,
+  options,
 }: {
   products: readonly Product[];
   selected: string | null;
   onSelect: (id: string) => void;
   filters: Filters;
   setFilters: (f: Filters) => void;
-  tipoPiezaOptions: readonly string[];
+  options: FilterOptions;
 }) {
   // Subscribe to overrides so mapping badges + filter re-run on upsert/remove.
   const overrides = useCatalogConfigStore((s) => s.overrides);
@@ -80,6 +126,23 @@ function ProductList({
     () => products.filter((p) => matchesFilter(p, filters)),
     [products, filters, overrides],
   );
+
+  // Conteos por sistema para el UI jerárquico. Se recalculan sobre el conjunto
+  // base (todos los productos) para que el usuario siempre vea la distribución
+  // completa aunque aplique otros filtros.
+  const sistemaCounts = useMemo(() => {
+    const m = new Map<Sistema, number>();
+    for (const p of products) {
+      const s = classifySistema(familiaIdOf(p));
+      m.set(s, (m.get(s) ?? 0) + 1);
+    }
+    return m;
+  }, [products]);
+
+  const hasAnyFilter =
+    filters.text || filters.sistema || filters.ala || filters.ancho ||
+    filters.tipoPieza || filters.estado;
+
   return (
     <aside className="cfg-panel cfg-panel-left">
       <div className="cfg-panel-title">Catálogo</div>
@@ -91,15 +154,58 @@ function ProductList({
           onChange={(e) => setFilters({ ...filters, text: e.target.value })}
           className="cfg-filter-input"
           aria-label="Buscar productos"
+          data-testid="cfg-filter-text"
         />
+        <select
+          value={filters.sistema}
+          onChange={(e) => setFilters({ ...filters, sistema: e.target.value as Sistema | '', ala: '' })}
+          className="cfg-filter-select"
+          aria-label="Filtrar por sistema"
+          data-testid="cfg-filter-sistema"
+        >
+          <option value="">Todos los sistemas</option>
+          {SISTEMAS.map((s) => {
+            const n = sistemaCounts.get(s.id) ?? 0;
+            return (
+              <option key={s.id} value={s.id} disabled={n === 0}>
+                {s.label} ({n})
+              </option>
+            );
+          })}
+        </select>
+        <select
+          value={filters.ala}
+          onChange={(e) => setFilters({ ...filters, ala: e.target.value })}
+          className="cfg-filter-select"
+          aria-label="Filtrar por ala nominal"
+          data-testid="cfg-filter-ala"
+        >
+          <option value="">Todas las alas</option>
+          {options.alas.map((a) => (
+            <option key={a} value={a}>{formatAlaOption(a)}</option>
+          ))}
+        </select>
+        <select
+          value={filters.ancho}
+          onChange={(e) => setFilters({ ...filters, ancho: e.target.value })}
+          className="cfg-filter-select"
+          aria-label="Filtrar por ancho nominal"
+          data-testid="cfg-filter-ancho"
+        >
+          <option value="">Todos los anchos</option>
+          {options.anchos.map((w) => (
+            <option key={w} value={w}>{formatAnchoOption(w)}</option>
+          ))}
+        </select>
         <select
           value={filters.tipoPieza}
           onChange={(e) => setFilters({ ...filters, tipoPieza: e.target.value })}
           className="cfg-filter-select"
           aria-label="Filtrar por tipo de pieza"
+          data-testid="cfg-filter-tipo"
         >
           <option value="">Todos los tipos</option>
-          {tipoPiezaOptions.map((t) => (
+          {options.tiposPieza.map((t) => (
             <option key={t} value={t}>{t}</option>
           ))}
         </select>
@@ -108,17 +214,31 @@ function ProductList({
           onChange={(e) => setFilters({ ...filters, estado: e.target.value as MappingStatus | '' })}
           className="cfg-filter-select"
           aria-label="Filtrar por estado de mapping"
+          data-testid="cfg-filter-estado"
         >
           <option value="">Cualquier estado</option>
-          <option value="default">Mapping por defecto</option>
-          <option value="override">Override de proyecto</option>
-          <option value="sin-mapping">Sin mapping (identidad)</option>
+          <option value="no-recipe">Sin receta</option>
+          <option value="recipe-not-ready">Receta no habilitada</option>
+          <option value="recipe-default-identity">Mapping identidad</option>
+          <option value="recipe-default-mapping">Mapping por defecto</option>
+          <option value="recipe-override">Override de proyecto</option>
+          <option value="recipe-needs-mapping">Falta mapping</option>
         </select>
+        {hasAnyFilter && (
+          <button
+            type="button"
+            className="cfg-btn"
+            onClick={() => setFilters(EMPTY_FILTERS)}
+            data-testid="cfg-filter-clear"
+          >
+            Limpiar filtros
+          </button>
+        )}
       </div>
       <div className="cfg-list-meta">{visible.length} de {products.length} productos</div>
       <ul className="cfg-list">
         {visible.map((p) => {
-          const st = mappingStatusFor(p.producto_id);
+          const info = classifyProductMapping(p);
           return (
             <li key={p.producto_id}>
               <button
@@ -126,10 +246,14 @@ function ProductList({
                 className={`cfg-list-item ${selected === p.producto_id ? 'is-active' : ''}`}
                 onClick={() => onSelect(p.producto_id)}
                 data-testid={`cfg-product-${p.producto_id}`}
+                data-status={info.status}
+                title={info.cause}
               >
                 <span className="cfg-list-sku">{p.sku}</span>
                 <span className="cfg-list-tipo">{p.tipo_pieza}</span>
-                <span className={`cfg-list-status cfg-status-${st}`}>{st}</span>
+                <span className={`cfg-list-status cfg-status-${info.status}`}>
+                  {info.label}
+                </span>
               </button>
             </li>
           );
@@ -280,7 +404,7 @@ function ConfigIO() {
 export function ConfiguratorLayout() {
   const context = useTrayStore((s) => s.context);
   const [selected, setSelected] = useState<string | null>(null);
-  const [filters, setFilters] = useState<Filters>({ text: '', tipoPieza: '', estado: '' });
+  const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
 
   useEffect(() => {
     void useTrayStore.getState().initialize();
@@ -291,9 +415,26 @@ export function ConfiguratorLayout() {
   }, []);
 
   const products = context?.productos ?? [];
-  const tipoPiezaOptions = useMemo(() => {
-    return Array.from(new Set(products.map((p) => p.tipo_pieza))).sort();
-  }, [products]);
+  const filterOptions = useMemo<FilterOptions>(() => {
+    // Opciones de ala/ancho dependen del sistema seleccionado para evitar
+    // ofrecer alas inexistentes dentro del sistema (p.ej. ala=150 sólo en G).
+    const scoped = filters.sistema
+      ? products.filter((p) => classifySistema(familiaIdOf(p)) === filters.sistema)
+      : products;
+    const alas = Array.from(new Set(scoped.map(alaOf))).sort((a, b) => {
+      if (a === ALA_NO_DECLARADA) return 1;
+      if (b === ALA_NO_DECLARADA) return -1;
+      return Number(a) - Number(b);
+    });
+    const anchos = Array.from(new Set(scoped.map(anchoOf))).sort((a, b) => {
+      if (a === ANCHO_NO_DECLARADO) return 1;
+      if (b === ANCHO_NO_DECLARADO) return -1;
+      return Number(a) - Number(b);
+    });
+    const tipos = Array.from(new Set(scoped.map((p) => p.tipo_pieza))).sort();
+    return { sistemas: SISTEMAS.map((s) => s.id), alas, anchos, tiposPieza: tipos };
+  }, [products, filters.sistema]);
+
   const selectedProduct = useMemo(
     () => products.find((p) => p.producto_id === selected) ?? null,
     [products, selected],
@@ -313,7 +454,7 @@ export function ConfiguratorLayout() {
           onSelect={setSelected}
           filters={filters}
           setFilters={setFilters}
-          tipoPiezaOptions={tipoPiezaOptions}
+          options={filterOptions}
         />
         <ConfiguratorViewer product={selectedProduct} />
         <Inspector product={selectedProduct} />

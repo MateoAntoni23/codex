@@ -163,6 +163,14 @@
 .cfg-status-override  { color: #ffcc88; border-color: #775533; }
 .cfg-status-sin-mapping { color: #666688; border-color: #33334a; }
 
+/* Nuevos estados de mapping (productMappingStatus) */
+.cfg-status-no-recipe              { color: #666688; border-color: #33334a; }
+.cfg-status-recipe-not-ready       { color: #aa88cc; border-color: #553377; }
+.cfg-status-recipe-default-identity{ color: #88ccaa; border-color: #336655; }
+.cfg-status-recipe-default-mapping { color: #88ccff; border-color: #335577; }
+.cfg-status-recipe-override        { color: #ffcc88; border-color: #775533; }
+.cfg-status-recipe-needs-mapping   { color: #ff9966; border-color: #884433; }
+
 /* ─── Center: viewer ─── */
 
 .cfg-viewer {
