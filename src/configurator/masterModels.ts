@@ -1,0 +1,554 @@
+/**
+ * masterModels — ENTIDAD "modelo maestro": separa geometría del SKU comercial.
+ *
+ * Un `MasterModel` representa UNA geometría paramétrica ya resuelta en este
+ * repo (STEP aportado + receta medida + polígono base + regla de variación).
+ * Un SKU comercial del catálogo (SAM_TRPS-300-22-Z, SAM_TRES-300-065-18-Z…)
+ * se liga a un maestro por la combinación `familia_id` + `piece_kind` del
+ * snapshot. Dos SKUs pueden compartir maestro geométrico (perforada Z y ZN
+ * son la misma geometría con acabado distinto) sin fusionar su ficha técnica.
+ *
+ * Alcance: trabajamos exclusivamente con los STEP que YA están en el repo.
+ * No se intenta cubrir "los 885 sin receta" — este módulo documenta qué está
+ * disponible y con qué regla de variación.
+ *
+ * Fuentes:
+ *   - Perforada SAM-STP-Z (6 maestros, ancho 300 base, variante 450 declarada):
+ *     definidos en `src/parametric/catalog.ts` (PARAMETRIC_CATALOG) + polígonos
+ *     en `src/parametric/geometry/outlines.ts`.
+ *   - Escalera SAM-STE-Z (6 maestros, ancho 300 × ala 65 fijos):
+ *     polígonos en `src/parametric/geometry/escaleraOutlines.ts`.
+ *
+ * Revisión:
+ *   Cada maestro lleva un `revision` monotónico. Si cambia la geometría base
+ *   o la regla de variación, incrementamos la revisión → los proyectos ya
+ *   grabados con revisión anterior conservan sus valores (via el snapshot
+ *   del proyecto) y ofrecemos actualización cuando el usuario reabre.
+ *
+ * NO persiste overrides aquí — eso vive en catalogConfigStore. Este módulo es
+ * datos estáticos (frozen) de los maestros disponibles.
+ */
+
+export type MasterSistema = 'perforada' | 'escalera';
+
+export type MasterPieceKind =
+  | 'tramo_recto'
+  | 'curva_horizontal'
+  | 'curva_vertical'
+  | 'derivacion_lateral'
+  | 'cruz'
+  | 'reduccion_lateral';
+
+export type VariationRuleKind =
+  | 'ancho-only-z'      // TRPS: ancho_mm escala sólo Z; longitud/ala fijos.
+  | 'uniform-xz'        // CPS/TPS/XPS/escalera: escala uniforme en X,Z por ancho/300.
+  | 'depth-only'        // CUPS: perfil XY fijo, sólo profundidad Z escala por ancho.
+  | 'ala-independent'   // Escalera: ancho escala X,Z; ala escala Y independiente.
+  | 'none';             // Sin regla codificada; solo ancho base.
+
+export interface MasterVariationRule {
+  readonly kind: VariationRuleKind;
+  /** True si la regla fue medida contra otro STEP; false si es extrapolación. */
+  readonly measured: boolean;
+  /** Dimensiones que varían. Sirve para generar variantes legibles. */
+  readonly varies: readonly ('ancho' | 'ala' | 'longitud' | 'angulo')[];
+  /** Explicación corta para UI. */
+  readonly rationale: string;
+}
+
+export interface MasterBaseParams {
+  readonly ancho_mm: number;
+  readonly ala_mm: number;
+  readonly longitud_mm?: number;
+  readonly angulo_deg?: number;
+}
+
+export interface MasterSource {
+  readonly stepFile: string;
+  /** Primeros 8 chars del SHA-256 (medido por tools/step_parametric). */
+  readonly stepHashShort: string;
+  readonly reportJsonPath: string;
+  readonly glbUrl?: string;
+}
+
+export interface MasterModel {
+  readonly id: string;
+  readonly label: string;
+  readonly sistema: MasterSistema;
+  readonly pieceKind: MasterPieceKind;
+  readonly source: MasterSource;
+  /** Clave de receta en el dispatcher paramétrico. */
+  readonly recipeKey: string;
+  readonly baseParams: MasterBaseParams;
+  /** Rotación canónica aplicada al polígono/malla (p.ej. CUPS +45° en Z). */
+  readonly canonicalRotationZDeg: number;
+  /**
+   * SKUs del snapshot asociables a este maestro por (familia_id, piece_kind,
+   * ala_mm). Se derivan en runtime vs el snapshot — aquí sólo listamos los
+   * `familia_id` y `catalog_piece_kind` esperados.
+   */
+  readonly catalogMatch: {
+    readonly familiaIds: readonly string[];
+    /** Valor de `tipo_pieza` en el snapshot SAMET. */
+    readonly catalogTipoPieza: string;
+    /** `ala_nominal_mm` del snapshot que vincula con este maestro. */
+    readonly catalogAlaMm: number;
+  };
+  readonly ports: readonly {
+    readonly recipePortName: string;
+    readonly physicalLabel: string;
+    /** Nombre en el catálogo SAMET (P1/P2/...). */
+    readonly catalogPortName: string;
+  }[];
+  readonly variationRule: MasterVariationRule;
+  /** Variantes YA declaradas con polígono medido (no estimadas). */
+  readonly declaredVariantSkus: readonly string[];
+  readonly revision: number;
+}
+
+// ─── Maestros perforada SAM-STP-Z ────────────────────────────────────────────
+//
+// Los 6 maestros de familia SAM-STP-Z (ala 50 mm por catálogo). Cada uno tiene
+// STEP aportado, polígono medido en outlines.ts y receta en recipes.ts.
+
+const PERFORADA_FAMILIAS: readonly string[] = ['SAM-STP-Z', 'SAM-STP-ZN'];
+
+const MASTER_PERFORADA: readonly MasterModel[] = [
+  {
+    id: 'master:perforada:tramo_recto',
+    label: 'Perforada — tramo recto (TRPS)',
+    sistema: 'perforada',
+    pieceKind: 'tramo_recto',
+    source: {
+      stepFile: 'TRPS-300-22-Z.STEP',
+      stepHashShort: 'd2288065',
+      reportJsonPath: 'tools/step_parametric/report/TRPS-300-22-Z.json',
+      glbUrl: '/parametric/originals_glb/TRPS-300-22-Z.glb',
+    },
+    recipeKey: 'tramo_recto',
+    baseParams: { ancho_mm: 300, ala_mm: 50, longitud_mm: 3000 },
+    canonicalRotationZDeg: 0,
+    catalogMatch: {
+      familiaIds: PERFORADA_FAMILIAS,
+      catalogTipoPieza: 'recta',
+      catalogAlaMm: 50,
+    },
+    ports: [
+      { recipePortName: 'P1', physicalLabel: 'Boca x_min', catalogPortName: 'P1' },
+      { recipePortName: 'P2', physicalLabel: 'Boca x_max', catalogPortName: 'P2' },
+    ],
+    variationRule: {
+      kind: 'ancho-only-z',
+      measured: true,
+      varies: ['ancho', 'longitud'],
+      rationale: 'TRPS escala sólo la dimensión Z (ancho) y acepta longitud comercial del catálogo. Ala fija 50 mm.',
+    },
+    declaredVariantSkus: ['TRPS-450-20-Z'],
+    revision: 1,
+  },
+  {
+    id: 'master:perforada:curva_horizontal_45',
+    label: 'Perforada — curva horizontal 45° (CPS-45)',
+    sistema: 'perforada',
+    pieceKind: 'curva_horizontal',
+    source: {
+      stepFile: 'CPS-300-45-Z.STEP',
+      stepHashShort: '8d0395e9',
+      reportJsonPath: 'tools/step_parametric/report/CPS-300-45-Z.json',
+      glbUrl: '/parametric/originals_glb/CPS-300-45-Z.glb',
+    },
+    recipeKey: 'curva_horizontal',
+    baseParams: { ancho_mm: 300, ala_mm: 50, angulo_deg: 45 },
+    canonicalRotationZDeg: 0,
+    catalogMatch: {
+      familiaIds: PERFORADA_FAMILIAS,
+      catalogTipoPieza: 'curva horizontal',
+      catalogAlaMm: 50,
+    },
+    ports: [
+      { recipePortName: 'P1', physicalLabel: 'Boca tangente inicial', catalogPortName: 'P1' },
+      { recipePortName: 'P2', physicalLabel: 'Boca tangente final', catalogPortName: 'P2' },
+    ],
+    variationRule: {
+      kind: 'uniform-xz',
+      measured: false,
+      varies: ['ancho', 'angulo'],
+      rationale: 'SAMET no publica CPS de ancho≠300. Regla asumida: escala uniforme del polígono por ancho/300.',
+    },
+    declaredVariantSkus: ['CPS-450-45-Z'],
+    revision: 1,
+  },
+  {
+    id: 'master:perforada:curva_horizontal_90',
+    label: 'Perforada — curva horizontal 90° (CPS-90)',
+    sistema: 'perforada',
+    pieceKind: 'curva_horizontal',
+    source: {
+      stepFile: 'CPS-300-90-Z.STEP',
+      stepHashShort: '8677caca',
+      reportJsonPath: 'tools/step_parametric/report/CPS-300-90-Z.json',
+      glbUrl: '/parametric/originals_glb/CPS-300-90-Z.glb',
+    },
+    recipeKey: 'curva_horizontal',
+    baseParams: { ancho_mm: 300, ala_mm: 50, angulo_deg: 90 },
+    canonicalRotationZDeg: 0,
+    catalogMatch: {
+      familiaIds: PERFORADA_FAMILIAS,
+      catalogTipoPieza: 'curva horizontal',
+      catalogAlaMm: 50,
+    },
+    ports: [
+      { recipePortName: 'P1', physicalLabel: 'Boca tangente inicial', catalogPortName: 'P1' },
+      { recipePortName: 'P2', physicalLabel: 'Boca tangente final', catalogPortName: 'P2' },
+    ],
+    variationRule: {
+      kind: 'uniform-xz',
+      measured: false,
+      varies: ['ancho'],
+      rationale: 'SAMET no publica CPS 90° de ancho≠300. Regla asumida: escala uniforme del polígono por ancho/300.',
+    },
+    declaredVariantSkus: ['CPS-450-90-Z'],
+    revision: 1,
+  },
+  {
+    id: 'master:perforada:curva_vertical_interior',
+    label: 'Perforada — curva vertical interior (CUPS)',
+    sistema: 'perforada',
+    pieceKind: 'curva_vertical',
+    source: {
+      stepFile: 'CUPS-300-A-Z.STEP',
+      stepHashShort: '28cf5602',
+      reportJsonPath: 'tools/step_parametric/report/CUPS-300-A-Z.json',
+      glbUrl: '/parametric/originals_glb/CUPS-300-A-Z.glb',
+    },
+    recipeKey: 'curva_vertical',
+    baseParams: { ancho_mm: 300, ala_mm: 50 },
+    canonicalRotationZDeg: 45,
+    catalogMatch: {
+      familiaIds: PERFORADA_FAMILIAS,
+      catalogTipoPieza: 'curva vertical interior',
+      catalogAlaMm: 50,
+    },
+    ports: [
+      { recipePortName: 'P1_horizontal', physicalLabel: 'Boca horizontal (bandeja)', catalogPortName: 'P1' },
+      { recipePortName: 'P2_vertical', physicalLabel: 'Boca vertical (tramo ascendente)', catalogPortName: 'P2' },
+    ],
+    variationRule: {
+      kind: 'depth-only',
+      measured: false,
+      varies: ['ancho'],
+      rationale: 'SAMET no publica CUPS de ancho≠300. Regla asumida: perfil XY fijo, sólo profundidad Z escala por ancho.',
+    },
+    declaredVariantSkus: ['CUPS-450-A-Z'],
+    revision: 1,
+  },
+  {
+    id: 'master:perforada:derivacion_lateral',
+    label: 'Perforada — tee simétrica (TPS)',
+    sistema: 'perforada',
+    pieceKind: 'derivacion_lateral',
+    source: {
+      stepFile: 'DCPS-300-Z.STEP', // nombre físico; identificación geométrica: TPS
+      stepHashShort: 'c567bd3a',
+      reportJsonPath: 'tools/step_parametric/report/DCPS-300-Z.json',
+      glbUrl: '/parametric/originals_glb/DCPS-300-Z.glb',
+    },
+    recipeKey: 'derivacion_lateral',
+    baseParams: { ancho_mm: 300, ala_mm: 50 },
+    canonicalRotationZDeg: 0,
+    catalogMatch: {
+      familiaIds: PERFORADA_FAMILIAS,
+      catalogTipoPieza: 'T',
+      catalogAlaMm: 50,
+    },
+    ports: [
+      { recipePortName: 'tronco_P1', physicalLabel: 'Tronco (entrada)', catalogPortName: 'P1' },
+      { recipePortName: 'tronco_P2', physicalLabel: 'Tronco (salida)', catalogPortName: 'P2' },
+      { recipePortName: 'boca_derivacion', physicalLabel: 'Boca de derivación', catalogPortName: 'P3' },
+    ],
+    variationRule: {
+      kind: 'uniform-xz',
+      measured: false,
+      varies: ['ancho'],
+      rationale: 'SAMET no publica TPS de ancho≠300. Regla asumida: escala uniforme por ancho/300.',
+    },
+    declaredVariantSkus: ['TPS-450-Z'],
+    revision: 1,
+  },
+  {
+    id: 'master:perforada:cruz',
+    label: 'Perforada — cruz plana (XPS)',
+    sistema: 'perforada',
+    pieceKind: 'cruz',
+    source: {
+      stepFile: 'XPS-300-Z.STEP',
+      stepHashShort: '4ab08eda',
+      reportJsonPath: 'tools/step_parametric/report/XPS-300-Z.json',
+      glbUrl: '/parametric/originals_glb/XPS-300-Z.glb',
+    },
+    recipeKey: 'cruz',
+    baseParams: { ancho_mm: 300, ala_mm: 50 },
+    canonicalRotationZDeg: 0,
+    catalogMatch: {
+      familiaIds: PERFORADA_FAMILIAS,
+      catalogTipoPieza: 'X',
+      catalogAlaMm: 50,
+    },
+    ports: [
+      { recipePortName: 'P1_x_neg', physicalLabel: 'Brazo X−', catalogPortName: 'P1' },
+      { recipePortName: 'P2_x_pos', physicalLabel: 'Brazo X+', catalogPortName: 'P2' },
+      { recipePortName: 'P3_z_neg', physicalLabel: 'Brazo Z−', catalogPortName: 'P3' },
+      { recipePortName: 'P4_z_pos', physicalLabel: 'Brazo Z+', catalogPortName: 'P4' },
+    ],
+    variationRule: {
+      kind: 'uniform-xz',
+      measured: false,
+      varies: ['ancho'],
+      rationale: 'SAMET no publica XPS de ancho≠300. Regla asumida: escala uniforme por ancho/300.',
+    },
+    declaredVariantSkus: ['XPS-450-Z'],
+    revision: 1,
+  },
+];
+
+// ─── Maestros escalera SAM-STE ──────────────────────────────────────────────
+//
+// Polígonos medidos en escaleraOutlines.ts para ala=65 ancho=300. Sin variantes
+// 450/600 explícitas; el snapshot publica alas 65/90/115 y anchos
+// 150/300/450/600 pero no hay STEP para esas combinaciones.
+
+const ESCALERA_FAMILIAS: readonly string[] = ['SAM-STE-Z', 'SAM-STE-G'];
+
+const MASTER_ESCALERA: readonly MasterModel[] = [
+  {
+    id: 'master:escalera:tramo_recto',
+    label: 'Escalera — tramo recto (TRES)',
+    sistema: 'escalera',
+    pieceKind: 'tramo_recto',
+    source: {
+      stepFile: 'TRES-300-065-18-Z.STEP',
+      stepHashShort: '76f3fbb4',
+      reportJsonPath: 'tools/step_parametric/report/escalera/TRES-300-065-18-Z.json',
+    },
+    recipeKey: 'escalera:tramo_recto',
+    baseParams: { ancho_mm: 300, ala_mm: 65, longitud_mm: 3000 },
+    canonicalRotationZDeg: 0,
+    catalogMatch: {
+      familiaIds: ESCALERA_FAMILIAS,
+      catalogTipoPieza: 'recta',
+      catalogAlaMm: 65,
+    },
+    ports: [
+      { recipePortName: 'P1', physicalLabel: 'Boca x_min', catalogPortName: 'P1' },
+      { recipePortName: 'P2', physicalLabel: 'Boca x_max', catalogPortName: 'P2' },
+    ],
+    variationRule: {
+      kind: 'none',
+      measured: true,
+      varies: [],
+      rationale: 'Polígono medido en TRES-300-065-18-Z (ancho=300, ala=65). SAMET no publica regla de variación; cualquier variante ≠300 o ≠65 queda estimada hasta medir otro STEP.',
+    },
+    declaredVariantSkus: [],
+    revision: 1,
+  },
+  {
+    id: 'master:escalera:curva_horizontal_45',
+    label: 'Escalera — curva horizontal 45° (CS-45)',
+    sistema: 'escalera',
+    pieceKind: 'curva_horizontal',
+    source: {
+      stepFile: 'CS-300-45-065-18-Z.STEP',
+      stepHashShort: '2f572cc3',
+      reportJsonPath: 'tools/step_parametric/report/escalera/CS-300-45-065-18-Z.json',
+    },
+    recipeKey: 'escalera:curva_horizontal',
+    baseParams: { ancho_mm: 300, ala_mm: 65, angulo_deg: 45 },
+    canonicalRotationZDeg: 0,
+    catalogMatch: {
+      familiaIds: ESCALERA_FAMILIAS,
+      catalogTipoPieza: 'curva horizontal',
+      catalogAlaMm: 65,
+    },
+    ports: [
+      { recipePortName: 'P1', physicalLabel: 'Boca tangente inicial', catalogPortName: 'P1' },
+      { recipePortName: 'P2', physicalLabel: 'Boca tangente final', catalogPortName: 'P2' },
+    ],
+    variationRule: {
+      kind: 'none',
+      measured: true,
+      varies: [],
+      rationale: 'Polígono medido 8 vértices sobre STEP ancho=300 ala=65. Sin segundo STEP para derivar regla.',
+    },
+    declaredVariantSkus: [],
+    revision: 1,
+  },
+  {
+    id: 'master:escalera:curva_horizontal_90',
+    label: 'Escalera — curva horizontal 90° (CS-90)',
+    sistema: 'escalera',
+    pieceKind: 'curva_horizontal',
+    source: {
+      stepFile: 'CS-300-90-065-18-Z.STEP',
+      stepHashShort: 'e110db9d',
+      reportJsonPath: 'tools/step_parametric/report/escalera/CS-300-90-065-18-Z.json',
+    },
+    recipeKey: 'escalera:curva_horizontal',
+    baseParams: { ancho_mm: 300, ala_mm: 65, angulo_deg: 90 },
+    canonicalRotationZDeg: 0,
+    catalogMatch: {
+      familiaIds: ESCALERA_FAMILIAS,
+      catalogTipoPieza: 'curva horizontal',
+      catalogAlaMm: 65,
+    },
+    ports: [
+      { recipePortName: 'P1', physicalLabel: 'Boca tangente inicial', catalogPortName: 'P1' },
+      { recipePortName: 'P2', physicalLabel: 'Boca tangente final', catalogPortName: 'P2' },
+    ],
+    variationRule: {
+      kind: 'none',
+      measured: true,
+      varies: [],
+      rationale: 'Polígono medido 8 vértices sobre STEP ancho=300 ala=65.',
+    },
+    declaredVariantSkus: [],
+    revision: 1,
+  },
+  {
+    id: 'master:escalera:derivacion_lateral',
+    label: 'Escalera — tee (TS)',
+    sistema: 'escalera',
+    pieceKind: 'derivacion_lateral',
+    source: {
+      stepFile: 'TS-300-065-18-Z.STEP',
+      stepHashShort: '7e10f01e',
+      reportJsonPath: 'tools/step_parametric/report/escalera/TS-300-065-18-Z.json',
+    },
+    recipeKey: 'escalera:derivacion_lateral',
+    baseParams: { ancho_mm: 300, ala_mm: 65 },
+    canonicalRotationZDeg: 0,
+    catalogMatch: {
+      familiaIds: ESCALERA_FAMILIAS,
+      catalogTipoPieza: 'T',
+      catalogAlaMm: 65,
+    },
+    ports: [
+      { recipePortName: 'P1', physicalLabel: 'Tronco (z_min)', catalogPortName: 'P1' },
+      { recipePortName: 'P2', physicalLabel: 'Boca derivación (x_max)', catalogPortName: 'P2' },
+      { recipePortName: 'P3', physicalLabel: 'Tronco (z_max)', catalogPortName: 'P3' },
+    ],
+    variationRule: {
+      kind: 'none',
+      measured: true,
+      varies: [],
+      rationale: 'Polígono medido 10 vértices sobre STEP ancho=300 ala=65.',
+    },
+    declaredVariantSkus: [],
+    revision: 1,
+  },
+  {
+    id: 'master:escalera:cruz',
+    label: 'Escalera — cruz (XS)',
+    sistema: 'escalera',
+    pieceKind: 'cruz',
+    source: {
+      stepFile: 'XS-300-065-18-Z.STEP',
+      stepHashShort: '4731b052',
+      reportJsonPath: 'tools/step_parametric/report/escalera/XS-300-065-18-Z.json',
+    },
+    recipeKey: 'escalera:cruz',
+    baseParams: { ancho_mm: 300, ala_mm: 65 },
+    canonicalRotationZDeg: 0,
+    catalogMatch: {
+      familiaIds: ESCALERA_FAMILIAS,
+      catalogTipoPieza: 'X',
+      catalogAlaMm: 65,
+    },
+    ports: [
+      { recipePortName: 'P1', physicalLabel: 'Brazo z_min', catalogPortName: 'P1' },
+      { recipePortName: 'P2', physicalLabel: 'Brazo x_max', catalogPortName: 'P2' },
+      { recipePortName: 'P3', physicalLabel: 'Brazo z_max', catalogPortName: 'P3' },
+      { recipePortName: 'P4', physicalLabel: 'Brazo x_min', catalogPortName: 'P4' },
+    ],
+    variationRule: {
+      kind: 'none',
+      measured: true,
+      varies: [],
+      rationale: 'Polígono medido 16 vértices sobre STEP ancho=300 ala=65.',
+    },
+    declaredVariantSkus: [],
+    revision: 1,
+  },
+  {
+    id: 'master:escalera:reduccion_lateral',
+    label: 'Escalera — reducción lateral 300→150 (RIS)',
+    sistema: 'escalera',
+    pieceKind: 'reduccion_lateral',
+    source: {
+      stepFile: 'RIS-15-065-18-Z.STEP',
+      stepHashShort: '93957e14',
+      reportJsonPath: 'tools/step_parametric/report/escalera/RIS-15-065-18-Z.json',
+    },
+    recipeKey: 'escalera:reduccion_lateral',
+    baseParams: { ancho_mm: 300, ala_mm: 65 },
+    canonicalRotationZDeg: 0,
+    catalogMatch: {
+      familiaIds: ESCALERA_FAMILIAS,
+      catalogTipoPieza: 'reducción',
+      catalogAlaMm: 65,
+    },
+    ports: [
+      { recipePortName: 'P1', physicalLabel: 'Boca 150 mm (z_min)', catalogPortName: 'P1' },
+      { recipePortName: 'P2', physicalLabel: 'Boca 300 mm (z_max)', catalogPortName: 'P2' },
+    ],
+    variationRule: {
+      kind: 'none',
+      measured: true,
+      varies: [],
+      rationale: 'Polígono medido 6 vértices; transición ancho 300→150 específica. Otras reducciones (RCS-30-15) tienen STEP sin cara superior plana y quedan pendientes.',
+    },
+    declaredVariantSkus: [],
+    revision: 1,
+  },
+];
+
+export const MASTER_MODELS: readonly MasterModel[] = [
+  ...MASTER_PERFORADA,
+  ...MASTER_ESCALERA,
+];
+
+/**
+ * Busca el maestro aplicable a un producto del snapshot por
+ * (familia_id, tipo_pieza, ala_nominal_mm). Devuelve `null` cuando no hay
+ * maestro declarado — el producto queda sin cobertura paramétrica.
+ */
+export function findMasterForProduct(product: {
+  familia_id?: unknown;
+  tipo_pieza?: unknown;
+  ala_nominal_mm?: unknown;
+  angulo_grados?: unknown;
+}): MasterModel | null {
+  const familiaId = typeof product.familia_id === 'string' ? product.familia_id : null;
+  const tipo = typeof product.tipo_pieza === 'string' ? product.tipo_pieza : null;
+  const ala = typeof product.ala_nominal_mm === 'number' ? product.ala_nominal_mm : null;
+  if (!familiaId || !tipo || ala === null) return null;
+
+  const candidates = MASTER_MODELS.filter(
+    (m) =>
+      m.catalogMatch.familiaIds.includes(familiaId) &&
+      m.catalogMatch.catalogTipoPieza === tipo &&
+      m.catalogMatch.catalogAlaMm === ala,
+  );
+  if (candidates.length === 0) return null;
+  if (candidates.length === 1) return candidates[0];
+  // Para curva_horizontal hay dos (45° y 90°): desempatar por angulo_grados.
+  const angulo = typeof product.angulo_grados === 'number' ? product.angulo_grados : null;
+  if (angulo !== null) {
+    const byAngle = candidates.find((m) => m.baseParams.angulo_deg === angulo);
+    if (byAngle) return byAngle;
+  }
+  return candidates[0];
+}
+
+export function findMasterById(id: string): MasterModel | null {
+  return MASTER_MODELS.find((m) => m.id === id) ?? null;
+}

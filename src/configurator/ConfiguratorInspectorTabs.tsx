@@ -34,9 +34,12 @@ import {
 } from '../workspace/catalogPortMapping';
 import { getCompatibleProductIds } from '../workspace/routingRules';
 import { useCatalogConfigStore } from './catalogConfigStore';
+import { enumerateVariantsForMaster, findMasterAndVariantForProduct, type MasterVariant } from './masterVariants';
+import { findMasterForProduct } from './masterModels';
 
 export const TABS = [
   { id: 'producto', label: 'Producto / Familia' },
+  { id: 'maestro', label: 'Maestro / Variantes' },
   { id: 'modelo', label: 'Modelo / Parámetros' },
   { id: 'bocas', label: 'Bocas / Asociaciones' },
   { id: 'orientacion', label: 'Orientación / Colocación' },
@@ -467,6 +470,42 @@ function buildDraftFromMapping(
   };
 }
 
+interface CupsCheck {
+  readonly outOfBody: readonly {
+    readonly recipePortName: string;
+    readonly centerZ: number;
+    readonly expectedZ: number;
+  }[];
+  readonly ancho: number;
+}
+
+/**
+ * Para maestros CUPS (curva_vertical), la malla se extruye en Z ∈ [-ancho, 0].
+ * Si un override de boca ubica el centro fuera de ese rango, la boca queda
+ * fuera del cuerpo de la pieza. Detectamos y proponemos corrección reversible
+ * (restaurar centerZ a -ancho/2, posición canónica medida en la receta).
+ */
+function computeCupsCheck(product: Product, effective: ProductPortMapping | null): CupsCheck | null {
+  const master = findMasterForProduct(product as unknown as Record<string, unknown>);
+  if (!master || master.pieceKind !== 'curva_vertical') return null;
+  const ancho = typeof product.ancho_nominal_mm === 'number'
+    ? product.ancho_nominal_mm
+    : master.baseParams.ancho_mm;
+  const expectedZ = -ancho / 2;
+  const minZ = -ancho;
+  const maxZ = 0;
+  const outOfBody: Array<{ recipePortName: string; centerZ: number; expectedZ: number }> = [];
+  for (const entry of effective?.entries ?? []) {
+    const c = entry.geometry?.centerMm;
+    if (!c) continue;
+    const z = c[2];
+    if (z < minZ - 0.5 || z > maxZ + 0.5) {
+      outOfBody.push({ recipePortName: entry.recipePortName, centerZ: z, expectedZ });
+    }
+  }
+  return outOfBody.length ? { outOfBody, ancho } : null;
+}
+
 function OrientacionTab({
   product,
   catalogPortsForProduct,
@@ -478,6 +517,36 @@ function OrientacionTab({
   const defaultEntries = getDefaultMapping(product.producto_id);
   const upsert = useCatalogConfigStore((s) => s.upsertOverride);
   const overrides = useCatalogConfigStore((s) => s.overrides);
+  const cupsCheck = useMemo(() => computeCupsCheck(product, effective), [product, effective]);
+
+  const correctCupsBoca = (recipePortName: string) => {
+    const base = overrides[product.producto_id] ?? effective;
+    if (!base) return;
+    const entries = base.entries.map<PortMappingEntry>((e) => {
+      if (e.recipePortName !== recipePortName) return e;
+      const g = e.geometry;
+      if (!g?.centerMm) return e;
+      const ancho = typeof product.ancho_nominal_mm === 'number'
+        ? product.ancho_nominal_mm
+        : cupsCheck?.ancho ?? 300;
+      const newCenter: readonly [number, number, number] = [g.centerMm[0], g.centerMm[1], -ancho / 2];
+      const prevJustificacion = e.justification ?? '';
+      return {
+        ...e,
+        geometry: { ...g, centerMm: newCenter },
+        justification: `${prevJustificacion} | Corrección CUPS: centerZ ${g.centerMm[2]}→${newCenter[2]} (boca al cuerpo, reversible)`.trim(),
+      };
+    });
+    const next: ProductPortMapping = {
+      ...base,
+      productId: product.producto_id,
+      source: 'override',
+      overrideReason: `${base.overrideReason ?? ''} | Corrección reversible boca-fuera CUPS`.trim(),
+      overrideAt: new Date().toISOString(),
+      entries,
+    };
+    upsert(product.producto_id, next);
+  };
 
   // Set de bocas sobre las que se puede ofrecer override: unión de las
   // declaradas en el mapping (default+override) y las del catálogo SAMET,
@@ -619,6 +688,35 @@ function OrientacionTab({
         (centro / normal / giro de instalación). Esto NO cambia la posición
         de las instancias existentes; es ajuste del artefacto, no de la pieza.
       </div>
+
+      {cupsCheck && (
+        <div
+          className="cfg-tab-note cfg-tab-note-error"
+          data-testid="cfg-cups-out-of-body"
+        >
+          <strong>Boca CUPS fuera del cuerpo</strong>
+          <div className="cfg-tab-hint" style={{ margin: '4px 0' }}>
+            La malla se extruye en Z ∈ [-{cupsCheck.ancho}, 0]. Un override colocó una o más
+            bocas fuera de ese rango — la conexión no cae sobre una cara real. El override se
+            conserva; podés confirmarlo o aplicar la corrección reversible (lleva centerZ a
+            −ancho/2 = {-cupsCheck.ancho / 2}, posición medida en la receta).
+          </div>
+          {cupsCheck.outOfBody.map((o) => (
+            <div key={o.recipePortName} style={{ marginTop: 4 }}>
+              <code>{o.recipePortName}</code>: centerZ = {o.centerZ} → sugerido {o.expectedZ}
+              <button
+                type="button"
+                className="cfg-btn"
+                style={{ marginLeft: 8 }}
+                onClick={() => correctCupsBoca(o.recipePortName)}
+                data-testid={`cfg-cups-fix-${o.recipePortName}`}
+              >
+                Corregir (reversible)
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
 
       {!editMode ? (
         <>
@@ -1034,12 +1132,250 @@ function ContinuacionesTab({
   );
 }
 
+// ─── Maestro / Variantes ────────────────────────────────────────────────────
+//
+// Muestra el MasterModel asociado al producto seleccionado y sus variantes
+// aplicables lado a lado. Cada variante trae su origen (base, declared,
+// rule-derived, estimated, requires-master) con las dimensiones proyectadas
+// por la regla del maestro. Usa `findMasterAndVariantForProduct` para
+// resolver el producto actual y resaltar su fila.
+
+function vec3Str(v: readonly [number, number, number] | null): string {
+  if (!v) return '—';
+  const r = (n: number) => (Math.abs(n) < 0.01 ? '0' : n.toFixed(2));
+  return `[${r(v[0])}, ${r(v[1])}, ${r(v[2])}]`;
+}
+
+function originBadgeClass(origin: MasterVariant['origin']): string {
+  switch (origin) {
+    case 'base':
+      return 'cfg-status-recipe-default-identity';
+    case 'declared':
+      return 'cfg-status-recipe-default-mapping';
+    case 'rule-derived':
+      return 'cfg-status-recipe-default-mapping';
+    case 'estimated':
+      return 'cfg-status-recipe-override';
+    case 'requires-master':
+      return 'cfg-status-recipe-needs-mapping';
+  }
+}
+
+function MaestroTab({
+  product,
+  productos,
+}: {
+  product: Product;
+  productos: readonly Product[];
+}) {
+  const bind = useMemo(() => findMasterAndVariantForProduct(product, productos), [product, productos]);
+  const variants = useMemo<readonly MasterVariant[]>(() => {
+    if (!bind) return [];
+    return enumerateVariantsForMaster(bind.master, productos);
+  }, [bind, productos]);
+
+  if (!bind) {
+    const probe = findMasterForProduct(product as unknown as Record<string, unknown>);
+    return (
+      <div className="cfg-tab-content">
+        <h3 className="cfg-section-title">Maestro</h3>
+        <div className="cfg-tab-note cfg-tab-note-error" data-testid="cfg-maestro-sin-asociacion">
+          Este producto no tiene maestro asociado.
+          {probe ? (
+            <>
+              {' '}
+              Candidato detectado por familia+tipo+ala: <code>{probe.id}</code>, pero el producto
+              no cumple todos los criterios del catalogMatch (p.ej. ángulo distinto).
+            </>
+          ) : (
+            <>
+              {' '}
+              No hay un STEP medido que cubra familia_id=
+              <code>{String((product as Record<string, unknown>).familia_id ?? '—')}</code>,
+              tipo_pieza=<code>{product.tipo_pieza}</code>,
+              ala=<code>{String((product as Record<string, unknown>).ala_nominal_mm ?? '—')}</code>.
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  const { master, variant } = bind;
+  return (
+    <div className="cfg-tab-content">
+      <h3 className="cfg-section-title">Maestro</h3>
+      <dl className="cfg-kv">
+        <dt>ID</dt><dd><code>{master.id}</code></dd>
+        <dt>Etiqueta</dt><dd>{master.label}</dd>
+        <dt>Sistema</dt><dd>{master.sistema}</dd>
+        <dt>piece_kind</dt><dd><code>{master.pieceKind}</code></dd>
+        <dt>STEP</dt>
+        <dd>
+          <code>{master.source.stepFile}</code> · hash <code>{master.source.stepHashShort}</code>
+        </dd>
+        <dt>Rotación canónica Z</dt><dd>{master.canonicalRotationZDeg}°</dd>
+        <dt>Base</dt>
+        <dd>
+          ancho <code>{master.baseParams.ancho_mm}</code>, ala <code>{master.baseParams.ala_mm}</code>
+          {master.baseParams.longitud_mm !== undefined && (
+            <>, longitud <code>{master.baseParams.longitud_mm}</code></>
+          )}
+          {master.baseParams.angulo_deg !== undefined && (
+            <>, ángulo <code>{master.baseParams.angulo_deg}°</code></>
+          )}
+        </dd>
+        <dt>Regla</dt>
+        <dd>
+          <code>{master.variationRule.kind}</code>{' '}
+          {master.variationRule.measured ? '(medida)' : '(estimada)'}
+          <div className="cfg-tab-hint" style={{ marginTop: 4 }}>
+            {master.variationRule.rationale}
+          </div>
+        </dd>
+        <dt>Revisión</dt><dd>r{master.revision}</dd>
+      </dl>
+
+      <h3 className="cfg-section-title">Puertos del maestro (base)</h3>
+      <table className="cfg-table">
+        <thead>
+          <tr>
+            <th>recipePort</th>
+            <th>Etiqueta</th>
+            <th>catalogPort</th>
+            <th>Centro (mm)</th>
+            <th>Normal</th>
+          </tr>
+        </thead>
+        <tbody>
+          {master.ports.map((mp, i) => {
+            // Para la vista base los puertos ya vienen del variant.ports
+            // cuando origin='base'. Si no, mostramos los del binding actual.
+            const vp = variant.ports.find((p) => p.recipePortName === mp.recipePortName);
+            const baseVariant = variants.find((v) => v.origin === 'base');
+            const bp = baseVariant?.ports.find((p) => p.recipePortName === mp.recipePortName);
+            const src = bp ?? vp;
+            return (
+              <tr key={`${mp.recipePortName}-${i}`}>
+                <td><code>{mp.recipePortName}</code></td>
+                <td>{mp.physicalLabel}</td>
+                <td><code>{mp.catalogPortName}</code></td>
+                <td>{vec3Str(src?.centerMm ?? null)}</td>
+                <td>{vec3Str(src?.normal ?? null)}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+
+      <h3 className="cfg-section-title">Variantes del maestro ({variants.length})</h3>
+      <div className="cfg-tab-hint" style={{ marginBottom: 6 }}>
+        La fila del producto seleccionado está resaltada. Las variantes se
+        proyectan por la regla del maestro — ninguna coordenada se copia del
+        ancho base.
+      </div>
+      <table className="cfg-table" data-testid="cfg-maestro-variantes">
+        <thead>
+          <tr>
+            <th>SKU</th>
+            <th>Origen</th>
+            <th>ancho</th>
+            <th>ala</th>
+            <th>Δ ancho</th>
+            <th>Scale X/Y/Z</th>
+            <th>Observaciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {variants.map((v) => {
+            const isCurrent = v.productId === product.producto_id;
+            return (
+              <tr
+                key={v.productId}
+                className={isCurrent ? 'is-active' : ''}
+                data-testid={`cfg-maestro-row-${v.sku}`}
+              >
+                <td>
+                  <code>{v.sku}</code>
+                  {isCurrent && <span className="cfg-tab-hint"> (seleccionado)</span>}
+                </td>
+                <td>
+                  <span className={`cfg-list-status ${originBadgeClass(v.origin)}`} title={v.rationale}>
+                    {v.origin}
+                  </span>
+                </td>
+                <td>{v.ancho_mm ?? 'n/d'}</td>
+                <td>{v.ala_mm ?? 'n/d'}</td>
+                <td>{v.deltaFromMaster.ancho_mm}</td>
+                <td>
+                  {v.scale.x.toFixed(2)} / {v.scale.y.toFixed(2)} / {v.scale.z.toFixed(2)}
+                </td>
+                <td className="cfg-table-just">
+                  {v.warnings.length
+                    ? v.warnings.join(' · ')
+                    : 'OK'}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+
+      <h3 className="cfg-section-title">Variante actual — proyección detallada</h3>
+      <dl className="cfg-kv">
+        <dt>SKU</dt><dd><code>{variant.sku}</code></dd>
+        <dt>Origen</dt><dd><code>{variant.origin}</code></dd>
+        <dt>Dims</dt>
+        <dd>
+          ancho <code>{variant.ancho_mm ?? 'n/d'}</code>, ala <code>{variant.ala_mm ?? 'n/d'}</code>
+          {variant.longitud_mm !== null && <>, longitud <code>{variant.longitud_mm}</code></>}
+          {variant.angulo_deg !== null && <>, ángulo <code>{variant.angulo_deg}°</code></>}
+        </dd>
+        <dt>Rationale</dt><dd className="cfg-tab-hint">{variant.rationale}</dd>
+      </dl>
+
+      {variant.ports.length > 0 && (
+        <table className="cfg-table">
+          <thead>
+            <tr>
+              <th>Boca</th>
+              <th>Centro proyectado (mm)</th>
+              <th>Normal</th>
+            </tr>
+          </thead>
+          <tbody>
+            {variant.ports.map((p) => (
+              <tr key={p.recipePortName}>
+                <td>
+                  <code>{p.recipePortName}</code>
+                  <div className="cfg-tab-hint">{p.physicalLabel}</div>
+                </td>
+                <td>{vec3Str(p.centerMm)}</td>
+                <td>{vec3Str(p.normal)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+
+      {variant.warnings.length > 0 && (
+        <div className="cfg-tab-note cfg-tab-note-error" style={{ marginTop: 10 }}>
+          {variant.warnings.map((w, i) => (
+            <div key={i}>⚠ {w}</div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Placeholders ───────────────────────────────────────────────────────────
 
 function PlaceholderTab({ tab }: { tab: TabId }) {
   const label = TABS.find((t) => t.id === tab)?.label ?? tab;
   const notes: Record<TabId, string> = {
     producto: '',
+    maestro: '',
     modelo: 'Parámetros de la receta (ancho, radio, ángulo, etc.) y calibración de malla por recipe:view. Pendiente.',
     bocas: '',
     orientacion: '',
@@ -1091,6 +1427,7 @@ export function InspectorTabContent({
     return <div className="cfg-tab-empty">Seleccioná un producto a la izquierda.</div>;
   }
   if (tab === 'producto') return <ProductoFamiliaTab product={product} familia={familia} />;
+  if (tab === 'maestro') return <MaestroTab product={product} productos={productos} />;
   if (tab === 'bocas') return <BocasTab product={product} catalogPortsForProduct={portsForProduct} />;
   if (tab === 'orientacion') return <OrientacionTab product={product} catalogPortsForProduct={portsForProduct} />;
   if (tab === 'continuaciones') {
