@@ -45,6 +45,7 @@ import {
 } from './aporteTrazado';
 import { diffMappings, type MappingDiff, type PortEntryDiff } from './mappingDiff';
 import { calibrationHash } from './patternIdentity';
+import { CalibrationPlayground } from './CalibrationPlayground';
 
 export const TABS = [
   { id: 'producto', label: 'Producto / Familia' },
@@ -54,6 +55,7 @@ export const TABS = [
   { id: 'orientacion', label: 'Orientación / Colocación' },
   { id: 'continuaciones', label: 'Continuaciones / Compatibilidad' },
   { id: 'prueba', label: 'Configuración actual / Patrón aprobado' },
+  { id: 'calibracion', label: 'Calibración visual' },
   { id: 'procedencia', label: 'Procedencia / Historial' },
 ] as const;
 export type TabId = typeof TABS[number]['id'];
@@ -1932,6 +1934,7 @@ function PlaceholderTab({ tab }: { tab: TabId }) {
     orientacion: '',
     continuaciones: '',
     prueba: '',
+    calibracion: '',
     procedencia: 'Historial de cambios: versión, timestamp, autor, hash del archivo fuente. Pendiente.',
   };
   return (
@@ -1991,5 +1994,6 @@ export function InspectorTabContent({
     );
   }
   if (tab === 'prueba') return <PruebaTab product={product} />;
+  if (tab === 'calibracion') return <CalibrationPlayground product={product} />;
   return <PlaceholderTab tab={tab} />;
 }
