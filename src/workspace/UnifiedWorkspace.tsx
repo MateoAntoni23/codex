@@ -133,8 +133,15 @@ function Toolbar() {
     const name = `workspace-${new Date().toISOString().slice(0, 10)}.json`;
     a.href     = url;
     a.download = name;
+    document.body.appendChild(a);
     a.click();
-    URL.revokeObjectURL(url);
+    // Defer revoke: Chrome needs a microtask gap before the download handler
+    // fires. Revoking synchronously after click() races the download event
+    // under CPU pressure (reproducible with Playwright --workers=2).
+    setTimeout(() => {
+      a.remove();
+      URL.revokeObjectURL(url);
+    }, 0);
     ws.markSaved(name);
   };
 
