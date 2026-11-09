@@ -2,9 +2,16 @@ import { create } from 'zustand';
 import { PREVIEW_ELEMENTS, PREVIEW_EVIDENCE } from '../preview/previewData';
 import { evidenceToRemoveOnDelete, duplicateElement } from '../preview/previewCrud';
 import { DEFAULT_PROJECT_META, type ProjectMeta } from './workspaceFile';
-import type { EquipmentElement, FieldEvidence, Vec3 } from '../types/domain-v2';
+import type {
+  Connection,
+  EquipmentElement,
+  FieldEvidence,
+  Port,
+  Vec3,
+} from '../types/domain-v2';
 import type { ImportedCatalog } from '../import/types';
 import { buildElementFromImported } from '../import/placement';
+import { buildTestScenario, hasScenarioElements } from './testScenario';
 
 export type LayerKey = 'infrastructure' | 'equipment' | 'trays' | 'supports' | 'pe';
 
@@ -38,9 +45,12 @@ export interface WorkspaceState {
   importedCatalog: ImportedCatalog | null;
   selectedImportedEquipoId: string | null;
 
-  // Historial equipment-only (posición + alta/baja + vínculo importado)
-  equipHistory: EquipmentElement[][];
-  equipFuture: EquipmentElement[][];
+  // Historial equipment-centrado. Cada entrada guarda el snapshot de elementos
+  // previo a la mutación; las acciones que tocan ports/connections (p. ej.
+  // `loadTestScenario`) también incluyen el snapshot `meta` para que undo/redo
+  // restaure la topología completa en un único paso.
+  equipHistory: HistoryEntry[];
+  equipFuture: HistoryEntry[];
 
   /**
    * Modo "Mover libremente" activo para el equipo seleccionado. Toggle explícito
@@ -119,16 +129,52 @@ export interface WorkspaceState {
   linkImportedToElement: (elementId: string, equipoId: string) => void;
   /** Rompe el vínculo con el catálogo importado dejando el elemento operativo intacto. */
   unlinkElement: (elementId: string) => void;
+
+  // Escenario de prueba (fixture reutilizable)
+  /**
+   * Agrega el tablero + motor demo y su conexión de potencia planificada.
+   * Idempotente: si ya existen los equipos del escenario, no duplica ni modifica
+   * nada. Toda la operación es un único paso deshacible — restaura elementos,
+   * ports y connections al estado previo.
+   */
+  loadTestScenario: () => void;
+}
+
+// ─── Tipo interno del historial ──────────────────────────────────────────────
+interface HistoryMetaSnapshot {
+  ports: Port[];
+  connections: Connection[];
+}
+interface HistoryEntry {
+  elements: EquipmentElement[];
+  meta?: HistoryMetaSnapshot;
 }
 
 function copyElements(els: EquipmentElement[]): EquipmentElement[] {
   return els.map((e) => ({ ...e }));
 }
 
+function copyMetaSnapshot(meta: HistoryMetaSnapshot): HistoryMetaSnapshot {
+  return {
+    ports: meta.ports.map((p) => ({ ...p })),
+    connections: meta.connections.map((c) => ({ ...c })),
+  };
+}
+
 /** Snapshot previo a una mutación de elementos. Cap MAX_HIST para no crecer sin fin. */
 const MAX_HIST = 20;
-function pushEquipHistory(history: EquipmentElement[][], current: EquipmentElement[]) {
-  return [...history.slice(-(MAX_HIST - 1)), copyElements(current)];
+function pushEquipHistory(history: HistoryEntry[], current: EquipmentElement[]): HistoryEntry[] {
+  return [...history.slice(-(MAX_HIST - 1)), { elements: copyElements(current) }];
+}
+function pushEquipHistoryWithMeta(
+  history: HistoryEntry[],
+  current: EquipmentElement[],
+  meta: HistoryMetaSnapshot,
+): HistoryEntry[] {
+  return [
+    ...history.slice(-(MAX_HIST - 1)),
+    { elements: copyElements(current), meta: copyMetaSnapshot(meta) },
+  ];
 }
 
 const DEFAULT_LAYERS: Record<LayerKey, boolean> = {
@@ -219,13 +265,28 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   },
 
   undoEquip: () => {
-    const { elements, equipHistory, equipFuture, selectedEquipId } = get();
+    const { elements, projectMeta, equipHistory, equipFuture, selectedEquipId } = get();
     if (!equipHistory.length) return;
     const prev = equipHistory[equipHistory.length - 1];
-    const nextFuture = [...equipFuture, copyElements(elements)].slice(-MAX_HIST);
-    const stillExists = selectedEquipId && prev.some((e) => e.id === selectedEquipId);
+    // Si la entrada histórica incluye meta, el undo también restaura ports/
+    // connections — y el future snapshot debe capturar el meta actual para
+    // que redo pueda re-aplicar la mutación en bloque.
+    const currentEntry: HistoryEntry = prev.meta
+      ? {
+          elements: copyElements(elements),
+          meta: copyMetaSnapshot({
+            ports: projectMeta.ports,
+            connections: projectMeta.connections,
+          }),
+        }
+      : { elements: copyElements(elements) };
+    const nextFuture = [...equipFuture, currentEntry].slice(-MAX_HIST);
+    const stillExists = selectedEquipId && prev.elements.some((e) => e.id === selectedEquipId);
     set({
-      elements:        prev,
+      elements:        prev.elements,
+      projectMeta:     prev.meta
+        ? { ...projectMeta, ports: prev.meta.ports, connections: prev.meta.connections }
+        : projectMeta,
       equipHistory:    equipHistory.slice(0, -1),
       equipFuture:     nextFuture,
       selectedEquipId: stillExists ? selectedEquipId : null,
@@ -234,13 +295,25 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   },
 
   redoEquip: () => {
-    const { elements, equipHistory, equipFuture, selectedEquipId } = get();
+    const { elements, projectMeta, equipHistory, equipFuture, selectedEquipId } = get();
     if (!equipFuture.length) return;
     const next = equipFuture[equipFuture.length - 1];
-    const nextHistory = [...equipHistory, copyElements(elements)].slice(-MAX_HIST);
-    const stillExists = selectedEquipId && next.some((e) => e.id === selectedEquipId);
+    const currentEntry: HistoryEntry = next.meta
+      ? {
+          elements: copyElements(elements),
+          meta: copyMetaSnapshot({
+            ports: projectMeta.ports,
+            connections: projectMeta.connections,
+          }),
+        }
+      : { elements: copyElements(elements) };
+    const nextHistory = [...equipHistory, currentEntry].slice(-MAX_HIST);
+    const stillExists = selectedEquipId && next.elements.some((e) => e.id === selectedEquipId);
     set({
-      elements:        next,
+      elements:        next.elements,
+      projectMeta:     next.meta
+        ? { ...projectMeta, ports: next.meta.ports, connections: next.meta.connections }
+        : projectMeta,
       equipHistory:    nextHistory,
       equipFuture:     equipFuture.slice(0, -1),
       selectedEquipId: stillExists ? selectedEquipId : null,
@@ -412,5 +485,35 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       ),
       dirty:        true,
     }));
+  },
+
+  loadTestScenario: () => {
+    const s = get();
+    // Idempotencia: si el escenario ya está cargado, no-op total (ni dirty ni
+    // historial). Garantiza que re-pulsar el botón no duplique nada.
+    if (hasScenarioElements(s.elements)) return;
+    const payload = buildTestScenario();
+    const preMeta: HistoryMetaSnapshot = {
+      ports: s.projectMeta.ports,
+      connections: s.projectMeta.connections,
+    };
+    set({
+      equipHistory: pushEquipHistoryWithMeta(s.equipHistory, s.elements, preMeta),
+      equipFuture:  [],
+      elements:     [...s.elements, ...payload.elements],
+      projectMeta:  {
+        ...s.projectMeta,
+        ports:       [...s.projectMeta.ports, ...payload.ports],
+        connections: [...s.projectMeta.connections, ...payload.connections],
+      },
+      // Al seleccionar el tablero, el inspector se centra en el equipo recién
+      // agregado y el usuario encuentra el fixture sin tener que buscarlo.
+      selectedEquipId: payload.elements[0]?.id ?? null,
+      selectedTrayId:  null,
+      selectedSupportId: null,
+      selectedImportedEquipoId: null,
+      moveMode:     false,
+      dirty:        true,
+    });
   },
 }));

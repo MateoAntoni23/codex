@@ -236,6 +236,13 @@ function Toolbar({ onOpenImportWizard }: { onOpenImportWizard: () => void }) {
       <button onClick={() => fileInputRef.current?.click()}>Importar JSON</button>
       <input ref={fileInputRef} type="file" accept=".json" style={{ display: 'none' }} onChange={handleImport} />
       <button onClick={onOpenImportWizard} data-testid="open-import-wizard">Importar Excel</button>
+      <button
+        onClick={() => useWorkspaceStore.getState().loadTestScenario()}
+        data-testid="load-test-scenario"
+        title="Agrega Tablero Prueba A + Motor Prueba A y una conexión de potencia pendiente. Datos ficticios para pruebas; idempotente y deshacible."
+      >
+        Cargar escenario de prueba
+      </button>
       <a href="?configurator=v1" className="workspace-toolbar-link" data-testid="open-configurator">Configuración de biblioteca</a>
     </div>
   );
