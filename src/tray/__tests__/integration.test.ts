@@ -75,6 +75,16 @@ describe('Catálogo estático y motor opcional (hito 1)',()=>{
   expect(mocks.transport).not.toHaveBeenCalled();
   expect(useTrayStore.getState().error).toMatch(/No hay piezas/);
  });
+ it('toMotorEntrada omite el pe neutro en un proyecto con un tramo (el motor rechaza cable_id vacío)',()=>{
+  const t=emptyTrayInput();
+  t.piezas.push({instancia_id:'R1',producto_id:'SAM_TRPS-300-22-Z',longitud_mm:3000,puertos:{P1:{posicion_mm:[0,0,0],direccion:[-1,0,0]},P2:{posicion_mm:[3000,0,0],direccion:[1,0,0]}}});
+  const out=toMotorEntrada(t);
+  expect('pe' in out).toBe(false);
+  expect((out.piezas as unknown[]).length).toBe(1);
+  // Con un PE definido sí viaja completo.
+  t.pe={...t.pe,cable_id:'PRY-SASTFLEX-CU-1x16',seccion_requerida_mm2:16,conductores:[{conductor_id:'PE1',recorrido:['R1'],inicio:null,fin:null}]};
+  expect('pe' in toMotorEntrada(t)).toBe(true);
+ });
  it('toMotorEntrada omite el bloque pe neutro y conserva uno definido',()=>{
   const empty=toMotorEntrada(emptyTrayInput());
   expect('pe' in empty).toBe(false);

@@ -150,13 +150,29 @@ function StatusBar() {
 }
 
 function Toolbar({ onOpenImportWizard }: { onOpenImportWizard: () => void }) {
+  // El motor rechaza `piezas: []` ("piezas debe ser una lista no vacía"): sin piezas
+  // no se ofrece el cálculo. `calculate()` del store tiene la misma guarda.
+  const noPieces = useTrayStore((s) => (s.entrada?.piezas.length ?? 0) === 0);
+  const calculating = useTrayStore((s) => s.status === 'calculando');
   return (
     <div className="workspace-toolbar">
       <a href="?legacy=v1">← Editor inicial</a>
       <span className="workspace-toolbar-title">Espacio de trabajo unificado</span>
       <ProjectControls />
       <button onClick={() => void useTrayStore.getState().initialize()}>Reconectar motor</button>
-      <button onClick={() => void useTrayStore.getState().calculate()}>Calcular trazado</button>
+      <button
+        onClick={() => void useTrayStore.getState().calculate()}
+        disabled={noPieces || calculating}
+        data-testid="calculate-tray"
+        title={noPieces ? 'No hay piezas para calcular: el motor exige al menos una pieza en el trazado.' : undefined}
+      >
+        Calcular trazado
+      </button>
+      {noPieces && (
+        <span className="project-message" data-testid="calculate-hint">
+          Calcular requiere al menos una pieza en el trazado.
+        </span>
+      )}
       <button onClick={onOpenImportWizard} data-testid="open-import-wizard">Importar Excel</button>
       <button
         onClick={() => useWorkspaceStore.getState().loadTestScenario()}

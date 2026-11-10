@@ -60,6 +60,10 @@ test.describe('A1 — servicio Python apagado', () => {
     expect(await state(page)).toMatchObject({ piezas: 0, equipos: 0 });
     await expect(page.getByTestId('tray-empty')).toBeVisible();
 
+    // Sin piezas no se ofrece calcular (el motor rechaza piezas: []), y se dice por qué.
+    await expect(page.getByTestId('calculate-tray')).toBeDisabled();
+    await expect(page.getByTestId('calculate-hint')).toContainText(/al menos una pieza/);
+
     // 2) Estado del servicio de cálculo: apagado (informativo).
     await expect(page.getByTestId('engine-state')).toHaveAttribute('data-engine', 'apagado', { timeout: 15_000 });
 
@@ -92,8 +96,9 @@ test.describe('A1 — servicio Python apagado', () => {
     expect(file.trayInput.piezas).toHaveLength(1);
     expect(file.projectV2.elements).toEqual([]);
 
+    await expect(page.getByTestId('calculate-tray')).toBeEnabled();
     // 6) Calcular: informa que el servicio está apagado y no rompe la aplicación.
-    await page.getByRole('button', { name: 'Calcular trazado' }).click();
+    await page.getByTestId('calculate-tray').click();
     await expect(page.locator('.workspace-error')).toContainText(/apagado/i, { timeout: 15_000 });
     expect((await state(page)).piezas).toBe(1);
 

@@ -39,8 +39,10 @@ export function toMotorEntrada(trayInput: TrayInput): Record<string,unknown> {
   for (const [k,v] of Object.entries(trayInput)) {
     if (!WS_ONLY.has(k)) out[k] = v;
   }
-  // `pe` neutro (proyecto sin PE definido, ver emptyProject.ts): el motor lo trata
-  // como opcional; no se envía una sección 0 que rechazaría.
+  // `pe` neutro (proyecto sin PE definido, ver emptyProject.ts): OBLIGATORIO omitirlo.
+  // Verificado contra el motor real: enviarlo falla con ErrorEntrada "Cable desconocido: ''"
+  // (cable_id vacío); sin bloque `pe` el motor calcula ocupación, cargas, corridas y cómputo.
+  // Fijado por la prueba "toMotorEntrada omite el pe neutro" (tray/__tests__/integration.test.ts).
   if (isNeutralPe(trayInput.pe)) delete out.pe;
   // Índice instancia_id → producto_id para traducir conexiones sin volver a
   // buscar la pieza en cada extremo.
