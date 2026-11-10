@@ -20,6 +20,7 @@ import { checkDeleteDependencies, duplicateElement } from '../preview/previewCru
 import type { Piece, Support, TrayInput } from '../tray/model';
 import { object } from '../tray/model';
 import { rotatePiece, rotatePieceAroundAxis, normalizeDeg, type AxisKey, type PivotRef } from './pieceTransforms';
+import { indexProducts, pieceLabelById, portLabel, productLabel } from './stages/displayNames';
 
 /** Renders a Python result value as readable text, handling nested objects and arrays. */
 function formatResultValue(v: unknown, depth = 0): string {
@@ -471,7 +472,7 @@ function BrokenConnectionsModal() {
   );
 }
 
-function PieceCard({ piece }: { piece: Piece }) {
+export function PieceCard({ piece }: { piece: Piece }) {
   const context = useTrayStore((s) => s.context);
   const edit    = useTrayStore((s) => s.edit);
   const entrada = useTrayStore((s) => s.entrada);
@@ -525,12 +526,15 @@ function PieceCard({ piece }: { piece: Piece }) {
   const ports = Object.entries(piece.puertos);
   const product = context?.productos.find((p) => p.producto_id === piece.producto_id);
   const centroid = pieceCentroid(piece);
+  // 3d: nombres visibles (SKU de producto y nombre físico de boca), no ids internos.
+  const pIdx = indexProducts(context?.productos);
+  const title = pieceLabelById(piece.instancia_id, entrada.piezas, pIdx);
 
   return (
     <div className="inspector-panel">
       <div className="inspector-header">
         <span className="inspector-category">Pieza de bandeja</span>
-        <span className="inspector-title">{piece.instancia_id}</span>
+        <span className="inspector-title" data-testid="piece-title">{title}</span>
       </div>
 
       <BrokenConnectionsModal />
@@ -603,7 +607,7 @@ function PieceCard({ piece }: { piece: Piece }) {
 
       {ports.map(([portId, port]) => (
         <fieldset key={portId} style={{ margin: '4px 12px', border: '1px solid #333', padding: '4px 8px', borderRadius: 3 }}>
-          <legend style={{ fontSize: 11, color: '#8888aa' }}>{portId} · mm global</legend>
+          <legend style={{ fontSize: 11, color: '#8888aa' }}>{portLabel(piece.producto_id, portId, pIdx)} · mm global</legend>
           <div style={{ display: 'flex', gap: 4 }}>
             {port.posicion_mm.map((v, i) => (
               <label key={i} style={{ flex: 1, fontSize: 11, display: 'block' }}>
@@ -628,7 +632,7 @@ function PieceCard({ piece }: { piece: Piece }) {
         <button
           style={{ fontSize: 12, padding: '4px 8px', background: '#8b2222', color: 'white', border: '1px solid #cc3333', borderRadius: 3, cursor: 'pointer' }}
           onClick={() => {
-            if (!confirm(`Eliminar pieza "${piece.instancia_id}"?`)) return;
+            if (!confirm(`Eliminar pieza "${title}"?`)) return;
             const next = structuredClone(entrada);
             next.piezas = next.piezas.filter((p) => p.instancia_id !== piece.instancia_id);
             edit(next);
@@ -639,19 +643,14 @@ function PieceCard({ piece }: { piece: Piece }) {
         </button>
       </div>
 
-      <details style={{ margin: '4px 0' }}>
-        <summary style={{ padding: '4px 12px', fontSize: 12, cursor: 'pointer', fontWeight: 600, background: '#1f2235' }}>
-          Resultados del motor
-        </summary>
-        <TrayResults />
-      </details>
+      {/* Hito 1b: los resultados del motor viven en la etapa Resultados. */}
     </div>
   );
 }
 
 // ─── Support card ─────────────────────────────────────────────────────────────
 
-function SupportCard({ support }: { support: Support }) {
+export function SupportCard({ support }: { support: Support }) {
   const context   = useTrayStore((s) => s.context);
   const edit      = useTrayStore((s) => s.edit);
   const entrada   = useTrayStore((s) => s.entrada);
@@ -682,7 +681,7 @@ function SupportCard({ support }: { support: Support }) {
   };
 
   const handleDelete = () => {
-    if (!confirm(`Eliminar soporte "${support.soporte_id}"?`)) return;
+    if (!confirm('¿Eliminar este soporte?')) return;
     const next = structuredClone(entrada);
     next.soportes = next.soportes.filter((s) => s.soporte_id !== support.soporte_id);
     edit(next);
@@ -693,14 +692,14 @@ function SupportCard({ support }: { support: Support }) {
     <div className="inspector-panel">
       <div className="inspector-header">
         <span className="inspector-category">Soporte</span>
-        <span className="inspector-title">{support.soporte_id}</span>
+        <span className="inspector-title">{product ? productLabel(product.producto_id, indexProducts(context?.productos)) : support.soporte_id}</span>
       </div>
 
       <div style={{ padding: '4px 12px', fontSize: 11, color: '#8888aa', lineHeight: 1.5 }}>
         <p style={{ margin: '0 0 6px', color: '#bb99cc' }}>
           La caja púrpura en el visor marca la <strong>ubicación calculada</strong> del soporte — no es la geometría real del herraje.
         </p>
-        <div>Pieza: <strong style={{ color: '#c0c0e0' }}>{support.instancia_id}</strong></div>
+        <div>Pieza: <strong style={{ color: '#c0c0e0' }}>{pieceLabelById(support.instancia_id, entrada.piezas, indexProducts(context?.productos))}</strong></div>
         {piece && (
           <div>Producto pieza: <span style={{ color: '#99aacc' }}>{piece.producto_id}</span></div>
         )}
@@ -833,7 +832,7 @@ function LinkedImportedPanel({ equipoId, onUnlink, onOpenInImportedTree }: {
   );
 }
 
-function EquipmentCard() {
+export function EquipmentCard() {
   const selectedEquipId = useWorkspaceStore((s) => s.selectedEquipId);
   const elements        = useWorkspaceStore((s) => s.elements);
   const updateElement   = useWorkspaceStore((s) => s.updateElement);
@@ -970,7 +969,7 @@ function CalcPanel() {
 
 // ─── Undo / redo controls (always visible when history is non-empty) ──────────
 
-function TrayHistoryControls() {
+export function TrayHistoryControls() {
   const trayUndo  = useTrayStore((s) => s.undo);
   const trayRedo  = useTrayStore((s) => s.redo);
   const history   = useTrayStore((s) => s.history);
@@ -985,62 +984,50 @@ function TrayHistoryControls() {
   const canUndoEquip = equipHistory.length > 0;
   const canRedoEquip = equipFuture.length > 0;
 
-  if (!canUndo && !canRedo && !canUndoEquip && !canRedoEquip) return null;
-
-  const btnStyle = (enabled: boolean) => ({
-    fontSize: 11, padding: '2px 8px',
-    background: enabled ? '#2a3344' : '#1e2233',
-    color: enabled ? '#99aadd' : '#445566',
-    border: '1px solid #334455', borderRadius: 2,
-    cursor: enabled ? ('pointer' as const) : ('default' as const),
-  });
-
+  // Hito 1b: siempre visible en la barra de proyecto. Conserva el comportamiento
+  // actual (dos historiales: bandejas y equipos); el historial unificado es otro hito.
   return (
-    <div style={{ display: 'flex', gap: 4, padding: '4px 12px 5px', borderBottom: '1px solid #2a2e44', flexWrap: 'wrap', alignItems: 'center' }}>
-      {(canUndo || canRedo) && (
-        <>
-          <span style={{ fontSize: 10, color: '#667' }}>Bandejas</span>
-          <button
-            title={canUndo ? `Deshacer bandeja (${history.length})` : 'Sin cambios de bandejas para deshacer'}
-            style={btnStyle(canUndo)}
-            onClick={() => { if (canUndo) { trayUndo(); markDirty(); } }}
-            disabled={!canUndo}
-          >
-            ↩ {canUndo ? history.length : '—'}
-          </button>
-          <button
-            title={canRedo ? `Rehacer bandeja (${future.length})` : 'Sin cambios de bandejas para rehacer'}
-            style={btnStyle(canRedo)}
-            onClick={() => { if (canRedo) { trayRedo(); markDirty(); } }}
-            disabled={!canRedo}
-          >
-            ↪ {canRedo ? future.length : '—'}
-          </button>
-        </>
-      )}
-      {(canUndoEquip || canRedoEquip) && (
-        <>
-          <span style={{ fontSize: 10, color: '#667', marginLeft: (canUndo || canRedo) ? 6 : 0 }}>Equipos</span>
-          <button
-            data-testid="equip-undo"
-            title={canUndoEquip ? `Deshacer equipo (${equipHistory.length})` : 'Sin cambios de equipos para deshacer'}
-            style={btnStyle(canUndoEquip)}
-            onClick={() => { if (canUndoEquip) equipUndo(); }}
-            disabled={!canUndoEquip}
-          >
-            ↩ {canUndoEquip ? equipHistory.length : '—'}
-          </button>
-          <button
-            data-testid="equip-redo"
-            title={canRedoEquip ? `Rehacer equipo (${equipFuture.length})` : 'Sin cambios de equipos para rehacer'}
-            style={btnStyle(canRedoEquip)}
-            onClick={() => { if (canRedoEquip) equipRedo(); }}
-            disabled={!canRedoEquip}
-          >
-            ↪ {canRedoEquip ? equipFuture.length : '—'}
-          </button>
-        </>
-      )}
+    <div className="history-controls" role="group" aria-label="Deshacer y rehacer">
+      <span className="history-label">Bandejas</span>
+      <button
+        type="button"
+        title={canUndo ? `Deshacer bandeja (${history.length})` : 'Sin cambios de bandejas para deshacer'}
+        aria-label="Deshacer cambio de bandejas"
+        onClick={() => { if (canUndo) { trayUndo(); markDirty(); } }}
+        disabled={!canUndo}
+      >
+        ↩ Deshacer
+      </button>
+      <button
+        type="button"
+        title={canRedo ? `Rehacer bandeja (${future.length})` : 'Sin cambios de bandejas para rehacer'}
+        aria-label="Rehacer cambio de bandejas"
+        onClick={() => { if (canRedo) { trayRedo(); markDirty(); } }}
+        disabled={!canRedo}
+      >
+        ↪ Rehacer
+      </button>
+      <span className="history-label">Equipos</span>
+      <button
+        type="button"
+        data-testid="equip-undo"
+        title={canUndoEquip ? `Deshacer equipo (${equipHistory.length})` : 'Sin cambios de equipos para deshacer'}
+        aria-label="Deshacer cambio de equipos"
+        onClick={() => { if (canUndoEquip) equipUndo(); }}
+        disabled={!canUndoEquip}
+      >
+        ↩ Deshacer
+      </button>
+      <button
+        type="button"
+        data-testid="equip-redo"
+        title={canRedoEquip ? `Rehacer equipo (${equipFuture.length})` : 'Sin cambios de equipos para rehacer'}
+        aria-label="Rehacer cambio de equipos"
+        onClick={() => { if (canRedoEquip) equipRedo(); }}
+        disabled={!canRedoEquip}
+      >
+        ↪ Rehacer
+      </button>
     </div>
   );
 }
@@ -1061,8 +1048,6 @@ export function WorkspaceInspector() {
   return (
     <div className="panel panel-right" style={{ overflow: 'auto' }}>
       <div className="panel-title">Inspector</div>
-
-      {!routingActive && <TrayHistoryControls />}
 
       {routingActive ? (
         <RoutingPanel />

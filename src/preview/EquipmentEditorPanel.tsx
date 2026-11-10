@@ -177,7 +177,7 @@ function MotorTechSection({ tech, draft, errors, setDraft, setErrors }: {
       <div className="inspector-section">Datos técnicos del motor</div>
 
       {tech.power.status === 'conflict' ? (
-        <ConflictField label="Potencia" displayValue={tech.power.value != null ? `${tech.power.value.value} ${tech.power.value.unit}` : '—'} />
+        <ConflictField label="Potencia" displayValue={tech.power.value != null ? `${tech.power.value.value} ${tech.power.value.unit}` : 'Sin dato'} />
       ) : (
         <div className="inspector-edit-row inspector-edit-row--wide">
           <label className="inspector-label" htmlFor="pi-power">Potencia</label>
@@ -198,31 +198,31 @@ function MotorTechSection({ tech, draft, errors, setDraft, setErrors }: {
         </div>
       )}
 
-      {tech.voltage.status === 'conflict' ? <ConflictField label="Tensión (V)" displayValue={tech.voltage.value != null ? `${tech.voltage.value.value} V` : '—'} /> : (
+      {tech.voltage.status === 'conflict' ? <ConflictField label="Tensión (V)" displayValue={tech.voltage.value != null ? `${tech.voltage.value.value} V` : 'Sin dato'} /> : (
         <EditField id="pi-voltage" label="Tensión (V)" value={draft.voltage} error={errors.voltage} wide datumStatus={tech.voltage.status}
           onChange={(v) => { setDraft((d) => ({ ...d, voltage: v })); setErrors((er) => ({ ...er, voltage: undefined })); }} />
       )}
-      {tech.phases.status === 'conflict' ? <ConflictField label="Fases" displayValue={tech.phases.value != null ? String(tech.phases.value) : '—'} /> : (
+      {tech.phases.status === 'conflict' ? <ConflictField label="Fases" displayValue={tech.phases.value != null ? String(tech.phases.value) : 'Sin dato'} /> : (
         <SelectField id="pi-phases" label="Fases" value={draft.phases} error={errors.phases} wide datumStatus={tech.phases.status}
           onChange={(v) => { setDraft((d) => ({ ...d, phases: v as MotorTechnicalDraft['phases'] })); setErrors((er) => ({ ...er, phases: undefined })); }}
-          options={[{ value: '', label: '—' }, { value: '1', label: 'Monofásico (1)' }, { value: '3', label: 'Trifásico (3)' }]} />
+          options={[{ value: '', label: 'Sin dato' }, { value: '1', label: 'Monofásico (1)' }, { value: '3', label: 'Trifásico (3)' }]} />
       )}
-      {tech.plateCurrent.status === 'conflict' ? <ConflictField label="Corriente (A)" displayValue={tech.plateCurrent.value != null ? `${tech.plateCurrent.value.value} A` : '—'} /> : (
+      {tech.plateCurrent.status === 'conflict' ? <ConflictField label="Corriente (A)" displayValue={tech.plateCurrent.value != null ? `${tech.plateCurrent.value.value} A` : 'Sin dato'} /> : (
         <EditField id="pi-platecurrent" label="Corriente (A)" value={draft.plateCurrent} error={errors.plateCurrent} wide datumStatus={tech.plateCurrent.status}
           onChange={(v) => { setDraft((d) => ({ ...d, plateCurrent: v })); setErrors((er) => ({ ...er, plateCurrent: undefined })); }} />
       )}
-      {tech.efficiency.status === 'conflict' ? <ConflictField label="Eficiencia" displayValue={tech.efficiency.value != null ? String(tech.efficiency.value) : '—'} /> : (
+      {tech.efficiency.status === 'conflict' ? <ConflictField label="Eficiencia" displayValue={tech.efficiency.value != null ? String(tech.efficiency.value) : 'Sin dato'} /> : (
         <EditField id="pi-efficiency" label="Eficiencia" value={draft.efficiency} error={errors.efficiency} hint="0 < η ≤ 1" wide datumStatus={tech.efficiency.status}
           onChange={(v) => { setDraft((d) => ({ ...d, efficiency: v })); setErrors((er) => ({ ...er, efficiency: undefined })); }} />
       )}
-      {tech.powerFactor.status === 'conflict' ? <ConflictField label="Cos φ" displayValue={tech.powerFactor.value != null ? String(tech.powerFactor.value) : '—'} /> : (
+      {tech.powerFactor.status === 'conflict' ? <ConflictField label="Cos φ" displayValue={tech.powerFactor.value != null ? String(tech.powerFactor.value) : 'Sin dato'} /> : (
         <EditField id="pi-powerfactor" label="Cos φ" value={draft.powerFactor} error={errors.powerFactor} hint="0 < cosφ ≤ 1" wide datumStatus={tech.powerFactor.status}
           onChange={(v) => { setDraft((d) => ({ ...d, powerFactor: v })); setErrors((er) => ({ ...er, powerFactor: undefined })); }} />
       )}
-      {tech.start.status === 'conflict' ? <ConflictField label="Arranque" displayValue={tech.start.value ?? '—'} /> : (
+      {tech.start.status === 'conflict' ? <ConflictField label="Arranque" displayValue={tech.start.value ?? 'Sin dato'} /> : (
         <SelectField id="pi-start" label="Arranque" value={draft.start} error={errors.start} wide datumStatus={tech.start.status}
           onChange={(v) => { setDraft((d) => ({ ...d, start: v as MotorTechnicalDraft['start'] })); setErrors((er) => ({ ...er, start: undefined })); }}
-          options={[{ value: '', label: '—' }, { value: 'direct', label: 'Directo' }, { value: 'star_delta', label: 'Estrella-triángulo' }, { value: 'softstarter', label: 'Softstarter' }, { value: 'vfd', label: 'Variador de frecuencia (VFD)' }, { value: 'other', label: 'Otro' }]} />
+          options={[{ value: '', label: 'Sin dato' }, { value: 'direct', label: 'Directo' }, { value: 'star_delta', label: 'Estrella-triángulo' }, { value: 'softstarter', label: 'Softstarter' }, { value: 'vfd', label: 'Variador de frecuencia (VFD)' }, { value: 'other', label: 'Otro' }]} />
       )}
     </div>
   );
@@ -238,11 +238,11 @@ function SensorTechSection({ tech, draft, errors, setDraft, setErrors }: {
   return (
     <div className="inspector-tech-section">
       <div className="inspector-section">Datos técnicos del sensor</div>
-      {tech.measuredVariable.status === 'conflict' ? <ConflictField label="Variable" displayValue={tech.measuredVariable.value ?? '—'} /> : (
+      {tech.measuredVariable.status === 'conflict' ? <ConflictField label="Variable" displayValue={tech.measuredVariable.value ?? 'Sin dato'} /> : (
         <EditField id="pi-measvar" label="Variable" value={draft.measuredVariable} inputMode="text" error={errors.measuredVariable} wide datumStatus={tech.measuredVariable.status}
           onChange={(v) => { setDraft((d) => ({ ...d, measuredVariable: v })); setErrors((er) => ({ ...er, measuredVariable: undefined })); }} />
       )}
-      {tech.range.status === 'conflict' ? <ConflictField label="Rango" displayValue={tech.range.value != null ? `${tech.range.value.min}..${tech.range.value.max} ${tech.range.value.unit}` : '—'} /> : (
+      {tech.range.status === 'conflict' ? <ConflictField label="Rango" displayValue={tech.range.value != null ? `${tech.range.value.min}..${tech.range.value.max} ${tech.range.value.unit}` : 'Sin dato'} /> : (
         <>
           <EditField id="pi-rangemin" label="Rango mín" value={draft.rangeMin} error={errors.rangeMin} wide datumStatus={tech.range.status === 'estimated' || tech.range.status === 'verified' ? tech.range.status : undefined}
             onChange={(v) => { setDraft((d) => ({ ...d, rangeMin: v })); setErrors((er) => ({ ...er, rangeMin: undefined })); }} />
@@ -252,19 +252,19 @@ function SensorTechSection({ tech, draft, errors, setDraft, setErrors }: {
             onChange={(v) => setDraft((d) => ({ ...d, rangeUnit: v }))} />
         </>
       )}
-      {tech.supply.status === 'conflict' ? <ConflictField label="Alimentación" displayValue={tech.supply.value != null ? `${tech.supply.value.voltageV} V ${tech.supply.value.currentType}` : '—'} /> : (
+      {tech.supply.status === 'conflict' ? <ConflictField label="Alimentación" displayValue={tech.supply.value != null ? `${tech.supply.value.voltageV} V ${tech.supply.value.currentType}` : 'Sin dato'} /> : (
         <>
           <EditField id="pi-supplyvoltage" label="Alim. (V)" value={draft.supplyVoltage} error={errors.supplyVoltage} wide datumStatus={tech.supply.status === 'estimated' || tech.supply.status === 'verified' ? tech.supply.status : undefined}
             onChange={(v) => { setDraft((d) => ({ ...d, supplyVoltage: v })); setErrors((er) => ({ ...er, supplyVoltage: undefined })); }} />
           <SelectField id="pi-supplycurrenttype" label="Tipo AC/DC" value={draft.supplyCurrentType} error={errors.supplyCurrentType} wide
             onChange={(v) => { setDraft((d) => ({ ...d, supplyCurrentType: v as SensorTechnicalDraft['supplyCurrentType'] })); setErrors((er) => ({ ...er, supplyCurrentType: undefined })); }}
-            options={[{ value: '', label: '—' }, { value: 'AC', label: 'AC' }, { value: 'DC', label: 'DC' }]} />
+            options={[{ value: '', label: 'Sin dato' }, { value: 'AC', label: 'AC' }, { value: 'DC', label: 'DC' }]} />
         </>
       )}
-      {tech.signal.status === 'conflict' ? <ConflictField label="Señal" displayValue={tech.signal.value ?? '—'} /> : (
+      {tech.signal.status === 'conflict' ? <ConflictField label="Señal" displayValue={tech.signal.value ?? 'Sin dato'} /> : (
         <SelectField id="pi-signal" label="Señal" value={draft.signal} error={errors.signal} wide datumStatus={tech.signal.status}
           onChange={(v) => { setDraft((d) => ({ ...d, signal: v as SensorTechnicalDraft['signal'] })); setErrors((er) => ({ ...er, signal: undefined })); }}
-          options={[{ value: '', label: '—' }, { value: 'DI', label: 'Digital (DI)' }, { value: '4_20mA', label: '4–20 mA' }, { value: '0_10V', label: '0–10 V' }, { value: 'RTD', label: 'RTD' }, { value: 'bus', label: 'Bus de campo' }, { value: 'other', label: 'Otro' }]} />
+          options={[{ value: '', label: 'Sin dato' }, { value: 'DI', label: 'Digital (DI)' }, { value: '4_20mA', label: '4–20 mA' }, { value: '0_10V', label: '0–10 V' }, { value: 'RTD', label: 'RTD' }, { value: 'bus', label: 'Bus de campo' }, { value: 'other', label: 'Otro' }]} />
       )}
     </div>
   );
@@ -280,11 +280,11 @@ function PanelTechSection({ tech, draft, errors, setDraft, setErrors }: {
   return (
     <div className="inspector-tech-section">
       <div className="inspector-section">Datos técnicos del tablero</div>
-      {tech.ipRating.status === 'conflict' ? <ConflictField label="IP Rating" displayValue={tech.ipRating.value ?? '—'} /> : (
+      {tech.ipRating.status === 'conflict' ? <ConflictField label="IP Rating" displayValue={tech.ipRating.value ?? 'Sin dato'} /> : (
         <EditField id="pi-iprating" label="IP Rating" value={draft.ipRating} inputMode="text" error={errors.ipRating} wide datumStatus={tech.ipRating.status}
           onChange={(v) => { setDraft((d) => ({ ...d, ipRating: v })); setErrors((er) => ({ ...er, ipRating: undefined })); }} />
       )}
-      {tech.ratedCurrent.status === 'conflict' ? <ConflictField label="I nominal (A)" displayValue={tech.ratedCurrent.value != null ? `${tech.ratedCurrent.value.value} A` : '—'} /> : (
+      {tech.ratedCurrent.status === 'conflict' ? <ConflictField label="I nominal (A)" displayValue={tech.ratedCurrent.value != null ? `${tech.ratedCurrent.value.value} A` : 'Sin dato'} /> : (
         <EditField id="pi-ratedcurrent" label="I nominal (A)" value={draft.ratedCurrent} error={errors.ratedCurrent} wide datumStatus={tech.ratedCurrent.status}
           onChange={(v) => { setDraft((d) => ({ ...d, ratedCurrent: v })); setErrors((er) => ({ ...er, ratedCurrent: undefined })); }} />
       )}
@@ -565,11 +565,11 @@ export function EquipmentEditorPanel({ element, elements, updateElement, addEvid
       )}
 
       <div className="inspector-section">Fabricante y modelo</div>
-      {element.manufacturer.status === 'conflict' ? <ConflictField label="Fabricante" displayValue={element.manufacturer.value ?? '—'} /> : (
+      {element.manufacturer.status === 'conflict' ? <ConflictField label="Fabricante" displayValue={element.manufacturer.value ?? 'Sin dato'} /> : (
         <EditField id="pi-manufacturer" label="Fabricante" value={commonDraft.manufacturer} inputMode="text" wide datumStatus={element.manufacturer.status}
           onChange={(v) => setCommonDraft((d) => ({ ...d, manufacturer: v }))} />
       )}
-      {element.model.status === 'conflict' ? <ConflictField label="Modelo" displayValue={element.model.value ?? '—'} /> : (
+      {element.model.status === 'conflict' ? <ConflictField label="Modelo" displayValue={element.model.value ?? 'Sin dato'} /> : (
         <EditField id="pi-model" label="Modelo" value={commonDraft.model} inputMode="text" wide datumStatus={element.model.status}
           onChange={(v) => setCommonDraft((d) => ({ ...d, model: v }))} />
       )}

@@ -29,7 +29,7 @@ function getCodexBridge(): CodexBridge | null {
  * and sit each element on the floor (z_domain = half vertical dimension).
  * World units: mm. y_domain = 0 (centered on the row).
  */
-function nextDefaultPositionForCategoria(
+export function nextDefaultPositionForCategoria(
   categoria: string,
   placedImportedCount: number,
 ): { x: number; y: number; z: number } {
@@ -51,7 +51,8 @@ function fmtValor(a: AtributoImportado): string {
     const txt = Number.isInteger(n) ? String(n) : String(Number(n.toFixed(6)));
     return a.unidad ? `${txt} ${a.unidad}` : txt;
   }
-  return '—';
+  // Hito 1b: dato ausente se lee "Sin dato", nunca un guion ni un 0.
+  return 'Sin dato';
 }
 
 function groupAttributes(
@@ -191,7 +192,7 @@ function ComponenteCard({
         </div>
       )}
       {alternativas.length > 0 && (
-        <details className="imported-alternatives">
+        <details className="imported-alternatives" open>
           <summary style={{ cursor: 'pointer' }}>
             Alternativas en conflicto ({alternativas.length})
           </summary>
@@ -327,7 +328,7 @@ export function ImportedEquipmentInspector() {
       )}
 
       {atributosAlternativos.length > 0 && (
-        <details className="imported-alternatives">
+        <details className="imported-alternatives" open data-testid="imported-conflicts">
           <summary style={{ cursor: 'pointer', fontSize: 13, color: '#ebb0ff' }}>
             Alternativas y conflictos ({atributosAlternativos.length})
           </summary>
@@ -361,7 +362,7 @@ export function ImportedEquipmentInspector() {
               <div><strong>{c.conexionId}</strong> · {c.servicio}</div>
               <div style={{ color: '#8f9ba3', marginTop: 2, fontSize: 12 }}>{c.descripcion}</div>
               <div style={{ color: '#8f9ba3', marginTop: 2, fontSize: 11, fontFamily: 'monospace' }}>
-                {c.origenTextoOriginal || '(sin origen)'} → {c.destinoTextoOriginal || '(sin destino)'}
+                {c.origenTextoOriginal || 'Sin dato'} → {c.destinoTextoOriginal || 'Sin dato'}
               </div>
             </div>
           ))}

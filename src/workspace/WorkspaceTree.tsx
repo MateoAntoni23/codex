@@ -91,7 +91,7 @@ function WorkspaceGuide() {
 
 // ─── Connections section ──────────────────────────────────────────────────────
 
-function ConnectionsSection() {
+export function ConnectionsSection() {
   const connectionToolActive = useWorkspaceStore((s) => s.connectionToolActive);
   const connectionPortA      = useWorkspaceStore((s) => s.connectionPortA);
   const activateConnectionTool   = useWorkspaceStore((s) => s.activateConnectionTool);

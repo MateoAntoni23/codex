@@ -58,9 +58,12 @@ test.describe('A1 — servicio Python apagado', () => {
 
     // 1) Proyecto vacío.
     expect(await state(page)).toMatchObject({ piezas: 0, equipos: 0 });
+    // Hito 1b: cada control vive en su etapa; se llega con un clic en el selector de etapa.
+    await page.getByTestId('stage-tab-bandejas').click();
     await expect(page.getByTestId('tray-empty')).toBeVisible();
 
     // Sin piezas no se ofrece calcular (el motor rechaza piezas: []), y se dice por qué.
+    await page.getByTestId('stage-tab-resultados').click();
     await expect(page.getByTestId('calculate-tray')).toBeDisabled();
     await expect(page.getByTestId('calculate-hint')).toContainText(/al menos una pieza/);
 
@@ -78,7 +81,8 @@ test.describe('A1 — servicio Python apagado', () => {
     );
 
     // 4) Crear un tramo recto con los clicks del formulario.
-    await page.getByRole('button', { name: '+ Agregar tramo recto' }).click();
+    await page.getByTestId('stage-tab-bandejas').click();
+    await page.getByTestId('tool-bandejas-tramo').click();
     const options = await page.getByTestId('add-product-select').locator('option').count();
     expect(options, 'productos rectos ofrecidos por el formulario').toBeGreaterThan(5);
     await page.getByRole('button', { name: 'Crear tramo' }).click();
@@ -96,6 +100,11 @@ test.describe('A1 — servicio Python apagado', () => {
     expect(file.trayInput.piezas).toHaveLength(1);
     expect(file.projectV2.elements).toEqual([]);
 
+    // Hito 1b: calcular exige la reserva solicitada (%), que el proyecto vacío no trae.
+    await page.getByTestId('stage-tab-resultados').click();
+    await expect(page.getByTestId('calculate-tray')).toBeDisabled();
+    await expect(page.getByTestId('calculate-hint')).toContainText(/reserva/i);
+    await page.getByTestId('reserva-input').fill('20');
     await expect(page.getByTestId('calculate-tray')).toBeEnabled();
     // 6) Calcular: informa que el servicio está apagado y no rompe la aplicación.
     await page.getByTestId('calculate-tray').click();

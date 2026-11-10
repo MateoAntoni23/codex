@@ -58,7 +58,9 @@ async function projectSnapshot(page: Page): Promise<Json> {
 
 async function addStraightByUi(page: Page): Promise<void> {
   const before = await page.evaluate(() => (window as unknown as { __codex: { trayStore: { getState: () => { entrada: { piezas: unknown[] } } } } }).__codex.trayStore.getState().entrada.piezas.length);
-  await page.getByRole('button', { name: '+ Agregar tramo recto' }).click();
+  // Hito 1b: el tramo nuevo es una herramienta de la etapa Bandejas.
+  await page.getByTestId('stage-tab-bandejas').click();
+  await page.getByTestId('tool-bandejas-tramo').click();
   await page.getByRole('button', { name: 'Crear tramo' }).click();
   await expect.poll(() => page.evaluate(() => (window as unknown as { __codex: { trayStore: { getState: () => { entrada: { piezas: unknown[] } } } } }).__codex.trayStore.getState().entrada.piezas.length)).toBe(before + 1);
 }
@@ -96,6 +98,7 @@ async function continueFromFirstStraight(page: Page): Promise<void> {
 }
 
 async function importExcelAndPlaceEquipment(page: Page): Promise<void> {
+  await page.getByTestId('stage-tab-equipos').click();
   await page.getByTestId('open-import-wizard').click();
   await page.locator('.import-wizard').waitFor({ state: 'visible', timeout: 10_000 });
   await page.locator('.import-wizard input[type="file"]').setInputFiles(EXCEL);
@@ -182,8 +185,8 @@ test.describe('Hito 1 — el proyecto no se pierde', () => {
 
     const after = await projectSnapshot(page);
     expect(after).toEqual(before); // piezas, uniones, equipos, evidencia, catálogo importado y archivo
-    // Y la barra de estado lo muestra.
-    await expect(page.locator('.workspace-status')).toContainText(String(before.fileName));
+    // Y la barra de proyecto lo muestra (hito 1b: el nombre vive en la barra de proyecto).
+    await expect(page.getByTestId('project-name')).toContainText(String(before.fileName).replace(/\.json$/, ''));
     await expect(page.getByTestId('project-save-status')).toHaveAttribute('data-phase', 'saved');
     // Restaurar no marca "cambios sin copia en archivo".
     await expect(page.locator('.workspace-dirty')).toHaveCount(0);

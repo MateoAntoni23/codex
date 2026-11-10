@@ -39,6 +39,7 @@ import {
 } from './pieceClassification';
 import { hasParametricRecipe, resolveRecipe, placeRecipe, chiralityForTurn, buildRecipeFromProduct } from './parametricBridge';
 import { buildContinuationCandidates, type ContinuationCandidate } from './continuationCandidates';
+import { indexProducts, pieceLabelById, portLabel } from './stages/displayNames';
 
 // ─── PE extension proposal widget ────────────────────────────────────────────
 
@@ -530,7 +531,8 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
       <div style={{ marginBottom: 10, padding: '6px 8px', background: '#1a1e30', borderRadius: 3, lineHeight: 1.6 }}>
         <div style={{ color: '#8888aa', marginBottom: 2, fontSize: 10 }}>Puerto de origen</div>
         <div style={{ color: '#ffaa44', fontFamily: 'monospace', fontSize: 11 }}>
-          {startPort.pieceId}.{startPort.portName}
+          {/* 3d: nombre de producto y nombre físico de la boca, no ids internos. */}
+          <RoutingOriginLabel pieceId={startPort.pieceId} portName={startPort.portName} />
         </div>
         {existingProduct && (
           <div style={{ color: '#99aadd', fontSize: 10, marginTop: 2 }}>
@@ -1371,6 +1373,18 @@ export function RoutingStatusBadge() {
       {step === 'selectingPort' && 'seleccioná un puerto'}
       {step === 'configuringSegment' && 'configurando tramo'}
       {step === 'confirmingReduction' && 'eligiendo reducción'}
+    </span>
+  );
+}
+
+function RoutingOriginLabel({ pieceId, portName }: { pieceId: string; portName: string }) {
+  const entrada = useTrayStore((s) => s.entrada);
+  const context = useTrayStore((s) => s.context);
+  const idx = indexProducts(context?.productos);
+  const piece = entrada?.piezas.find((p) => p.instancia_id === pieceId);
+  return (
+    <span data-testid="routing-origin">
+      {pieceLabelById(pieceId, entrada?.piezas ?? [], idx)} · {piece ? portLabel(piece.producto_id, portName, idx) : portName}
     </span>
   );
 }

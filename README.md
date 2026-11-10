@@ -14,8 +14,8 @@ sus datos intactos.
 
 ## Rama
 
-Trabajo del hito 1 ("el proyecto no se pierde"): `feat/m1-proyecto-persistente`
-(base: `feat/pattern-models-reconciliation` @ `c8b3105`).
+Hito 1b ("interfaz por etapas de trabajo"): `feat/m1b-interfaz-por-etapas`
+(base: `feat/m1-proyecto-persistente` @ `231c27e`).
 
 ## Requisitos
 
@@ -66,8 +66,32 @@ restaura de IndexedDB) o uno vacío.
   de `vendor/motor_bandejas/datos` (chunk diferido en el build). El motor sólo hace
   falta para calcular; si su catálogo no coincide con el empaquetado se avisa y no se
   calcula.
-- Ejemplos y escenarios son acciones explícitas de la barra: *Cargar ejemplo del
-  motor*, *Cargar equipos de demostración*, *Cargar escenario de prueba*.
+- Ejemplos y escenarios de prueba (*Cargar escenario de prueba*, *Cargar cadenas CUPS*,
+  *Cargar ejemplo del motor*, *Cargar equipos de demostración*) no aparecen en uso normal:
+  se abren con `/?dev=1`, en el menú *Desarrollo* de la barra de proyecto.
+
+### Etapas de trabajo (hito 1b)
+
+La interfaz se organiza en cinco etapas; la escena 3D es común:
+
+| Etapa | Lista (izquierda) | Herramientas | Inspector |
+|---|---|---|---|
+| 1 Equipos | Importar Excel, Nuevo equipo, buscador, filtro Todos/Sin ubicar/Ubicados, una lista por categoría con propios e importados | Seleccionar, Ubicar, Mover, Rotar 90° | Ficha del equipo o del Excel |
+| 2 Planta | Infraestructura (piso, nave) y su visibilidad | — | Ficha (sólo lectura) |
+| 3 Bandejas | Pieza nueva, piezas, extremos libres, uniones, soportes, PE | Seleccionar, Continuar, Tramo nuevo, Unir extremos, Soporte | Pieza, continuación o soporte |
+| 4 Conexiones | Conexiones del Excel (sin recorrido) y circuitos | — | Resumen |
+| 5 Resultados | Servicio de cálculo, Reconectar, reserva solicitada (%), Calcular, resultados | — | Resultado de la pieza |
+
+- Sin selección, el inspector muestra el resumen de la etapa y el siguiente paso.
+- Elegir algo de otra etapa (por ejemplo, una pieza en la escena estando en Equipos)
+  cambia de etapa automáticamente; una pieza elegida en Resultados se queda en Resultados.
+- Abrir una etapa directamente: `/?etapa=bandejas` (equipos, planta, bandejas, conexiones, resultados).
+- Tema oscuro (por defecto) o claro desde la barra de proyecto; la preferencia se guarda en
+  este navegador (`codex:ui:theme`) y no viaja en el archivo de proyecto.
+- Calcular requiere al menos una pieza y la **reserva solicitada (%)** (el motor la exige;
+  un proyecto nuevo no la trae y no se inventa). `tipo_circuito` se fija en `potencia`,
+  el único valor que admite el motor.
+- Sin PE definido el resultado se lee **"PE sin definir"** (tono neutro), no como incumplimiento.
 
 ## Verificar
 

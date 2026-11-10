@@ -6,6 +6,7 @@
 import { useTrayStore } from '../tray/store';
 import { useWorkspaceStore } from './useWorkspaceStore';
 import { object } from '../tray/model';
+import { summarizeResult } from './stages/resultPresentation';
 
 function JsonBlock({ value }: { value: unknown }) {
   return <pre className="tray-json">{JSON.stringify(value, null, 2)}</pre>;
@@ -39,9 +40,10 @@ export function TrayResults() {
         No verifica eléctricamente ni aprueba instalaciones.
       </p>
 
+      {/* Hito 1b: el estado se lee con summarizeResult (PE sin definir ≠ incumplimiento). */}
       {object(result.resumen) && (
         <p style={{ padding: '2px 12px', fontSize: 12 }}>
-          <b>{String(result.resumen.estado_trazado).split('_').join(' ')}</b>
+          <b>{summarizeResult(result)?.headline}</b>
         </p>
       )}
 
@@ -101,7 +103,7 @@ export function TrayResults() {
       </details>
 
       {Object.entries(result).filter(([k]) => k !== 'entrada').map(([key, val]) => (
-        <details key={key} style={{ margin: '4px 0' }} open={key === 'resumen' || key === 'verificacion_electrica'}>
+        <details key={key} style={{ margin: '4px 0' }}>
           <summary style={{ padding: '3px 12px', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>{key}</summary>
           {Array.isArray(val) ? val.map((v, i) => (
             <div key={i}>

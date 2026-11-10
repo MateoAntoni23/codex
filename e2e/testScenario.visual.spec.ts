@@ -40,7 +40,9 @@ type StoreSnapshot = {
 };
 
 async function openWorkspace(page: Page): Promise<void> {
-  await page.goto('/?workspace=bandejas');
+  // Hito 1b: las acciones de prueba sólo aparecen con ?dev=1 (menú Desarrollo).
+  await page.goto('/?workspace=bandejas&dev=1');
+  await page.getByTestId('dev-menu').locator('summary').click();
   await page.locator('.unified-workspace').waitFor({ state: 'visible', timeout: 20_000 });
 }
 

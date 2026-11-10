@@ -1,0 +1,177 @@
+/*
+ * Hito 1b — interfaz por etapas y temas.
+ *
+ * Tema: `data-theme` en `.unified-workspace` (oscuro por defecto; preferencia en
+ * localStorage `codex:ui:theme`, fuera del archivo de proyecto). La escena 3D
+ * (`.unified-workspace-canvas`) conserva su fondo: ninguna regla de tema la toca.
+ *
+ * Contraste AA: los paneles reutilizan componentes con colores en línea pensados
+ * para fondo oscuro. Para garantizar AA en ambos temas, dentro de `.ws-panel` el
+ * texto toma el color del tema y los fondos se normalizan a superficies del tema
+ * (los colores de acento en línea de esos componentes se neutralizan). Los estados
+ * con significado usan las clases `tone-*`, con colores verificados para AA.
+ */
+
+.unified-workspace {
+  --ws-bg: #0f131a;
+  --ws-panel: #161b25;
+  --ws-surface: #1f2632;
+  --ws-surface-2: #283142;
+  --ws-fg: #e8edf4;
+  --ws-fg-muted: #b9c3d1;
+  --ws-border: #3b475b;
+  --ws-accent-fg: #9ccaff;
+  --ws-accent-bg: #23406b;
+  --ws-ok: #86e3ad;
+  --ws-warn: #f3c86f;
+  --ws-err: #ffa3a3;
+  --ws-neutral: #c9d2de;
+  background: var(--ws-bg);
+  color: var(--ws-fg);
+}
+
+.unified-workspace[data-theme='light'] {
+  --ws-bg: #dfe4ea;
+  --ws-panel: #ffffff;
+  --ws-surface: #f2f4f7;
+  --ws-surface-2: #e5e9ef;
+  --ws-fg: #18202c;
+  --ws-fg-muted: #3d4859;
+  --ws-border: #aeb8c6;
+  --ws-accent-fg: #0b3f7f;
+  --ws-accent-bg: #d3e4fa;
+  --ws-ok: #0b5f31;
+  --ws-warn: #6b4500;
+  --ws-err: #9a1515;
+  --ws-neutral: #2c3644;
+}
+
+/* ── Normalización de color y fondo dentro de los paneles ─────────────────── */
+.unified-workspace .ws-panel { background: var(--ws-panel) !important; }
+.unified-workspace .ws-panel,
+.unified-workspace .ws-panel * {
+  color: var(--ws-fg) !important;
+  border-color: var(--ws-border) !important;
+  outline-color: var(--ws-accent-fg) !important;
+}
+.unified-workspace .ws-panel * { background-color: transparent !important; background-image: none !important; }
+.unified-workspace .ws-panel button,
+.unified-workspace .ws-panel input,
+.unified-workspace .ws-panel select,
+.unified-workspace .ws-panel textarea,
+.unified-workspace .ws-panel summary,
+.unified-workspace .ws-panel pre,
+.unified-workspace .ws-panel .stage-card,
+.unified-workspace .ws-panel .stage-badge,
+.unified-workspace .ws-panel [class*='badge'] {
+  background-color: var(--ws-surface) !important;
+}
+.unified-workspace .ws-panel option { background-color: var(--ws-panel) !important; }
+.unified-workspace .ws-panel button:not(:disabled):hover { background-color: var(--ws-surface-2) !important; }
+.unified-workspace .ws-panel button:disabled { opacity: 0.55; cursor: not-allowed; }
+.unified-workspace .ws-panel a { color: var(--ws-accent-fg) !important; }
+
+/* Selección / activo */
+.unified-workspace .ws-panel .active,
+.unified-workspace .ws-panel .selected,
+.unified-workspace .ws-panel .is-active,
+.unified-workspace .ws-panel [aria-current='true'] {
+  background-color: var(--ws-accent-bg) !important;
+  color: var(--ws-fg) !important;
+  outline: 2px solid var(--ws-accent-fg) !important;
+  outline-offset: -2px;
+}
+
+/* Tonos con significado (AA verificado contra --ws-panel y --ws-surface) */
+.unified-workspace .ws-panel .tone-ok, .unified-workspace .ws-panel .tone-ok * { color: var(--ws-ok) !important; }
+.unified-workspace .ws-panel .tone-warn, .unified-workspace .ws-panel .tone-warn * { color: var(--ws-warn) !important; }
+.unified-workspace .ws-panel .tone-neutral, .unified-workspace .ws-panel .tone-neutral * { color: var(--ws-neutral) !important; }
+.unified-workspace .ws-panel .workspace-error,
+.unified-workspace .ws-panel .project-save-error { color: var(--ws-err) !important; }
+.unified-workspace .ws-panel .stage-note,
+.unified-workspace .ws-panel .stage-row-sub,
+.unified-workspace .ws-panel .stage-tab-status,
+.unified-workspace .ws-panel .stage-section-title,
+.unified-workspace .ws-panel .workspace-empty { color: var(--ws-fg-muted) !important; }
+
+/* Modales dentro del área de paneles: opacos y con velo */
+.unified-workspace .ws-panel .project-dialog-backdrop,
+.unified-workspace .ws-panel .import-wizard-backdrop { background-color: rgba(0, 0, 0, 0.55) !important; }
+.unified-workspace .ws-panel .project-dialog,
+.unified-workspace .ws-panel .import-wizard { background-color: var(--ws-panel) !important; }
+.unified-workspace .ws-modal-host { background: transparent !important; }
+
+/* ── Barra de proyecto ─────────────────────────────────────────────────────── */
+.ws-chrome { flex-shrink: 0; border-bottom: 1px solid var(--ws-border); }
+.project-bar {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 6px 12px; min-height: 40px; font-size: 12px;
+}
+.project-name { font-weight: 700; font-size: 14px; max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.project-bar-spacer { flex: 1; }
+.project-bar button, .history-controls button, .theme-toggle, .dev-menu summary, .stage-actions button,
+.stage-tools button, .stage-panel .stage-primary {
+  padding: 4px 10px; border: 1px solid var(--ws-border); border-radius: 4px; cursor: pointer; font-size: 12px;
+}
+.history-controls { display: inline-flex; align-items: center; gap: 4px; }
+.history-label { font-size: 11px; margin-left: 4px; }
+.dev-menu { position: relative; }
+.dev-menu-items {
+  position: absolute; right: 0; top: 100%; z-index: 50; display: flex; flex-direction: column; gap: 4px;
+  padding: 8px; border: 1px solid var(--ws-border); min-width: 240px;
+}
+.unified-workspace .ws-panel .dev-menu-items { background-color: var(--ws-panel) !important; }
+
+/* ── Selector de etapa ─────────────────────────────────────────────────────── */
+.stage-bar { display: flex; gap: 2px; padding: 0 8px 6px; }
+.stage-tab {
+  display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; column-gap: 8px;
+  align-items: center; text-align: left; padding: 6px 12px; min-width: 150px;
+  border: 1px solid var(--ws-border); border-radius: 6px; cursor: pointer;
+}
+.stage-tab-n {
+  grid-row: 1 / span 2; width: 22px; height: 22px; border-radius: 50%; display: inline-flex;
+  align-items: center; justify-content: center; font-weight: 700; border: 1px solid var(--ws-border);
+}
+.stage-tab-label { font-weight: 700; font-size: 13px; }
+.stage-tab-status { font-size: 11px; }
+.stage-error { padding: 4px 12px; font-size: 12px; }
+
+/* ── Paneles de etapa ──────────────────────────────────────────────────────── */
+.unified-workspace .unified-workspace-body { grid-template-columns: 300px 1fr 340px; }
+.stage-panel { display: flex; flex-direction: column; gap: 8px; font-size: 12px; }
+.stage-tools { display: flex; flex-wrap: wrap; gap: 4px; padding-bottom: 6px; border-bottom: 1px solid var(--ws-border); }
+.stage-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.stage-section { border-bottom: 1px solid var(--ws-border); padding-bottom: 6px; }
+.stage-section-title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; margin: 4px 0; font-weight: 700; }
+.stage-row { display: flex !important; align-items: center; gap: 6px; width: 100%; text-align: left; padding: 4px 6px; border-radius: 3px; cursor: pointer; border: none; font-size: 12px; }
+.stage-row .tag { font-weight: 600; }
+.stage-row-sub { font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+.stage-row-inline { display: flex; align-items: center; gap: 6px; padding: 2px 0; font-size: 11px; }
+.stage-row-inline span { flex: 1; }
+.stage-icon-btn { padding: 0 6px; border: 1px solid var(--ws-border); border-radius: 3px; cursor: pointer; }
+.stage-badge { font-size: 10px; padding: 0 5px; border: 1px solid var(--ws-border); border-radius: 3px; margin-left: auto; white-space: nowrap; }
+.stage-check { display: flex; align-items: center; gap: 6px; padding: 2px 0; cursor: pointer; }
+.stage-segmented { display: flex; gap: 2px; margin: 6px 0; }
+.stage-segmented label { flex: 1; text-align: center; padding: 3px 4px; border: 1px solid var(--ws-border); border-radius: 3px; cursor: pointer; }
+.stage-segmented input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.stage-field { display: flex; flex-direction: column; gap: 2px; margin: 4px 0; }
+.stage-field input, .stage-field select { width: 100%; }
+.stage-note { font-size: 11px; line-height: 1.4; margin: 4px 0; }
+.stage-card { border: 1px solid var(--ws-border); border-radius: 4px; padding: 6px; margin: 4px 0; }
+.stage-card-head { display: flex; gap: 6px; align-items: center; }
+.stage-primary { width: 100%; margin: 6px 0; font-weight: 700; }
+.stage-inline-form { border: 1px solid var(--ws-border); border-radius: 4px; padding: 6px; }
+.stage-result { border: 1px solid var(--ws-border); border-radius: 4px; padding: 6px 8px; margin-bottom: 6px; }
+.stage-result-headline { font-weight: 700; font-size: 14px; }
+.stage-issues { margin: 4px 0 0 16px; }
+.import-filters input { width: 100%; padding: 3px 6px; }
+
+/* ── Inspector ─────────────────────────────────────────────────────────────── */
+.stage-inspector { height: 100%; }
+.stage-summary { padding: 8px 12px; }
+.stage-summary-title { font-size: 14px; font-weight: 700; margin: 0 0 6px; }
+.stage-summary-rows { display: grid; gap: 2px; margin: 0; }
+.stage-summary-row { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; }
+.stage-summary-row dd { margin: 0; font-weight: 600; }
+.stage-next { margin-top: 10px; padding: 6px 8px; border: 1px solid var(--ws-border); border-radius: 4px; font-size: 12px; }

@@ -6,10 +6,17 @@ import { useTrayStore, toMotorEntrada } from '../tray/store';
 import { useWorkspaceStore } from './useWorkspaceStore';
 import { useRoutingStore } from './useRoutingStore';
 import { WorkspaceScene } from './WorkspaceScene';
-import { WorkspaceTree } from './WorkspaceTree';
-import { WorkspaceInspector } from './WorkspaceInspector';
-import { RoutingStatusBadge } from './RoutingPanel';
-import { ProjectControls } from '../project/ProjectControls';
+import { ProjectBar } from './stages/ProjectBar';
+import { StageBar } from './stages/StageBar';
+import { StageInspector } from './stages/StageInspector';
+import { EquiposPanel } from './stages/EquiposPanel';
+import { PlantaPanel } from './stages/PlantaPanel';
+import { BandejasPanel } from './stages/BandejasPanel';
+import { ConexionesPanel } from './stages/ConexionesPanel';
+import { ResultadosPanel } from './stages/ResultadosPanel';
+import { useUiStore } from './stages/uiStore';
+import './stages/stages.css';
+import { useStageSync } from './stages/useStageSync';
 import { bootProject, startAutosave, useProjectStatusStore } from '../project/projectSession';
 import { useCatalogConfigStore } from '../configurator/catalogConfigStore';
 import {
@@ -119,109 +126,29 @@ function SceneBridge() {
   return null;
 }
 
-function StatusBar() {
-  const status               = useTrayStore((s) => s.status);
-  const revision             = useTrayStore((s) => s.revision);
-  const error                = useTrayStore((s) => s.error);
-  const dirty                = useWorkspaceStore((s) => s.dirty);
-  const fileName             = useWorkspaceStore((s) => s.fileName);
-  const connectionToolActive = useWorkspaceStore((s) => s.connectionToolActive);
-  const connectionPortA      = useWorkspaceStore((s) => s.connectionPortA);
-  const engine               = useTrayStore((s) => s.engine);
-
-  return (
-    <div className="workspace-status" role="status">
-      <span>Motor: <strong>{status}</strong> · rev {revision}</span>
-      <span data-testid="engine-state" data-engine={engine.state} title={engine.detail ?? undefined}>
-        {' '}· Servicio de cálculo: <strong>{engine.state}</strong>
-        {engine.state !== 'conectado' && engine.state !== 'desconocido' && engine.detail ? ` — ${engine.detail}` : ''}
-      </span>
-      {fileName && <span> · {fileName}</span>}
-      {connectionToolActive && (
-        <span style={{ color: '#00ffcc', fontWeight: 600 }}>
-          {' '}● Herramienta de conexión activa — {connectionPortA ? `A: ${connectionPortA[0]}.${connectionPortA[1]} → hacé clic en puerto B` : 'Hacé clic en un puerto (esferas)'}
-        </span>
-      )}
-      <RoutingStatusBadge />
-      {dirty && <span className="workspace-dirty"> ● cambios sin copia en archivo</span>}
-      {error && <span className="workspace-error"> ⚠ {error}</span>}
-    </div>
-  );
+/**
+ * Hito 1b — interfaz por etapas. La barra de herramientas y la barra de estado
+ * anteriores se reparten entre la barra de proyecto (ProjectBar), el selector de
+ * etapa (StageBar) y los paneles de cada etapa. WorkspaceTree.tsx y
+ * WorkspaceInspector.tsx se conservan: sus fichas se reutilizan en StageInspector.
+ */
+function LeftPanel({ onOpenImportWizard }: { onOpenImportWizard: () => void }) {
+  const stage = useUiStore((s) => s.stage);
+  switch (stage) {
+    case 'equipos': return <EquiposPanel onOpenImportWizard={onOpenImportWizard} />;
+    case 'planta': return <PlantaPanel />;
+    case 'bandejas': return <BandejasPanel />;
+    case 'conexiones': return <ConexionesPanel />;
+    case 'resultados': return <ResultadosPanel />;
+  }
 }
 
-function Toolbar({ onOpenImportWizard }: { onOpenImportWizard: () => void }) {
-  // El motor rechaza `piezas: []` ("piezas debe ser una lista no vacía"): sin piezas
-  // no se ofrece el cálculo. `calculate()` del store tiene la misma guarda.
-  const noPieces = useTrayStore((s) => (s.entrada?.piezas.length ?? 0) === 0);
-  const calculating = useTrayStore((s) => s.status === 'calculando');
-  return (
-    <div className="workspace-toolbar">
-      <a href="?legacy=v1">← Editor inicial</a>
-      <span className="workspace-toolbar-title">Espacio de trabajo unificado</span>
-      <ProjectControls />
-      <button onClick={() => void useTrayStore.getState().initialize()}>Reconectar motor</button>
-      <button
-        onClick={() => void useTrayStore.getState().calculate()}
-        disabled={noPieces || calculating}
-        data-testid="calculate-tray"
-        title={noPieces ? 'No hay piezas para calcular: el motor exige al menos una pieza en el trazado.' : undefined}
-      >
-        Calcular trazado
-      </button>
-      {noPieces && (
-        <span className="project-message" data-testid="calculate-hint">
-          Calcular requiere al menos una pieza en el trazado.
-        </span>
-      )}
-      <button onClick={onOpenImportWizard} data-testid="open-import-wizard">Importar Excel</button>
-      <button
-        onClick={() => useWorkspaceStore.getState().loadTestScenario()}
-        data-testid="load-test-scenario"
-        title="Agrega Tablero Prueba A + Motor Prueba A y una conexión de potencia pendiente. Datos ficticios para pruebas; idempotente y deshacible."
-      >
-        Cargar escenario de prueba
-      </button>
-      <button
-        onClick={() => {
-          const current = useTrayStore.getState().entrada;
-          if (!current) return;
-          // Carga aditiva: trps300→cups300→trps300 + trps450→cups450→trps450.
-          // No toca lo existente; idempotente al segundo click.
-          import('./cupsTestChain').then(({ addCupsTestChains }) => {
-            const next = addCupsTestChains(current);
-            useTrayStore.getState().edit(next);
-          });
-        }}
-        data-testid="load-cups-chains"
-        title="Agrega dos cadenas CUPS cerradas (TRPS-300→CUPS-300→TRPS-300 y TRPS-450→CUPS-450→TRPS-450) sin tocar piezas existentes. Idempotente."
-      >
-        Cargar cadenas CUPS
-      </button>
-      <button
-        onClick={() => {
-          const ex = useTrayStore.getState().context?.ejemplos.trazado_derivacion_pe;
-          if (!ex) {
-            alert('El catálogo estático todavía no terminó de cargar.');
-            return;
-          }
-          if (!confirm('Cargar el ejemplo del motor reemplaza el trazado actual. ¿Continuar?')) return;
-          useTrayStore.getState().edit(ex);
-        }}
-        data-testid="load-motor-example"
-        title="Acción explícita: reemplaza el trazado por el ejemplo trazado_derivacion_pe del motor (deshacible)."
-      >
-        Cargar ejemplo del motor
-      </button>
-      <button
-        onClick={() => useWorkspaceStore.getState().loadDemoEquipment()}
-        data-testid="load-demo-equipment"
-        title="Acción explícita: agrega los equipos de demostración (piso, nave, tablero, motor…). Deshacible."
-      >
-        Cargar equipos de demostración
-      </button>
-      <a href="?configurator=v1" className="workspace-toolbar-link" data-testid="open-configurator">Configuración de biblioteca</a>
-    </div>
-  );
+/** Error del trazado fuera de Resultados (allí se muestra en su panel). */
+function ChromeError() {
+  const error = useTrayStore((s) => s.error);
+  const stage = useUiStore((s) => s.stage);
+  if (!error || stage === 'resultados') return null;
+  return <div className="workspace-error stage-error" role="alert">⚠ {error}</div>;
 }
 
 export function UnifiedWorkspace() {
@@ -231,6 +158,8 @@ export function UnifiedWorkspace() {
   const markDirty      = useWorkspaceStore((s) => s.markDirty);
   const [importWizardOpen, setImportWizardOpen] = useState(false);
   const booted         = useProjectStatusStore((s) => s.booted);
+  const theme          = useUiStore((s) => s.theme);
+  useStageSync();
 
   // Restaurar el último proyecto (IndexedDB) y recién entonces suscribir el
   // autoguardado: si se suscribiera antes, un estado vacío podría pisar lo guardado.
@@ -270,6 +199,7 @@ export function UnifiedWorkspace() {
       // inserts it via routing, and must compare the motor payload. `toMotorEntrada`
       // is the exact transformation used before dispatching to the Python engine.
       catalogConfigStore: useCatalogConfigStore,
+      uiStore: useUiStore,
       toMotorEntrada,
       // Same-module bindings for the resolver. See note in ConfiguratorLayout
       // about Vite dev-server double-loading when tests use `await import()`.
@@ -316,9 +246,12 @@ export function UnifiedWorkspace() {
   });
 
   return (
-    <div className="unified-workspace">
-      <Toolbar onOpenImportWizard={() => setImportWizardOpen(true)} />
-      <StatusBar />
+    <div className="unified-workspace" data-theme={theme} data-testid="workspace-root">
+      <div className="ws-panel ws-chrome">
+        <ProjectBar />
+        <StageBar />
+        <ChromeError />
+      </div>
 
       {!booted ? (
         <div className="workspace-restoring" data-testid="project-restoring" role="status">
@@ -326,8 +259,8 @@ export function UnifiedWorkspace() {
         </div>
       ) : (
       <div className="unified-workspace-body">
-        <aside className="unified-workspace-tree">
-          <WorkspaceTree />
+        <aside className="unified-workspace-tree ws-panel" aria-label="Lista de la etapa">
+          <LeftPanel onOpenImportWizard={() => setImportWizardOpen(true)} />
         </aside>
 
         <main className="unified-workspace-canvas">
@@ -338,13 +271,17 @@ export function UnifiedWorkspace() {
           </Canvas>
         </main>
 
-        <aside className="unified-workspace-inspector">
-          <WorkspaceInspector />
+        <aside className="unified-workspace-inspector ws-panel" aria-label="Inspector">
+          <StageInspector />
         </aside>
       </div>
       )}
 
-      {importWizardOpen && <ImportWizard onClose={() => setImportWizardOpen(false)} />}
+      {importWizardOpen && (
+        <div className="ws-panel ws-modal-host">
+          <ImportWizard onClose={() => setImportWizardOpen(false)} />
+        </div>
+      )}
     </div>
   );
 }
