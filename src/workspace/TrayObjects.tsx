@@ -17,15 +17,13 @@ import * as THREE from 'three';
 import { useTrayStore } from '../tray/store';
 import { useWorkspaceStore } from './useWorkspaceStore';
 import { useRoutingStore } from './useRoutingStore';
-import type { Piece, Product } from '../tray/model';
-import {
-  resolveRecipe,
-  verifyGeometricFit,
-  placeRecipe,
-  buildLocalMesh,
-  type Vec3 as BridgeVec3,
-} from './parametricBridge';
-import { PlacedRecipePortFrames, logPlacement, isPortDiagEnabled } from './portFrameDiag';
+import type { Piece, Product, TrayInput } from '../tray/model';
+import { isPortDiagEnabled } from './portFrameDiag';
+import { placedOf } from './placement/definitions';
+import { PlacedMesh } from './placement/PlacedMesh';
+import { checkJoin, formatJoin } from './placement/joins';
+import { getCompatibleProductIds } from './routingRules';
+import { UNIONS_KEY, unionRecord, unionsOf } from './workspaceOperation';
 import { LadderPiece, isLadderFamily } from './ladderGeometry';
 
 type V3 = [number, number, number];
@@ -114,120 +112,17 @@ function RectoPiece({
   );
 }
 
-// ─── Transform mm (Z-up) → viewer m (Y-up), como THREE.Matrix4 constante ──
-const MM_TO_VIEWER = new THREE.Matrix4().set(
-  1 / 1000,       0,         0, 0,
-         0,       0,  1 / 1000, 0,
-         0, -1 / 1000,        0, 0,
-         0,       0,         0, 1,
-);
-
-/**
- * ParametricMesh — renderiza una pieza con la receta medida del STEP.
- *
- * Toma el anclaje (P1 real), aplica la quiralidad detectada por el puente,
- * y compone el transform mm→viewer con el transform local→mundo. El fit
- * debe estar validado (matches=true) antes de montar este componente.
- */
-function ParametricMesh({
-  product, piece, fit, selected, onClick,
-}: {
-  product: Product;
-  piece: Piece;
-  fit: NonNullable<ReturnType<typeof verifyGeometricFit>>;
-  selected: boolean;
-  onClick: () => void;
-}) {
-  const data = useMemo(() => {
-    const entryPort = piece.puertos[fit.entryPortName];
-    if (!entryPort) return null;
-    const startPos = entryPort.posicion_mm as BridgeVec3;
-    const entryDir: BridgeVec3 = [
-      -entryPort.direccion[0],
-      -entryPort.direccion[1],
-      -entryPort.direccion[2],
-    ];
-    const storedSectionUp = entryPort.orientacion_seccion_ws as
-      | BridgeVec3
-      | undefined;
-    const entry = fit.entry;
-    const overrides = entry.piece_kind === 'tramo_recto'
-      ? { longitud_mm: pieceLengthFromPorts(piece) }
-      : undefined;
-    const placed = placeRecipe(
-      product, entry, startPos, entryDir, fit.chirality, overrides,
-      {
-        entryPortName: fit.entryPortName,
-        ...(storedSectionUp ? { sectionUp: storedSectionUp } : {}),
-      },
-    );
-    const g = buildLocalMesh(placed.recipe);
-    const m = new THREE.Matrix4().multiplyMatrices(MM_TO_VIEWER, placed.matrix);
-    logPlacement(`confirmed ${piece.instancia_id} (${product.sku})`, {
-      sku: product.sku,
-      ala_mm: placed.recipe.height,
-      ancho_mm: (product.ancho_nominal_mm ?? null),
-      chirality: fit.chirality,
-      entryPortName: fit.entryPortName,
-      startPosMm: startPos,
-      entryDir,
-      placedP1Mm: placed.p1.pos,
-      placedP2Mm: placed.p2.pos,
-      storedEntryMm: entryPort.posicion_mm as BridgeVec3,
-    });
-    return { geom: g, matrix: m, mirrored: placed.mirrored, placed };
-  }, [fit, product, piece]);
-
-  if (!data) return null;
-  const color = selected ? '#ffcf33' : '#50b8de';
-  return (
-    <group>
-      <mesh
-        matrixAutoUpdate={false}
-        onUpdate={(m) => {
-          m.matrix.copy(data.matrix);
-          m.matrixWorldNeedsUpdate = true;
-          m.userData.codex = {
-            kind: 'parametric-confirmed',
-            instanciaId: piece.instancia_id,
-            sku: product.sku,
-            chirality: fit.chirality,
-            mirrored: data.mirrored,
-            entryPortName: fit.entryPortName,
-            placedP1: data.placed.p1.pos,
-            placedP2: data.placed.p2.pos,
-            placedPorts: data.placed.ports.map((p) => ({
-              name: p.name,
-              pos: p.pos,
-              outwardNormal: p.outwardNormal,
-            })),
-          };
-        }}
-        onClick={(e) => { e.stopPropagation(); onClick(); }}
-      >
-        <primitive object={data.geom} attach="geometry" />
-        <meshStandardMaterial
-          color={color}
-          transparent
-          opacity={isPortDiagEnabled() ? 0.4 : 0.75}
-          side={data.mirrored ? THREE.DoubleSide : THREE.FrontSide}
-        />
-      </mesh>
-      <PlacedRecipePortFrames tag={piece.instancia_id} placed={data.placed} />
-    </group>
-  );
-}
-
 /**
  * PieceVisual — despacho: receta paramétrica si existe y encaja; si no,
  * mantiene la representación anterior (Box para rectas, Line para el resto).
  */
 function PieceVisual({
-  product, piece, fallbackPorts, p1mm, p2mm, widthMm, alaMm, tipo,
+  product, piece, entrada, fallbackPorts, p1mm, p2mm, widthMm, alaMm, tipo,
   selected, onClick, label,
 }: {
   product: Product | undefined;
   piece: Piece;
+  entrada: TrayInput;
   fallbackPorts: V3[];
   p1mm: V3;
   p2mm: V3;
@@ -238,54 +133,44 @@ function PieceVisual({
   onClick: () => void;
   label: string;
 }) {
-  const fit = useMemo(
-    () => (product && resolveRecipe(product) ? verifyGeometricFit(product, piece) : null),
-    [product, piece],
-  );
+  // A-5: se dibuja desde lo guardado (definición + mano + pose). No se re-deduce
+  // nada con verifyGeometricFit (queda para la migración y el diagnóstico).
+  const placed = placedOf(entrada, piece);
+  const colocacion = piece.colocacion;
 
-  if (isPortDiagEnabled()) {
-    const path = product && fit && fit.matches
-      ? 'parametric'
-      : (tipo === 'recta' ? 'recto-box-fallback' : 'schematic-line-fallback');
-    const fitInfo = fit
-      ? { chirality: fit.chirality, p2PosErr: fit.p2PosErrorMm, p2DirErr: fit.p2DirErrorDeg, matches: fit.matches }
-      : null;
-    // eslint-disable-next-line no-console
-    console.log(
-      `%c[diag/path] ${piece.instancia_id} (${product?.sku ?? 'no-sku'}) → ${path}`,
-      'color:#99ccff',
-      { tipo, fit: fitInfo, ala_mm: alaMm, ancho_mm: widthMm },
-    );
-  }
-
-  if (product && fit && fit.matches) {
-    return (
-      <ParametricMesh
-        product={product}
-        piece={piece}
-        fit={fit}
-        selected={selected}
-        onClick={onClick}
-      />
-    );
-  }
-
-  // Familia escalera (SAM-STE-Z): generador propio de largueros + travesaños
-  // a partir de puertos almacenados + dimensiones del catálogo. No mapea a
-  // recetas de perforada (STP-Z).
+  // Familia escalera: generador de largueros + travesaños a partir de las bocas,
+  // que se derivan de la pose guardada (el preview usa el mismo generador).
   if (product && isLadderFamily(product)) {
     return (
-      <LadderPiece
-        piece={piece}
-        product={product}
-        selected={selected}
+      <group>
+        <LadderPiece piece={piece} product={product} selected={selected} onClick={onClick} />
+        {colocacion?.estado === 'sin_resolver' && <UnresolvedMarker piece={piece} motivo={colocacion.motivo} />}
+      </group>
+    );
+  }
+
+  if (product && placed) {
+    return (
+      <PlacedMesh
+        def={placed.def}
+        huella={placed.colocacion.definicion.huella}
+        mano={placed.colocacion.mano}
+        pose={placed.colocacion.pose}
+        color={selected ? '#ffcf33' : '#50b8de'}
+        opacity={isPortDiagEnabled() ? 0.4 : 0.75}
         onClick={onClick}
+        userData={{
+          kind: 'parametric-confirmed',
+          instanciaId: piece.instancia_id,
+          sku: product.sku,
+          entryPortName: placed.colocacion.boca_entrada ?? null,
+        }}
       />
     );
   }
 
-  if (tipo === 'recta') {
-    return (
+  const fallback = tipo === 'recta'
+    ? (
       <RectoPiece
         p1mm={p1mm}
         p2mm={p2mm}
@@ -297,35 +182,53 @@ function PieceVisual({
         instanciaId={piece.instancia_id}
         sku={product?.sku ?? null}
       />
+    )
+    : (
+      <SchematicPiece
+        ports={fallbackPorts}
+        selected={selected}
+        onClick={onClick}
+        label={label}
+        instanciaId={piece.instancia_id}
+        sku={product?.sku ?? null}
+        tipo={tipo}
+        portsMm={Object.values(piece.puertos).map((pp) => pp.posicion_mm as V3)}
+      />
     );
-  }
-
-  const portsMm = Object.values(piece.puertos).map((pp) => pp.posicion_mm as V3);
   return (
-    <SchematicPiece
-      ports={fallbackPorts}
-      selected={selected}
-      onClick={onClick}
-      label={label}
-      instanciaId={piece.instancia_id}
-      sku={product?.sku ?? null}
-      tipo={tipo}
-      portsMm={portsMm}
-    />
+    <group>
+      {fallback}
+      {colocacion?.estado === 'sin_resolver' && <UnresolvedMarker piece={piece} motivo={colocacion.motivo} />}
+    </group>
   );
 }
 
-function pieceLengthFromPorts(piece: Piece): number | null {
-  const p1 = piece.puertos.P1;
-  const p2 = piece.puertos.P2;
-  if (!p1 || !p2) return null;
-  if (typeof piece.longitud_mm === 'number' && piece.longitud_mm > 0) return piece.longitud_mm;
-  const dx = p2.posicion_mm[0] - p1.posicion_mm[0];
-  const dy = p2.posicion_mm[1] - p1.posicion_mm[1];
-  const dz = p2.posicion_mm[2] - p1.posicion_mm[2];
-  const d = Math.hypot(dx, dy, dz);
-  return d > 0 ? d : null;
+/**
+ * A-10: marcador visible de una pieza "sin resolver" (no encajó al migrar):
+ * conserva sus bocas y se dibuja con este aviso en su centro.
+ */
+function UnresolvedMarker({ piece, motivo }: { piece: Piece; motivo: string }) {
+  const ports = Object.values(piece.puertos);
+  if (!ports.length) return null;
+  const c = [0, 1, 2].map((i) => ports.reduce((s, p) => s + p.posicion_mm[i], 0) / ports.length) as V3;
+  return (
+    <group
+      position={toViewer(c)}
+      onUpdate={(g) => { g.userData.codex = { kind: 'unresolved-marker', instanciaId: piece.instancia_id, motivo }; }}
+    >
+      <mesh>
+        <octahedronGeometry args={[0.18, 0]} />
+        <meshBasicMaterial color="#ff5a4f" wireframe />
+      </mesh>
+      <Html center style={{ pointerEvents: 'none' }} position={[0, 0.3, 0]}>
+        <div style={{ background: 'rgba(60,0,0,0.85)', color: '#ffd0cc', fontSize: 10, padding: '2px 6px', borderRadius: 3, whiteSpace: 'nowrap' }}>
+          Sin resolver
+        </div>
+      </Html>
+    </group>
+  );
 }
+
 
 function SchematicPiece({
   ports, selected, onClick, label, instanciaId, sku, tipo, portsMm,
@@ -432,9 +335,33 @@ export function TrayObjects() {
         return;
       }
       const conexion_id = `CON-${Date.now().toString(36).toUpperCase()}`;
-      if (confirm(`Conectar ${aInst}.${aPort} ↔ ${instanciaId}.${puertoId}?\nID: ${conexion_id}`)) {
-        const next = structuredClone(entrada);
+      // A-7: se informa hueco, ángulo y giro; NUNCA se mueven piezas para tapar el hueco.
+      const pa = entrada.piezas.find((p) => p.instancia_id === aInst);
+      const pb = entrada.piezas.find((p) => p.instancia_id === instanciaId);
+      const A = pa?.puertos[aPort];
+      const B = pb?.puertos[puertoId];
+      if (!pa || !pb || !A || !B) { deactivateConnectionTool(); return; }
+      const check = checkJoin(A, B);
+      const documented = getCompatibleProductIds(context?.compatibilidades ?? [], pa.producto_id, aPort).has(pb.producto_id);
+      const head = `Unir ${aInst}.${aPort} ↔ ${instanciaId}.${puertoId}
+${formatJoin(check)}`;
+      const body = check.ok
+        ? 'La unión cumple las tolerancias (D-14).'
+        : `La unión NO cumple las tolerancias (${check.motivos.join('; ')}). No se mueve ninguna pieza: el hueco queda a la vista.`;
+      if (confirm(`${head}
+${body}
+¿Registrar la unión?`)) {
+        let motivo: string | undefined;
+        if (!documented) {
+          motivo = (prompt('El catálogo no documenta esta unión. Motivo de la excepción:') ?? '').trim();
+          if (motivo.length < 3) { deactivateConnectionTool(); return; }
+        }
+        const next = structuredClone(entrada) as TrayInput;
         next.conexiones.push({ conexion_id, a: [aInst, aPort], b: [instanciaId, puertoId] });
+        (next as Record<string, unknown>)[UNIONS_KEY] = {
+          ...unionsOf(next),
+          [conexion_id]: unionRecord(documented ? (check.ok ? 'documentada' : 'manual') : 'excepcion', check, motivo),
+        };
         trayEdit(next);
         markDirty();
       }
@@ -477,6 +404,7 @@ export function TrayObjects() {
             <PieceVisual
               product={product}
               piece={piece}
+              entrada={entrada}
               fallbackPorts={ports.map((pp) => toViewer(pp.posicion_mm as V3))}
               p1mm={p1}
               p2mm={p2}

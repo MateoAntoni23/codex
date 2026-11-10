@@ -126,15 +126,28 @@ describe('findBrokenConnections', () => {
     expect(findBrokenConnections(moved, 'T-1')).toEqual(['C-1']);
   });
 
-  it('acepta tolerancia explícita personalizada', () => {
+  // Hito 2 (A-7): la tolerancia es la del motor (D-14). Una tolerancia más
+  // permisiva pedida por el llamador se ignora: el frontend no puede aceptar
+  // uniones que el motor rechazaría.
+  it('ignora una tolerancia explícita más permisiva que D-14', () => {
     const t1 = makeStraight('T-1');
     const t2 = makeStraight('T-2', 3000);
     const entrada = makeEntrada([t1, t2], [
       { conexion_id: 'C-1', a: ['T-1', 'P2'], b: ['T-2', 'P1'] },
     ]);
     const moved = translatePiece(entrada, 'T-1', [3, 0, 0]);
-    expect(findBrokenConnections(moved, 'T-1', 5)).toEqual([]);
+    expect(findBrokenConnections(moved, 'T-1', 5)).toEqual(['C-1']);
     expect(findBrokenConnections(moved, 'T-1', 1)).toEqual(['C-1']);
+  });
+
+  it('una rotación que conserva el centro pero invierte la sección rompe la unión (giro)', () => {
+    const up = { orientacion_seccion_ws: [0, 0, 1] as [number, number, number] };
+    const t1 = makeStraight('T-1');
+    const t2 = makeStraight('T-2', 3000);
+    t1.puertos.P2 = { ...t1.puertos.P2, ...up };
+    t2.puertos.P1 = { ...t2.puertos.P1, orientacion_seccion_ws: [0, 0, -1] };
+    const entrada = makeEntrada([t1, t2], [{ conexion_id: 'C-1', a: ['T-1', 'P2'], b: ['T-2', 'P1'] }]);
+    expect(findBrokenConnections(entrada, 'T-1')).toEqual(['C-1']);
   });
 
   it('ignora conexiones que no involucran a la pieza movida', () => {

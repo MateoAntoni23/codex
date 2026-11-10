@@ -18,6 +18,11 @@ import { RoutingStatusBadge } from '../RoutingPanel';
 import { useUiStore, type BandejasTool } from './uiStore';
 import { indexProducts, pieceLabel, pieceLabelById, portLabel, productLabel } from './displayNames';
 import { Empty, Section, ToolBar, useRevealSelected } from './shared';
+import { useCatalogConfigStore } from '../../configurator/catalogConfigStore';
+import { outdatedPieces, updateOutdatedPieces } from '../placement/definitions';
+import { checkConnection, formatJoin, invalidConnections } from '../placement/joins';
+import { unionsOf } from '../workspaceOperation';
+import type { Product } from '../../tray/model';
 
 const LAYERS: Array<[LayerKey, string]> = [
   ['trays', 'Bandejas'],
@@ -97,6 +102,27 @@ export function BandejasPanel() {
 
   const noPieces = piezas.length === 0;
 
+  // A-6: piezas cuya definición guardada difiere de la vigente (la biblioteca
+  // cambió). No cambian solas: se ofrece actualizarlas como acción explícita.
+  const libraryOverrides = useCatalogConfigStore((s) => s.overrides);
+  const productMap = useMemo(() => new Map<string, Product>((context?.productos ?? []).map((p) => [p.producto_id, p])), [context]);
+  const outdated = useMemo(
+    () => (entrada ? outdatedPieces(entrada, productMap) : []),
+    [entrada, productMap, libraryOverrides], // eslint-disable-line react-hooks/exhaustive-deps
+  );
+  const [updateMsg, setUpdateMsg] = useState<string | null>(null);
+  const updateAll = () => {
+    if (!entrada) return;
+    const { entrada: next, updated } = updateOutdatedPieces(entrada, productMap);
+    const broken = invalidConnections(next, new Set(updated));
+    trayEdit(next);
+    markDirty();
+    setUpdateMsg(
+      `${updated.length} pieza(s) actualizada(s) a la definición vigente.` +
+      (broken.length ? ` ${broken.length} unión(es) dejaron de cumplir: revisalas en Uniones.` : ''),
+    );
+  };
+
   return (
     <div className="stage-panel" data-testid="panel-bandejas">
       <ToolBar
@@ -136,6 +162,19 @@ export function BandejasPanel() {
           <AddSupportForm onClose={() => setFormTool('seleccionar')} />
         </Section>
       )}
+
+      {outdated.length > 0 && (
+        <div className="stage-card tone-warn" role="status" data-testid="outdated-notice">
+          <div>
+            {outdated.length} pieza(s) colocada(s) con una definición distinta de la vigente (la biblioteca cambió).
+            Se siguen dibujando como fueron colocadas.
+          </div>
+          <button type="button" onClick={updateAll} data-testid="update-outdated">
+            Actualizar {outdated.length} pieza(s)
+          </button>
+        </div>
+      )}
+      {updateMsg && <p className="stage-note" role="status" data-testid="update-outdated-result">{updateMsg}</p>}
 
       <section className="stage-section" ref={setListEl} data-testid="piece-list">
         <h4 className="stage-section-title">Piezas ({piezas.length})</h4>
@@ -179,12 +218,21 @@ export function BandejasPanel() {
 
       <Section title={`Uniones (${conexiones.length})`} testid="joins">
         {conexiones.length === 0 && <Empty>Sin uniones.</Empty>}
-        {conexiones.map((c) => (
-          <div key={c.conexion_id} className="stage-row-inline">
-            <span>{endLabel(c.a[0], c.a[1])} ↔ {endLabel(c.b[0], c.b[1])}</span>
+        {conexiones.map((c) => {
+          const chk = entrada ? checkConnection(entrada, c) : null;
+          const rec = unionsOf(entrada)[c.conexion_id];
+          const exc = rec?.estado === 'excepcion' || !!(entrada as Record<string, unknown> | null)?.excepciones_conexion?.[c.conexion_id as never];
+          return (
+          <div key={c.conexion_id} className="stage-row-inline" data-testid="join-row" data-join-ok={chk?.ok ? 'true' : 'false'} data-join-estado={exc ? 'excepcion' : (rec?.estado ?? 'sin_registro')}>
+            <span>
+              {endLabel(c.a[0], c.a[1])} ↔ {endLabel(c.b[0], c.b[1])}
+              {chk && !chk.ok && <span className="tone-danger"> · no cumple ({formatJoin(chk)})</span>}
+              {exc && <span className="tone-warn"> · excepción</span>}
+            </span>
             <button type="button" className="stage-icon-btn tone-danger" aria-label="Eliminar unión" onClick={() => removeConexion(c.conexion_id)}>×</button>
           </div>
-        ))}
+          );
+        })}
       </Section>
 
       <Section title={`Soportes (${entrada?.soportes.length ?? 0})`} testid="supports">

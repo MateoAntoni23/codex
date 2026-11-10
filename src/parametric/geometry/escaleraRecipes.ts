@@ -45,8 +45,14 @@ function portOnEdge(name: string, a: Vec2, b: Vec2, ala_mm: number): PortDef {
   const dx = b[0] - a[0];
   const dz = b[1] - a[1];
   const len = Math.hypot(dx, dz);
-  const nx = -dz / len;
-  const nz = dx / len;
+  // Hito 2: los contornos escalera (escaleraOutlines.ts) están recorridos en
+  // sentido opuesto a los de perforada, así que la normal "izquierda" de la arista
+  // (−dz, dx) apuntaba HACIA ADENTRO del cuerpo (P1 en x_min con normal +x,
+  // contra la `outward_normal` −x medida en escaleraOutlines.ts). Se usa la otra
+  // (dz, −dx): coincide con la normal exterior medida. Ver la prueba
+  // "toda boca apunta hacia afuera de su contorno".
+  const nx = dz / len;
+  const nz = -dx / len;
   const ux = nz;
   const uz = -nx;
   return {

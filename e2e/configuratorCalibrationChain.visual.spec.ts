@@ -263,12 +263,17 @@ test.describe('Cadena de calibración — Configurador → trazado → motor', (
         source: 'override',
         overrideReason: reason,
         overrideAt: new Date().toISOString(),
+        // Hito 2 (A-4): la colocación usa el marco completo de la boca de entrada.
+        // Un `modelFrame` rígido (malla + bocas juntas) es un cambio de coordenadas
+        // locales y NO cambia la pieza colocada. La calibración que sí corrige la
+        // colocación es la de la boca respecto del cuerpo: aquí, el giro de
+        // instalación de la boca de entrada (tronco_P1) — la T queda girada sobre
+        // el eje del tronco y la derivación se mueve.
         entries: [
-          { recipePortName: 'tronco_P1', catalogPortName: 'P1', physicalLabel: 'P1', justification: 'identidad' },
+          { recipePortName: 'tronco_P1', catalogPortName: 'P1', physicalLabel: 'P1', justification: 'identidad', geometry: { installRotationDeg: rx } },
           { recipePortName: 'tronco_P2', catalogPortName: 'P2', physicalLabel: 'P2', justification: 'identidad' },
           { recipePortName: 'boca_derivacion', catalogPortName: 'P3', physicalLabel: 'P3', justification: 'identidad' },
         ],
-        modelFrame: { rx_deg: rx },
       });
     }, { rx: OVERRIDE_RX_DEG, reason: OVERRIDE_REASON });
 

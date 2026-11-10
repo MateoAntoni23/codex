@@ -17,6 +17,50 @@ import { buildSegmentPiece, generateSegmentId } from './addTraySegment';
 import { buildCurvePiece, generateCurveId, computeTurnPerp } from './addCurvePiece';
 import { computeEndpoint, generateConnectionId } from './routingRules';
 import { resolveRecipe, placeRecipe, chiralityForTurn } from './parametricBridge';
+import type { RoutingPlacement } from './placement/routingPlacement';
+import { puertosFromWorld, type StoredDefinition } from './placement/placementCore';
+import { withDefinition } from './placement/definitions';
+import { checkConnection, type JoinCheck } from './placement/joins';
+
+/** Clave workspace-only con el estado de cada unión (no viaja al motor). */
+export const UNIONS_KEY = 'uniones_ws';
+
+export interface UnionRecord {
+  readonly estado: 'documentada' | 'excepcion' | 'manual';
+  readonly motivo?: string;
+  readonly verificacion: { huecoMm: number; anguloDeg: number; giroDeg: number | null; ok: boolean };
+  readonly fecha_iso: string;
+}
+
+export function unionsOf(entrada: TrayInput | null | undefined): Record<string, UnionRecord> {
+  const t = (entrada as Record<string, unknown> | null | undefined)?.[UNIONS_KEY];
+  return t && typeof t === 'object' ? (t as Record<string, UnionRecord>) : {};
+}
+
+export function unionRecord(estado: UnionRecord['estado'], check: JoinCheck, motivo?: string): UnionRecord {
+  return {
+    estado,
+    ...(motivo ? { motivo } : {}),
+    verificacion: { huecoMm: check.huecoMm, anguloDeg: check.anguloDeg, giroDeg: check.giroDeg, ok: check.ok },
+    fecha_iso: new Date().toISOString(),
+  };
+}
+
+/** Pieza a partir de la colocación calculada (preview = confirmado). */
+function pieceFromPlacement(
+  newId: string,
+  product: Product,
+  placement: Extract<RoutingPlacement, { ok: true }>,
+  extra: Partial<Piece> = {},
+): Piece {
+  return {
+    instancia_id: newId,
+    producto_id: product.producto_id,
+    ...extra,
+    puertos: puertosFromWorld(placement.ports),
+    colocacion: placement.colocacion,
+  };
+}
 
 // ─── PE extension ─────────────────────────────────────────────────────────────
 
@@ -203,6 +247,8 @@ export interface PendingSegmentAddition {
   resolution: DirectCompatResult;
   /** PE extension proposal, or null when no PE is configured or none ends here. */
   peExtension: PeExtensionProposal | null;
+  /** Definición efectiva usada (se registra en `definiciones_ws` al aplicar). */
+  definition?: { huella: string; def: StoredDefinition };
 }
 
 export type PendingOperation = PendingSegmentAddition;
@@ -222,6 +268,7 @@ export function planAddSegment(
   compat: DirectCompatResult,
   lengthMm: number,
   effectiveDir: Point3,
+  placement?: RoutingPlacement,
 ): PendingSegmentAddition {
   if (!compat.ok) throw new Error('planAddSegment: compat.ok must be true');
   if (lengthMm <= 0) throw new Error('planAddSegment: lengthMm must be > 0');
@@ -236,9 +283,12 @@ export function planAddSegment(
   // newPiecePort tells which port of the new piece sits at the connection point.
   // 'P2' means the piece is geometrically reversed so P2 is at startPos.
   const newPiecePort = compat.newPiecePort;
-  const newPiece = newPiecePort === 'P2'
-    ? buildSegmentPiece(newId, newProduct.producto_id, endPos, startPos)
-    : buildSegmentPiece(newId, newProduct.producto_id, startPos, endPos);
+  // Con modelo: la pieza es la colocación calculada (la misma que dibujó el preview).
+  const newPiece = placement?.ok
+    ? pieceFromPlacement(newId, newProduct, placement, { longitud_mm: lengthMm })
+    : newPiecePort === 'P2'
+      ? buildSegmentPiece(newId, newProduct.producto_id, endPos, startPos)
+      : buildSegmentPiece(newId, newProduct.producto_id, startPos, endPos);
 
   const connId = generateConnectionId(connIds);
   const newConnection = {
@@ -251,7 +301,11 @@ export function planAddSegment(
     entrada, startPort.pieceId, startPort.portName, newId,
   );
 
-  return { kind: 'add_segment', newPiece, newConnection, resolution: compat, peExtension };
+  return { kind: 'add_segment', newPiece, newConnection, resolution: compat, peExtension, ...defOf(placement) };
+}
+
+function defOf(placement?: RoutingPlacement): Pick<PendingSegmentAddition, 'definition'> {
+  return placement?.ok ? { definition: { huella: placement.huella, def: placement.def } } : {};
 }
 
 /**
@@ -269,6 +323,7 @@ export function planAddCurve(
   newProduct: Product,
   compat: DirectCompatResult,
   turnDirection: 'left' | 'right',
+  placement?: RoutingPlacement,
 ): PendingSegmentAddition {
   if (!compat.ok) throw new Error('planAddCurve: compat.ok must be true');
 
@@ -295,7 +350,13 @@ export function planAddCurve(
   // producto no está en el catálogo paramétrico.
   const parametricEntry = resolveRecipe(newProduct);
   let newPiece: Piece;
-  if (parametricEntry && parametricEntry.piece_kind === 'curva_horizontal') {
+  if (placement?.ok) {
+    const p1 = placement.ports.find((p) => p.name === 'P1')!;
+    const p2 = placement.ports.find((p) => p.name === 'P2')!;
+    newPiece = pieceFromPlacement(newId, newProduct, placement, {
+      longitud_eje_mm: radiansToArcLengthForPlacement(p1.pos, p2.pos, angleDeg),
+    });
+  } else if (parametricEntry && parametricEntry.piece_kind === 'curva_horizontal') {
     const chirality = chiralityForTurn(turnDirection);
     const placed = placeRecipe(
       newProduct,
@@ -342,7 +403,7 @@ export function planAddCurve(
     entrada, startPort.pieceId, startPort.portName, newId,
   );
 
-  return { kind: 'add_segment', newPiece, newConnection, resolution: compat, peExtension };
+  return { kind: 'add_segment', newPiece, newConnection, resolution: compat, peExtension, ...defOf(placement) };
 }
 
 /**
@@ -369,6 +430,7 @@ export function planAddAccessory(
   compat: DirectCompatResult,
   entryPortName: string,
   turnDirection: 'left' | 'right',
+  placement?: RoutingPlacement,
 ): PendingSegmentAddition {
   if (!compat.ok) throw new Error('planAddAccessory: compat.ok must be true');
 
@@ -383,6 +445,17 @@ export function planAddAccessory(
   const connIds = new Set(entrada.conexiones.map((c) => c.conexion_id));
 
   const newId = generateCurveId(pieceIds);
+  if (placement?.ok) {
+    const connId0 = generateConnectionId(connIds);
+    return {
+      kind: 'add_segment',
+      newPiece: pieceFromPlacement(newId, newProduct, placement),
+      newConnection: { conexion_id: connId0, a: [startPort.pieceId, startPort.portName], b: [newId, entryPortName] },
+      resolution: compat,
+      peExtension: findPeExtensionProposal(entrada, startPort.pieceId, startPort.portName, newId),
+      ...defOf(placement),
+    };
+  }
   const chirality = chiralityForTurn(turnDirection);
   const placed = placeRecipe(
     newProduct,
@@ -467,6 +540,16 @@ export function applyOperation(
   if (op.kind === 'add_segment') {
     next.piezas.push(op.newPiece);
     next.conexiones.push(op.newConnection);
+    if (op.definition) Object.assign(next, withDefinition(next, op.definition.huella, op.definition.def));
+    // A-7: la unión nueva se verifica y se guarda su estado (documentada por defecto;
+    // el panel la marca como excepción con motivo cuando corresponde).
+    const check = checkConnection(next, op.newConnection);
+    if (check) {
+      (next as Record<string, unknown>)[UNIONS_KEY] = {
+        ...unionsOf(next),
+        [op.newConnection.conexion_id]: unionRecord('documentada', check),
+      };
+    }
 
     if (peDecision === 'accept' && op.peExtension !== null && Array.isArray(next.pe?.conductores)) {
       const primary = op.peExtension.primary;

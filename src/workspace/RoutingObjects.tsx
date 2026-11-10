@@ -6,7 +6,7 @@
  *
  * Coordinate transform matches TrayObjects: [x/1000, z/1000, -y/1000]
  */
-import { useMemo, useLayoutEffect, useRef } from 'react';
+import { useMemo } from 'react';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three';
 import { useTrayStore } from '../tray/store';
@@ -19,15 +19,12 @@ import {
 import type { Point3 } from './routingRules';
 import { computeTurnPerp } from './addCurvePiece';
 import { isHorizontalCurve } from './pieceClassification';
-import {
-  resolveRecipe,
-  placeRecipe,
-  buildLocalMesh,
-  chiralityForTurn,
-  type Vec3 as BridgeVec3,
-} from './parametricBridge';
-import type { Product } from '../tray/model';
-import { PlacedRecipePortFrames, logPlacement, isPortDiagEnabled } from './portFrameDiag';
+import { resolveRecipe, type Vec3 as BridgeVec3 } from './parametricBridge';
+import { isPortDiagEnabled } from './portFrameDiag';
+import { PlacedMesh } from './placement/PlacedMesh';
+import { puertosFromWorld } from './placement/placementCore';
+import { LadderPiece, isLadderFamily } from './ladderGeometry';
+import { routingPlacementFromState } from './placement/routingPlacementState';
 
 function toViewer(mm: Point3): Point3 {
   return [mm[0] / 1000, mm[2] / 1000, -mm[1] / 1000];
@@ -123,123 +120,9 @@ function PreviewMesh({
   );
 }
 
-// ─── Transform mm (Z-up) → viewer m (Y-up), como THREE.Matrix4 constante ──
-const MM_TO_VIEWER = new THREE.Matrix4().set(
-  1 / 1000,       0,         0, 0,
-         0,       0,  1 / 1000, 0,
-         0, -1 / 1000,        0, 0,
-         0,       0,         0, 1,
-);
-
-/**
- * ParametricPreview — preview que usa la misma receta y transform que la
- * pieza confirmada. Compartir el puente garantiza que lo que se ve antes
- * de confirmar coincide con lo que queda al confirmar.
- */
-function ParametricPreview({
-  product,
-  startPos,
-  entryDir,
-  turnDirection,
-  overrideLengthMm,
-  entryPortName,
-  sectionUp,
-}: {
-  product: Product;
-  startPos: BridgeVec3;
-  entryDir: BridgeVec3;
-  turnDirection: 'left' | 'right';
-  overrideLengthMm?: number | null;
-  entryPortName?: string | null;
-  sectionUp?: BridgeVec3 | null;
-}) {
-  const data = useMemo(() => {
-    const entry = resolveRecipe(product);
-    if (!entry) return null;
-    try {
-      const overrides = entry.piece_kind === 'tramo_recto' && overrideLengthMm && overrideLengthMm > 0
-        ? { longitud_mm: overrideLengthMm }
-        : undefined;
-      const chirality = entry.piece_kind === 'curva_horizontal'
-        ? chiralityForTurn(turnDirection)
-        : 'native';
-      const placeOptions =
-        entryPortName || sectionUp
-          ? {
-              ...(entryPortName ? { entryPortName } : {}),
-              ...(sectionUp ? { sectionUp } : {}),
-            }
-          : undefined;
-      const placed = placeRecipe(product, entry, startPos, entryDir, chirality, overrides, placeOptions);
-      const geom = buildLocalMesh(placed.recipe);
-      const matrix = new THREE.Matrix4().multiplyMatrices(MM_TO_VIEWER, placed.matrix);
-      logPlacement(`preview (${product.sku})`, {
-        sku: product.sku,
-        ala_mm: placed.recipe.height,
-        ancho_mm: product.ancho_nominal_mm ?? null,
-        chirality,
-        startPosMm: startPos,
-        entryDir,
-        placedP1Mm: placed.p1.pos,
-        placedP2Mm: placed.p2.pos,
-      });
-      return { geom, matrix, mirrored: placed.mirrored, placed };
-    } catch {
-      return null;
-    }
-  }, [
-    product,
-    startPos[0], startPos[1], startPos[2],
-    entryDir[0], entryDir[1], entryDir[2],
-    turnDirection,
-    overrideLengthMm,
-    entryPortName,
-    sectionUp?.[0], sectionUp?.[1], sectionUp?.[2],
-  ]);
-
-  const meshRef = useRef<THREE.Mesh | null>(null);
-
-  // Mantener la malla sincronizada con `data` incluso cuando cambia el
-  // producto/rotación: `onUpdate` de R3F no vuelve a dispararse por
-  // cambios de closure, así que asignamos geometría, matriz y userData
-  // reactivamente aquí.
-  // Why: sin este efecto, el preview conservaba el SKU y la forma del
-  // producto inicialmente seleccionado al cambiar el <select> del inspector.
-  useLayoutEffect(() => {
-    const m = meshRef.current;
-    if (!m || !data) return;
-    if (m.geometry && m.geometry !== data.geom) {
-      m.geometry.dispose();
-    }
-    m.geometry = data.geom;
-    m.matrix.copy(data.matrix);
-    m.matrixWorldNeedsUpdate = true;
-    m.userData.codex = {
-      kind: 'parametric-preview',
-      sku: product.sku,
-      turnDirection,
-      mirrored: data.mirrored,
-      placedP1: data.placed.p1.pos,
-      placedP2: data.placed.p2.pos,
-    };
-  }, [data, product.sku, turnDirection]);
-
-  if (!data) return null;
-  return (
-    <group>
-      <mesh ref={meshRef} matrixAutoUpdate={false}>
-        <meshStandardMaterial
-          color="#ff9900"
-          transparent
-          opacity={isPortDiagEnabled() ? 0.2 : 0.35}
-          depthWrite={false}
-          side={THREE.DoubleSide}
-        />
-      </mesh>
-      <PlacedRecipePortFrames tag="preview" placed={data.placed} />
-    </group>
-  );
-}
+// Hito 2: el preview paramétrico es la colocación calculada por
+// `computeRoutingPlacement` (la misma que se guarda al confirmar), dibujada con
+// `PlacedMesh` (la misma malla y matriz que la pieza confirmada).
 
 // ─── Curve arc preview ────────────────────────────────────────────────────────
 
@@ -285,7 +168,15 @@ export function RoutingObjects() {
     [context?.productos, selectedProductId],
   );
 
-  // Preview paramétrico cuando el producto seleccionado tiene receta medida.
+  // A-1: la colocación del preview es EL cálculo (el mismo que guarda confirmar).
+  const placement = useMemo(
+    () => routingPlacementFromState(context, entrada, {
+      startPort, selectedProductId, entryPortName, turnDirection, previewLengthMm, snapToAxis, step,
+    }),
+    [context, entrada, startPort, selectedProductId, entryPortName, turnDirection, previewLengthMm, snapToAxis, step],
+  );
+
+  // (Previo al hito 2) datos del preview paramétrico — ya no se usan.
   const parametricPreview = useMemo(() => {
     if (!startPort || step === 'selectingPort' || !selectedProduct) return null;
     const entry = resolveRecipe(selectedProduct);
@@ -320,8 +211,8 @@ export function RoutingObjects() {
 
   const previewData = useMemo(() => {
     if (!startPort || step === 'selectingPort') return null;
-    // Si hay preview paramétrico, el fallback no se calcula.
-    if (parametricPreview) return null;
+    // Si hay modelo (colocación calculada), el fallback no se calcula.
+    if (parametricPreview || placement) return null;
 
     if (selectedProduct && isHorizontalCurve(selectedProduct)) {
       const angleDeg = (selectedProduct as Record<string, unknown>).angulo_grados as number | undefined;
@@ -365,7 +256,7 @@ export function RoutingObjects() {
       (endV[2] - startV[2]) / len,
     ];
     return { type: 'straight' as const, center, dirV, len };
-  }, [startPort, step, previewLengthMm, snapToAxis, selectedProduct, turnDirection, parametricPreview]);
+  }, [startPort, step, previewLengthMm, snapToAxis, selectedProduct, turnDirection, parametricPreview, placement]);
 
   if (!active || !entrada) return null;
 
@@ -407,15 +298,30 @@ export function RoutingObjects() {
       )}
 
       {/* Preview paramétrico (receta medida) — tiene prioridad sobre el fallback */}
-      {parametricPreview && (
-        <ParametricPreview
-          product={parametricPreview.product}
-          startPos={parametricPreview.startPos}
-          entryDir={parametricPreview.entryDir}
-          sectionUp={parametricPreview.sectionUp}
-          turnDirection={turnDirection}
-          overrideLengthMm={parametricPreview.overrideLengthMm}
-          entryPortName={entryPortName}
+      {placement?.ok && selectedProduct && isLadderFamily(selectedProduct) && (
+        // Escalera: mismo generador que la pieza confirmada, desde las mismas bocas.
+        <LadderPiece
+          piece={{ instancia_id: '__preview__', producto_id: selectedProduct.producto_id, puertos: puertosFromWorld(placement.ports) }}
+          product={selectedProduct}
+          selected={false}
+          onClick={() => undefined}
+        />
+      )}
+      {placement?.ok && selectedProduct && !isLadderFamily(selectedProduct) && (
+        <PlacedMesh
+          def={placement.def}
+          huella={placement.huella}
+          mano={placement.colocacion.mano}
+          pose={placement.colocacion.pose}
+          color="#ff9900"
+          opacity={isPortDiagEnabled() ? 0.2 : 0.35}
+          depthWrite={false}
+          userData={{
+            kind: 'parametric-preview',
+            sku: selectedProduct.sku,
+            turnDirection,
+            entryPortName: placement.entryPortName,
+          }}
         />
       )}
 

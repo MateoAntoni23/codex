@@ -11,6 +11,8 @@
 // unitariedad de direcciones pero no coincidencia de posiciones.
 
 import type { Point, TrayInput, Piece } from '../tray/model';
+import { transformPose } from './placement/placementCore';
+import { invalidConnections } from './placement/joins';
 
 /** Centroide geométrico (mm) = promedio de las posiciones de sus puertos. */
 export function pieceCentroid(piece: Piece): Point {
@@ -41,6 +43,10 @@ export function translatePiece(
     port.posicion_mm[0] += delta[0];
     port.posicion_mm[1] += delta[1];
     port.posicion_mm[2] += delta[2];
+  }
+  // A-8: la pose se traslada igual que las bocas.
+  if (piece.colocacion?.estado === 'resuelta') {
+    piece.colocacion = { ...piece.colocacion, pose: transformPose(piece.colocacion.pose, [0, 0, 0, 1], [0, 0, 0], delta) };
   }
   return next;
 }
@@ -80,27 +86,13 @@ export const DEFAULT_COINCIDENCE_TOLERANCE_MM = 1;
 export function findBrokenConnections(
   entrada: TrayInput,
   piezaId: string,
-  toleranceMm = DEFAULT_COINCIDENCE_TOLERANCE_MM,
+  _toleranceMm = DEFAULT_COINCIDENCE_TOLERANCE_MM,
 ): string[] {
-  const tol2 = toleranceMm * toleranceMm;
-  const broken: string[] = [];
-  for (const conn of entrada.conexiones) {
-    if (conn.a[0] !== piezaId && conn.b[0] !== piezaId) continue;
-    const pa = entrada.piezas.find((p) => p.instancia_id === conn.a[0]);
-    const pb = entrada.piezas.find((p) => p.instancia_id === conn.b[0]);
-    const portA = pa?.puertos[conn.a[1]];
-    const portB = pb?.puertos[conn.b[1]];
-    if (!portA || !portB) {
-      broken.push(conn.conexion_id);
-      continue;
-    }
-    const dx = portA.posicion_mm[0] - portB.posicion_mm[0];
-    const dy = portA.posicion_mm[1] - portB.posicion_mm[1];
-    const dz = portA.posicion_mm[2] - portB.posicion_mm[2];
-    const d2 = dx * dx + dy * dy + dz * dz;
-    if (d2 > tol2) broken.push(conn.conexion_id);
-  }
-  return broken;
+  // A-7/A-8: una unión sigue siendo válida sólo si cumple hueco, ángulo y giro
+  // (tolerancias D-14). Antes sólo se miraba la distancia: una rotación sobre la
+  // boca unida dejaba uniones inválidas en silencio.
+  void _toleranceMm;
+  return invalidConnections(entrada, new Set([piezaId]));
 }
 
 /** Devuelve una nueva TrayInput sin las conexiones listadas. Non-mutating. */

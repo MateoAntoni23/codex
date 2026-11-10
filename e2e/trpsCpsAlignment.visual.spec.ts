@@ -297,7 +297,12 @@ test.describe('TRPS → CPS-90 → TRPS visual alignment', () => {
     console.log(`\nLEFT: CRV-1 chirality=${curve.chirality} mirrored=${curve.mirrored}`);
     console.log(`  placedP1=${fmt3(curve.placedP1)}  placedP2=${fmt3(curve.placedP2)}`);
     expect(curve.chirality, 'left→mirrored').toBe('mirrored');
-    expect(curve.mirrored, 'mirrored flag').toBe(true);
+    // Hito 2 (A-3): la mano es una variante de la definición (curva espejada), no
+    // una matriz reflejada: la pose es siempre una rotación (det = +1).
+    expect(curve.mirrored, 'la matriz de la pieza no refleja').toBe(false);
+    const m = curve.matrixWorld;
+    const det = m[0] * (m[5] * m[10] - m[6] * m[9]) - m[4] * (m[1] * m[10] - m[2] * m[9]) + m[8] * (m[1] * m[6] - m[2] * m[5]);
+    expect(det, 'pose = rotación').toBeGreaterThan(0);
 
     const confirmedList = dump.filter((m) => m.kind === 'parametric-confirmed');
     for (const m of confirmedList) {

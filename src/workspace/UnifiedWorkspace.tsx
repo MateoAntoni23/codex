@@ -17,6 +17,7 @@ import { ResultadosPanel } from './stages/ResultadosPanel';
 import { useUiStore } from './stages/uiStore';
 import './stages/stages.css';
 import { useStageSync } from './stages/useStageSync';
+import { useMigration, useMigrationStore } from './placement/useMigration';
 import { bootProject, startAutosave, useProjectStatusStore } from '../project/projectSession';
 import { useCatalogConfigStore } from '../configurator/catalogConfigStore';
 import {
@@ -151,6 +152,23 @@ function ChromeError() {
   return <div className="workspace-error stage-error" role="alert">⚠ {error}</div>;
 }
 
+/** A-10: resultado de migrar un proyecto anterior (piezas con pose deducida / sin resolver). */
+function MigrationNotice() {
+  const report = useMigrationStore((s) => s.report);
+  const dismiss = useMigrationStore((s) => s.dismiss);
+  if (!report || report.total === 0) return null;
+  const n = report.sinResolver.length;
+  return (
+    <div className={`stage-error ${n ? 'tone-warn' : 'tone-ok'}`} role="status" data-testid="migration-notice">
+      Proyecto anterior: {report.resueltas} de {report.total} piezas con colocación deducida
+      {n > 0 && <> · <strong data-testid="migration-unresolved">{n} sin resolver</strong> (marcadas en la escena; conservan sus bocas)</>}
+      {report.resueltas > 0 && ` · mayor corrimiento de boca ${report.maxDesvioMm.toFixed(2)} mm / ${report.maxDesvioDeg.toFixed(2)}°`}
+      {' '}
+      <button type="button" onClick={dismiss}>Entendido</button>
+    </div>
+  );
+}
+
 export function UnifiedWorkspace() {
   const selectEquip    = useWorkspaceStore((s) => s.selectEquip);
   const selectTray     = useWorkspaceStore((s) => s.selectTray);
@@ -160,6 +178,7 @@ export function UnifiedWorkspace() {
   const booted         = useProjectStatusStore((s) => s.booted);
   const theme          = useUiStore((s) => s.theme);
   useStageSync();
+  useMigration();
 
   // Restaurar el último proyecto (IndexedDB) y recién entonces suscribir el
   // autoguardado: si se suscribiera antes, un estado vacío podría pisar lo guardado.
@@ -251,6 +270,7 @@ export function UnifiedWorkspace() {
         <ProjectBar />
         <StageBar />
         <ChromeError />
+        <MigrationNotice />
       </div>
 
       {!booted ? (

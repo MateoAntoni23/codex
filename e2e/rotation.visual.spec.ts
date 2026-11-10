@@ -174,6 +174,10 @@ test.describe('Rotación manual — inspector', () => {
     const before = await getPiece(page, 'R1');
     await page.locator('[data-codex-rotate-controls] button:has-text("Z")').click();
     await page.locator('[data-codex-rotate-controls] button:has-text("+90°")').click();
+    // Hito 2 (A-8): R1 está unido a R2; la rotación deja esa unión inválida y ya no
+    // se acepta en silencio: aparece el aviso de conexiones rotas y se confirma.
+    await expect(page.getByTestId('tray-broken-modal')).toBeVisible();
+    await page.getByTestId('tray-broken-accept').click();
     const afterRot = await getPiece(page, 'R1');
 
     const d1 = await dist(page, afterRot.puertos.P2.posicion_mm, before.puertos.P2.posicion_mm);

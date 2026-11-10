@@ -14,6 +14,19 @@
  *     para evitar deriva numérica.
  */
 import type { Piece } from '../tray/model';
+import { quatFromAxisAngle, transformPose } from './placement/placementCore';
+
+/**
+ * A-8: mover y rotar transforman la POSE (rotación + posición) además de las
+ * bocas, con la misma transformación rígida.
+ */
+function withPose(piece: Piece, next: Piece, q: readonly number[], pivot: readonly number[], delta: readonly number[]): Piece {
+  const c = piece.colocacion;
+  if (!c || c.estado !== 'resuelta') return next;
+  return { ...next, colocacion: { ...c, pose: transformPose(c.pose, q, pivot, delta) } };
+}
+
+const AXIS_VEC: Record<'X' | 'Y' | 'Z', [number, number, number]> = { X: [1, 0, 0], Y: [0, 1, 0], Z: [0, 0, 1] };
 
 export type AxisKey = 'X' | 'Y' | 'Z';
 export type Vec3 = [number, number, number];
@@ -114,10 +127,7 @@ export function rotatePiece(piece: Piece, axis: AxisKey, angleDeg: number, pivot
     newPorts[portId] = entry;
   }
 
-  return {
-    ...piece,
-    puertos: newPorts as Piece['puertos'],
-  };
+  return withPose(piece, { ...piece, puertos: newPorts as Piece['puertos'] }, quatFromAxisAngle(AXIS_VEC[axis], angleDeg), pivotMm, [0, 0, 0]);
 }
 
 function crossV(a: readonly number[], b: readonly number[]): Vec3 {
@@ -199,10 +209,7 @@ export function rotatePieceAroundAxis(
     newPorts[portId] = entry;
   }
 
-  return {
-    ...piece,
-    puertos: newPorts as Piece['puertos'],
-  };
+  return withPose(piece, { ...piece, puertos: newPorts as Piece['puertos'] }, quatFromAxisAngle(axisN, angleDeg), pivotMm, [0, 0, 0]);
 }
 
 /**
@@ -224,10 +231,7 @@ export function translatePiece(piece: Piece, deltaMm: Vec3): Piece {
     }
     newPorts[portId] = entry;
   }
-  return {
-    ...piece,
-    puertos: newPorts as Piece['puertos'],
-  };
+  return withPose(piece, { ...piece, puertos: newPorts as Piece['puertos'] }, [0, 0, 0, 1], [0, 0, 0], deltaMm);
 }
 
 /** Normaliza un ángulo libre a (-180, 180]. */

@@ -15,6 +15,9 @@ import { useTrayStore } from '../tray/store';
 import { useWorkspaceStore } from './useWorkspaceStore';
 import { validateSegmentInput, generateSegmentId, buildSegmentPiece, type Point3 } from './addTraySegment';
 import { hasParametricRecipe } from './parametricBridge';
+import type { Piece } from '../tray/model';
+import { resolveDefinition, withDefinition } from './placement/definitions';
+import { placeDefinition, puertosFromWorld, type StoredDefinition } from './placement/placementCore';
 import {
   applyCascade,
   buildFamiliasById,
@@ -172,9 +175,25 @@ export function AddTraySegmentForm({ onClose }: { onClose: () => void }) {
     }
     const existingIds = new Set(entrada.piezas.map((p) => p.instancia_id));
     const id    = generateSegmentId(existingIds);
-    const piece = buildSegmentPiece(id, selectedProduct.producto_id, p1, p2);
+    // Hito 2: con modelo, el tramo se coloca con su definición y su pose (P1 en el
+    // primer punto, avanzando hacia el segundo, largo = distancia entre ambos).
+    const len = Math.hypot(p2[0] - p1[0], p2[1] - p1[1], p2[2] - p1[2]);
+    const d = resolveDefinition(selectedProduct, { longitud_mm: len });
+    let piece: Piece;
+    let definition: { huella: string; def: StoredDefinition } | null = null;
+    if (d.ok) {
+      const placed = placeDefinition({
+        def: d.def, huella: d.huella, mano: 'nativa', entryPortName: 'P1',
+        startPos: p1, entryDir: [(p2[0] - p1[0]) / len, (p2[1] - p1[1]) / len, (p2[2] - p1[2]) / len],
+      });
+      piece = { instancia_id: id, producto_id: selectedProduct.producto_id, longitud_mm: len, puertos: puertosFromWorld(placed.ports), colocacion: placed.colocacion };
+      definition = { huella: d.huella, def: d.def };
+    } else {
+      piece = buildSegmentPiece(id, selectedProduct.producto_id, p1, p2);
+    }
     try {
-      const next = structuredClone(entrada);
+      let next = structuredClone(entrada);
+      if (definition) next = withDefinition(next, definition.huella, definition.def);
       next.piezas.push(piece);
       trayEdit(next);         // calls assertInput internally — throws on invalid data
       selectTray(id);

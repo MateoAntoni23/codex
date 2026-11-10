@@ -4,11 +4,13 @@ import { assertInput, object, readResult, type Context, type TrayInput } from '.
 import { recipePortToCatalogPort } from '../workspace/catalogPortMapping';
 import { loadStaticCatalog, seedStaticCatalog, staticContext } from '../catalog/staticCatalog';
 import { emptyTrayInput, isNeutralPe } from '../project/emptyProject';
+import { placedOf } from '../workspace/placement/definitions';
+import { puertosFromWorld, worldPorts } from '../workspace/placement/placementCore';
 const manager=createManager();
 let callSequence=0;
 
 /** Workspace-only fields that must not be sent to the Python motor (additionalProperties:false). */
-const WS_ONLY: ReadonlySet<string> = new Set(['excepciones_conexion']);
+const WS_ONLY: ReadonlySet<string> = new Set(['excepciones_conexion', 'definiciones_ws', 'uniones_ws']);
 
 /**
  * Strips workspace-only fields from TrayInput before submitting to the motor AND
@@ -54,12 +56,20 @@ export function toMotorEntrada(trayInput: TrayInput): Record<string,unknown> {
   // conserva su nombre de receta y el motor la verá como desconocida: nunca se
   // presenta como traducida.
   const tr = (prod: string, port: string) => recipePortToCatalogPort(prod, port) ?? port;
+  // A-11: el motor sigue recibiendo trazado/1. Las bocas P1..Pn se generan desde la
+  // pose guardada (definición + mano + pose) y `colocacion` no viaja.
   out.piezas = trayInput.piezas.map((pz) => {
+    const placed = placedOf(trayInput, pz);
+    const source = placed
+      ? puertosFromWorld(worldPorts(placed.def, placed.colocacion.mano, placed.colocacion.pose))
+      : pz.puertos;
     const translated: Record<string, unknown> = {};
-    for (const [portName, portDef] of Object.entries(pz.puertos)) {
+    for (const [portName, portDef] of Object.entries(source)) {
       translated[tr(pz.producto_id, portName)] = portDef;
     }
-    return { ...pz, puertos: translated };
+    const { colocacion: _c, ...rest } = pz;
+    void _c;
+    return { ...rest, puertos: translated };
   });
 
   out.conexiones = trayInput.conexiones.map((c) => {

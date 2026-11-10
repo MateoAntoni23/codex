@@ -40,6 +40,8 @@ import {
 } from './pieceClassification';
 import { hasParametricRecipe, resolveRecipe, placeRecipe, chiralityForTurn, buildRecipeFromProduct } from './parametricBridge';
 import { buildContinuationCandidates, type ContinuationCandidate } from './continuationCandidates';
+import { routingPlacementFromState } from './placement/routingPlacementState';
+import { UNIONS_KEY, unionsOf, type UnionRecord } from './workspaceOperation';
 import { indexProducts, pieceLabelById, portLabel } from './stages/displayNames';
 
 // ─── PE extension proposal widget ────────────────────────────────────────────
@@ -313,6 +315,15 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
     () => continuationCandidates.filter((c) => c.category === 'other'),
     [continuationCandidates],
   );
+  const otherCandidatesByTipo = useMemo(() => {
+    const m = new Map<string, ContinuationCandidate[]>();
+    for (const c of otherCandidates) {
+      const k = c.product.tipo_pieza || 'sin tipo';
+      (m.get(k) ?? m.set(k, []).get(k)!).push(c);
+    }
+    return new Map([...m.entries()].sort(([a], [b]) => a.localeCompare(b)));
+  }, [otherCandidates]);
+
   const otherCandidateById = useMemo(() => {
     const m = new Map<string, ContinuationCandidate>();
     for (const c of otherCandidates) m.set(c.product.producto_id, c);
@@ -453,6 +464,15 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
     return snapToAxis ? snapDirectionToAxis(startPort.dir) : startPort.dir;
   }, [startPort, snapToAxis]);
 
+  // A-1: la misma colocación que dibuja el preview y que guarda confirmar.
+  const step = useRoutingStore((s) => s.step);
+  const placement = useMemo(
+    () => routingPlacementFromState(context, entrada, {
+      startPort, selectedProductId, entryPortName, turnDirection, previewLengthMm, snapToAxis, step,
+    }),
+    [context, entrada, startPort, selectedProductId, entryPortName, turnDirection, previewLengthMm, snapToAxis, step],
+  );
+
   const snapWarnAngle = useMemo(() => {
     if (!startPort) return null;
     if (!snapChangesDirection(startPort.dir)) return null;
@@ -466,25 +486,25 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
     if (needsEntryPortChoice) {
       if (!effectiveEntryPortName) return null;
       try {
-        return planAddAccessory(entrada, startPort, selectedProduct, compat, effectiveEntryPortName, turnDirection);
+        return planAddAccessory(entrada, startPort, selectedProduct, compat, effectiveEntryPortName, turnDirection, placement ?? undefined);
       } catch {
         return null;
       }
     }
     if (isCurve) {
       try {
-        return planAddCurve(entrada, startPort, selectedProduct, compat, turnDirection);
+        return planAddCurve(entrada, startPort, selectedProduct, compat, turnDirection, placement ?? undefined);
       } catch {
         return null;
       }
     }
     if (!effectiveDir || previewLengthMm <= 0) return null;
     try {
-      return planAddSegment(entrada, startPort, selectedProduct, compat, previewLengthMm, effectiveDir);
+      return planAddSegment(entrada, startPort, selectedProduct, compat, previewLengthMm, effectiveDir, placement ?? undefined);
     } catch {
       return null;
     }
-  }, [compat, selectedProduct, entrada, startPort, effectiveDir, previewLengthMm, isCurve, turnDirection, needsEntryPortChoice, effectiveEntryPortName]);
+  }, [compat, selectedProduct, entrada, startPort, effectiveDir, previewLengthMm, isCurve, turnDirection, needsEntryPortChoice, effectiveEntryPortName, placement]);
 
   const handleConfirm = () => {
     setError(null);
@@ -581,6 +601,12 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
         </div>
       )}
 
+      {placement && !placement.ok && (
+        <div className="tone-danger" role="alert" data-testid="routing-placement-error" style={{ marginBottom: 8, fontSize: 11 }}>
+          No se puede colocar: {placement.motivo}
+        </div>
+      )}
+
       {/* Compatible product selector */}
       <div style={{ marginBottom: 8 }}>
         <label style={{ color: '#8888aa', display: 'block', marginBottom: 3 }}>
@@ -651,9 +677,11 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
                 ))}
               </>
             )}
-            {otherCandidates.length > 0 && (
-              <optgroup label="Otros productos — requieren excepción con motivo">
-                {otherCandidates.map((c) => (
+            {/* A-9: excepciones agrupadas por tipo de pieza (el catálogo no
+                documenta pares accesorio–accesorio; se piden con motivo). */}
+            {Array.from(otherCandidatesByTipo.entries()).map(([tipo, group]) => (
+              <optgroup key={tipo} label={`Excepción con motivo · ${tipo}`}>
+                {group.map((c) => (
                   <option
                     key={c.product.producto_id}
                     value={c.product.producto_id}
@@ -668,7 +696,7 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
                   </option>
                 ))}
               </optgroup>
-            )}
+            ))}
           </select>
         )}
         {(compatibleProducts.length > 0 || otherCandidates.length > 0) && (
@@ -839,14 +867,20 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
         />
       )}
 
-      {/* Turn direction (curves only) */}
-      {isCurve && (
-        <div style={{ marginBottom: 10 }}>
-          <div style={{ color: '#8888aa', marginBottom: 4 }}>Dirección de giro</div>
+      {/* A-3: selector de lado (mano) para TODA pieza asimétrica: curvas planas,
+          T, y cualquier pieza cuyo cuerpo cambie al espejar. Es el mismo valor que
+          usan el preview y la confirmación. */}
+      {(placement?.ok ? placement.handSensitive : isCurve) && (
+        <div style={{ marginBottom: 10 }} data-codex-routing-hand-selector>
+          <div style={{ color: '#8888aa', marginBottom: 4 }}>
+            {isCurve ? 'Dirección de giro' : 'Lado de la pieza (mano)'}
+          </div>
           <div style={{ display: 'flex', gap: 5 }}>
             {(['left', 'right'] as const).map((d) => (
               <button
                 key={d}
+                data-codex-routing-hand={d}
+                aria-pressed={turnDirection === d}
                 onClick={() => setTurnDirection(d)}
                 style={{
                   flex: 1, padding: '4px 0', fontSize: 11, borderRadius: 3, cursor: 'pointer',
@@ -855,7 +889,9 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
                   border: `1px solid ${turnDirection === d ? '#3355aa' : '#334455'}`,
                 }}
               >
-                {d === 'left' ? '↰ Izquierda' : '↱ Derecha'}
+                {isCurve
+                  ? (d === 'left' ? '↰ Izquierda' : '↱ Derecha')
+                  : (d === 'left' ? '↰ Hacia la izquierda' : '↱ Hacia la derecha')}
               </button>
             ))}
           </div>
@@ -1182,11 +1218,20 @@ export function RoutingPanel() {
       setCommitError('Producto no encontrado en catálogo. Recargá el contexto.');
       return;
     }
-    const compat = checkDirectCompatibility(
+    const documentedCompat = checkDirectCompatibility(
       { compatibilidades: context?.compatibilidades ?? [], componentesUnion: context?.componentesUnion ?? [] },
       existingProductForComp, startPort.portName, selectedProductForComp, 'P1',
     );
-    if (!compat.ok) { setCommitError(compat.reason); return; }
+    // A-9: una unión sin compatibilidad documentada sólo procede como excepción
+    // aceptada con motivo (validado en el paso 2). No se agrega compatibilidad: la
+    // unión queda marcada como excepción y se lista en Resultados.
+    if (!documentedCompat.ok && !(exception && exception.motivo.length >= 3)) {
+      setCommitError(documentedCompat.reason);
+      return;
+    }
+    const compat = documentedCompat.ok
+      ? documentedCompat
+      : { ...documentedCompat, ok: true, needsReduction: false, newPiecePort: 'P1', reason: `Excepción con motivo: ${exception!.motivo}` };
 
     const isSelectedCurve = isHorizontalCurve(selectedProductForComp);
     const selectedRecipeEntry = resolveRecipe(selectedProductForComp);
@@ -1194,6 +1239,11 @@ export function RoutingPanel() {
       selectedRecipeEntry?.piece_kind === 'derivacion_lateral' ||
       selectedRecipeEntry?.piece_kind === 'cruz' ||
       selectedRecipeEntry?.piece_kind === 'curva_vertical';
+
+    // A-1: la colocación que se guarda es la que dibujó el preview: mismo cálculo,
+    // mismas entradas (el estado del recorrido), mismo objeto memorizado.
+    const placement = routingPlacementFromState(context, entrada, useRoutingStore.getState());
+    if (placement && !placement.ok) { setCommitError(`No se puede colocar: ${placement.motivo}`); return; }
 
     try {
       // Plan the operation (pure, no side effects)
@@ -1203,12 +1253,12 @@ export function RoutingPanel() {
           setCommitError('Elegí la boca de entrada del accesorio antes de confirmar.');
           return;
         }
-        op = planAddAccessory(entrada, startPort, selectedProductForComp, compat, entryPortName, turnDirection);
+        op = planAddAccessory(entrada, startPort, selectedProductForComp, compat, entryPortName, turnDirection, placement ?? undefined);
       } else if (isSelectedCurve) {
-        op = planAddCurve(entrada, startPort, selectedProductForComp, compat, turnDirection);
+        op = planAddCurve(entrada, startPort, selectedProductForComp, compat, turnDirection, placement ?? undefined);
       } else {
         if (previewLengthMm <= 0) { setCommitError('La longitud debe ser mayor que 0.'); return; }
-        op = planAddSegment(entrada, startPort, selectedProductForComp, compat, previewLengthMm, effDir);
+        op = planAddSegment(entrada, startPort, selectedProductForComp, compat, previewLengthMm, effDir, placement ?? undefined);
       }
 
       // Revalidate PE choice against the freshly planned operation
@@ -1252,6 +1302,12 @@ export function RoutingPanel() {
             producto_id: exception.producto_id,
           },
         };
+        // A-7: la unión queda guardada como excepción con su motivo.
+        const prev = unionsOf(nextEntrada)[op.newConnection.conexion_id];
+        if (prev) {
+          const rec: UnionRecord = { ...prev, estado: 'excepcion', motivo: exception.motivo };
+          (nextEntrada as Record<string, unknown>)[UNIONS_KEY] = { ...unionsOf(nextEntrada), [op.newConnection.conexion_id]: rec };
+        }
       }
       // Single atomic write to store (pushes to history, clears future)
       trayEdit(nextEntrada);

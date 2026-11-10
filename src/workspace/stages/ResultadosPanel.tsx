@@ -14,6 +14,8 @@ import { useWorkspaceStore } from '../useWorkspaceStore';
 import { TrayResults } from '../TrayResults';
 import { summarizeResult } from './resultPresentation';
 import { Section } from './shared';
+import { unionsOf } from '../workspaceOperation';
+import { indexProducts, pieceLabelById } from './displayNames';
 
 const ENGINE_LABEL: Record<string, string> = {
   desconocido: 'consultando…',
@@ -49,6 +51,32 @@ export function ResultSummary() {
         </ul>
       )}
     </div>
+  );
+}
+
+/** A-9: uniones aceptadas como excepción, con su motivo. */
+function ExceptionsList() {
+  const entrada = useTrayStore((s) => s.entrada);
+  const context = useTrayStore((s) => s.context);
+  const idx = indexProducts(context?.productos);
+  const exc = ((entrada as Record<string, unknown> | null)?.excepciones_conexion ?? {}) as Record<string, { motivo?: string; producto_id?: string }>;
+  const unions = unionsOf(entrada);
+  const ids = new Set([...Object.keys(exc), ...Object.entries(unions).filter(([, u]) => u.estado === 'excepcion').map(([id]) => id)]);
+  const rows = [...ids].filter((id) => entrada?.conexiones.some((c) => c.conexion_id === id));
+  return (
+    <Section title={`Uniones por excepción (${rows.length})`} testid="exceptions-list">
+      {rows.length === 0 && <p className="stage-note">Ninguna: todas las uniones están documentadas en el catálogo.</p>}
+      {rows.map((id) => {
+        const c = entrada!.conexiones.find((x) => x.conexion_id === id)!;
+        const motivo = unions[id]?.motivo ?? exc[id]?.motivo ?? 'Sin dato';
+        return (
+          <div key={id} className="stage-card" data-testid="exception-row">
+            <div className="tone-warn">{pieceLabelById(c.a[0], entrada!.piezas, idx)} ↔ {pieceLabelById(c.b[0], entrada!.piezas, idx)}</div>
+            <div className="stage-row-sub">Motivo: {motivo}</div>
+          </div>
+        );
+      })}
+    </Section>
   );
 }
 
@@ -125,6 +153,8 @@ export function ResultadosPanel() {
         <p className="stage-note">Estado: {status.split('_').join(' ')} · revisión {revision}</p>
         {error && <p className="workspace-error" role="alert">⚠ {error}</p>}
       </Section>
+
+      <ExceptionsList />
 
       <Section title="Resultado">
         <ResultSummary />

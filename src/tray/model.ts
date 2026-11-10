@@ -7,7 +7,12 @@ export type Point = [number, number, number];
  * evita la heurística `computePortSectionUp`. Ver `docs/pattern-models-reconciliation.md` §D7.
  */
 export interface TrayPort { posicion_mm: Point; direccion: Point; orientacion_seccion_ws?: Point }
-export interface Piece { instancia_id: string; producto_id: string; longitud_mm?: number; longitud_eje_mm?: number; puertos: Record<string, TrayPort> }
+/**
+ * Pieza del trazado. `colocacion` (hito 2) es dato del espacio de trabajo: la
+ * definición usada, la mano y la pose. Las `puertos` se derivan de ella y son lo
+ * único que ve el motor (el adaptador quita `colocacion`).
+ */
+export interface Piece { instancia_id: string; producto_id: string; longitud_mm?: number; longitud_eje_mm?: number; puertos: Record<string, TrayPort>; colocacion?: import('../workspace/placement/placementCore').Colocacion }
 export interface Circuit { circuito_id: string; funcion: string; cable_id: string; cantidad: number; separado: boolean; recorrido: string[] }
 export interface Support { soporte_id: string; instancia_id: string; producto_id: string; sistema_soporte_id: string; distancia_desde_P1_mm: number }
 export interface TrayInput extends Record<string, unknown> {

@@ -156,10 +156,11 @@ async function readSnapshot(page: Page): Promise<TraySnapshot> {
     const piezas = e.piezas.map((p) => ({
       id: p.instancia_id,
       portPositions: Object.fromEntries(
-        Object.entries(p.puertos).map(([k, v]) => [k, v.posicion_mm]),
+        // Hito 2: las bocas se derivan de la pose → ruido numérico ~1e-14 mm.
+        Object.entries(p.puertos).map(([k, v]) => [k, v.posicion_mm.map((x) => Math.round(x * 1e6) / 1e6 + 0)]),
       ) as Record<string, [number, number, number]>,
       portDirs: Object.fromEntries(
-        Object.entries(p.puertos).map(([k, v]) => [k, v.direccion]),
+        Object.entries(p.puertos).map(([k, v]) => [k, v.direccion.map((x) => Math.round(x * 1e9) / 1e9 + 0)]),
       ) as Record<string, [number, number, number]>,
     }));
     return {

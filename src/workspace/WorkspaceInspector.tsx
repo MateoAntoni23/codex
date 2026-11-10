@@ -91,7 +91,15 @@ function RotatePieceControls({ piece, entrada }: { piece: Piece; entrada: TrayIn
         port.posicion_mm,
       );
     }
-    edit(next);
+    // A-8: si la rotación deja uniones que ya no cumplen (hueco, ángulo o giro),
+    // se pide confirmación explícita con el mismo aviso que al mover.
+    const broken = findBrokenConnections(next, piece.instancia_id);
+    if (broken.length === 0) {
+      edit(next);
+    } else {
+      useTrayStore.getState().setEntradaRaw(next);
+      useTrayMoveState.getState().requestConfirm({ pieceId: piece.instancia_id, snapshot: structuredClone(entrada), brokenConexionIds: broken });
+    }
     markDirty();
     setAngleDeg('0');
   };
@@ -320,7 +328,10 @@ function TrayCentroidEditor({
   const [snapCx, setSnapCx] = useState(centroidMm[0]);
   const [snapCy, setSnapCy] = useState(centroidMm[1]);
   const [snapCz, setSnapCz] = useState(centroidMm[2]);
-  if (pieceId !== piece.instancia_id || snapCx !== centroidMm[0] || snapCy !== centroidMm[1] || snapCz !== centroidMm[2]) {
+  // Tolerancia 1e-6 mm: re-derivar las bocas desde la pose (migración, hito 2) puede
+  // cambiar el centroide en ruido numérico; no debe borrar lo que el operador tipeó.
+  const moved = (a: number, b: number) => Math.abs(a - b) > 1e-6;
+  if (pieceId !== piece.instancia_id || moved(snapCx, centroidMm[0]) || moved(snapCy, centroidMm[1]) || moved(snapCz, centroidMm[2])) {
     setPieceId(piece.instancia_id);
     setSnapCx(centroidMm[0]);
     setSnapCy(centroidMm[1]);

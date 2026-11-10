@@ -12,6 +12,29 @@ import { readFileSync, mkdirSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+/**
+ * Hito 2 (A-10): al abrir un proyecto anterior se deduce la colocación de cada pieza
+ * (campo `colocacion` + tabla `definiciones_ws`) y las bocas pasan a derivarse de la
+ * pose. Para comparar contra el archivo original se quitan esos datos y se
+ * redondean las bocas a 1e-6 mm (la migración del fixture no corre ninguna boca).
+ */
+function sinColocacion<T>(v: T): T {
+  const strip = (x: unknown): unknown => {
+    if (typeof x === 'number') return Math.round(x * 1e6) / 1e6 + 0;
+    if (Array.isArray(x)) return x.map(strip);
+    if (x && typeof x === 'object') {
+      const o: Record<string, unknown> = {};
+      for (const [k, val] of Object.entries(x)) {
+        if (k === 'colocacion' || k === 'definiciones_ws' || k === 'uniones_ws' || k === 'orientacion_seccion_ws') continue;
+        o[k] = strip(val);
+      }
+      return o;
+    }
+    return x;
+  };
+  return strip(v) as T;
+}
+
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const OUT_DIR = resolve(__dirname, 'output');
 const EXCEL = resolve(__dirname, '../src/import/fixtures/ELS-IMP-EQCX_v1.0_Rev0.xlsx');
@@ -196,6 +219,8 @@ test.describe('Hito 1 — el proyecto no se pierde', () => {
     await openApp(page);
     await openFile(page, USER_REPORT);
     await expect.poll(async () => ((await projectSnapshot(page)).piezas as unknown[]).length).toBe(7);
+    // Hito 2 (A-10): esperar a que la migración deduzca la colocación de las 7 piezas.
+    await expect.poll(async () => ((await projectSnapshot(page)).piezas as Array<{ colocacion?: unknown }>).every((p) => p.colocacion)).toBe(true);
     const first = await projectSnapshot(page);
     const original = JSON.parse(readFileSync(USER_REPORT, 'utf8')) as { projectV2: { elements: Json[]; evidence: unknown[] }; trayInput: Json };
 
@@ -203,7 +228,7 @@ test.describe('Hito 1 — el proyecto no se pierde', () => {
     const strip = (els: Json[]) => els.map((e) => { const { importedRef, ...r } = e; return importedRef == null ? r : e; });
     expect(strip(first.elements as Json[])).toEqual(strip(original.projectV2.elements));
     expect(first.evidence).toEqual(original.projectV2.evidence);
-    expect(first.piezas).toEqual(original.trayInput.piezas);
+    expect(sinColocacion(first.piezas)).toEqual(sinColocacion(original.trayInput.piezas));
     expect(first.conexiones).toEqual(original.trayInput.conexiones);
     expect(first.circuitos).toEqual(original.trayInput.circuitos);
     expect(first.soportes).toEqual(original.trayInput.soportes);
