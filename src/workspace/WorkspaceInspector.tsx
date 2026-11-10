@@ -541,6 +541,7 @@ export function PieceCard({ piece }: { piece: Piece }) {
 
       <div style={{ padding: '4px 12px', display: 'flex', gap: 6, flexWrap: 'wrap' }}>
         <button
+          className={trayMoveMode ? 'tone-ok' : undefined}
           data-testid="tray-move-toggle"
           onClick={() => setTrayMoveMode(!trayMoveMode)}
           title="Mostrar/ocultar gizmo XYZ para mover la pieza completa en planta y altura"
@@ -629,7 +630,7 @@ export function PieceCard({ piece }: { piece: Piece }) {
       <RotatePieceControls piece={piece} entrada={entrada} />
 
       <div style={{ padding: '4px 12px 8px' }}>
-        <button
+        <button className="tone-danger"
           style={{ fontSize: 12, padding: '4px 8px', background: '#8b2222', color: 'white', border: '1px solid #cc3333', borderRadius: 3, cursor: 'pointer' }}
           onClick={() => {
             if (!confirm(`Eliminar pieza "${title}"?`)) return;
@@ -742,7 +743,7 @@ export function SupportCard({ support }: { support: Support }) {
       )}
 
       <div style={{ padding: '4px 12px 8px' }}>
-        <button
+        <button className="tone-danger"
           style={{ fontSize: 12, padding: '4px 8px', background: '#8b2222', color: 'white', border: '1px solid #cc3333', borderRadius: 3, cursor: 'pointer' }}
           onClick={handleDelete}
         >
@@ -772,7 +773,7 @@ function LinkedImportedPanel({ equipoId, onUnlink, onOpenInImportedTree }: {
           El libro origen no está cargado — reimportá el Excel para ver la ficha completa.
         </div>
         <div style={{ marginTop: 6 }}>
-          <button onClick={onUnlink} style={{ fontSize: 11, padding: '2px 8px', background: '#3a2a2a', color: '#ffd6d6', border: '1px solid #884444', borderRadius: 3, cursor: 'pointer' }}>
+          <button className="tone-warn" onClick={onUnlink} style={{ fontSize: 11, padding: '2px 8px', background: '#3a2a2a', color: '#ffd6d6', border: '1px solid #884444', borderRadius: 3, cursor: 'pointer' }}>
             Desvincular
           </button>
         </div>
@@ -790,7 +791,7 @@ function LinkedImportedPanel({ equipoId, onUnlink, onOpenInImportedTree }: {
           intacto; revisá si cambió de ID o fue retirado y decidí desvincular manualmente.
         </div>
         <div style={{ marginTop: 6 }}>
-          <button onClick={onUnlink} style={{ fontSize: 11, padding: '2px 8px', background: '#3a2a2a', color: '#ffd6d6', border: '1px solid #884444', borderRadius: 3, cursor: 'pointer' }}>
+          <button className="tone-warn" onClick={onUnlink} style={{ fontSize: 11, padding: '2px 8px', background: '#3a2a2a', color: '#ffd6d6', border: '1px solid #884444', borderRadius: 3, cursor: 'pointer' }}>
             Desvincular
           </button>
         </div>
@@ -824,7 +825,7 @@ function LinkedImportedPanel({ equipoId, onUnlink, onOpenInImportedTree }: {
         <button onClick={onOpenInImportedTree} style={{ fontSize: 11, padding: '2px 8px', background: '#3c4967', color: 'white', border: '1px solid #5566aa', borderRadius: 3, cursor: 'pointer' }} data-testid="imported-linked-open">
           Ver ficha completa
         </button>
-        <button onClick={onUnlink} style={{ fontSize: 11, padding: '2px 8px', background: '#3a2a2a', color: '#ffd6d6', border: '1px solid #884444', borderRadius: 3, cursor: 'pointer' }} data-testid="imported-linked-unlink">
+        <button className="tone-warn" onClick={onUnlink} style={{ fontSize: 11, padding: '2px 8px', background: '#3a2a2a', color: '#ffd6d6', border: '1px solid #884444', borderRadius: 3, cursor: 'pointer' }} data-testid="imported-linked-unlink">
           Desvincular
         </button>
       </div>
@@ -875,6 +876,7 @@ export function EquipmentCard() {
       {element && (
         <div style={{ padding: '4px 12px 4px', display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           <button
+            className={moveMode ? 'tone-ok' : undefined}
             data-testid="equip-move-toggle"
             onClick={() => setMoveMode(!moveMode)}
             disabled={!canMove}
@@ -896,7 +898,7 @@ export function EquipmentCard() {
           <button onClick={handleDuplicate} style={{ fontSize: 11, padding: '3px 8px', background: '#3c4967', color: 'white', border: '1px solid #5566aa', borderRadius: 3, cursor: 'pointer' }}>
             Duplicar
           </button>
-          <button onClick={handleDelete} style={{ fontSize: 11, padding: '3px 8px', background: '#6b2222', color: 'white', border: '1px solid #aa3333', borderRadius: 3, cursor: 'pointer' }}>
+          <button className="tone-danger" onClick={handleDelete} style={{ fontSize: 11, padding: '3px 8px', background: '#6b2222', color: 'white', border: '1px solid #aa3333', borderRadius: 3, cursor: 'pointer' }}>
             Eliminar
           </button>
         </div>

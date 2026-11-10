@@ -323,6 +323,17 @@ test.describe('Hito 1b — interfaz por etapas', () => {
         const fails = await contrastFailures(page);
         expect(fails, `contraste ${theme}/${s}`).toEqual([]);
       }
+      // Señales de estado con color propio (peligro / correcto), AA incluido arriba.
+      const DANGER = theme === 'dark' ? 'rgb(255, 138, 128)' : 'rgb(163, 22, 26)';
+      const OK = theme === 'dark' ? 'rgb(134, 227, 173)' : 'rgb(11, 95, 49)';
+      await goStage(page, 'bandejas');
+      await page.getByTestId('piece-list').locator('button').first().click();
+      const del = page.getByRole('button', { name: 'Eliminar pieza' });
+      await expect(del).toHaveCSS('color', DANGER);
+      await expect(del).toHaveCSS('border-top-color', DANGER);
+      expect(await contrastFailures(page), `contraste ${theme}/ficha de pieza`).toEqual([]);
+      await expect(page.getByTestId('project-save-status')).toHaveAttribute('data-phase', 'saved', { timeout: 10_000 });
+      await expect(page.getByTestId('project-save-status')).toHaveCSS('color', OK);
     }
     // La escena conserva su fondo en ambos temas (no la toca el tema).
     const sceneBg = await page.locator('.unified-workspace-canvas').evaluate((el) => getComputedStyle(el).backgroundColor);

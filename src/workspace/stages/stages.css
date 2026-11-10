@@ -24,7 +24,8 @@
   --ws-accent-bg: #23406b;
   --ws-ok: #86e3ad;
   --ws-warn: #f3c86f;
-  --ws-err: #ffa3a3;
+  /* Señales de estado (AA ≥ 4,5:1 contra panel, superficie, hover y selección). */
+  --ws-danger: #ff8a80;
   --ws-neutral: #c9d2de;
   background: var(--ws-bg);
   color: var(--ws-fg);
@@ -42,7 +43,7 @@
   --ws-accent-bg: #d3e4fa;
   --ws-ok: #0b5f31;
   --ws-warn: #6b4500;
-  --ws-err: #9a1515;
+  --ws-danger: #a3161a;
   --ws-neutral: #2c3644;
 }
 
@@ -86,8 +87,23 @@
 .unified-workspace .ws-panel .tone-ok, .unified-workspace .ws-panel .tone-ok * { color: var(--ws-ok) !important; }
 .unified-workspace .ws-panel .tone-warn, .unified-workspace .ws-panel .tone-warn * { color: var(--ws-warn) !important; }
 .unified-workspace .ws-panel .tone-neutral, .unified-workspace .ws-panel .tone-neutral * { color: var(--ws-neutral) !important; }
+/* Señales de estado: peligro (eliminar, errores, conflictos), correcto y advertencia. */
+.unified-workspace .ws-panel .tone-danger,
+.unified-workspace .ws-panel .tone-danger *,
 .unified-workspace .ws-panel .workspace-error,
-.unified-workspace .ws-panel .project-save-error { color: var(--ws-err) !important; }
+.unified-workspace .ws-panel .project-save-error,
+.unified-workspace .ws-panel .imported-attr-badge.CONFLICTO,
+.unified-workspace .ws-panel .estado-RETIRADO { color: var(--ws-danger) !important; }
+.unified-workspace .ws-panel .project-save-saved,
+.unified-workspace .ws-panel .imported-attr-badge.CONFIRMADO,
+.unified-workspace .ws-panel .estado-NUEVO { color: var(--ws-ok) !important; }
+.unified-workspace .ws-panel .project-save-saving,
+.unified-workspace .ws-panel .imported-attr-badge.PENDIENTE,
+.unified-workspace .ws-panel .imported-attr-badge.A_RELEVAR,
+.unified-workspace .ws-panel .estado-A_DEFINIR { color: var(--ws-warn) !important; }
+.unified-workspace .ws-panel button.tone-danger { border-color: var(--ws-danger) !important; }
+.unified-workspace .ws-panel button.tone-ok { border-color: var(--ws-ok) !important; }
+.unified-workspace .ws-panel button.tone-warn { border-color: var(--ws-warn) !important; }
 .unified-workspace .ws-panel .stage-note,
 .unified-workspace .ws-panel .stage-row-sub,
 .unified-workspace .ws-panel .stage-tab-status,

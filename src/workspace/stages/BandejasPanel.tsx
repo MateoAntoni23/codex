@@ -182,7 +182,7 @@ export function BandejasPanel() {
         {conexiones.map((c) => (
           <div key={c.conexion_id} className="stage-row-inline">
             <span>{endLabel(c.a[0], c.a[1])} ↔ {endLabel(c.b[0], c.b[1])}</span>
-            <button type="button" className="stage-icon-btn" aria-label="Eliminar unión" onClick={() => removeConexion(c.conexion_id)}>×</button>
+            <button type="button" className="stage-icon-btn tone-danger" aria-label="Eliminar unión" onClick={() => removeConexion(c.conexion_id)}>×</button>
           </div>
         ))}
       </Section>
