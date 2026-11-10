@@ -87,12 +87,19 @@ describe('segmentRailsFromOutline', () => {
     }
   });
 
-  it('parte una curva CS-300-90 en dos cadenas (rail interior corto, rail exterior largo)', () => {
+  it('parte una curva CS-300-90 en tres cadenas (bocas en polygon[1-2] y [5-6])', () => {
+    // Tras fijar las bocas reales de CS-90 (extremos de cada brazo), el
+    // polígono queda dividido en 3 cadenas de rail entre las dos bocas:
+    //   - piso brazo horizontal (edge 0, ≈333 mm)
+    //   - "codo" interior (edges 2+3+4, ≈209+333+209 ≈ 751 mm)
+    //   - vuelta exterior (edges 6+7, ≈333+582 ≈ 914 mm, pared izq + diagonal)
     const chains = segmentRailsFromOutline(CS_300_90_065_18_Z);
-    expect(chains.length).toBe(2);
+    expect(chains.length).toBe(3);
     const lens = chains.map(polylineLengthMm).sort((a, b) => a - b);
-    // Interior ≈ 582 mm (edge 7), exterior ≈ 333+209+333+209+299 ≈ 1383 mm aproximado.
-    expect(lens[0]).toBeGreaterThan(400);
-    expect(lens[1]).toBeGreaterThan(900);
+    expect(lens[0]).toBeGreaterThan(300);
+    expect(lens[0]).toBeLessThan(400);
+    expect(lens[1]).toBeGreaterThan(700);
+    expect(lens[1]).toBeLessThan(800);
+    expect(lens[2]).toBeGreaterThan(900);
   });
 });

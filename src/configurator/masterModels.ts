@@ -667,7 +667,10 @@ const MASTER_ESCALERA: readonly MasterModel[] = [
       fidelity: VALIDATED_FIDELITY_DIMENSION,
       variants: NA_DIMENSION,
     },
-    revision: 1,
+    // revision 2: bocas corregidas (P2 ahora sobre la cara diagonal
+    // polygon[1]→polygon[2], long 298.9, NO sobre la pared x_min de 213 mm).
+    // Invalida aprobaciones previas: la geometría de la boca cambió.
+    revision: 2,
   },
   {
     id: 'master:escalera:curva_horizontal_90',
@@ -709,7 +712,10 @@ const MASTER_ESCALERA: readonly MasterModel[] = [
       fidelity: VALIDATED_FIDELITY_DIMENSION,
       variants: NA_DIMENSION,
     },
-    revision: 1,
+    // revision 2: bocas corregidas (P1 y P2 sobre los extremos de cada brazo
+    // polygon[1]→[2] y polygon[5]→[6], long 298.9, NO sobre las paredes
+    // exteriores de 333 mm). Invalida aprobaciones previas.
+    revision: 2,
   },
   {
     id: 'master:escalera:derivacion_lateral',
@@ -752,7 +758,11 @@ const MASTER_ESCALERA: readonly MasterModel[] = [
       fidelity: VALIDATED_FIDELITY_DIMENSION,
       variants: NA_DIMENSION,
     },
-    revision: 1,
+    // revision 2: factor de escala corregido en `scaleFactorsFromOutline`
+    // (antes `bbox_local.z_max` = 1189 — extensión total del polígono — daba
+    // bocas de ancho ≈75 mm al pedir ancho_mm=300). Ahora usa
+    // `outline.baseAnchoMm` = 298.9. Invalida aprobaciones previas.
+    revision: 2,
   },
   {
     id: 'master:escalera:cruz',
@@ -796,7 +806,11 @@ const MASTER_ESCALERA: readonly MasterModel[] = [
       fidelity: VALIDATED_FIDELITY_DIMENSION,
       variants: NA_DIMENSION,
     },
-    revision: 1,
+    // revision 2: factor de escala corregido en `scaleFactorsFromOutline`
+    // (antes `bbox_local.z_max` = 1187.94 — extensión total del polígono — daba
+    // bocas de ancho ≈75 mm al pedir ancho_mm=300). Ahora usa
+    // `outline.baseAnchoMm` = 298.9. Invalida aprobaciones previas.
+    revision: 2,
   },
   {
     id: 'master:escalera:reduccion_lateral',

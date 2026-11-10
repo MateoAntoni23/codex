@@ -83,8 +83,17 @@ function bboxOf(poly: readonly Vec2[]): { minX: number; maxX: number; minZ: numb
  * Factores de escala (sx, sz) para un maestro escalera a partir de su outline
  * base (ancho=300, ala=65). Para TRES el polígono rectangular soporta escala
  * independiente por eje; para las demás formas la hipótesis visual es
- * uniform-xz (ancho/300 escala ambos ejes). El factor del ala NO entra aquí:
- * la ala se aplica como altura de extrusión, sin tocar el polígono 2D.
+ * uniform-xz (ancho/baseAncho escala ambos ejes). El factor del ala NO entra
+ * aquí: la ala se aplica como altura de extrusión, sin tocar el polígono 2D.
+ *
+ * La base del factor es `outline.baseAnchoMm` (ancho ÚTIL del ducto medido en
+ * el STEP, típicamente 298.9 mm para el patrón ancho nominal 300). Antes se
+ * usaba `bbox_local.z_max`, que coincide con el ancho útil sólo en TRES
+ * (polígono rectangular); para las piezas no rectangulares — CS-45, CS-90,
+ * TS, XS — el z_max es la EXTENSIÓN TOTAL del polígono (652, 744, 1189,
+ * 1188 mm respectivamente), con lo que el factor de escala resultaba muy
+ * inferior a 1 y las bocas terminaban con ancho del orden de 75–137 mm
+ * (reporte del usuario: "bocas de ancho 150 en lugar de 300").
  */
 function scaleFactorsFromOutline(
   outline: EscaleraOutline,
@@ -92,8 +101,7 @@ function scaleFactorsFromOutline(
   targetLongitud: number | null,
   isRectangular: boolean,
 ): { sx: number; sz: number } {
-  // Base ancho medido = z_max (la boca es z-small-side). Base longitud = x_max.
-  const baseAncho = outline.bbox_local.z_max > 0 ? outline.bbox_local.z_max : 300;
+  const baseAncho = outline.baseAnchoMm > 0 ? outline.baseAnchoMm : 300;
   const baseLong = outline.bbox_local.x_max > 0 ? outline.bbox_local.x_max : 300;
   if (isRectangular) {
     const sx = targetLongitud !== null && targetLongitud > 0 ? targetLongitud / baseLong : 1;
@@ -141,10 +149,13 @@ export function buildTRESRecipe(params: {
 }
 
 // ─── CS-45 — curva escalera 45° ──────────────────────────────────────────────
-// 8 vértices mitereados. P1 sobre z_max (arista polygon[5]→polygon[6]),
-// P2 sobre x_min (arista polygon[6]→polygon[7] parcial).
-// Nota: las aristas del boundary se identifican por outward_normal en el
-// outline medido; aquí mapeamos por índice de polígono preservando el orden.
+// 8 vértices mitereados. P1 sobre z_max (arista polygon[5]→polygon[6], recta
+// horizontal). P2 sobre la cara diagonal a 60° (arista polygon[1]→polygon[2]).
+// NOTA: antes P2 se fijaba sobre polygon[6]→polygon[7] por ser pegada al
+// borde x_min del bbox (lo que la detección automática confunde con "boca"),
+// pero esa arista es la PARED vertical izquierda — longitud 213 mm, NO una
+// boca. La boca real de entrada es la cara diagonal (normal (0.866,-0.5)),
+// longitud ≈298.9 mm, y es la que debe reportar `port.ancho_mm` ≈ ancho_mm.
 
 export function buildCS45Recipe(params: {
   ancho_mm: number;
@@ -153,11 +164,11 @@ export function buildCS45Recipe(params: {
   const { ancho_mm, ala_mm } = params;
   const { sx, sz } = scaleFactorsFromOutline(CS_300_45_065_18_Z, ancho_mm, null, false);
   const polygon = scaleXZ(CS_300_45_065_18_Z.polygon, sx, sz);
-  // P1 = edge index 5 (z_max boundary): polygon[5]→polygon[6].
-  // P2 = edge index 6 (x_min boundary): polygon[6]→polygon[7].
+  // P1 = cara z_max (horizontal): polygon[5]→polygon[6]. Longitud 298.9 mm base.
+  // P2 = cara diagonal 60°:       polygon[1]→polygon[2]. Longitud 298.87 mm base.
   const ports: PortDef[] = [
     portOnEdge('P1', polygon[5], polygon[6], ala_mm),
-    portOnEdge('P2', polygon[6], polygon[7], ala_mm),
+    portOnEdge('P2', polygon[1], polygon[2], ala_mm),
   ];
   const bb = bboxOf(polygon);
   return {
@@ -178,7 +189,16 @@ export function buildCS45Recipe(params: {
 }
 
 // ─── CS-90 — curva escalera 90° ──────────────────────────────────────────────
-// 8 vértices, polígono tipo "codo Z".
+// 8 vértices, polígono tipo "codo Z". Las bocas quedan en los EXTREMOS de
+// cada brazo, no sobre las paredes largas: P1 en el extremo del brazo
+// horizontal (cara casi-vertical a x≈744), P2 en el extremo del brazo
+// vertical (cara casi-horizontal a z≈744).
+// NOTA: antes se fijaban P1 sobre polygon[0]→polygon[1] (piso del brazo
+// horizontal, 333 mm) y P2 sobre polygon[6]→polygon[7] (pared izquierda del
+// brazo vertical, 333 mm). Esas son las paredes exteriores — 333 mm, NO el
+// ancho útil de 298.9 mm — y daban bocas de "ancho 334" a geometría ancho
+// nominal 300 (reporte del usuario "CAS-300 con bocas ancho 150"; tras
+// corregir el factor de escala quedaba el error residual 334).
 
 export function buildCS90Recipe(params: {
   ancho_mm: number;
@@ -187,11 +207,11 @@ export function buildCS90Recipe(params: {
   const { ancho_mm, ala_mm } = params;
   const { sx, sz } = scaleFactorsFromOutline(CS_300_90_065_18_Z, ancho_mm, null, false);
   const polygon = scaleXZ(CS_300_90_065_18_Z.polygon, sx, sz);
-  // P1 = edge index 0 (z_min): polygon[0]→polygon[1].
-  // P2 = edge index 6 (x_min): polygon[6]→polygon[7].
+  // P1 = extremo brazo horizontal (x≈744): polygon[1]→polygon[2]. Base 298.9.
+  // P2 = extremo brazo vertical   (z≈744): polygon[5]→polygon[6]. Base 298.9.
   const ports: PortDef[] = [
-    portOnEdge('P1', polygon[0], polygon[1], ala_mm),
-    portOnEdge('P2', polygon[6], polygon[7], ala_mm),
+    portOnEdge('P1', polygon[1], polygon[2], ala_mm),
+    portOnEdge('P2', polygon[5], polygon[6], ala_mm),
   ];
   const bb = bboxOf(polygon);
   return {

@@ -34,6 +34,16 @@ export interface EscaleraOutline {
   readonly source_file: string;
   /** Ancho×largo del bbox local en el plano XZ, y altura Y (ala medida). */
   readonly bbox_local: { readonly x_max: number; readonly z_max: number; readonly y_height_mm: number };
+  /**
+   * Ancho útil de ducto medido en el STEP base — el patrón se construyó a
+   * ancho nominal 300 mm, y la medición interior es 298.9 mm. Este valor
+   * (NO `bbox_local.z_max`) es la base para el factor de escala cuando el
+   * usuario pide un ancho objetivo distinto. Para TRES el bbox coincide con
+   * el ducto; para las demás piezas el bbox es la extensión TOTAL del
+   * polígono y usarlo como base produce bocas con ancho muy inferior al
+   * nominal (ver `scaleFactorsFromOutline`).
+   */
+  readonly baseAnchoMm: number;
   /** Vértices CCW en XZ local, [[x,z], ...]. */
   readonly polygon: readonly Vec2[];
   /** Aristas que caen sobre un borde del bbox (candidatas a boca). */
@@ -46,6 +56,7 @@ export interface EscaleraOutline {
 export const TRES_300_065_18_Z: EscaleraOutline = {
   source_file: 'TRES-300-065-18-Z.STEP',
   bbox_local: { x_max: 3000.0, z_max: 298.9, y_height_mm: 65.0 },
+  baseAnchoMm: 298.9,
   polygon: [
     [0.0, 0.0],
     [3000.0, 0.0],
@@ -65,6 +76,7 @@ export const TRES_300_065_18_Z: EscaleraOutline = {
 export const CS_300_45_065_18_Z: EscaleraOutline = {
   source_file: 'CS-300-45-065-18-Z.STEP',
   bbox_local: { x_max: 541.795, z_max: 652.565, y_height_mm: 65.0 },
+  baseAnchoMm: 298.9,
   polygon: [
     [184.27, 120.13],
     [392.35, 0.0],
@@ -76,10 +88,15 @@ export const CS_300_45_065_18_Z: EscaleraOutline = {
     [0.0, 439.3],
   ],
   boundary_edges: [
-    // P1: arista superior (z_max) — centro ≈ (149.45, 652.57), normal +Z.
+    // P1: arista superior z_max (horizontal) — centro (149.45, 652.57), normal +Z, long 298.9.
     { i: 5, a: [298.9, 652.57], b: [0.0, 652.57], length_mm: 298.9, midpoint: [149.45, 652.57], outward_normal: [0.0, 1.0], boundary: 'z_max' },
-    // P2: arista lateral izquierda (x_min, parcial) — centro ≈ (0, 545.93), normal -X.
-    { i: 6, a: [0.0, 652.57], b: [0.0, 439.3], length_mm: 213.27, midpoint: [0.0, 545.93], outward_normal: [-1.0, 0.0], boundary: 'x_min' },
+    // P2: arista diagonal 60° — centro (467.07, 129.425), normal (0.866,-0.5), long 298.87.
+    // NO pegada a un borde del bbox (es la cara diagonal mitreada de entrada).
+    // Antes esta posición la ocupaba polygon[6]→polygon[7] (pared izquierda,
+    // long 213) porque la detección automática elige aristas pegadas al bbox;
+    // ver escaleraRecipes.buildCS45Recipe para la justificación de la boca
+    // real como la cara diagonal.
+    { i: 1, a: [392.35, 0.0], b: [541.79, 258.85], length_mm: 298.87, midpoint: [467.07, 129.425], outward_normal: [0.8660, -0.5], boundary: null },
   ],
 };
 
@@ -89,6 +106,7 @@ export const CS_300_45_065_18_Z: EscaleraOutline = {
 export const CS_300_90_065_18_Z: EscaleraOutline = {
   source_file: 'CS-300-90-065-18-Z.STEP',
   bbox_local: { x_max: 744.12, z_max: 744.031, y_height_mm: 65.0 },
+  baseAnchoMm: 298.9,
   polygon: [
     [411.12, 0.0],
     [744.12, 0.0],
@@ -100,10 +118,18 @@ export const CS_300_90_065_18_Z: EscaleraOutline = {
     [0.0, 411.12],
   ],
   boundary_edges: [
-    // P1: arista inferior (z_min) — centro (577.62, 0), normal -Z.
-    { i: 0, a: [411.12, 0.0], b: [744.12, 0.0], length_mm: 333.0, midpoint: [577.62, 0.0], outward_normal: [0.0, -1.0], boundary: 'z_min' },
-    // P2: arista lateral izquierda (x_min) — centro (0, 577.58), normal -X.
-    { i: 6, a: [0.0, 744.03], b: [0.0, 411.12], length_mm: 332.91, midpoint: [0.0, 577.58], outward_normal: [-1.0, 0.0], boundary: 'x_min' },
+    // P1: boca extremo del brazo horizontal (x≈744) — polygon[1]→polygon[2].
+    // Centro (743.78, 149.45), normal casi +X (chamfer 0.68 mm respecto al bbox),
+    // long 298.9. Boundary 'x_max' (parcial, por el chaflán mitero).
+    { i: 1, a: [744.12, 0.0], b: [743.44, 298.9], length_mm: 298.9, midpoint: [743.78, 149.45], outward_normal: [0.99999, 0.00228], boundary: 'x_max' },
+    // P2: boca extremo del brazo vertical (z≈744) — polygon[5]→polygon[6].
+    // Centro (149.45, 743.745), normal casi +Z, long 298.9.
+    // Boundary 'z_max' (parcial, por el chaflán mitero de 0.57 mm).
+    // NOTA: antes P1/P2 apuntaban a polygon[0]→polygon[1] (piso brazo horiz,
+    // long 333) y polygon[6]→polygon[7] (pared izq brazo vert, long 333)
+    // porque la detección automática elige aristas pegadas al bbox. Esas
+    // aristas son paredes EXTERIORES del codo, no bocas (ver recipes).
+    { i: 5, a: [298.9, 743.46], b: [0.0, 744.03], length_mm: 298.9, midpoint: [149.45, 743.745], outward_normal: [0.00191, 0.99999], boundary: 'z_max' },
   ],
 };
 
@@ -112,6 +138,7 @@ export const CS_300_90_065_18_Z: EscaleraOutline = {
 export const TS_300_065_18_Z: EscaleraOutline = {
   source_file: 'TS-300-065-18-Z.STEP',
   bbox_local: { x_max: 743.462, z_max: 1189.0, y_height_mm: 65.0 },
+  baseAnchoMm: 298.9,
   polygon: [
     [0.0, 0.0],
     [298.9, 0.0],
@@ -139,6 +166,7 @@ export const TS_300_065_18_Z: EscaleraOutline = {
 export const XS_300_065_18_Z: EscaleraOutline = {
   source_file: 'XS-300-065-18-Z.STEP',
   bbox_local: { x_max: 1187.936, z_max: 1187.936, y_height_mm: 65.0 },
+  baseAnchoMm: 298.9,
   polygon: [
     [0.0, 444.56],
     [208.91, 444.56],
@@ -176,6 +204,10 @@ export const XS_300_065_18_Z: EscaleraOutline = {
 export const RIS_15_065_18_Z: EscaleraOutline = {
   source_file: 'RIS-15-065-18-Z.STEP',
   bbox_local: { x_max: 298.9, z_max: 450.0, y_height_mm: 65.0 },
+  // RIS mide 300→150: la boca "ancha" es 298.9 (= ancho útil nominal 300).
+  // El build de RIS no usa `scaleFactorsFromOutline` (polígono fijo), pero
+  // declaramos el campo por consistencia con el resto de outlines.
+  baseAnchoMm: 298.9,
   polygon: [
     [148.896, 0.0],
     [148.9, 149.503],
