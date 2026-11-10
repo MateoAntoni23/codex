@@ -893,9 +893,24 @@ function applyMatrixToDir(
  * Construye la BufferGeometry local de la receta (una sola vez por recipe
  * key) — sin transformar, en coordenadas locales de la receta. Quien dibuja
  * aplica el `matrix` de `PlacedRecipe` al <mesh>.
+ *
+ * `recipe.translate` se aplica aquí a la malla para dejarla en el mismo
+ * marco local donde la receta declara las bocas (p.ej. CUPS declara
+ * `translate=[0,0,-ancho_mm]` y la boca P1_horizontal a z=-ancho/2). Sin
+ * esto, el cuerpo quedaba desplazado +ancho mm respecto de las bocas y la
+ * conexión preview/confirmado aparecía corrida. La misma aplicación existe
+ * en `ParametricScene` (configurador): esta función es la causa común
+ * para ambos pipelines.
  */
 export function buildLocalMesh(recipe: GeometryRecipe): THREE.BufferGeometry {
-  return buildPrism(recipe.polygon, recipe.height, recipe.extrudeAlongY);
+  const geom = buildPrism(recipe.polygon, recipe.height, recipe.extrudeAlongY);
+  const [tx, ty, tz] = recipe.translate;
+  if (tx !== 0 || ty !== 0 || tz !== 0) {
+    geom.translate(tx, ty, tz);
+    geom.computeBoundingBox();
+    geom.computeBoundingSphere();
+  }
+  return geom;
 }
 
 // ─── Verificación geométrica contra una pieza ya colocada ───────────────────
