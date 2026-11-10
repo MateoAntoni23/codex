@@ -394,22 +394,13 @@ test.describe('Cadena vertical recto → CUPS → recto vertical', () => {
     expect(pBox.min[0]).toBeGreaterThan(2.999);
     expect(pBox.min[0]).toBeLessThan(3.001);
 
-    // ── Fase 2: confirmar y verificar que las bocas de conexión del CUPS
-    // persistido quedan EXACTAMENTE sobre las posiciones que el pipeline de
-    // colocación produjo para el preview. Esto cierra el ciclo preview →
-    // confirmado: si el mesh del preview estaba 300 mm desplazado respecto a
-    // sus bocas, al confirmar las bocas quedan sin cara de apoyo — lo que
-    // demuestra que "pueden coincidir los puertos mientras el cuerpo está
-    // desplazado" (literal del usuario) es un escenario reproducible y
-    // controlado, no un "no repro".
-    //
-    // Nota de alcance: la pieza CUPS confirmada hoy renderiza como schematic
-    // line porque `verifyGeometricFit` espera `piece.puertos.P1/P2` y las
-    // CUPS persisten `P1_horizontal/P2_vertical` (limitación común con
-    // TPS/DCPS/XPS). Esa ruta se cubrirá en un encargo separado — el usuario
-    // pidió "pausar ampliaciones de cobertura". Lo verificado aquí es la
-    // integridad de los datos: la boca de entrada del CUPS está sobre el P2
-    // del TRPS, y la boca libre quedó en el punto esperado por `placeRecipe`.
+    // ── Fase 2: confirmar y verificar que:
+    //   - La pieza CUPS persistida tiene las bocas sobre las posiciones que
+    //     el pipeline de colocación produjo en el preview.
+    //   - El cuerpo CONFIRMADO se renderiza como `parametric-confirmed`
+    //     (no `schematic-line-fallback`), con bbox Z flush con el canal del
+    //     TRPS (±150 mm). Esto demuestra que `verifyGeometricFit` resuelve
+    //     el fit para accesorios con bocas no-P1/P2.
     const motive = page.locator('[data-codex-routing-exception-motive]');
     if (await motive.count()) await motive.fill('Regresión bug translate CUPS (E2E)');
     await page.locator('text=Confirmar continuación').click();
@@ -450,6 +441,112 @@ test.describe('Cadena vertical recto → CUPS → recto vertical', () => {
         (c.b[0] === 'T1' && c.b[1] === 'P2' && c.a[0] === confirmedData.cups!.instancia_id),
     );
     expect(conn, 'conexión TRPS.P2 ↔ CUPS.P1_horizontal registrada').toBeTruthy();
+
+    // ── Fase 3: cuerpo CONFIRMADO en escena.
+    //
+    // Aquí se exige el fit real: la CUPS debe renderizar como
+    // `parametric-confirmed` (receta aplicada + matriz colocación), no como
+    // `schematic-line-fallback`. Esto cierra el encargo de generalizar
+    // `verifyGeometricFit` para accesorios con bocas no-P1/P2.
+    //
+    // Además comprobamos:
+    //   - El rango Z del cuerpo coincide con el del canal TRPS (±150 mm).
+    //     Si el bug 327c11b reapareciera, el rango se desplazaría 300 mm.
+    //   - X_min toca el extremo del TRPS (3.0 m).
+    //   - `userData.codex.entryPortName === 'P1_horizontal'` (la boca que
+    //     resolvió el solver, no un supuesto P1).
+    //   - `placedPorts[P1_horizontal]` coincide (±1 mm) con `piece.puertos
+    //     .P1_horizontal.posicion_mm` → el cuerpo rendereado se ajusta a la
+    //     cara de conexión real, no sólo al bbox.
+    const confirmedBody = await page.evaluate(() => {
+      const w = window as unknown as { __codex: { scene: { traverse: (f: (o: unknown) => void) => void } } };
+      let found: {
+        kind: string;
+        sku: string;
+        entryPortName: string;
+        placedPorts: Array<{ name: string; pos: [number, number, number]; outwardNormal: [number, number, number] }>;
+        min: [number, number, number];
+        max: [number, number, number];
+      } | null = null;
+      w.__codex.scene.traverse((obj: unknown) => {
+        const o = obj as {
+          userData?: {
+            codex?: {
+              kind?: string;
+              sku?: string;
+              entryPortName?: string;
+              placedPorts?: Array<{ name: string; pos: [number, number, number]; outwardNormal: [number, number, number] }>;
+            };
+          };
+          isMesh?: boolean;
+          updateMatrixWorld?: (f: boolean) => void;
+          geometry?: { attributes?: { position?: { count: number; array: ArrayLike<number> } } };
+          matrixWorld?: { elements: number[] };
+        };
+        const codex = o.userData?.codex;
+        if (!codex || codex.kind !== 'parametric-confirmed' || codex.sku !== 'CUPS-300-A-Z') return;
+        o.updateMatrixWorld?.(true);
+        if (!o.isMesh || !o.geometry?.attributes?.position || !o.matrixWorld) return;
+        const pos = o.geometry.attributes.position;
+        const m = o.matrixWorld.elements;
+        const min: [number, number, number] = [Infinity, Infinity, Infinity];
+        const max: [number, number, number] = [-Infinity, -Infinity, -Infinity];
+        for (let i = 0; i < pos.count; i++) {
+          const x = pos.array[i * 3];
+          const y = pos.array[i * 3 + 1];
+          const z = pos.array[i * 3 + 2];
+          const wx = m[0] * x + m[4] * y + m[8] * z + m[12];
+          const wy = m[1] * x + m[5] * y + m[9] * z + m[13];
+          const wz = m[2] * x + m[6] * y + m[10] * z + m[14];
+          if (wx < min[0]) min[0] = wx;
+          if (wy < min[1]) min[1] = wy;
+          if (wz < min[2]) min[2] = wz;
+          if (wx > max[0]) max[0] = wx;
+          if (wy > max[1]) max[1] = wy;
+          if (wz > max[2]) max[2] = wz;
+        }
+        found = {
+          kind: codex.kind,
+          sku: codex.sku,
+          entryPortName: codex.entryPortName ?? '',
+          placedPorts: codex.placedPorts ?? [],
+          min, max,
+        };
+      });
+      return found;
+    });
+    expect(confirmedBody, 'CUPS confirmada rendereada como parametric-confirmed (no schematic-line)').toBeTruthy();
+    const cb = confirmedBody!;
+    expect(cb.entryPortName, 'solver eligió P1_horizontal como entrada').toBe('P1_horizontal');
+    // Rango Z en metros (MM_TO_VIEWER=1e-3). Canal flush con el TRPS: ±150 mm.
+    expect(cb.min[2]).toBeGreaterThan(-0.151);
+    expect(cb.min[2]).toBeLessThan(-0.149);
+    expect(cb.max[2]).toBeGreaterThan(0.149);
+    expect(cb.max[2]).toBeLessThan(0.151);
+    // X_min flush con el extremo del recto (3.0 m).
+    expect(cb.min[0]).toBeGreaterThan(2.999);
+    expect(cb.min[0]).toBeLessThan(3.001);
+    // La boca P1_horizontal reportada por el mesh coincide con la boca
+    // persistida en el Piece — cuerpo y conexión están alineados.
+    const placedP1h = cb.placedPorts.find((p) => p.name === 'P1_horizontal');
+    expect(placedP1h, 'placedPorts incluye P1_horizontal').toBeTruthy();
+    expect(Math.hypot(
+      placedP1h!.pos[0] - p1h.posicion_mm[0],
+      placedP1h!.pos[1] - p1h.posicion_mm[1],
+      placedP1h!.pos[2] - p1h.posicion_mm[2],
+    )).toBeLessThan(1);
+    const placedP2v = cb.placedPorts.find((p) => p.name === 'P2_vertical');
+    expect(placedP2v, 'placedPorts incluye P2_vertical').toBeTruthy();
+    const storedP2v = confirmedData.cups!.puertos.P2_vertical;
+    expect(Math.hypot(
+      placedP2v!.pos[0] - storedP2v.posicion_mm[0],
+      placedP2v!.pos[1] - storedP2v.posicion_mm[1],
+      placedP2v!.pos[2] - storedP2v.posicion_mm[2],
+    )).toBeLessThan(1);
+    // Nota: esta regresión opera con calibración identidad (sin overrides de
+    // modelFrame cargados desde proyecto). La preservación de calibraciones
+    // no-identidad está cubierta por el test unitario N5 de
+    // verifyGeometricFitNPorts.test.ts (ty_mm=3 en CUPS-300-A-Z).
   });
 
   test('cancelar la continuación vertical NO modifica la cadena ya confirmada', async ({ page }) => {

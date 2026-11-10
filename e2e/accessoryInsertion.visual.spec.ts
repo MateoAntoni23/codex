@@ -133,6 +133,53 @@ test.describe('Inserción interactiva de accesorios (TPS/XPS/CUPS)', () => {
     );
     expect(conn, 'connection T1.P2 → TPS exists').toBeDefined();
     expect(conn!.b[1]).toBe('tronco_P2');
+
+    // Verificación de cuerpo paramétrico: la TPS debe renderizar como
+    // `parametric-confirmed` (receta aplicada por `verifyGeometricFit`), con
+    // entryPortName='tronco_P2' y placedPorts que cubran los 3 nombres de la
+    // receta y coincidan (±1 mm) con las posiciones persistidas en la pieza.
+    // Esto prueba que el fit no cae a schematic-line-fallback por el nombre
+    // no-P1/P2 de la boca de entrada.
+    const bodyData = await page.evaluate(() => {
+      const w = window as unknown as {
+        __codex: {
+          scene: { traverse: (f: (o: unknown) => void) => void };
+          trayStore: { getState: () => { entrada: unknown } };
+        };
+      };
+      const entrada = w.__codex.trayStore.getState().entrada as {
+        piezas: Array<{ instancia_id: string; producto_id: string; puertos: Record<string, { posicion_mm: [number, number, number] }> }>;
+      };
+      const tpsPiece = entrada.piezas.find((p) => p.producto_id === 'SAM_TPS-300-Z');
+      let body: { kind?: string; sku?: string; entryPortName?: string; placedPorts?: Array<{ name: string; pos: [number, number, number] }> } | null = null;
+      w.__codex.scene.traverse((obj: unknown) => {
+        const o = obj as { userData?: { codex?: { kind?: string; sku?: string; entryPortName?: string; placedPorts?: Array<{ name: string; pos: [number, number, number] }> } } };
+        const cx = o.userData?.codex;
+        if (cx && cx.kind === 'parametric-confirmed' && cx.sku === 'TPS-300-Z') body = cx;
+      });
+      return { tpsPiece, body };
+    });
+    expect(bodyData.body, 'TPS renderizada como parametric-confirmed (no schematic-line)').toBeTruthy();
+    // Nota: el solver de `verifyGeometricFit` escoge independientemente la
+    // boca de entrada entre las bocas que la receta publica, buscando mínimo
+    // error geométrico. Para accesorios simétricos como TPS (tronco_P1,
+    // tronco_P2, boca_derivacion) múltiples bocas dan ajuste perfecto, así
+    // que no se exige un entryPortName concreto. Lo que debe cumplir el fit:
+    //   - entryPortName ∈ {bocas publicadas por la receta}
+    //   - placedPorts cubre las 3 bocas con los nombres de la receta
+    //   - cada placedPort queda ±1 mm del puerto persistido con ese nombre
+    expect(['boca_derivacion', 'tronco_P1', 'tronco_P2']).toContain(bodyData.body!.entryPortName);
+    const tpsPlaced = bodyData.body!.placedPorts ?? [];
+    expect(tpsPlaced.map((p) => p.name).sort()).toEqual(['boca_derivacion', 'tronco_P1', 'tronco_P2']);
+    for (const placed of tpsPlaced) {
+      const stored = bodyData.tpsPiece!.puertos[placed.name];
+      const err = Math.hypot(
+        placed.pos[0] - stored.posicion_mm[0],
+        placed.pos[1] - stored.posicion_mm[1],
+        placed.pos[2] - stored.posicion_mm[2],
+      );
+      expect(err, `TPS placed ${placed.name} alineada con boca persistida`).toBeLessThan(1);
+    }
   });
 
   test('TPS: cada salida libre queda disponible para continuar (routing re-arma el selector)', async ({ page }) => {
@@ -266,6 +313,46 @@ test.describe('Inserción interactiva de accesorios (TPS/XPS/CUPS)', () => {
       (c) => c.a[0] === 'T1' && c.a[1] === 'P2' && c.b[0] === xps!.id,
     );
     expect(conn!.b[1]).toBe('P4_z_pos');
+
+    // Cuerpo paramétrico XPS: mismo contrato que TPS pero con 4 bocas y
+    // entryPortName 'P4_z_pos'. Si `verifyGeometricFit` aún presupusiera P1
+    // como entrada, el fit fallaría y caería a schematic-line-fallback.
+    const bodyData = await page.evaluate(() => {
+      const w = window as unknown as {
+        __codex: {
+          scene: { traverse: (f: (o: unknown) => void) => void };
+          trayStore: { getState: () => { entrada: unknown } };
+        };
+      };
+      const entrada = w.__codex.trayStore.getState().entrada as {
+        piezas: Array<{ instancia_id: string; producto_id: string; puertos: Record<string, { posicion_mm: [number, number, number] }> }>;
+      };
+      const xpsPiece = entrada.piezas.find((p) => p.producto_id === 'SAM_XPS-300-Z');
+      let body: { kind?: string; sku?: string; entryPortName?: string; placedPorts?: Array<{ name: string; pos: [number, number, number] }> } | null = null;
+      w.__codex.scene.traverse((obj: unknown) => {
+        const o = obj as { userData?: { codex?: { kind?: string; sku?: string; entryPortName?: string; placedPorts?: Array<{ name: string; pos: [number, number, number] }> } } };
+        const cx = o.userData?.codex;
+        if (cx && cx.kind === 'parametric-confirmed' && cx.sku === 'XPS-300-Z') body = cx;
+      });
+      return { xpsPiece, body };
+    });
+    expect(bodyData.body, 'XPS renderizada como parametric-confirmed (no schematic-line)').toBeTruthy();
+    // Igual que en TPS: el solver elige la boca de entrada por ajuste
+    // geométrico, no por la elección del usuario. XPS es simétrica — múltiples
+    // bocas dan ajuste perfecto. La aceptación real es que las 4 bocas
+    // placedPorts están todas sobre las bocas persistidas.
+    expect(['P1_x_neg', 'P2_x_pos', 'P3_z_neg', 'P4_z_pos']).toContain(bodyData.body!.entryPortName);
+    const xpsPlaced = bodyData.body!.placedPorts ?? [];
+    expect(xpsPlaced.map((p) => p.name).sort()).toEqual(['P1_x_neg', 'P2_x_pos', 'P3_z_neg', 'P4_z_pos']);
+    for (const placed of xpsPlaced) {
+      const stored = bodyData.xpsPiece!.puertos[placed.name];
+      const err = Math.hypot(
+        placed.pos[0] - stored.posicion_mm[0],
+        placed.pos[1] - stored.posicion_mm[1],
+        placed.pos[2] - stored.posicion_mm[2],
+      );
+      expect(err, `XPS placed ${placed.name} alineada con boca persistida`).toBeLessThan(1);
+    }
   });
 
   test('CUPS: ambas bocas P1_horizontal y P2_vertical ahora son elegibles (frame-based placement)', async ({ page }) => {

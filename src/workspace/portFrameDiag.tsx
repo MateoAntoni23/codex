@@ -27,12 +27,14 @@ export function logPlacement(
     ala_mm: number | null;
     ancho_mm: number | null;
     chirality: string;
+    entryPortName?: string;
     startPosMm: BridgeVec3;
     entryDir: BridgeVec3;
     placedP1Mm: BridgeVec3;
     placedP2Mm: BridgeVec3;
     storedP1Mm?: BridgeVec3;
     storedP2Mm?: BridgeVec3;
+    storedEntryMm?: BridgeVec3;
   },
 ): void {
   if (!isPortDiagEnabled()) return;
@@ -55,12 +57,14 @@ export function logPlacement(
       ala_mm: info.ala_mm,
       ancho_mm: info.ancho_mm,
       chirality: info.chirality,
+      entryPortName: info.entryPortName ?? null,
       startPos_mm: d3(info.startPosMm),
       entryDir: d3(info.entryDir),
       placed_P1_mm: d3(info.placedP1Mm),
       placed_P2_mm: d3(info.placedP2Mm),
       stored_P1_mm: info.storedP1Mm ? d3(info.storedP1Mm) : null,
       stored_P2_mm: info.storedP2Mm ? d3(info.storedP2Mm) : null,
+      stored_entry_mm: info.storedEntryMm ? d3(info.storedEntryMm) : null,
       delta_placed_vs_stored_P2_mm: delta ? d3(delta as BridgeVec3) : null,
       delta_mag_mm: deltaMag !== null ? deltaMag.toFixed(4) : null,
     },

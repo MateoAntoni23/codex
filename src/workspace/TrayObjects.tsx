@@ -139,33 +139,41 @@ function ParametricMesh({
   onClick: () => void;
 }) {
   const data = useMemo(() => {
-    const p1 = piece.puertos.P1;
-    if (!p1) return null;
-    const startPos = p1.posicion_mm as BridgeVec3;
+    const entryPort = piece.puertos[fit.entryPortName];
+    if (!entryPort) return null;
+    const startPos = entryPort.posicion_mm as BridgeVec3;
     const entryDir: BridgeVec3 = [
-      -p1.direccion[0],
-      -p1.direccion[1],
-      -p1.direccion[2],
+      -entryPort.direccion[0],
+      -entryPort.direccion[1],
+      -entryPort.direccion[2],
     ];
+    const storedSectionUp = entryPort.orientacion_seccion_ws as
+      | BridgeVec3
+      | undefined;
     const entry = fit.entry;
     const overrides = entry.piece_kind === 'tramo_recto'
       ? { longitud_mm: pieceLengthFromPorts(piece) }
       : undefined;
-    const placed = placeRecipe(product, entry, startPos, entryDir, fit.chirality, overrides);
+    const placed = placeRecipe(
+      product, entry, startPos, entryDir, fit.chirality, overrides,
+      {
+        entryPortName: fit.entryPortName,
+        ...(storedSectionUp ? { sectionUp: storedSectionUp } : {}),
+      },
+    );
     const g = buildLocalMesh(placed.recipe);
     const m = new THREE.Matrix4().multiplyMatrices(MM_TO_VIEWER, placed.matrix);
-    const storedP2 = piece.puertos.P2;
     logPlacement(`confirmed ${piece.instancia_id} (${product.sku})`, {
       sku: product.sku,
       ala_mm: placed.recipe.height,
       ancho_mm: (product.ancho_nominal_mm ?? null),
       chirality: fit.chirality,
+      entryPortName: fit.entryPortName,
       startPosMm: startPos,
       entryDir,
       placedP1Mm: placed.p1.pos,
       placedP2Mm: placed.p2.pos,
-      storedP1Mm: p1.posicion_mm as BridgeVec3,
-      storedP2Mm: storedP2 ? (storedP2.posicion_mm as BridgeVec3) : undefined,
+      storedEntryMm: entryPort.posicion_mm as BridgeVec3,
     });
     return { geom: g, matrix: m, mirrored: placed.mirrored, placed };
   }, [fit, product, piece]);
@@ -185,8 +193,14 @@ function ParametricMesh({
             sku: product.sku,
             chirality: fit.chirality,
             mirrored: data.mirrored,
+            entryPortName: fit.entryPortName,
             placedP1: data.placed.p1.pos,
             placedP2: data.placed.p2.pos,
+            placedPorts: data.placed.ports.map((p) => ({
+              name: p.name,
+              pos: p.pos,
+              outwardNormal: p.outwardNormal,
+            })),
           };
         }}
         onClick={(e) => { e.stopPropagation(); onClick(); }}

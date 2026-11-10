@@ -101,9 +101,38 @@ export interface PlacedRecipe {
 export interface GeometricFit {
   readonly entry: ParametricEntry;
   readonly chirality: Chirality;
-  /** Distancia mm entre P2 teórico y P2 real de la pieza. */
+  /**
+   * Nombre del puerto de la receta por el que se "entra" al construir la
+   * colocación. Para piezas 2-puerto clásicas (TRPS/CPS/DCPS) vale 'P1';
+   * para accesorios con bocas nombradas (CUPS → 'P1_horizontal', TPS →
+   * 'tronco_P1', XPS → 'P1_x_neg', …) refleja el nombre real resuelto.
+   *
+   * ParametricMesh re-usa este nombre para pedir a `placeRecipe` el mismo
+   * transform con el que se registró la pieza; si fuera 'P1' por omisión
+   * (asumiendo el contrato legacy) las piezas CUPS/TPS/XPS quedaban sin
+   * cuerpo paramétrico (silent fallback a schematic-line).
+   */
+  readonly entryPortName: string;
+  /**
+   * sectionUp aplicado al re-colocar (si la pieza tenía orientacion_seccion_ws
+   * almacenada en el puerto de entrada). Permite a los consumers reproducir
+   * la colocación sin re-inferir la orientación transversal.
+   */
+  readonly sectionUp?: Vec3;
+  /**
+   * Máximo error de posición (mm) entre puerto colocado y puerto almacenado,
+   * agregado sobre TODOS los puertos. Para piezas 2-puerto coincide con el
+   * error de P2; para N-puerto es el peor de los puertos no-entrada.
+   */
+  readonly posErrorMm: number;
+  /** Máximo error angular (°) entre direcciones colocadas y almacenadas. */
+  readonly dirErrorDeg: number;
+  /**
+   * Alias legacy: para piezas 2-puerto vale el error del puerto "P2";
+   * para N-puerto es el peor error global (igual a `posErrorMm`). Se
+   * conservan los nombres para no romper trazas y tests históricos.
+   */
   readonly p2PosErrorMm: number;
-  /** Ángulo grados entre P2.direccion teórico y real. */
   readonly p2DirErrorDeg: number;
   readonly matches: boolean;
 }
@@ -920,13 +949,16 @@ const FIT_DIR_TOLERANCE_DEG = 1.5;
 
 /**
  * Comprueba si una pieza ya colocada (con sus `puertos` del Piece) encaja
- * con la receta paramétrica del producto. Prueba ambas chiralidades y
- * devuelve la mejor; `matches=true` cuando el error de posición de P2 está
- * por debajo de 2 mm y el de dirección por debajo de 1.5°.
+ * con la receta paramétrica del producto. Prueba cada combinación
+ * (entryPortName × chirality) iterando los puertos reales de la receta,
+ * sin presuponer nombres 'P1'/'P2'. Devuelve la mejor; `matches=true` cuando
+ * el peor error de posición entre todos los puertos está por debajo de
+ * 2 mm y el de dirección por debajo de 1.5°.
  *
- * Se usa para decidir si una pieza existente puede renderizarse con la
- * malla paramétrica (preservando posición/dimensiones) o si se mantiene con
- * la representación anterior.
+ * Soporta accesorios con N bocas (CUPS: P1_horizontal/P2_vertical,
+ * TPS: tronco_P1/tronco_P2/boca_derivacion, XPS: P1_x_neg..P4_z_pos).
+ * Si la pieza almacenó `orientacion_seccion_ws` en el puerto de entrada,
+ * se propaga como `sectionUp` para reproducir exactamente el frame original.
  */
 export function verifyGeometricFit(
   product: Product,
@@ -935,29 +967,70 @@ export function verifyGeometricFit(
   const entry = resolveRecipe(product);
   if (!entry) return null;
 
-  const p1 = piece.puertos.P1 as TrayPort | undefined;
-  const p2 = piece.puertos.P2 as TrayPort | undefined;
-  if (!p1 || !p2) return null;
-
-  const startPos = p1.posicion_mm as [number, number, number];
-  // entryDir = opuesto a P1.direccion (la pieza previa apunta hacia P1).
-  const entryDir: Vec3 = [-p1.direccion[0], -p1.direccion[1], -p1.direccion[2]];
-
   // Para tramos rectos, forzar longitud real de la pieza.
   const overrides: BuildRecipeOverrides | undefined =
     entry.piece_kind === 'tramo_recto'
       ? { longitud_mm: lengthFromPiece(piece) }
       : undefined;
 
-  const native = tryPlacement(product, entry, startPos, entryDir, 'native', overrides, p2);
-  const mirrored = tryPlacement(product, entry, startPos, entryDir, 'mirrored', overrides, p2);
+  // Puertos de la receta: fuente de verdad para "qué entradas son válidas".
+  // Construimos la receta una vez para leer los nombres (buildRecipeFromProduct
+  // es puro y barato: polígono + puertos declarados).
+  let recipePortNames: readonly string[];
+  try {
+    const probe = buildRecipeFromProduct(product, entry, overrides);
+    recipePortNames = probe.ports.map((p) => p.name);
+  } catch {
+    return null;
+  }
+  if (recipePortNames.length === 0) return null;
 
-  const best = native.p2PosErrorMm <= mirrored.p2PosErrorMm ? native : mirrored;
+  // Sólo son entradas candidatas los puertos cuyo nombre existe en la
+  // pieza almacenada. Si ninguno existe la pieza no corresponde a esta receta.
+  const candidates = recipePortNames.filter((n) => Boolean(piece.puertos[n]));
+  if (candidates.length === 0) return null;
+
+  type Attempt = {
+    entryPortName: string;
+    chirality: Chirality;
+    posErrorMm: number;
+    dirErrorDeg: number;
+    sectionUp?: Vec3;
+  };
+  let best: Attempt | null = null;
+  for (const entryPortName of candidates) {
+    for (const chirality of ['native', 'mirrored'] as const) {
+      const attempt = tryPlacement(
+        product,
+        entry,
+        piece,
+        entryPortName,
+        chirality,
+        overrides,
+      );
+      if (!attempt) continue;
+      if (!best || attempt.posErrorMm < best.posErrorMm) {
+        best = attempt;
+      }
+    }
+  }
+  if (!best) return null;
+
   const matches =
-    best.p2PosErrorMm <= FIT_POS_TOLERANCE_MM &&
-    best.p2DirErrorDeg <= FIT_DIR_TOLERANCE_DEG;
+    best.posErrorMm <= FIT_POS_TOLERANCE_MM &&
+    best.dirErrorDeg <= FIT_DIR_TOLERANCE_DEG;
 
-  return { entry, chirality: best.chirality, p2PosErrorMm: best.p2PosErrorMm, p2DirErrorDeg: best.p2DirErrorDeg, matches };
+  return {
+    entry,
+    chirality: best.chirality,
+    entryPortName: best.entryPortName,
+    sectionUp: best.sectionUp,
+    posErrorMm: best.posErrorMm,
+    dirErrorDeg: best.dirErrorDeg,
+    p2PosErrorMm: best.posErrorMm,
+    p2DirErrorDeg: best.dirErrorDeg,
+    matches,
+  };
 }
 
 function lengthFromPiece(piece: Piece): number | null {
@@ -974,27 +1047,73 @@ function lengthFromPiece(piece: Piece): number | null {
   return d > 0 ? d : null;
 }
 
+/**
+ * Coloca la receta tomando `entryPortName` como boca de entrada y acumula
+ * el peor error de posición y dirección sobre TODOS los puertos presentes
+ * tanto en la receta como en la pieza almacenada. Devuelve `null` cuando
+ * la colocación lanza (p.ej. combinación entryDir/sectionUp inválida).
+ */
 function tryPlacement(
   product: Product,
   entry: ParametricEntry,
-  startPos: readonly [number, number, number],
-  entryDir: Vec3,
+  piece: Piece,
+  entryPortName: string,
   chirality: Chirality,
   overrides: BuildRecipeOverrides | undefined,
-  actualP2: TrayPort,
-): { chirality: Chirality; p2PosErrorMm: number; p2DirErrorDeg: number } {
-  const placed = placeRecipe(product, entry, startPos, entryDir, chirality, overrides);
-  const dx = placed.p2.pos[0] - actualP2.posicion_mm[0];
-  const dy = placed.p2.pos[1] - actualP2.posicion_mm[1];
-  const dz = placed.p2.pos[2] - actualP2.posicion_mm[2];
-  const p2PosErrorMm = Math.hypot(dx, dy, dz);
+): {
+  entryPortName: string;
+  chirality: Chirality;
+  posErrorMm: number;
+  dirErrorDeg: number;
+  sectionUp?: Vec3;
+} | null {
+  const piecePort = piece.puertos[entryPortName] as TrayPort | undefined;
+  if (!piecePort) return null;
+  const startPos = piecePort.posicion_mm as [number, number, number];
+  const entryDir: Vec3 = [
+    -piecePort.direccion[0],
+    -piecePort.direccion[1],
+    -piecePort.direccion[2],
+  ];
+  const storedSectionUp = piecePort.orientacion_seccion_ws as
+    | [number, number, number]
+    | undefined;
 
-  const n = placed.p2.outwardNormal;
-  const r = actualP2.direccion;
-  const dot = Math.min(1, Math.max(-1, n[0] * r[0] + n[1] * r[1] + n[2] * r[2]));
-  const p2DirErrorDeg = (Math.acos(dot) * 180) / Math.PI;
+  let placed: PlacedRecipe;
+  try {
+    placed = placeRecipe(product, entry, startPos, entryDir, chirality, overrides, {
+      entryPortName,
+      ...(storedSectionUp ? { sectionUp: [...storedSectionUp] as Vec3 } : {}),
+    });
+  } catch {
+    return null;
+  }
 
-  return { chirality, p2PosErrorMm, p2DirErrorDeg };
+  let worstPos = 0;
+  let worstDir = 0;
+  for (const port of placed.ports) {
+    const stored = piece.puertos[port.name] as TrayPort | undefined;
+    if (!stored) continue;
+    const dx = port.pos[0] - stored.posicion_mm[0];
+    const dy = port.pos[1] - stored.posicion_mm[1];
+    const dz = port.pos[2] - stored.posicion_mm[2];
+    const posErr = Math.hypot(dx, dy, dz);
+    if (posErr > worstPos) worstPos = posErr;
+
+    const n = port.outwardNormal;
+    const r = stored.direccion;
+    const dot = Math.min(1, Math.max(-1, n[0] * r[0] + n[1] * r[1] + n[2] * r[2]));
+    const dirErr = (Math.acos(dot) * 180) / Math.PI;
+    if (dirErr > worstDir) worstDir = dirErr;
+  }
+
+  return {
+    entryPortName,
+    chirality,
+    posErrorMm: worstPos,
+    dirErrorDeg: worstDir,
+    ...(storedSectionUp ? { sectionUp: [...storedSectionUp] as Vec3 } : {}),
+  };
 }
 
 // ─── Exports auxiliares usados por integrators ──────────────────────────────
