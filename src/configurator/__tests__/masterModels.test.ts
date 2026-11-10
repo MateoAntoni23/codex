@@ -14,11 +14,13 @@ function makeProduct(partial: Partial<Product> & { producto_id: string; sku: str
 }
 
 describe('MASTER_MODELS inventory', () => {
-  it('tiene 13 maestros (7 perforada + 6 escalera)', () => {
-    // 7 perforada = 6 geometrías medidas + 1 "derivación lateral pendiente"
-    // (DCPS) que queda declarada pero sin STEP para no confundirla con TPS.
-    expect(MASTER_MODELS.length).toBe(13);
-    expect(MASTER_MODELS.filter((m) => m.sistema === 'perforada').length).toBe(7);
+  it('tiene 14 maestros (8 perforada + 6 escalera)', () => {
+    // 8 perforada = 6 geometrías medidas + 1 "derivación lateral pendiente"
+    // (DCPS) declarada sin STEP + 1 "curva vertical exterior" (CUPS-D-Z) que
+    // comparte patrón geométrico con CUPS-A-Z pero se declara aparte para
+    // preservar la distinción comercial.
+    expect(MASTER_MODELS.length).toBe(14);
+    expect(MASTER_MODELS.filter((m) => m.sistema === 'perforada').length).toBe(8);
     expect(MASTER_MODELS.filter((m) => m.sistema === 'escalera').length).toBe(6);
   });
 

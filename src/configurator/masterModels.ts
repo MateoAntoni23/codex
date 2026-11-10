@@ -63,6 +63,36 @@ export type VariationRuleKind =
  * catálogo SAMET independientemente de la procedencia de la regla. "Variante
  * medida" sólo corresponde a `provenance === 'measured'`; si sólo se midió el
  * modelo base, la variante proyectada es `derived` o `estimated`.
+ *
+ * ──────────────────────────────────────────────────────────────────────────
+ * Convención de escala (base medida 298.9 mm vs ancho nominal 300 mm)
+ * ──────────────────────────────────────────────────────────────────────────
+ * Al enumerar variantes aparecen dos factores distintos que es útil separar:
+ *
+ *   factor NOMINAL  = ancho_objetivo / baseParams.ancho_mm      (p.ej. 450/300 = 1.5)
+ *                     Es el que muestra `scaleOfRule` en el inspector —
+ *                     informa al usuario "pasamos de 300 a 450".
+ *
+ *   factor MEDIDO   = ancho_objetivo / outline.baseAnchoMm      (p.ej. 450/298.9 ≈ 1.5055)
+ *                     Es el que aplica `scaleFactorsFromOutline` sobre el
+ *                     polígono real del STEP. Está DISEÑADO para que la boca
+ *                     útil final mida exactamente `ancho_objetivo`, no
+ *                     298.9 × 1.5 = 448.35.
+ *
+ * Perforada:
+ *   `buildCUPSRecipe(ancho_mm=X)` pasa X directo al puerto; el factor efectivo
+ *   es 1 porque la profundidad Z se construye con `centerZ = -X/2`. Boca de
+ *   ancho útil = X mm por construcción.
+ *
+ * Escalera:
+ *   `scaleFactorsFromOutline` usa `baseAncho = outline.baseAnchoMm` (298.9).
+ *   Para ancho_objetivo=450: factor=1.5055; polígono escalado tiene bocas
+ *   medidas de 298.9 × 1.5055 = 450.0 mm. El "1.5" del inspector es el nominal.
+ *
+ * Verificación:
+ *   - cupsVariantsClosure.test.ts V6 asserta port.ancho_mm = X.
+ *   - escaleraVariantsClosure.test.ts asserta recipe port widths ≈ ancho_target.
+ *   - sharedVerticalPatternClosure.test.ts asserta anchos 50..600 para CUPS A/D.
  */
 export type RuleProvenance = 'measured' | 'derived' | 'estimated';
 
@@ -199,6 +229,8 @@ const PORT_FIDELITY_SPEC = 'src/configurator/__tests__/portFidelity.test.ts';
 const VARIANTS_CLOSURE_SPEC = 'src/configurator/__tests__/variantsClosure.test.ts';
 const ESCALERA_VARIANTS_CLOSURE_SPEC =
   'src/configurator/__tests__/escaleraVariantsClosure.test.ts';
+const SHARED_VERTICAL_PATTERN_SPEC =
+  'src/configurator/__tests__/sharedVerticalPatternClosure.test.ts';
 const PENDING_DIMENSION: ClosureDimension = Object.freeze({
   status: 'pending',
   regressionSpecs: [],
@@ -395,7 +427,16 @@ const MASTER_PERFORADA: readonly MasterModel[] = [
       varies: ['ancho'],
       rationale: 'Perfil XY fijo (giro canónico +45° sobre polígono cuadrado), sólo profundidad Z escala por ancho. Derivada del STEP base — no hay segundo STEP de ancho≠300 para validarla como \'measured\'.',
     },
-    declaredVariantSkus: ['CUPS-450-A-Z'],
+    declaredVariantSkus: [
+      // SAMET SAM-STP-Z publica CUPS ascendente para anchos
+      // {050, 100, 150, 200, 300, 450, 600}. El 300 es la base del master.
+      'CUPS-050-A-Z',
+      'CUPS-100-A-Z',
+      'CUPS-150-A-Z',
+      'CUPS-200-A-Z',
+      'CUPS-450-A-Z',
+      'CUPS-600-A-Z',
+    ],
     closure: {
       continuity: {
         status: 'partial',
@@ -403,21 +444,91 @@ const MASTER_PERFORADA: readonly MasterModel[] = [
         limitations: [
           'Cerrado sólo en recorrido horizontal → CUPS (entrando por P1_horizontal) → vertical (saliendo por P2_vertical). El recorrido inverso no está regresionado.',
           'Encadenamiento de dos curvas verticales consecutivas no está regresionado.',
-          'CUPS-B descendente pendiente — sin STEP publicado por SAMET.',
+          'La variante comercial CUPS-D-Z (descendente, tipo_pieza="curva vertical exterior") usa el master master:perforada:curva_vertical_exterior — comparte patrón geométrico (misma STEP base) pero se declara aparte para preservar la designación comercial.',
         ],
       },
       fidelity: VALIDATED_FIDELITY_DIMENSION,
       variants: {
         status: 'validated',
-        regressionSpecs: [CUPS_VARIANTS_CLOSURE_SPEC],
+        regressionSpecs: [CUPS_VARIANTS_CLOSURE_SPEC, SHARED_VERTICAL_PATTERN_SPEC],
         limitations: [
-          'Alcance de "validated": la propagación de la regla depth-only a CUPS-450-A-Z está comprobada por regresión (perfil XY fijo, Z escala por ancho). NO es fidelidad geométrica medida: no hay STEP de SAMET publicado para CUPS-450-A-Z que podamos contrastar punto a punto, por eso provenance=derived.',
-          'Diferencia operativa: "propagación comprobada" (esta cadena) ≠ "geometría medida" (lo que exige provenance=measured). Para auditoría con planos del proveedor, marcar la variante como pendiente de STEP.',
-          'Otras variantes dimensionales no declaradas (otros anchos, otro ala, CUPS-B descendente) requieren STEP propio para pasar de derived a measured.',
+          'Alcance "validated": la propagación de la regla depth-only a las 6 variantes ascendentes declaradas (050..600) está comprobada por regresión — perfil XY fijo, Z escala por ancho, boca útil = ancho_mm exacto. NO es fidelidad medida: no hay segundo STEP de SAMET publicado para ninguna variante.',
+          'Diferencia operativa: "propagación comprobada" (esta cadena) ≠ "geometría medida" (lo que exige provenance=measured). Para auditoría con planos del proveedor, marcar cada variante como pendiente de STEP.',
+          'La convención de escala documentada en el header del módulo garantiza que el factor nominal del inspector (ancho/300) y el aplicado al polígono resulten en boca útil = ancho_mm.',
         ],
       },
     },
-    revision: 2,
+    revision: 3,
+  },
+  {
+    // Curva vertical EXTERIOR — CUPS-D-Z, descendente. SAMET publica anchos
+    // {050, 100, 150, 200, 300, 450, 600}. Geométricamente comparte el patrón
+    // con la ascendente (misma STEP base, misma regla depth-only), pero se
+    // declara aparte para preservar la distinción comercial del catálogo
+    // (tipo_pieza = "curva vertical exterior"). La orientación efectiva
+    // (interior vs exterior) la determina la boca de inserción en escena, no
+    // la geometría canónica del polígono.
+    id: 'master:perforada:curva_vertical_exterior',
+    label: 'Perforada — curva vertical exterior (CUPS descendente)',
+    sistema: 'perforada',
+    pieceKind: 'curva_vertical',
+    source: {
+      stepFile: 'CUPS-300-A-Z.STEP',
+      stepHashShort: '28cf5602',
+      reportJsonPath: 'tools/step_parametric/report/CUPS-300-A-Z.json',
+      glbUrl: '/parametric/originals_glb/CUPS-300-A-Z.glb',
+    },
+    recipeKey: 'curva_vertical',
+    baseParams: { ancho_mm: 300, ala_mm: 50 },
+    canonicalRotationZDeg: 45,
+    catalogMatch: {
+      familiaIds: PERFORADA_FAMILIAS,
+      catalogTipoPieza: 'curva vertical exterior',
+      catalogAlaMm: 50,
+    },
+    ports: [
+      { recipePortName: 'P1_horizontal', physicalLabel: 'Boca horizontal (bandeja)', catalogPortName: 'P1' },
+      { recipePortName: 'P2_vertical', physicalLabel: 'Boca vertical (tramo descendente)', catalogPortName: 'P2' },
+    ],
+    variationRule: {
+      kind: 'depth-only',
+      provenance: 'derived',
+      varies: ['ancho'],
+      rationale: 'Comparte patrón geométrico con la ascendente (master:perforada:curva_vertical_interior): mismo STEP CUPS-300-A-Z base, misma regla depth-only — perfil XY fijo, sólo Z escala por ancho. SAMET no publica STEP propio para CUPS-D-Z; la equivalencia geométrica A↔D está declarada por catálogo (ambas "Vertical Elbow") y no medida contra un STEP D.',
+    },
+    declaredVariantSkus: [
+      'CUPS-050-D-Z',
+      'CUPS-100-D-Z',
+      'CUPS-150-D-Z',
+      'CUPS-200-D-Z',
+      'CUPS-450-D-Z',
+      'CUPS-600-D-Z',
+    ],
+    closure: {
+      continuity: {
+        status: 'pending',
+        regressionSpecs: [],
+        limitations: [
+          'Sin regresión end-to-end: el placement vertical interior vs exterior depende de la boca fuente (ascendente vs descendente); se requiere escenario de cadena H→CUPS-D→V-descendente para validar continuidad.',
+        ],
+      },
+      fidelity: {
+        status: 'pending',
+        regressionSpecs: [],
+        limitations: [
+          'Sin STEP propio: la fidelidad geométrica de D no está comprobada. La hipótesis es "mismo polígono que A"; una validación requiere STEP CUPS-D-Z o planos SAMET del proveedor.',
+        ],
+      },
+      variants: {
+        status: 'partial',
+        regressionSpecs: [SHARED_VERTICAL_PATTERN_SPEC],
+        limitations: [
+          'La regla depth-only se hereda del patrón A. Las 6 variantes D (050..600) comparten la propagación con sus homólogos A. Al no tener STEP D medido, provenance queda en "derived" (no es "measured").',
+          'La distinción comercial A↔D se preserva en el catálogo (tipo_pieza y producto_id diferentes) aunque la geometría renderizada sea la misma.',
+        ],
+      },
+    },
+    revision: 1,
   },
   {
     // TPS = tee simétrica (T diseñada con tronco cortado). STEP medido; el
