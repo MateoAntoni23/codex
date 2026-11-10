@@ -4,7 +4,7 @@
  */
 import type { Piece, Product, Context, CatalogCompatibility, CatalogUnionComponent } from '../tray/model';
 import { isHorizontalCurve, isStraight } from './pieceClassification';
-import { recipePortToCatalogPort } from './catalogPortMapping';
+import { recipePortToCatalogPort, resolveCatalogPort } from './catalogPortMapping';
 
 export type Point3 = [number, number, number];
 
@@ -207,8 +207,13 @@ function findCompatEntryPortLevel(
 ): CatalogCompatibility | null {
   // Traducción recipe-port → catalog-port (ver catalogPortMapping.ts). Es
   // no-op para productos 2-boca que ya usan P1/P2.
-  const portAId = `${productAId}-${recipePortToCatalogPort(productAId, portAName)}`;
-  const portBId = `${productBId}-${recipePortToCatalogPort(productBId, portBName)}`;
+  const catA = recipePortToCatalogPort(productAId, portAName);
+  const catB = recipePortToCatalogPort(productBId, portBName);
+  // Boca sin calibración: no hay forma de saber qué puerto del catálogo es → no
+  // se afirma compatibilidad (queda como excepción con motivo).
+  if (catA === null || catB === null) return null;
+  const portAId = `${productAId}-${catA}`;
+  const portBId = `${productBId}-${catB}`;
   for (const c of compatibilidades) {
     if (c.tipo_conexion !== 'directa') continue;
     if (c.estado_compatibilidad === 'no compatible') continue;
@@ -570,6 +575,25 @@ export function findReductionCandidates(
  *
  * Does NOT filter by tipo_pieza — the caller decides which product types to show.
  */
+/**
+ * Compatibilidad de una boca existente con estado explícito: si la boca no tiene
+ * calibración (no se sabe a qué puerto del catálogo corresponde), se informa como
+ * `uncalibrated` en lugar de "0 compatibles".
+ */
+export type PortCompatibility =
+  | { status: 'ok'; ids: Set<string> }
+  | { status: 'uncalibrated'; reason: string };
+
+export function getPortCompatibility(
+  compatibilidades: CatalogCompatibility[],
+  existingProductId: string,
+  existingPortName: string,
+): PortCompatibility {
+  const res = resolveCatalogPort(existingProductId, existingPortName);
+  if (res.status === 'uncalibrated') return { status: 'uncalibrated', reason: res.reason };
+  return { status: 'ok', ids: getCompatibleProductIds(compatibilidades, existingProductId, existingPortName) };
+}
+
 export function getCompatibleProductIds(
   compatibilidades: CatalogCompatibility[],
   existingProductId: string,
@@ -581,8 +605,10 @@ export function getCompatibleProductIds(
   // mapping es identidad y esta llamada es un no-op. Ver catalogPortMapping.ts
   // para el default declarado y la API de overrides del configurador.
   const catalogPortName = recipePortToCatalogPort(existingProductId, existingPortName);
-  const portId = `${existingProductId}-${catalogPortName}`;
   const result = new Set<string>();
+  // Sin calibración: no se adivina el puerto (ver getPortCompatibility para el estado).
+  if (catalogPortName === null) return result;
+  const portId = `${existingProductId}-${catalogPortName}`;
 
   for (const c of compatibilidades) {
     if (c.tipo_conexion !== 'directa') continue;

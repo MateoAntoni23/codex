@@ -18,6 +18,7 @@ import { useRoutingStore } from './useRoutingStore';
 import {
   getFreePorts,
   getCompatibleProductIds,
+  getPortCompatibility,
   checkDirectCompatibility,
   findReductionCandidates,
   computeEndpoint,
@@ -229,6 +230,14 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
     () => context?.familias?.find((f) => f.familia_id === (existingProduct as Record<string, unknown>)?.familia_id),
     [context?.familias, existingProduct],
   );
+
+  // m1c: si la boca de origen no tiene correspondencia con el catálogo, se informa
+  // "sin calibración de bocas" (modelo no resuelto) en lugar de "0 compatibles".
+  const portCalibration = useMemo(() => {
+    if (!existingProduct || !startPort || !context?.compatibilidades) return null;
+    const r = getPortCompatibility(context.compatibilidades, existingProduct.producto_id, startPort.portName);
+    return r.status === 'uncalibrated' ? r : null;
+  }, [context?.compatibilidades, existingProduct, startPort]);
 
   // Compatible product IDs for the existing port (port-level catalog lookup).
   // When the catalog declares the existing product's two ports as interchangeable
@@ -562,10 +571,22 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
         )}
       </div>
 
+      {portCalibration && (
+        <div className="tone-danger" role="alert" data-testid="routing-uncalibrated" style={{ marginBottom: 8, fontSize: 11, lineHeight: 1.5 }}>
+          <strong>Sin calibración de bocas — modelo no resuelto: {existingProduct?.sku ?? existingProduct?.producto_id}.</strong>
+          <div>
+            No se sabe a qué puerto del catálogo corresponde esta boca, así que no se puede
+            consultar su compatibilidad documentada. Continuar sólo es posible como excepción con motivo.
+          </div>
+        </div>
+      )}
+
       {/* Compatible product selector */}
       <div style={{ marginBottom: 8 }}>
         <label style={{ color: '#8888aa', display: 'block', marginBottom: 3 }}>
-          Continuación ({compatibleProducts.length} compatible{compatibleProducts.length !== 1 ? 's' : ''})
+          {portCalibration
+            ? 'Continuación (compatibilidad no resuelta)'
+            : <>Continuación ({compatibleProducts.length} compatible{compatibleProducts.length !== 1 ? 's' : ''})</>}
           {parametricCompatible.length > 0 && (
             <span style={{ color: '#99ccff', marginLeft: 6 }}>
               · {parametricCompatible.length} con modelo

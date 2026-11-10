@@ -21,15 +21,25 @@ Rama `feat/m1b-interfaz-por-etapas` (base `231c27e`, hito 1). Una página: qué 
   maestro para las bocas; "Sin dato" para datos ausentes; conflictos del Excel abiertos y visibles.
 - **Resultados**: "PE sin definir" en tono neutro cuando el motor informa `SIN_PE_DEFINIDO`.
 - **Acciones de prueba** sólo con `/?dev=1` (menú Desarrollo).
+- **Bocas de accesorios (m1c)**: la traducción boca de receta → puerto del catálogo se deriva del
+  patrón (maestro) y alcanza a todas sus variantes; no hay identidad silenciosa. Una boca sin
+  correspondencia, o que traduce a un puerto que el catálogo no publica, se informa como
+  "sin calibración de bocas — modelo no resuelto" y no se calcula. Prueba de auditoría sobre todo el
+  catálogo con maestro (`portMappingAudit.test.ts`).
 
 ## No funciona / limitaciones conocidas
 
+- **Bocas sin calibrar (m1c)**: de 428 productos con maestro, 7 no resuelven (DCPS-050…600): el
+  patrón declara P1/P2/P3 y el catálogo publica sólo P1 ("boca derivación"). Además, 34 productos de
+  más de dos bocas no tienen maestro (27 FAMIQ, 7 EMPS). Encadenar accesorio ↔ accesorio sigue sin
+  documentar en el catálogo y pasa por excepción con motivo.
 - **Planta**: el editor existente no edita dimensiones ni posición de infraestructura y no hay
   visibilidad por elemento (sólo la capa); hace falta un editor nuevo. No hay carga de planos.
 - **Calcular un proyecto nuevo** exige cargar la reserva solicitada (%) en Resultados.
-- **Tema claro y colores**: los componentes heredados con colores en línea se normalizan a los
-  colores del tema para cumplir AA; pierden sus acentos (botones rojos/verdes, insignias de color).
-  Los estados nuevos usan tonos con significado (ok / aviso / neutro).
+- **Tema y colores**: dentro de los paneles el texto y los fondos se normalizan al tema para cumplir
+  AA; las señales de estado usan los tokens peligro / correcto / advertencia. Deuda anotada: la
+  normalización `.ws-panel *` de `stages.css` apaga en silencio el color de componentes nuevos que no
+  usen `tone-*`; conviene invertirla (que los componentes declaren su tono) al volver a tocar la hoja.
 - **Conflictos en la ficha editable de equipos propios** (`EquipmentEditorPanel`): muestra el valor en
   conflicto y "Sin dato" si falta, pero no las alternativas (el modelo sólo guarda un valor por dato).
 - **Cable PE** elegido desde la lista sin sección requerida: el motor lo rechaza (comportamiento previo).

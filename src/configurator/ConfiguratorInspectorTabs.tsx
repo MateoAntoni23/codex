@@ -25,6 +25,7 @@ import type {
 import {
   getDefaultMapping,
   getEffectiveMapping,
+  getMasterPortEntries,
   isIdentityModelFrame,
   isIdentityPortGeometry,
   type ModelFrameOverride,
@@ -32,7 +33,7 @@ import {
   type PortMappingEntry,
   type ProductPortMapping,
 } from '../workspace/catalogPortMapping';
-import { getCompatibleProductIds } from '../workspace/routingRules';
+import { getCompatibleProductIds, getPortCompatibility } from '../workspace/routingRules';
 import { useCatalogConfigStore } from './catalogConfigStore';
 import { enumerateVariantsForMaster, findMasterAndVariantForProduct, type MasterVariant } from './masterVariants';
 import { findMasterForProduct, type DimensionStatus, type ClosureDimension } from './masterModels';
@@ -1215,7 +1216,9 @@ function ContinuacionesTab({
 }) {
   const effective = getEffectiveMapping(product.producto_id);
   const defaultEntries = getDefaultMapping(product.producto_id);
-  const entries = effective?.entries ?? defaultEntries ?? [];
+  // m1c: sin mapping explícito, las bocas salen del patrón (maestro) del producto.
+  const masterEntries = useMemo(() => getMasterPortEntries(product.producto_id), [product.producto_id]);
+  const entries = effective?.entries ?? defaultEntries ?? masterEntries;
 
   const ancho = product.ancho_nominal_mm;
   const perPort = useMemo(() => {
@@ -1225,13 +1228,15 @@ function ContinuacionesTab({
         product.producto_id,
         e.recipePortName,
       );
+      const calib = getPortCompatibility(compatibilidades as CatalogCompatibility[], product.producto_id, e.recipePortName);
+      const uncalibrated = calib.status === 'uncalibrated' ? calib.reason : null;
       const compatProducts = productos.filter((p) => compat.has(p.producto_id));
       const sameAnchoNoCompat = productos.filter((p) =>
         !compat.has(p.producto_id) &&
         p.producto_id !== product.producto_id &&
         ancho != null && p.ancho_nominal_mm === ancho,
       );
-      return { entry: e, compatProducts, sameAnchoNoCompat };
+      return { entry: e, compatProducts, sameAnchoNoCompat, uncalibrated };
     });
   }, [entries, compatibilidades, productos, product.producto_id, ancho]);
 
@@ -1239,9 +1244,9 @@ function ContinuacionesTab({
     return (
       <div className="cfg-tab-content">
         <div className="cfg-tab-note">
-          Este producto no tiene mapping declarado (default ni override). Para
-          continuaciones por boca con nombres específicos, agregá un mapping
-          desde la pestaña "Bocas / Asociaciones".
+          Sin calibración de bocas: este producto no tiene mapping declarado
+          (default ni override) ni un patrón (maestro) que lo resuelva. Modelo no
+          resuelto. Agregá un mapping desde la pestaña "Bocas / Asociaciones".
         </div>
       </div>
     );
@@ -1255,7 +1260,7 @@ function ContinuacionesTab({
         SAMET no publica compatibilidad directa para el puerto resuelto.
       </div>
 
-      {perPort.map(({ entry: e, compatProducts, sameAnchoNoCompat }) => (
+      {perPort.map(({ entry: e, compatProducts, sameAnchoNoCompat, uncalibrated }) => (
         <section
           key={e.recipePortName}
           style={{ marginTop: 16 }}
@@ -1271,7 +1276,11 @@ function ContinuacionesTab({
           <h4 className="cfg-section-subtitle">
             Recomendados ({compatProducts.length})
           </h4>
-          {compatProducts.length > 0 ? (
+          {uncalibrated ? (
+            <div className="cfg-tab-note cfg-tab-note-error" data-testid={`cfg-cont-uncalibrated-${e.recipePortName}`}>
+              Sin calibración de bocas — modelo no resuelto: {uncalibrated}.
+            </div>
+          ) : compatProducts.length > 0 ? (
             <table className="cfg-table">
               <thead>
                 <tr><th>producto_id</th><th>SKU</th><th>tipo_pieza</th><th>ancho</th></tr>

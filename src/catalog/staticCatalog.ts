@@ -26,7 +26,7 @@ import type {
   Context,
   Product,
 } from '../tray/model';
-import { setMasterResolver, setProductCatalogIndex } from '../workspace/catalogPortMapping';
+import { setCatalogPortIndex, setMasterResolver, setProductCatalogIndex } from '../workspace/catalogPortMapping';
 import { findMasterForProduct } from '../configurator/masterModels';
 
 export interface StaticCatalog {
@@ -208,10 +208,12 @@ export function staticContext(c: StaticCatalog): Context {
   };
 }
 
-/** Carga el catálogo y siembra índice de productos + resolvedor de maestros. */
+/** Carga el catálogo y siembra índice de productos, resolvedor de maestros e índice de puertos. */
 export async function seedStaticCatalog(): Promise<StaticCatalog> {
   const c = await loadStaticCatalog();
   setProductCatalogIndex(c.productos);
   setMasterResolver((p) => findMasterForProduct(p as Record<string, unknown>));
+  // Puertos publicados: permite verificar identidades P1/P2… y mappings derivados.
+  setCatalogPortIndex(c.puertos);
   return c;
 }

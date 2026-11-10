@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import {
   recipePortToCatalogPort,
   catalogPortToRecipePort,
+  resolveCatalogPort,
   getEffectiveMapping,
   getDefaultMapping,
   setPortMappingOverrides,
@@ -41,12 +42,21 @@ describe('catalogPortMapping — defaults declarados', () => {
     expect(recipePortToCatalogPort('SAM_CPS-300-45-Z', 'P1')).toBe('P1');
   });
 
-  it('nombre desconocido para producto con mapping devuelve identidad (no explota)', () => {
-    expect(recipePortToCatalogPort('SAM_TPS-300-Z', 'puerto_fantasma')).toBe('puerto_fantasma');
+  // m1c: antes estos casos devolvían el nombre SIN TRADUCIR (identidad silenciosa).
+  // Ahora una boca sin correspondencia se informa como "sin calibración de bocas".
+  it('nombre desconocido para producto con mapping → sin calibración (null), no identidad', () => {
+    expect(recipePortToCatalogPort('SAM_TPS-300-Z', 'puerto_fantasma')).toBeNull();
+    expect(resolveCatalogPort('SAM_TPS-300-Z', 'puerto_fantasma').status).toBe('uncalibrated');
   });
 
-  it('producto sin mapping declarado devuelve identidad sin error', () => {
-    expect(recipePortToCatalogPort('SAM_INEXISTENTE', 'tronco_P1')).toBe('tronco_P1');
+  it('producto sin mapping declarado → sin calibración (null), no identidad', () => {
+    expect(recipePortToCatalogPort('SAM_INEXISTENTE', 'tronco_P1')).toBeNull();
+    const r = resolveCatalogPort('SAM_INEXISTENTE', 'tronco_P1');
+    expect(r.status).toBe('uncalibrated');
+  });
+
+  it('nombres de catálogo P1/P2 son identidad explícita (no fallback)', () => {
+    expect(resolveCatalogPort('SAM_INEXISTENTE', 'P2')).toEqual({ status: 'identity', catalogPortName: 'P2' });
   });
 
   it('catalogPortToRecipePort hace el inverso para TPS', () => {

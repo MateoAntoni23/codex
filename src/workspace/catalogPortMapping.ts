@@ -322,6 +322,12 @@ export function clearProductCatalogIndex(): void {
 type MasterResolver = (product: ProductIndexEntry) => {
   id: string;
   baseParams: { ancho_mm: number; ala_mm: number; angulo_deg?: number };
+  /**
+   * Bocas del patrón (masterModels): nombre de receta → nombre de catálogo.
+   * Es la fuente del mapping derivado que alcanza a todas las variantes del
+   * maestro (ancho, ala, acabado, espesor) — ver `resolveCatalogPort`.
+   */
+  ports?: readonly { recipePortName: string; catalogPortName: string; physicalLabel?: string }[];
 } | null;
 
 let _masterResolver: MasterResolver | null = null;
@@ -452,22 +458,125 @@ export function listEffectiveMappings(): readonly ProductPortMapping[] {
   return result;
 }
 
+// ─── Puertos publicados por el catálogo ─────────────────────────────────────
+//
+// Índice `producto_id → nombres de puerto` (PUERTOS_PRODUCTO). Permite verificar
+// que una identidad P1/P2… corresponde a un puerto que el catálogo publica, y que
+// un mapping derivado del maestro produce un puerto_id existente.
+
+let _catalogPorts: Readonly<Record<string, ReadonlySet<string>>> | null = null;
+
+export function setCatalogPortIndex(
+  puertos: readonly { producto_id: string; puerto_id: string }[],
+): void {
+  // El código del puerto (P1, P2…) es el sufijo de `puerto_id` tras
+  // `${producto_id}-`; `nombre_puerto` es sólo descriptivo ("extremo A", "boca 1").
+  const idx: Record<string, Set<string>> = {};
+  for (const p of puertos) {
+    if (!p?.producto_id || !p.puerto_id?.startsWith(`${p.producto_id}-`)) continue;
+    (idx[p.producto_id] ??= new Set()).add(p.puerto_id.slice(p.producto_id.length + 1));
+  }
+  _catalogPorts = idx;
+}
+
+export function clearCatalogPortIndex(): void {
+  _catalogPorts = null;
+}
+
 /**
- * Traduce un nombre de boca (como aparece en `piece.puertos`) al nombre
- * del puerto en el catálogo SAMET. Si no hay mapping declarado (default
- * ni override) para el producto, devuelve el nombre sin cambios — esto es
- * seguro para productos 2-boca donde recipe y catálogo usan P1/P2.
+ * Entradas boca-receta → puerto-catálogo derivadas del patrón (maestro) del
+ * producto, en forma de PortMappingEntry. Vacío si no hay maestro resoluble.
+ */
+export function getMasterPortEntries(productId: string): PortMappingEntry[] {
+  return (masterPortsFor(productId) ?? []).map((e) => ({
+    recipePortName: e.recipePortName,
+    catalogPortName: e.catalogPortName,
+    physicalLabel: e.physicalLabel ?? '',
+    justification: 'Derivado del patrón (maestro) del producto.',
+  }));
+}
+
+/** Bocas del maestro del producto (vía resolvedor inyectado), o null. */
+function masterPortsFor(productId: string) {
+  if (!_masterResolver) return null;
+  const entry = _productIndex[productId];
+  if (!entry) return null;
+  return _masterResolver(entry)?.ports ?? null;
+}
+
+/**
+ * Resultado de traducir una boca de receta al puerto del catálogo SAMET.
+ *  - `mapped`: hay correspondencia declarada (override / herencia / default por
+ *    SKU / maestro del patrón).
+ *  - `identity`: el nombre ya es un nombre de catálogo (`P<n>`) y, si el índice
+ *    de puertos está sembrado, el catálogo publica ese puerto para el producto.
+ *    Es una identidad explícita y verificada, no un fallback.
+ *  - `uncalibrated`: no hay correspondencia. Se informa como "sin calibración de
+ *    bocas"; NUNCA se devuelve el nombre sin traducir.
+ */
+export type PortResolution =
+  | { status: 'mapped'; catalogPortName: string; source: 'override' | 'inherited' | 'default' | 'master' }
+  | { status: 'identity'; catalogPortName: string }
+  | { status: 'uncalibrated'; reason: string };
+
+const CATALOG_PORT_NAME = /^P\d+$/;
+
+/** Si el índice de puertos está sembrado, exige que el catálogo publique el puerto. */
+function verifyPublished(productId: string, recipePortName: string, res: PortResolution): PortResolution {
+  if (res.status === 'uncalibrated' || _catalogPorts === null) return res;
+  if (_catalogPorts[productId]?.has(res.catalogPortName)) return res;
+  const published = [..._catalogPorts[productId] ?? []].join(', ') || 'ninguna';
+  return {
+    status: 'uncalibrated',
+    reason: `sin calibración de bocas para ${productId}: la boca ${recipePortName} se traduce a ${res.catalogPortName}, que el catálogo no publica (publica: ${published})`,
+  };
+}
+
+export function resolveCatalogPort(productId: string, recipePortName: string): PortResolution {
+  // 1) Mapping explícito (override del usuario, herencia por variante, default por SKU).
+  const mapping = getEffectiveMapping(productId);
+  const hit = mapping?.entries.find((e) => e.recipePortName === recipePortName);
+  if (mapping && hit) {
+    return verifyPublished(productId, recipePortName, {
+      status: 'mapped', catalogPortName: hit.catalogPortName, source: mapping.source as 'override' | 'inherited' | 'default',
+    });
+  }
+  // 2) Mapping derivado del patrón: el maestro declara catalogPortName por boca y
+  //    vale para todas sus variantes de ancho, ala, acabado y espesor.
+  const masterHit = masterPortsFor(productId)?.find((e) => e.recipePortName === recipePortName);
+  if (masterHit) {
+    return verifyPublished(productId, recipePortName, { status: 'mapped', catalogPortName: masterHit.catalogPortName, source: 'master' });
+  }
+  // 3) Identidad explícita: el nombre ya es de catálogo (P1, P2…). Si el índice de
+  //    puertos está sembrado, se exige que el catálogo publique ese puerto.
+  if (CATALOG_PORT_NAME.test(recipePortName)) {
+    if (_catalogPorts === null) return { status: 'identity', catalogPortName: recipePortName };
+    if (_catalogPorts[productId]?.has(recipePortName)) {
+      return { status: 'identity', catalogPortName: recipePortName };
+    }
+    return {
+      status: 'uncalibrated',
+      reason: `el catálogo no publica la boca ${recipePortName} para ${productId}`,
+    };
+  }
+  // 4) Sin correspondencia: modelo no resuelto.
+  return { status: 'uncalibrated', reason: `sin calibración de bocas para ${productId} (boca ${recipePortName})` };
+}
+
+/**
+ * Traduce un nombre de boca (como aparece en `piece.puertos`) al nombre del
+ * puerto en el catálogo SAMET, o `null` si la boca no está calibrada (ver
+ * `resolveCatalogPort`). No hay identidad silenciosa: el llamador decide cómo
+ * informar el `null`.
  *
  * Side-effect free: no toca el store ni emite telemetría.
  */
 export function recipePortToCatalogPort(
   productId: string,
   recipePortName: string,
-): string {
-  const mapping = getEffectiveMapping(productId);
-  if (!mapping) return recipePortName;
-  const hit = mapping.entries.find((e) => e.recipePortName === recipePortName);
-  return hit?.catalogPortName ?? recipePortName;
+): string | null {
+  const r = resolveCatalogPort(productId, recipePortName);
+  return r.status === 'uncalibrated' ? null : r.catalogPortName;
 }
 
 /**
@@ -480,9 +589,12 @@ export function catalogPortToRecipePort(
   catalogPortName: string,
 ): string {
   const mapping = getEffectiveMapping(productId);
-  if (!mapping) return catalogPortName;
-  const hit = mapping.entries.find((e) => e.catalogPortName === catalogPortName);
-  return hit?.recipePortName ?? catalogPortName;
+  const hit = mapping?.entries.find((e) => e.catalogPortName === catalogPortName);
+  if (hit) return hit.recipePortName;
+  // Patrón del maestro (misma fuente que resolveCatalogPort).
+  const masterHit = masterPortsFor(productId)?.find((e) => e.catalogPortName === catalogPortName);
+  if (masterHit) return masterHit.recipePortName;
+  return catalogPortName;
 }
 
 /**

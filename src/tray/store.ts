@@ -49,10 +49,15 @@ export function toMotorEntrada(trayInput: TrayInput): Record<string,unknown> {
   const productByInstance = new Map<string, string>();
   for (const pz of trayInput.piezas) productByInstance.set(pz.instancia_id, pz.producto_id);
 
+  // Bocas sin calibración: `calculate()` no llega aquí (las reporta antes con
+  // `findUncalibratedPorts`). Si un llamador directo pide el payload igual, la boca
+  // conserva su nombre de receta y el motor la verá como desconocida: nunca se
+  // presenta como traducida.
+  const tr = (prod: string, port: string) => recipePortToCatalogPort(prod, port) ?? port;
   out.piezas = trayInput.piezas.map((pz) => {
     const translated: Record<string, unknown> = {};
     for (const [portName, portDef] of Object.entries(pz.puertos)) {
-      translated[recipePortToCatalogPort(pz.producto_id, portName)] = portDef;
+      translated[tr(pz.producto_id, portName)] = portDef;
     }
     return { ...pz, puertos: translated };
   });
@@ -62,12 +67,28 @@ export function toMotorEntrada(trayInput: TrayInput): Record<string,unknown> {
     const prodB = productByInstance.get(c.b[0]) ?? '';
     return {
       ...c,
-      a: [c.a[0], recipePortToCatalogPort(prodA, c.a[1])] as [string, string],
-      b: [c.b[0], recipePortToCatalogPort(prodB, c.b[1])] as [string, string],
+      a: [c.a[0], tr(prodA, c.a[1])] as [string, string],
+      b: [c.b[0], tr(prodB, c.b[1])] as [string, string],
     };
   });
 
   return out;
+}
+
+/**
+ * Bocas del trazado sin correspondencia con el catálogo ("sin calibración de
+ * bocas"), agrupadas por producto. Vacío si todo está resuelto.
+ */
+export function findUncalibratedPorts(trayInput: TrayInput): Array<{ producto_id: string; bocas: string[] }> {
+  const byProduct = new Map<string, Set<string>>();
+  for (const pz of trayInput.piezas) {
+    for (const portName of Object.keys(pz.puertos)) {
+      if (recipePortToCatalogPort(pz.producto_id, portName) === null) {
+        (byProduct.get(pz.producto_id) ?? byProduct.set(pz.producto_id, new Set()).get(pz.producto_id)!).add(portName);
+      }
+    }
+  }
+  return [...byProduct].map(([producto_id, bocas]) => ({ producto_id, bocas: [...bocas].sort() }));
 }
 
 const MAX_HIST = 20;
@@ -194,6 +215,8 @@ export const useTrayStore=create<State>((set,get)=>({
   const input=get().entrada;if(!input)return;
   assertInput(input);
   if(input.piezas.length===0){set({error:'No hay piezas para calcular.'});return}
+  const uncal=findUncalibratedPorts(input);
+  if(uncal.length){set({status:'error',error:`Sin calibración de bocas: ${uncal.map(u=>`${get().context?.productos.find(p=>p.producto_id===u.producto_id)?.sku??u.producto_id} (${u.bocas.join(', ')})`).join('; ')}. Modelo no resuelto: no se calcula.`});return}
   const revision=get().revision;set({status:'calculando',error:null,resultSelection:null});
   try{
    await get().checkEngine(true);if(get().revision!==revision||call!==callSequence)return;
