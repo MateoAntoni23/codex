@@ -93,13 +93,38 @@ describe('MASTER_MODELS inventory', () => {
     expect(dcps.closure.continuity.regressionSpecs).toEqual([]);
   });
 
-  it('maestros sin declaredVariantSkus marcan variants=n/a', () => {
-    // CS-45, CS-90, TS, XS, RIS: polígono fijo sobre ancho 300 ala 65 sin variantes
-    // publicadas — la dimensión no aplica.
-    const noVariants = MASTER_MODELS.filter((m) => m.declaredVariantSkus.length === 0 && m.sistema === 'escalera' && m.pieceKind !== 'tramo_recto');
+  it('maestros escalera con regla "none" marcan variants=n/a (sin extrapolación posible)', () => {
+    // RIS: la transición 300→150 es específica del STEP y SAMET no publica
+    // regla de extensión a otros anchos — kind='none'. La dimensión no aplica.
+    const noVariants = MASTER_MODELS.filter(
+      (m) => m.sistema === 'escalera' && m.variationRule.kind === 'none',
+    );
     expect(noVariants.length).toBeGreaterThan(0);
     for (const m of noVariants) {
       expect(m.closure.variants.status, `${m.id}: variants debe ser n/a`).toBe('n/a');
+    }
+  });
+
+  it('maestros escalera no-rectos con regla ala-independent reportan variants=partial', () => {
+    // CS-45, CS-90, TS, XS: polígono medido sobre ancho 300 ala 65 + hipótesis
+    // visual uniform-xz + ala-independent. Catálogo SAMET publica ancho ∈
+    // {150,300,450,600} × ala ∈ {65,90,115,150} — propagación comprobada por
+    // regresión pero NO validada vs segundo STEP → status='partial' con
+    // limitación explícita.
+    const estimados = MASTER_MODELS.filter(
+      (m) =>
+        m.sistema === 'escalera' &&
+        m.pieceKind !== 'tramo_recto' &&
+        m.variationRule.kind === 'ala-independent',
+    );
+    expect(estimados.length).toBeGreaterThan(0);
+    for (const m of estimados) {
+      expect(m.variationRule.provenance, `${m.id}: provenance debe ser estimated`).toBe('estimated');
+      expect(m.closure.variants.status, `${m.id}: variants debe ser partial`).toBe('partial');
+      expect(
+        m.closure.variants.limitations.join('\n'),
+        `${m.id}: limitación uniform-xz debe explicitarse`,
+      ).toMatch(/uniform-xz/);
     }
   });
 

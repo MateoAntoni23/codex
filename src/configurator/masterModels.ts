@@ -197,6 +197,8 @@ const CUPS_SECTION_UP_PERSISTENCE_SPEC = 'src/workspace/__tests__/cupsSectionUpP
 const CUPS_VARIANTS_CLOSURE_SPEC = 'src/configurator/__tests__/cupsVariantsClosure.test.ts';
 const PORT_FIDELITY_SPEC = 'src/configurator/__tests__/portFidelity.test.ts';
 const VARIANTS_CLOSURE_SPEC = 'src/configurator/__tests__/variantsClosure.test.ts';
+const ESCALERA_VARIANTS_CLOSURE_SPEC =
+  'src/configurator/__tests__/escaleraVariantsClosure.test.ts';
 const PENDING_DIMENSION: ClosureDimension = Object.freeze({
   status: 'pending',
   regressionSpecs: [],
@@ -623,7 +625,17 @@ const MASTER_ESCALERA: readonly MasterModel[] = [
         limitations: [],
       },
       fidelity: VALIDATED_FIDELITY_DIMENSION,
-      variants: PENDING_DIMENSION,
+      variants: {
+        status: 'validated',
+        regressionSpecs: [
+          'src/configurator/__tests__/masterVariantPropagation.test.ts',
+          ESCALERA_VARIANTS_CLOSURE_SPEC,
+        ],
+        limitations: [
+          'Propagación comprobada: ancho ∈ {150,300,450,600} × ala ∈ {65,90,115,150} × longitud escalan independientemente (regla ala-independent derivada del polígono rectangular).',
+          'Provenance=derived (no measured): la regla es constructivamente correcta pero no se validó contra un segundo STEP de dimensiones distintas.',
+        ],
+      },
     },
     revision: 2,
   },
@@ -650,10 +662,10 @@ const MASTER_ESCALERA: readonly MasterModel[] = [
       { recipePortName: 'P2', physicalLabel: 'Boca tangente final', catalogPortName: 'P2' },
     ],
     variationRule: {
-      kind: 'none',
-      provenance: 'derived',
-      varies: [],
-      rationale: 'Polígono medido 8 vértices sobre STEP ancho=300 ala=65. Sin segundo STEP para derivar regla de escala — las variantes se marcan \'derived\' por reproducción geométrica directa.',
+      kind: 'ala-independent',
+      provenance: 'estimated',
+      varies: ['ancho', 'ala'],
+      rationale: 'Polígono mitreado 8 vértices medido sobre STEP ancho=300 ala=65. Hipótesis visual: ancho escala X,Z uniformemente (uniform-xz) y ala escala Y independiente. El catálogo SAMET publica ancho ∈ {150,300,450,600} × ala ∈ {65,90,115,150} para esta pieza; la regla NO está validada contra un segundo STEP — queda `estimated` para que la UI la marque como hipótesis.',
     },
     declaredVariantSkus: [],
     closure: {
@@ -665,7 +677,14 @@ const MASTER_ESCALERA: readonly MasterModel[] = [
         ],
       },
       fidelity: VALIDATED_FIDELITY_DIMENSION,
-      variants: NA_DIMENSION,
+      variants: {
+        status: 'partial',
+        regressionSpecs: [ESCALERA_VARIANTS_CLOSURE_SPEC],
+        limitations: [
+          'Propagación comprobada: ancho ∈ {150,300,450,600} × ala ∈ {65,90,115,150} proyecta puertos y bbox correctamente (uniform-xz + ala-independent).',
+          'Regla uniform-xz es hipótesis visual (provenance=estimated); no fue validada contra un segundo STEP de ancho≠300.',
+        ],
+      },
     },
     // revision 2: bocas corregidas (P2 ahora sobre la cara diagonal
     // polygon[1]→polygon[2], long 298.9, NO sobre la pared x_min de 213 mm).
@@ -695,10 +714,10 @@ const MASTER_ESCALERA: readonly MasterModel[] = [
       { recipePortName: 'P2', physicalLabel: 'Boca tangente final', catalogPortName: 'P2' },
     ],
     variationRule: {
-      kind: 'none',
-      provenance: 'derived',
-      varies: [],
-      rationale: 'Polígono medido 8 vértices sobre STEP ancho=300 ala=65. Variantes \'derived\' por reproducción geométrica directa del polígono base.',
+      kind: 'ala-independent',
+      provenance: 'estimated',
+      varies: ['ancho', 'ala'],
+      rationale: 'Polígono mitreado 8 vértices medido sobre STEP ancho=300 ala=65. Hipótesis visual: ancho escala X,Z uniformemente (uniform-xz) y ala escala Y independiente. El catálogo SAMET publica ancho ∈ {150,300,450,600} × ala ∈ {65,90,115,150} para esta pieza; la regla NO está validada contra un segundo STEP — queda `estimated`.',
     },
     declaredVariantSkus: [],
     closure: {
@@ -710,7 +729,14 @@ const MASTER_ESCALERA: readonly MasterModel[] = [
         ],
       },
       fidelity: VALIDATED_FIDELITY_DIMENSION,
-      variants: NA_DIMENSION,
+      variants: {
+        status: 'partial',
+        regressionSpecs: [ESCALERA_VARIANTS_CLOSURE_SPEC],
+        limitations: [
+          'Propagación comprobada: ancho ∈ {150,300,450,600} × ala ∈ {65,90,115,150} proyecta puertos y bbox correctamente (uniform-xz + ala-independent).',
+          'Regla uniform-xz es hipótesis visual (provenance=estimated); no fue validada contra un segundo STEP de ancho≠300.',
+        ],
+      },
     },
     // revision 2: bocas corregidas (P1 y P2 sobre los extremos de cada brazo
     // polygon[1]→[2] y polygon[5]→[6], long 298.9, NO sobre las paredes
@@ -741,10 +767,10 @@ const MASTER_ESCALERA: readonly MasterModel[] = [
       { recipePortName: 'P3', physicalLabel: 'Tronco (z_max)', catalogPortName: 'P3' },
     ],
     variationRule: {
-      kind: 'none',
-      provenance: 'derived',
-      varies: [],
-      rationale: 'Polígono medido 10 vértices sobre STEP ancho=300 ala=65. Variantes \'derived\' por reproducción geométrica directa.',
+      kind: 'ala-independent',
+      provenance: 'estimated',
+      varies: ['ancho', 'ala'],
+      rationale: 'Polígono medido 10 vértices sobre STEP ancho=300 ala=65 (tronco + ramal con chaflanes 45°). Hipótesis visual: ancho escala X,Z uniformemente (brazo y tronco escalan proporcionalmente) y ala escala Y independiente. Catálogo SAMET publica ancho ∈ {150,300,450,600} × ala ∈ {65,90,115,150}; la regla NO está validada contra un segundo STEP — queda `estimated`.',
     },
     declaredVariantSkus: [],
     closure: {
@@ -756,7 +782,14 @@ const MASTER_ESCALERA: readonly MasterModel[] = [
         ],
       },
       fidelity: VALIDATED_FIDELITY_DIMENSION,
-      variants: NA_DIMENSION,
+      variants: {
+        status: 'partial',
+        regressionSpecs: [ESCALERA_VARIANTS_CLOSURE_SPEC],
+        limitations: [
+          'Propagación comprobada: ancho ∈ {150,300,450,600} × ala ∈ {65,90,115,150} proyecta puertos y bbox correctamente (uniform-xz + ala-independent).',
+          'Regla uniform-xz es hipótesis visual (provenance=estimated); el brazo y el tronco escalan ambos con ancho — no validado vs segundo STEP.',
+        ],
+      },
     },
     // revision 2: factor de escala corregido en `scaleFactorsFromOutline`
     // (antes `bbox_local.z_max` = 1189 — extensión total del polígono — daba
@@ -789,10 +822,10 @@ const MASTER_ESCALERA: readonly MasterModel[] = [
       { recipePortName: 'P4', physicalLabel: 'Brazo x_min', catalogPortName: 'P4' },
     ],
     variationRule: {
-      kind: 'none',
-      provenance: 'derived',
-      varies: [],
-      rationale: 'Polígono medido 16 vértices sobre STEP ancho=300 ala=65. Variantes \'derived\' por reproducción geométrica directa.',
+      kind: 'ala-independent',
+      provenance: 'estimated',
+      varies: ['ancho', 'ala'],
+      rationale: 'Polígono medido 16 vértices sobre STEP ancho=300 ala=65 (cruz simétrica con chaflanes 45° en esquinas interiores). Hipótesis visual: ancho escala X,Z uniformemente (los 4 brazos escalan proporcionalmente) y ala escala Y independiente. Catálogo SAMET publica ancho ∈ {150,300,450,600} × ala ∈ {65,90,115,150}; la regla NO está validada contra un segundo STEP — queda `estimated`.',
     },
     declaredVariantSkus: [],
     closure: {
@@ -804,7 +837,14 @@ const MASTER_ESCALERA: readonly MasterModel[] = [
         ],
       },
       fidelity: VALIDATED_FIDELITY_DIMENSION,
-      variants: NA_DIMENSION,
+      variants: {
+        status: 'partial',
+        regressionSpecs: [ESCALERA_VARIANTS_CLOSURE_SPEC],
+        limitations: [
+          'Propagación comprobada: ancho ∈ {150,300,450,600} × ala ∈ {65,90,115,150} proyecta puertos y bbox correctamente (uniform-xz + ala-independent).',
+          'Regla uniform-xz es hipótesis visual (provenance=estimated); los 4 brazos escalan con ancho — no validado vs segundo STEP.',
+        ],
+      },
     },
     // revision 2: factor de escala corregido en `scaleFactorsFromOutline`
     // (antes `bbox_local.z_max` = 1187.94 — extensión total del polígono — daba
