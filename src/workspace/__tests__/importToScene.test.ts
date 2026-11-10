@@ -116,6 +116,8 @@ describe('linkImportedToElement', () => {
 
   it('no hace nada si el equipoId no está en el catálogo', () => {
     const s = useWorkspaceStore.getState();
+    // El proyecto ya no arranca con equipos de demostración: se cargan explícitamente.
+    s.loadDemoEquipment();
     s.setImportedCatalog(catalog([eq()]));
     const base = useWorkspaceStore.getState().elements[0];
     const before = { ...base };

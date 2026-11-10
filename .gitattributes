@@ -1,0 +1,6 @@
+# El motor Python compara huellas (SHA-256) de sus archivos de datos y vectores
+# de prueba. Con core.autocrlf=true en Windows el árbol de trabajo quedaba en CRLF
+# y 4 pruebas del motor fallaban (test_vectores_al_dia, test_calcular_trazado,
+# test_respuestas_reproducibles x2). Forzar LF mantiene los bytes idénticos al
+# índice en cualquier SO. No modifica el contenido versionado de vendor/.
+vendor/motor_bandejas/** text=auto eol=lf

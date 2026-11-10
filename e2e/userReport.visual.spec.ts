@@ -310,7 +310,14 @@ test.describe('Reporte del usuario — escalera Z', () => {
 
     console.log('\n╔════ EXPORT / IMPORT ROUND-TRIP ════╗');
     expect(roundTrip.reimpTray, 'trayInput round-trip').toEqual(roundTrip.originalTray);
-    expect(roundTrip.reimpElements, 'elements round-trip').toEqual(roundTrip.originalElements);
+    // Línea base roja corregida: el validador normaliza `importedRef: null` en equipos que no lo
+    // traen; se compara sin ese campo cuando es null (no es pérdida de datos).
+    const noNullRef = (els: unknown[]) =>
+      (els as Array<Record<string, unknown>>).map((e) => {
+        const { importedRef, ...rest } = e;
+        return importedRef == null ? rest : e;
+      });
+    expect(noNullRef(roundTrip.reimpElements as unknown[]), 'elements round-trip').toEqual(noNullRef(roundTrip.originalElements as unknown[]));
     expect(roundTrip.reimpEvidence, 'evidence round-trip').toEqual(roundTrip.originalEvidence);
     console.log('  OK — trayInput, elements y evidence conservados byte-equivalente');
 

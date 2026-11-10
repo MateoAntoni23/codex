@@ -8,8 +8,9 @@ import { useRoutingStore } from './useRoutingStore';
 import { WorkspaceScene } from './WorkspaceScene';
 import { WorkspaceTree } from './WorkspaceTree';
 import { WorkspaceInspector } from './WorkspaceInspector';
-import { exportWorkspace, importWorkspace, extractMeta } from './workspaceFile';
 import { RoutingStatusBadge } from './RoutingPanel';
+import { ProjectControls } from '../project/ProjectControls';
+import { bootProject, startAutosave, useProjectStatusStore } from '../project/projectSession';
 import { useCatalogConfigStore } from '../configurator/catalogConfigStore';
 import {
   getModelFrameOverride,
@@ -126,10 +127,15 @@ function StatusBar() {
   const fileName             = useWorkspaceStore((s) => s.fileName);
   const connectionToolActive = useWorkspaceStore((s) => s.connectionToolActive);
   const connectionPortA      = useWorkspaceStore((s) => s.connectionPortA);
+  const engine               = useTrayStore((s) => s.engine);
 
   return (
     <div className="workspace-status" role="status">
       <span>Motor: <strong>{status}</strong> · rev {revision}</span>
+      <span data-testid="engine-state" data-engine={engine.state} title={engine.detail ?? undefined}>
+        {' '}· Servicio de cálculo: <strong>{engine.state}</strong>
+        {engine.state !== 'conectado' && engine.state !== 'desconocido' && engine.detail ? ` — ${engine.detail}` : ''}
+      </span>
       {fileName && <span> · {fileName}</span>}
       {connectionToolActive && (
         <span style={{ color: '#00ffcc', fontWeight: 600 }}>
@@ -137,104 +143,20 @@ function StatusBar() {
         </span>
       )}
       <RoutingStatusBadge />
-      {dirty && <span className="workspace-dirty"> ● cambios sin guardar</span>}
+      {dirty && <span className="workspace-dirty"> ● cambios sin copia en archivo</span>}
       {error && <span className="workspace-error"> ⚠ {error}</span>}
     </div>
   );
 }
 
 function Toolbar({ onOpenImportWizard }: { onOpenImportWizard: () => void }) {
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const handleExport = () => {
-    const ws   = useWorkspaceStore.getState();
-    const tray = useTrayStore.getState();
-    const cfg  = useCatalogConfigStore.getState();
-    if (!tray.entrada) {
-      alert('No hay trazado cargado para exportar.');
-      return;
-    }
-    // Incluir overrides del Configurador y el catálogo importado para portabilidad
-    // entre PCs (A11: round-trip sin pérdida).
-    const json = exportWorkspace(
-      ws.elements, ws.evidence, ws.projectMeta, tray.entrada,
-      cfg.overrides, ws.importedCatalog,
-    );
-    const blob = new Blob([json], { type: 'application/json' });
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
-    const name = `workspace-${new Date().toISOString().slice(0, 10)}.json`;
-    a.href     = url;
-    a.download = name;
-    document.body.appendChild(a);
-    a.click();
-    // Defer revoke: Chrome needs a microtask gap before the download handler
-    // fires. Revoking synchronously after click() races the download event
-    // under CPU pressure (reproducible with Playwright --workers=2).
-    setTimeout(() => {
-      a.remove();
-      URL.revokeObjectURL(url);
-    }, 0);
-    ws.markSaved(name);
-  };
-
-  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    // Confirm before replacing current work
-    if (useWorkspaceStore.getState().dirty) {
-      if (!confirm(`Hay cambios sin guardar. ¿Reemplazar con "${file.name}"?`)) {
-        e.target.value = '';
-        return;
-      }
-    } else if (!confirm(`¿Importar "${file.name}"? Se reemplazará el trabajo actual.`)) {
-      e.target.value = '';
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      let ws;
-      try {
-        ws = importWorkspace(reader.result as string);
-      } catch (err) {
-        alert(`Error al importar: ${String(err)}`);
-        e.target.value = '';
-        return;
-      }
-      // All validation passed — now update both stores atomically
-      const { elements, evidence } = ws.projectV2;
-      useWorkspaceStore.getState().loadFile(
-        elements, evidence, extractMeta(ws.projectV2), file.name,
-        ws.importedCatalog?.catalog ?? null,
-      );
-      // importEdit resets tray state and clears history/future so undo can't reach the previous project
-      useTrayStore.getState().importEdit(ws.trayInput);
-      // Cancel any active routing session since the tray was replaced
-      useRoutingStore.getState().deactivate();
-      // Overrides del Configurador — si el archivo los trae, reemplazar;
-      // si no, limpiar (para que el proyecto refleje su propia configuración
-      // y no la del equipo local).
-      useCatalogConfigStore.getState().replaceAll(ws.catalogConfig?.overrides ?? {});
-      e.target.value = '';
-    };
-    reader.onerror = () => {
-      alert('Error al leer el archivo.');
-      e.target.value = '';
-    };
-    reader.readAsText(file);
-  };
-
   return (
     <div className="workspace-toolbar">
-      <a href="?">← Editor guardado</a>
+      <a href="?legacy=v1">← Editor inicial</a>
       <span className="workspace-toolbar-title">Espacio de trabajo unificado</span>
+      <ProjectControls />
       <button onClick={() => void useTrayStore.getState().initialize()}>Reconectar motor</button>
       <button onClick={() => void useTrayStore.getState().calculate()}>Calcular trazado</button>
-      <button onClick={handleExport}>Exportar JSON</button>
-      <button onClick={() => fileInputRef.current?.click()}>Importar JSON</button>
-      <input ref={fileInputRef} type="file" accept=".json" style={{ display: 'none' }} onChange={handleImport} />
       <button onClick={onOpenImportWizard} data-testid="open-import-wizard">Importar Excel</button>
       <button
         onClick={() => useWorkspaceStore.getState().loadTestScenario()}
@@ -246,10 +168,7 @@ function Toolbar({ onOpenImportWizard }: { onOpenImportWizard: () => void }) {
       <button
         onClick={() => {
           const current = useTrayStore.getState().entrada;
-          if (!current) {
-            alert('Primero inicializá el motor (Reconectar motor).');
-            return;
-          }
+          if (!current) return;
           // Carga aditiva: trps300→cups300→trps300 + trps450→cups450→trps450.
           // No toca lo existente; idempotente al segundo click.
           import('./cupsTestChain').then(({ addCupsTestChains }) => {
@@ -262,6 +181,28 @@ function Toolbar({ onOpenImportWizard }: { onOpenImportWizard: () => void }) {
       >
         Cargar cadenas CUPS
       </button>
+      <button
+        onClick={() => {
+          const ex = useTrayStore.getState().context?.ejemplos.trazado_derivacion_pe;
+          if (!ex) {
+            alert('El catálogo estático todavía no terminó de cargar.');
+            return;
+          }
+          if (!confirm('Cargar el ejemplo del motor reemplaza el trazado actual. ¿Continuar?')) return;
+          useTrayStore.getState().edit(ex);
+        }}
+        data-testid="load-motor-example"
+        title="Acción explícita: reemplaza el trazado por el ejemplo trazado_derivacion_pe del motor (deshacible)."
+      >
+        Cargar ejemplo del motor
+      </button>
+      <button
+        onClick={() => useWorkspaceStore.getState().loadDemoEquipment()}
+        data-testid="load-demo-equipment"
+        title="Acción explícita: agrega los equipos de demostración (piso, nave, tablero, motor…). Deshacible."
+      >
+        Cargar equipos de demostración
+      </button>
       <a href="?configurator=v1" className="workspace-toolbar-link" data-testid="open-configurator">Configuración de biblioteca</a>
     </div>
   );
@@ -273,6 +214,21 @@ export function UnifiedWorkspace() {
   const selectedEquipId = useWorkspaceStore((s) => s.selectedEquipId);
   const markDirty      = useWorkspaceStore((s) => s.markDirty);
   const [importWizardOpen, setImportWizardOpen] = useState(false);
+  const booted         = useProjectStatusStore((s) => s.booted);
+
+  // Restaurar el último proyecto (IndexedDB) y recién entonces suscribir el
+  // autoguardado: si se suscribiera antes, un estado vacío podría pisar lo guardado.
+  useEffect(() => {
+    let alive = true;
+    let stop = () => {};
+    void bootProject().then(() => {
+      if (alive) stop = startAutosave();
+    });
+    return () => {
+      alive = false;
+      stop();
+    };
+  }, []);
 
   // Initialize motor connection on mount
   useEffect(() => {
@@ -308,13 +264,17 @@ export function UnifiedWorkspace() {
     return () => { delete w.__codex; };
   }, []);
 
-  // Track tray changes as dirty (skip initial render)
+  // "Cambios sin copia en archivo": sólo cuenta cambios POSTERIORES a la restauración.
   const trayRevision = useTrayStore((s) => s.revision);
-  const isFirst = useRef(true);
+  const baseRevision = useRef<number | null>(null);
   useEffect(() => {
-    if (isFirst.current) { isFirst.current = false; return; }
-    markDirty();
-  }, [trayRevision, markDirty]);
+    if (!booted) return;
+    if (baseRevision.current === null) { baseRevision.current = trayRevision; return; }
+    if (trayRevision !== baseRevision.current) {
+      baseRevision.current = trayRevision;
+      markDirty();
+    }
+  }, [booted, trayRevision, markDirty]);
 
   const connectionToolActive     = useWorkspaceStore((s) => s.connectionToolActive);
   const deactivateConnectionTool = useWorkspaceStore((s) => s.deactivateConnectionTool);
@@ -344,6 +304,11 @@ export function UnifiedWorkspace() {
       <Toolbar onOpenImportWizard={() => setImportWizardOpen(true)} />
       <StatusBar />
 
+      {!booted ? (
+        <div className="workspace-restoring" data-testid="project-restoring" role="status">
+          Restaurando proyecto…
+        </div>
+      ) : (
       <div className="unified-workspace-body">
         <aside className="unified-workspace-tree">
           <WorkspaceTree />
@@ -361,6 +326,7 @@ export function UnifiedWorkspace() {
           <WorkspaceInspector />
         </aside>
       </div>
+      )}
 
       {importWizardOpen && <ImportWizard onClose={() => setImportWizardOpen(false)} />}
     </div>

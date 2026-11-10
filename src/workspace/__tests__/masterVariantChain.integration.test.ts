@@ -163,9 +163,10 @@ describe('#119 cadena TRPS 300 → CPS-45 → TRPS-300 con override maestro pres
     const imported = importWorkspace(exported);
     expect(imported.trayInput.piezas.length).toBe(3);
     expect(imported.trayInput.conexiones.length).toBe(2);
-    expect(imported.catalogConfig).toBeDefined();
-    expect(imported.catalogConfig!.version).toBe('codex:catalogConfig/1');
-    expect(imported.catalogConfig!.overrides.SAM_TRPS).toBeDefined();
+    // fileVersion 2: la biblioteca viaja en el bloque `library` (completo).
+    expect(imported.library).toBeDefined();
+    expect(imported.library!.partial).toBe(false);
+    expect(imported.library!.overrides.SAM_TRPS).toBeDefined();
     // Las coordenadas de la pieza final deben preservarse exactas (JSON roundtrip).
     const reP2 = imported.trayInput.piezas[2]!.puertos.P2.posicion_mm as [number, number, number];
     const reDir = imported.trayInput.piezas[2]!.puertos.P2.direccion as [number, number, number];

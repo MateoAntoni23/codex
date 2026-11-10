@@ -146,8 +146,9 @@ async function readConfiguratorPorts(page: Page): Promise<Array<Record<string, u
 
 async function importWorkspaceViaUI(page: Page): Promise<void> {
   const raw = readFileSync(FIXTURE, 'utf-8');
-  // Confirm dialog para reemplazar trabajo actual: aceptar.
-  page.once('dialog', (d) => void d.accept());
+  // Hito 1: el confirm sólo aparece si hay contenido; aceptar de forma tolerante.
+  const accept = (d: import('@playwright/test').Dialog) => void d.accept().catch(() => undefined);
+  page.on('dialog', accept);
   const input = page.locator('input[type="file"][accept=".json"]').first();
   await input.setInputFiles({
     name: 'user-report-20261107.workspace.json',
@@ -162,6 +163,7 @@ async function importWorkspaceViaUI(page: Page): Promise<void> {
     const e = w.__codex?.trayStore?.getState().entrada;
     return !!e && e.piezas.length > 0;
   }, { timeout: 20_000 });
+  page.off('dialog', accept);
 }
 
 async function waitWorkspaceReady(page: Page): Promise<void> {
@@ -376,11 +378,11 @@ test.describe('Entrega final — cadena completa con JSON del usuario', () => {
     const exportedRaw = readFileSync(exportedPath, 'utf-8');
     const exported = JSON.parse(exportedRaw) as {
       trayInput: { piezas: Array<{ instancia_id: string }>; conexiones: Array<{ conexion_id: string }> };
-      catalogConfig?: { overrides: Record<string, unknown> };
+      library?: { overrides: Record<string, unknown> };
     };
     expect(exported.trayInput.piezas.length).toBe(7);
     expect(exported.trayInput.conexiones.length).toBe(6);
-    expect(exported.catalogConfig?.overrides?.['SAM_TRPS-300-22-Z']).toBeTruthy();
+    expect(exported.library?.overrides?.['SAM_TRPS-300-22-Z']).toBeTruthy();
 
     // ─── 4) Reload entero + re-importar el archivo exportado ─────────────
     await page.reload();
@@ -390,13 +392,18 @@ test.describe('Entrega final — cadena completa con JSON del usuario', () => {
     await page.reload();
     await waitWorkspaceReady(page);
 
-    page.once('dialog', (d) => void d.accept());
+    // Hito 1: la biblioteca local manda. Tras localStorage.clear() la local está vacía y el
+    // archivo trae overrides → aviso; se elige "adoptar" para recuperar la calibración del archivo.
+    const acceptDialog = (d: import('@playwright/test').Dialog) => void d.accept().catch(() => undefined);
+    page.on('dialog', acceptDialog);
     const input = page.locator('input[type="file"][accept=".json"]').first();
     await input.setInputFiles({
       name: 'entrega-exported.workspace.json',
       mimeType: 'application/json',
       buffer: Buffer.from(exportedRaw, 'utf-8'),
     });
+    await page.getByTestId('library-adopt').click();
+    page.off('dialog', acceptDialog);
     await page.waitForFunction(
       () => {
         const w = window as unknown as {

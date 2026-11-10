@@ -105,8 +105,8 @@ function writeStorage(
   overrides: Record<string, ProductPortMapping>,
   approvals: Record<string, PatternApproval>,
   aporteOverrides: Record<string, AporteRule>,
-): void {
-  if (typeof localStorage === 'undefined') return;
+): boolean {
+  if (typeof localStorage === 'undefined') return false;
   const payload: Persisted = {
     version: 'codex:catalogConfig/1',
     overrides,
@@ -116,8 +116,10 @@ function writeStorage(
   };
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+    return true;
   } catch {
     // quota exceeded or unavailable — not fatal; next export/save captures it
+    return false;
   }
 }
 
@@ -155,6 +157,22 @@ interface State {
   revokeApproval: (productId: string) => void;
   /** Reemplaza todas las aprobaciones (usar para import de archivo). */
   replaceApprovals: (approvals: Record<string, PatternApproval>) => void;
+  /**
+   * Reemplaza la biblioteca (overrides + approvals + aporteOverrides) en una sola
+   * escritura. Es la única vía por la que abrir un proyecto puede modificar la
+   * biblioteca local, y sólo tras la elección explícita "adoptar" (ver
+   * `libraryBlock.ts`). Con `partial` (archivo fileVersion 1) sólo se reemplazan
+   * los overrides. Devuelve `false` si no pudo persistir en localStorage; en ese
+   * caso el estado en memoria NO se modifica.
+   */
+  replaceLibrary: (
+    lib: {
+      overrides: Record<string, ProductPortMapping>;
+      approvals?: Record<string, PatternApproval>;
+      aporteOverrides?: Record<string, AporteRule>;
+    },
+    opts?: { partial?: boolean },
+  ) => boolean;
   /**
    * Devuelve el estado efectivo de aprobación para un producto: 'none' si no
    * hay aprobación persistida; 'current' si coincide con la calibración y
@@ -240,6 +258,17 @@ export const useCatalogConfigStore = create<State>((set, get) => ({
   replaceApprovals: (approvals) => {
     writeStorage(get().overrides, approvals, get().aporteOverrides);
     set({ approvals });
+  },
+  replaceLibrary: (lib, opts) => {
+    const overrides = lib.overrides;
+    const approvals = opts?.partial ? get().approvals : (lib.approvals ?? {});
+    const aporteOverrides = opts?.partial
+      ? get().aporteOverrides
+      : sanitizeAporteOverrides(lib.aporteOverrides ?? {});
+    if (!writeStorage(overrides, approvals, aporteOverrides)) return false;
+    setPortMappingOverrides(overrides);
+    set({ overrides, approvals, aporteOverrides });
+    return true;
   },
   getApprovalInfo: (productId, masterRevision) => {
     const approvals = get().approvals;

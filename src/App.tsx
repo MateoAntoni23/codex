@@ -28,7 +28,6 @@ function PreviewApp() {
 export function App() {
   const params = new URLSearchParams(window.location.search);
   const ws = params.get('workspace');
-  if (ws === 'bandejas') return <UnifiedWorkspace />;
   if (ws === 'bandejas-legacy') return <TrayWorkspace />;
 
   // Configurador central de modelos, productos y conexiones.
@@ -41,6 +40,13 @@ export function App() {
   // Vista experimental de catálogo paramétrico STP-Z 300 (GLB reconstruidos).
   if (params.get('pilot') === 'step') return <ParametricLayout />;
 
-  const isPreview = params.get('preview') === 'v2';
-  return isPreview ? <PreviewApp /> : <EditorApp />;
+  if (params.get('preview') === 'v2') return <PreviewApp />;
+
+  // Editor inicial: ya no es el producto. Sigue accesible en ?legacy=v1, con su
+  // código y sus datos (IndexedDB `codex-cable-tray-v1`) intactos.
+  if (params.get('legacy') === 'v1') return <EditorApp />;
+
+  // La aplicación productiva es el espacio de trabajo: la ruta `/` (y la histórica
+  // `?workspace=bandejas`) lo abren.
+  return <UnifiedWorkspace />;
 }

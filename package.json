@@ -10,7 +10,9 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "dev:trays": "node scripts/dev-trays.mjs",
-    "test:motor": "python -m unittest discover -s vendor/motor_bandejas/pruebas -p \"test_*.py\""
+    "test:motor": "python -m unittest discover -s vendor/motor_bandejas/pruebas -p \"test_*.py\"",
+    "test:e2e": "playwright test",
+    "verify": "npm run typecheck && npm test && npm run test:motor && npm run test:e2e"
   },
   "dependencies": {
     "@react-three/drei": "^9.115.0",

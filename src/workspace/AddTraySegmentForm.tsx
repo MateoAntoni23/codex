@@ -130,7 +130,7 @@ export function AddTraySegmentForm({ onClose }: { onClose: () => void }) {
   if (!context) {
     return (
       <div style={{ padding: '8px 12px', fontSize: 11, color: '#ff9955' }}>
-        Motor no conectado — reconectá para cargar el catálogo de productos.
+        Cargando el catálogo de productos…
       </div>
     );
   }
@@ -167,7 +167,7 @@ export function AddTraySegmentForm({ onClose }: { onClose: () => void }) {
     const validErr = validateSegmentInput(p1, p2);
     if (validErr) { setError(validErr); return; }
     if (!entrada) {
-      setError('No hay trazado cargado. Calculá primero para inicializar el motor.');
+      setError('No hay trazado cargado.');
       return;
     }
     const existingIds = new Set(entrada.piezas.map((p) => p.instancia_id));

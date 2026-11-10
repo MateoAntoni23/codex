@@ -146,6 +146,13 @@ export interface WorkspaceState {
    * ports y connections al estado previo.
    */
   loadTestScenario: () => void;
+
+  /**
+   * Acción explícita: agrega los equipos de demostración (PREVIEW_ELEMENTS) que aún
+   * no estén (por id). Deshacible; no-op si ya están todos. Antes eran el contenido
+   * inicial de todo proyecto nuevo.
+   */
+  loadDemoEquipment: () => void;
 }
 
 // ─── Tipo interno del historial ──────────────────────────────────────────────
@@ -194,8 +201,10 @@ const DEFAULT_LAYERS: Record<LayerKey, boolean> = {
 };
 
 export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
-  elements: copyElements(PREVIEW_ELEMENTS),
-  evidence: [...PREVIEW_EVIDENCE],
+  // Proyecto vacío por defecto (hito 1): sin equipos de demostración. Los equipos
+  // de PREVIEW_* se cargan sólo con la acción explícita `loadDemoEquipment`.
+  elements: [],
+  evidence: [],
   projectMeta: { ...DEFAULT_PROJECT_META },
   selectedEquipId: null,
   selectedTrayId: null,
@@ -382,8 +391,8 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
 
   reset: () =>
     set({
-      elements:        copyElements(PREVIEW_ELEMENTS),
-      evidence:        [...PREVIEW_EVIDENCE],
+      elements:        [],
+      evidence:        [],
       projectMeta:     { ...DEFAULT_PROJECT_META },
       selectedEquipId: null,
       selectedTrayId:  null,
@@ -531,6 +540,21 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       selectedSupportId: null,
       selectedImportedEquipoId: null,
       moveMode:     false,
+      dirty:        true,
+    });
+  },
+
+  loadDemoEquipment: () => {
+    const s = get();
+    const have = new Set(s.elements.map((e) => e.id));
+    const haveEv = new Set(s.evidence.map((e) => e.id));
+    const newEls = PREVIEW_ELEMENTS.filter((e) => !have.has(e.id));
+    if (newEls.length === 0) return;
+    set({
+      equipHistory: pushEquipHistory(s.equipHistory, s.elements),
+      equipFuture:  [],
+      elements:     [...s.elements, ...copyElements(newEls)],
+      evidence:     [...s.evidence, ...PREVIEW_EVIDENCE.filter((e) => !haveEv.has(e.id))],
       dirty:        true,
     });
   },

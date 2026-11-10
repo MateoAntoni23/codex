@@ -4,6 +4,16 @@ import { assertInput } from '../tray/model';
 import { validateProjectDataV2 } from '../persistence/validate-v2';
 import type { ProductPortMapping } from './catalogPortMapping';
 import type { ImportedCatalog } from '../import/types';
+import {
+  libraryFromCatalogConfig,
+  parseLibraryBlock,
+  toLibraryBlock,
+  type FileLibrary,
+  type LibraryBlock,
+  type LibrarySnapshot,
+} from '../configurator/libraryBlock';
+import type { PatternApproval } from '../configurator/patternApprovals';
+import type { AporteRule } from '../configurator/aporteTrazado';
 
 /**
  * The non-elements, non-evidence fields of ProjectDataV2.
@@ -66,6 +76,39 @@ export interface WorkspaceFileV1 {
   importedCatalog?: ImportedCatalogBlock;
 }
 
+/**
+ * Workspace file format v2 (hito 1).
+ *
+ * Igual que v1 pero con el bloque `library`: copia COMPLETA de la biblioteca del
+ * usuario (overrides, approvals y aporteOverrides). Se omite si la biblioteca está
+ * vacía. v2 ya no escribe `catalogConfig` (v1) — `library.overrides` lo reemplaza.
+ * El lector acepta v1 y v2.
+ */
+export interface WorkspaceFileV2 {
+  fileVersion: 2;
+  exportedAt: string;
+  projectV2: ProjectDataV2;
+  trayInput: TrayInput;
+  library?: LibraryBlock;
+  importedCatalog?: ImportedCatalogBlock;
+}
+
+/**
+ * Resultado normalizado de leer un archivo v1 o v2. `library` es la biblioteca que
+ * trae el archivo (completa en v2; parcial —sólo overrides— en v1); `null` si el
+ * archivo no trae ninguna, en cuyo caso abrirlo no debe tocar la biblioteca local.
+ * `catalogConfig` se conserva para archivos v1 (compatibilidad de lectura).
+ */
+export interface ParsedWorkspaceFile {
+  fileVersion: 1 | 2;
+  exportedAt: string;
+  projectV2: ProjectDataV2;
+  trayInput: TrayInput;
+  library: FileLibrary | null;
+  catalogConfig?: CatalogConfigBlock;
+  importedCatalog?: ImportedCatalogBlock;
+}
+
 export function exportWorkspace(
   elements: EquipmentElement[],
   evidence: FieldEvidence[],
@@ -73,6 +116,10 @@ export function exportWorkspace(
   trayInput: TrayInput,
   catalogOverrides?: Record<string, ProductPortMapping>,
   importedCatalog?: ImportedCatalog | null,
+  library?: {
+    approvals?: Record<string, PatternApproval>;
+    aporteOverrides?: Record<string, AporteRule>;
+  },
 ): string {
   const projectV2: ProjectDataV2 = {
     schemaVersion: 2,
@@ -80,20 +127,21 @@ export function exportWorkspace(
     evidence,
     ...meta,
   };
-  const file: WorkspaceFileV1 = {
-    fileVersion: 1,
+  const file: WorkspaceFileV2 = {
+    fileVersion: 2,
     exportedAt: new Date().toISOString(),
     projectV2,
     trayInput,
   };
-  // Solo escribir el bloque si hay overrides — evita diffs ruidosos en
-  // proyectos que todavía no usan el Configurador.
-  if (catalogOverrides && Object.keys(catalogOverrides).length > 0) {
-    file.catalogConfig = {
-      version: 'codex:catalogConfig/1',
-      overrides: catalogOverrides,
-    };
-  }
+  // Biblioteca completa (overrides + approvals + aporteOverrides). Se omite si
+  // está vacía — evita diffs ruidosos y avisos inútiles al abrir.
+  const snapshot: LibrarySnapshot = {
+    overrides: catalogOverrides ?? {},
+    approvals: library?.approvals ?? {},
+    aporteOverrides: library?.aporteOverrides ?? {},
+  };
+  const block = toLibraryBlock(snapshot);
+  if (block) file.library = block;
   if (importedCatalog) {
     file.importedCatalog = {
       version: 'codex:importedCatalog/1',
@@ -103,7 +151,7 @@ export function exportWorkspace(
   return JSON.stringify(file, null, 2);
 }
 
-export function importWorkspace(raw: string): WorkspaceFileV1 {
+export function importWorkspace(raw: string): ParsedWorkspaceFile {
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw);
@@ -115,9 +163,10 @@ export function importWorkspace(raw: string): WorkspaceFileV1 {
   }
   const obj = parsed as Record<string, unknown>;
 
-  if (obj.fileVersion !== 1) {
+  if (obj.fileVersion !== 1 && obj.fileVersion !== 2) {
     throw new Error(`Versión de archivo no soportada: ${String(obj.fileVersion)}`);
   }
+  const fileVersion: 1 | 2 = obj.fileVersion;
 
   // Validate equipment + evidence (and origin, factories, etc.) through validateProjectDataV2
   const projectV2 = validateProjectDataV2(obj.projectV2);
@@ -125,14 +174,22 @@ export function importWorkspace(raw: string): WorkspaceFileV1 {
   // Validate tray input — assertInput throws on invalid contracts
   assertInput(obj.trayInput);
 
-  const catalogConfig = parseCatalogConfig(obj.catalogConfig);
+  // v1: sólo `catalogConfig` (overrides) → biblioteca parcial. v2: bloque `library`.
+  const catalogConfig = fileVersion === 1 ? parseCatalogConfig(obj.catalogConfig) : null;
+  const library: FileLibrary | null =
+    fileVersion === 2
+      ? parseLibraryBlock(obj.library)
+      : catalogConfig
+        ? libraryFromCatalogConfig(catalogConfig.overrides)
+        : null;
   const importedCatalog = parseImportedCatalog(obj.importedCatalog);
 
   return {
-    fileVersion: 1,
+    fileVersion,
     exportedAt: typeof obj.exportedAt === 'string' ? obj.exportedAt : '',
     projectV2,
     trayInput: obj.trayInput as TrayInput,
+    library,
     ...(catalogConfig ? { catalogConfig } : {}),
     ...(importedCatalog ? { importedCatalog } : {}),
   };

@@ -1,12 +1,9 @@
 import { create } from 'zustand';
-import { createManager, loadContext } from './client';
-import { assertInput, readResult, type Context, type TrayInput } from './model';
-import {
-  recipePortToCatalogPort,
-  setMasterResolver,
-  setProductCatalogIndex,
-} from '../workspace/catalogPortMapping';
-import { findMasterForProduct } from '../configurator/masterModels';
+import { createManager, fetchEngineCatalogIdentity, fetchEngineHealth } from './client';
+import { assertInput, object, readResult, type Context, type TrayInput } from './model';
+import { recipePortToCatalogPort } from '../workspace/catalogPortMapping';
+import { loadStaticCatalog, seedStaticCatalog, staticContext } from '../catalog/staticCatalog';
+import { emptyTrayInput, isNeutralPe } from '../project/emptyProject';
 const manager=createManager();
 let callSequence=0;
 
@@ -42,6 +39,9 @@ export function toMotorEntrada(trayInput: TrayInput): Record<string,unknown> {
   for (const [k,v] of Object.entries(trayInput)) {
     if (!WS_ONLY.has(k)) out[k] = v;
   }
+  // `pe` neutro (proyecto sin PE definido, ver emptyProject.ts): el motor lo trata
+  // como opcional; no se envía una sección 0 que rechazaría.
+  if (isNeutralPe(trayInput.pe)) delete out.pe;
   // Índice instancia_id → producto_id para traducir conexiones sin volver a
   // buscar la pieza en cada extremo.
   const productByInstance = new Map<string, string>();
@@ -70,7 +70,23 @@ export function toMotorEntrada(trayInput: TrayInput): Record<string,unknown> {
 
 const MAX_HIST = 20;
 
+/**
+ * Estado del motor Python. El catálogo ya no depende de él (es estático, ver
+ * `catalog/staticCatalog.ts`): el motor sólo hace falta para calcular.
+ *  - desconocido: aún no se consultó.
+ *  - conectado: responde, versiones soportadas y catálogo idéntico al empaquetado.
+ *  - apagado: no responde (se puede diseñar y guardar igualmente).
+ *  - incompatible: responde, pero versión o catálogo no coinciden → NO se calcula.
+ */
+export type EngineState='desconocido'|'conectado'|'apagado'|'incompatible';
+export interface EngineInfo{state:EngineState;detail:string|null}
+const ENGINE_OFF_DETAIL='Motor Python apagado o inaccesible: se puede diseñar y guardar; el cálculo requiere el motor.';
+let verifiedHealthKey:string|null=null;
+
 interface State {
+  engine:EngineInfo;
+  /** Consulta la salud del motor y verifica que su catálogo coincide con el empaquetado. */
+  checkEngine:(force?:boolean)=>Promise<void>;
   context:Context|null; entrada:TrayInput|null; revision:number; selected:string|null; resultSelection:string|null;
   result:Record<string,unknown>|null; status:'sin_calcular'|'calculando'|'vigente'|'desactualizado'|'error'; error:string|null;
   /** Undo stack: past TrayInput states, oldest first. Capped at MAX_HIST. */
@@ -94,9 +110,43 @@ interface State {
   select:(id:string|null)=>void; calculate:()=>Promise<void>;
 }
 export const useTrayStore=create<State>((set,get)=>({
- context:null,entrada:null,revision:0,selected:null,resultSelection:null,result:null,status:'sin_calcular',error:null,
+ engine:{state:'desconocido',detail:null},
+ context:null,entrada:emptyTrayInput(),revision:0,selected:null,resultSelection:null,result:null,status:'sin_calcular',error:null,
  history:[],future:[],
- initialize:async()=>{try{const context=await loadContext();const prev=get().context;if(prev&&prev.versions!==context.versions){manager.invalidar('trazado');set({revision:get().revision+1,status:'desactualizado',selected:null,resultSelection:null})}set({context,error:null});setProductCatalogIndex(context.productos);setMasterResolver((p)=>findMasterForProduct(p as Record<string,unknown>));if(!get().entrada)get().edit(context.ejemplos.trazado_derivacion_pe)}catch(e){set({error:String(e),status:get().result?'desactualizado':'error',selected:null});manager.invalidar('trazado');set({revision:get().revision+1})}},
+ initialize:async()=>{
+  // 1) Catálogo estático (no depende del motor): índice de productos + resolvedor de maestros.
+  try{const ctx=staticContext(await seedStaticCatalog());if(get().context?.versions!==ctx.versions)set({context:ctx})}
+  catch(e){set({error:`CATALOGO_ESTATICO: ${String(e)}`})}
+  // 2) Estado del motor (sólo informativo hasta que se pide calcular).
+  await get().checkEngine();
+ },
+ checkEngine:async(force=false)=>{
+  const mark=(engine:EngineInfo)=>{
+   const wasVerified=verifiedHealthKey!==null;
+   if(engine.state!=='conectado'){
+    if(wasVerified){manager.invalidar('trazado');set({revision:get().revision+1,status:get().result?'desactualizado':get().status,selected:null,resultSelection:null})}
+    verifiedHealthKey=null;
+   }
+   set({engine});
+  };
+  let health:unknown;
+  try{health=await fetchEngineHealth()}catch{mark({state:'apagado',detail:ENGINE_OFF_DETAIL});return}
+  if(!object(health)||health.version_motor!=='0.2.2'||health.version_contrato!=='1.0'){mark({state:'incompatible',detail:'Versión del motor no soportada por este frontend: no se calcula.'});return}
+  const key=JSON.stringify(health);
+  if(!force&&key===verifiedHealthKey&&get().engine.state==='conectado')return;
+  try{
+   const [identity,packaged]=await Promise.all([fetchEngineCatalogIdentity(),loadStaticCatalog()]);
+   if(identity.decisionesSha256!==packaged.decisionesSha256||identity.fingerprint!==packaged.fingerprint){mark({state:'incompatible',detail:'El catálogo del motor conectado no coincide con el empaquetado en la aplicación: no se calcula.'});return}
+  }catch(e){
+   const m=String(e);
+   mark(m.includes('CONTEXTO_INCOMPATIBLE')?{state:'incompatible',detail:'El motor devolvió un catálogo con formato no soportado: no se calcula.'}:{state:'apagado',detail:ENGINE_OFF_DETAIL});
+   return;
+  }
+  const changed=verifiedHealthKey!==null&&verifiedHealthKey!==key;
+  verifiedHealthKey=key;
+  if(changed){manager.invalidar('trazado');set({revision:get().revision+1,status:get().result?'desactualizado':get().status,selected:null,resultSelection:null})}
+  set({engine:{state:'conectado',detail:null}});
+ },
  edit:(input)=>{
   assertInput(input);
   manager.invalidar('trazado');
@@ -140,16 +190,19 @@ export const useTrayStore=create<State>((set,get)=>({
  calculate:async()=>{
   const call=++callSequence;
   const input=get().entrada;if(!input)return;
-  assertInput(input);const revision=get().revision;set({status:'calculando',error:null,resultSelection:null});
+  assertInput(input);
+  if(input.piezas.length===0){set({error:'No hay piezas para calcular.'});return}
+  const revision=get().revision;set({status:'calculando',error:null,resultSelection:null});
   try{
-   const context=await loadContext();if(get().revision!==revision||call!==callSequence)return;
-   if(get().context&&context.versions!==get().context!.versions){manager.invalidar('trazado');set({context,revision:revision+1,status:'desactualizado',selected:null,resultSelection:null,error:'Versiones cambiaron; recalcular con el nuevo contexto'});return;}
+   await get().checkEngine(true);if(get().revision!==revision||call!==callSequence)return;
+   const engine=get().engine;
+   if(engine.state!=='conectado'){set({status:'error',error:engine.detail??'Motor no disponible'});return}
    const outcome=await manager.calcular('trazado','trazado',toMotorEntrada(input));
    if(get().revision!==revision||call!==callSequence)return;
    if(outcome.tipo==='descartada')return;
    if(outcome.tipo==='aplicada'){
     if(outcome.respuesta.estado==='error'){const e=outcome.respuesta.error;set({status:'error',error:`${e.codigo}: ${e.mensaje} ${e.campo??''} ${e.decision_id??''}`});return;}
-    set({result:readResult(outcome.respuesta.resultado,'trazado'),status:'vigente',context});
+    set({result:readResult(outcome.respuesta.resultado,'trazado'),status:'vigente'});
    }else if(outcome.tipo==='rechazada')set({status:'error',error:`${outcome.motivo}: ${outcome.detalle}`});
    else set({status:'error',error:outcome.detalle});
   }catch(e){if(get().revision===revision&&call===callSequence)set({status:'error',error:String(e)})}

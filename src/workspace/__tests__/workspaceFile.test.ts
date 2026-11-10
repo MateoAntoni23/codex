@@ -61,10 +61,10 @@ const EVIDENCE: FieldEvidence[] = [];
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
 describe('exportWorkspace', () => {
-  it('produces parseable JSON with fileVersion 1', () => {
+  it('produces parseable JSON with fileVersion 2', () => {
     const json = exportWorkspace([ELEMENT], EVIDENCE, DEFAULT_PROJECT_META, TRAY_INPUT);
     const parsed = JSON.parse(json) as Record<string, unknown>;
-    expect(parsed.fileVersion).toBe(1);
+    expect(parsed.fileVersion).toBe(2);
     expect(typeof parsed.exportedAt).toBe('string');
   });
 
@@ -104,7 +104,7 @@ describe('importWorkspace', () => {
   it('round-trips export → import and recovers elements + trayInput', () => {
     const json   = exportWorkspace([ELEMENT], EVIDENCE, DEFAULT_PROJECT_META, TRAY_INPUT);
     const result = importWorkspace(json);
-    expect(result.fileVersion).toBe(1);
+    expect(result.fileVersion).toBe(2);
     expect(result.projectV2.elements).toHaveLength(1);
     expect(result.projectV2.elements[0].id).toBe('motor-001');
     expect(result.trayInput.piezas[0].instancia_id).toBe('R1');
@@ -174,7 +174,7 @@ describe('importWorkspace', () => {
   });
 
   it('throws on wrong fileVersion', () => {
-    const obj = JSON.stringify({ fileVersion: 2, projectV2: {}, trayInput: {} });
+    const obj = JSON.stringify({ fileVersion: 3, projectV2: {}, trayInput: {} });
     expect(() => importWorkspace(obj)).toThrow('Versión');
   });
 
@@ -222,50 +222,98 @@ describe('exportWorkspace + importWorkspace — catalogConfig', () => {
     },
   };
 
-  it('omite el bloque catalogConfig cuando no hay overrides', () => {
+  // Hito 1: el archivo es fileVersion 2 y la biblioteca viaja en el bloque `library`
+  // (overrides + approvals + aporteOverrides). `catalogConfig` sólo se LEE (v1).
+  const asV1 = (json: string, catalogConfig: unknown) => {
+    const parsed = JSON.parse(json) as Record<string, unknown>;
+    delete parsed.library;
+    parsed.fileVersion = 1;
+    if (catalogConfig !== undefined) parsed.catalogConfig = catalogConfig;
+    return JSON.stringify(parsed);
+  };
+
+  it('omite el bloque library cuando la biblioteca está vacía', () => {
     const json = exportWorkspace([ELEMENT], EVIDENCE, DEFAULT_PROJECT_META, TRAY_INPUT, {});
     const parsed = JSON.parse(json) as Record<string, unknown>;
+    expect('library' in parsed).toBe(false);
     expect('catalogConfig' in parsed).toBe(false);
+    expect(importWorkspace(json).library).toBeNull();
   });
 
-  it('incluye catalogConfig con firma de versión cuando hay overrides', () => {
+  it('incluye library con firma de versión cuando hay overrides', () => {
     const json = exportWorkspace([ELEMENT], EVIDENCE, DEFAULT_PROJECT_META, TRAY_INPUT, SAMPLE_OVERRIDES);
     const parsed = JSON.parse(json) as Record<string, unknown>;
-    const cfg = parsed.catalogConfig as Record<string, unknown>;
-    expect(cfg.version).toBe('codex:catalogConfig/1');
-    expect((cfg.overrides as Record<string, unknown>)['SAM_TPS-300-Z']).toBeDefined();
+    const lib = parsed.library as Record<string, unknown>;
+    expect(lib.version).toBe('codex:library/1');
+    expect((lib.overrides as Record<string, unknown>)['SAM_TPS-300-Z']).toBeDefined();
+    expect(lib.approvals).toEqual({});
+    expect(lib.aporteOverrides).toEqual({});
   });
 
-  it('round-trip: export → import preserva overrides', () => {
+  it('round-trip: export → import preserva overrides (biblioteca completa, no parcial)', () => {
     const json = exportWorkspace([ELEMENT], EVIDENCE, DEFAULT_PROJECT_META, TRAY_INPUT, SAMPLE_OVERRIDES);
     const imported = importWorkspace(json);
-    expect(imported.catalogConfig?.version).toBe('codex:catalogConfig/1');
-    expect(imported.catalogConfig?.overrides['SAM_TPS-300-Z'].source).toBe('override');
+    expect(imported.library?.partial).toBe(false);
+    expect(imported.library?.overrides['SAM_TPS-300-Z'].source).toBe('override');
+    expect(imported.library?.overrides['SAM_TPS-300-Z'].entries[0].catalogPortName).toBe('P3');
+  });
+
+  it('round-trip: overrides + approvals + aporteOverrides viajan juntos', () => {
+    const approvals = {
+      'SAM_TPS-300-Z': {
+        approvedAtRevision: 3,
+        approvedAtCalibrationHash: 'abc123',
+        approvedAt: '2026-11-09T10:00:00Z',
+      },
+    };
+    const aporteOverrides = { 'SAM_TPS-300-Z': { kind: 'fijo-mm' as const, valueMm: 450 } };
+    const json = exportWorkspace(
+      [ELEMENT], EVIDENCE, DEFAULT_PROJECT_META, TRAY_INPUT, SAMPLE_OVERRIDES, null,
+      { approvals, aporteOverrides },
+    );
+    const lib = importWorkspace(json).library;
+    expect(lib?.approvals).toEqual(approvals);
+    expect(lib?.aporteOverrides).toEqual(aporteOverrides);
+    expect(Object.keys(lib?.overrides ?? {})).toEqual(['SAM_TPS-300-Z']);
+  });
+
+  it('archivo v1 con catalogConfig se lee como biblioteca PARCIAL (sólo overrides)', () => {
+    const base = exportWorkspace([ELEMENT], EVIDENCE, DEFAULT_PROJECT_META, TRAY_INPUT);
+    const json = asV1(base, { version: 'codex:catalogConfig/1', overrides: SAMPLE_OVERRIDES });
+    const imported = importWorkspace(json);
+    expect(imported.fileVersion).toBe(1);
+    expect(imported.library?.partial).toBe(true);
     expect(imported.catalogConfig?.overrides['SAM_TPS-300-Z'].entries[0].catalogPortName).toBe('P3');
   });
 
-  it('archivo legacy sin catalogConfig importa correctamente', () => {
+  it('archivo sin ningún bloque de biblioteca importa correctamente (library null)', () => {
     const json = exportWorkspace([ELEMENT], EVIDENCE, DEFAULT_PROJECT_META, TRAY_INPUT);
     const imported = importWorkspace(json);
     expect(imported.catalogConfig).toBeUndefined();
+    expect(imported.library).toBeNull();
+    expect(importWorkspace(asV1(json, undefined)).library).toBeNull();
   });
 
-  it('rechaza versión desconocida de catalogConfig', () => {
+  it('rechaza versión desconocida del bloque library', () => {
     const json = exportWorkspace([ELEMENT], EVIDENCE, DEFAULT_PROJECT_META, TRAY_INPUT, SAMPLE_OVERRIDES);
     const parsed = JSON.parse(json) as Record<string, unknown>;
-    (parsed.catalogConfig as Record<string, unknown>).version = 'otra/9';
-    expect(() => importWorkspace(JSON.stringify(parsed))).toThrow('catalogConfig');
+    (parsed.library as Record<string, unknown>).version = 'otra/9';
+    expect(() => importWorkspace(JSON.stringify(parsed))).toThrow('library');
   });
 
-  it('rechaza catalogConfig con source inválido', () => {
+  it('rechaza versión desconocida de catalogConfig (v1)', () => {
+    const base = exportWorkspace([ELEMENT], EVIDENCE, DEFAULT_PROJECT_META, TRAY_INPUT);
+    const json = asV1(base, { version: 'otra/9', overrides: {} });
+    expect(() => importWorkspace(json)).toThrow('catalogConfig');
+  });
+
+  it('rechaza catalogConfig (v1) con source inválido', () => {
     const bad = {
       version: 'codex:catalogConfig/1',
       overrides: { X: { productId: 'X', source: 'garbage', entries: [] } },
     };
     const json = exportWorkspace([ELEMENT], EVIDENCE, DEFAULT_PROJECT_META, TRAY_INPUT);
-    const parsed = JSON.parse(json) as Record<string, unknown>;
-    parsed.catalogConfig = bad;
-    expect(() => importWorkspace(JSON.stringify(parsed))).toThrow('catalogConfig');
+    expect(() => importWorkspace(asV1(json, bad))).toThrow('catalogConfig');
   });
 
   it('round-trip: overrides con modelFrame + port geometry se preservan', () => {
@@ -299,7 +347,7 @@ describe('exportWorkspace + importWorkspace — catalogConfig', () => {
     };
     const json = exportWorkspace([ELEMENT], EVIDENCE, DEFAULT_PROJECT_META, TRAY_INPUT, ov);
     const imported = importWorkspace(json);
-    const got = imported.catalogConfig?.overrides['SAM_TPS-300-Z'];
+    const got = imported.library?.overrides['SAM_TPS-300-Z'];
     expect(got?.modelFrame?.rz_deg).toBe(90);
     const dev = got?.entries.find((e) => e.recipePortName === 'boca_derivacion');
     expect(dev?.geometry?.installRotationDeg).toBe(10);
@@ -321,7 +369,7 @@ describe('exportWorkspace + importWorkspace — catalogConfig', () => {
     };
     const json = exportWorkspace([ELEMENT], EVIDENCE, DEFAULT_PROJECT_META, TRAY_INPUT, ovLegacy);
     const imported = importWorkspace(json);
-    const got = imported.catalogConfig?.overrides['SAM_TPS-300-Z'];
+    const got = imported.library?.overrides['SAM_TPS-300-Z'];
     expect(got?.modelFrame).toBeUndefined();
     expect(got?.entries[0].geometry).toBeUndefined();
     // Y el campo source se preserva intacto.

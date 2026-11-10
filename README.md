@@ -1,34 +1,95 @@
 # Diseñador de Bandejas Portacables 3D
 
-Prototipo de aplicación web para diseñar instalaciones industriales con
-bandejas portacables en un visor 3D interactivo.
+Aplicación web para diseñar instalaciones industriales: equipos, bandejas
+portacables y sus conexiones, en un visor 3D. Un motor de cálculo en Python
+(`vendor/motor_bandejas`, servido por `server/tray_service.py`) calcula ocupación
+y cómputo.
+
+**La aplicación productiva es el espacio de trabajo unificado** y se abre en
+`http://localhost:5173/`. El editor inicial (escena de ejemplo con tablero y
+motor) ya no es el producto: sigue disponible en `/?legacy=v1`, con su código y
+sus datos intactos.
+
+> Estado actual, qué funciona y qué sigue: ver [`docs/STATUS.md`](docs/STATUS.md).
+
+## Rama
+
+Trabajo del hito 1 ("el proyecto no se pierde"): `feat/m1-proyecto-persistente`
+(base: `feat/pattern-models-reconciliation` @ `c8b3105`).
 
 ## Requisitos
 
-- [Node.js 24 LTS](https://nodejs.org/) (incluye npm) — versión recomendada y comprobada
+- [Node.js 24 LTS](https://nodejs.org/) (incluye npm)
+- [Python 3.12+](https://www.python.org/) (sólo para el motor de cálculo y sus pruebas;
+  el diseño y el guardado funcionan sin él)
 - [Git](https://git-scm.com/)
 
-## Instalación (Windows)
-
-Abrí una terminal (CMD o PowerShell) y ejecutá:
+## Instalación
 
 ```bat
 git clone https://github.com/MateoAntoni23/codex.git codex
 cd codex
-git checkout feat/initial-3d-editor
+git checkout feat/m1-proyecto-persistente
 npm ci
+npx playwright install chromium
 ```
 
-> `npm ci` usa el `package-lock.json` para una instalación exacta y reproducible.
-> Usá `npm install` solo si querés actualizar el lockfile.
+> `npm ci` usa `package-lock.json` para una instalación exacta y reproducible.
+> `.gitattributes` fuerza LF en `vendor/motor_bandejas`: el motor compara huellas
+> SHA-256 de sus datos y con CRLF (Windows + `core.autocrlf=true`) fallaban 4 pruebas.
 
-## Iniciar en modo desarrollo
+## Ejecutar
 
 ```bat
-npm run dev
+npm run dev:trays     # Vite en :5173 + motor Python en :8765 (cálculo habilitado)
+npm run dev           # sólo Vite: se puede diseñar y guardar; el motor queda "apagado"
 ```
 
-Abrí el navegador en **http://localhost:5173**
+Abrí **http://localhost:5173/**. Al abrir encontrás tu último proyecto (se
+restaura de IndexedDB) o uno vacío.
+
+### Proyecto
+
+- **Autoguardado local**: cada cambio se guarda en IndexedDB (base
+  `codex-workspace-v1`, separada de la del editor inicial). El indicador de la
+  barra superior muestra *Guardando… / Guardado en este equipo / Error al guardar*
+  (con botón *Reintentar*). Un fallo de escritura nunca modifica lo que ves.
+- **Nuevo** (pide confirmación si hay contenido), **Abrir archivo**, **Guardar copia**
+  (archivo `fileVersion 2`; lee también `fileVersion 1`). Guardar copia funciona sin
+  motor y con el proyecto vacío.
+- **Biblioteca de calibración protegida**: la de este equipo
+  (`localStorage` `codex:catalogConfig:v1`) es la autoridad. Abrir un archivo no la
+  modifica; si la copia del archivo difiere se pregunta: seguir con la local
+  (por defecto), adoptar la del archivo o cancelar. Adoptar guarda antes una copia de
+  la anterior en `codex:catalogConfig:v1:backup:<fecha>`.
+- **Catálogo sin motor**: productos, puertos, compatibilidades, familias y cables salen
+  de `vendor/motor_bandejas/datos` (chunk diferido en el build). El motor sólo hace
+  falta para calcular; si su catálogo no coincide con el empaquetado se avisa y no se
+  calcula.
+- Ejemplos y escenarios son acciones explícitas de la barra: *Cargar ejemplo del
+  motor*, *Cargar equipos de demostración*, *Cargar escenario de prueba*.
+
+## Verificar
+
+```bat
+npm run verify        # typecheck + vitest + pruebas del motor + Playwright
+```
+
+o por partes:
+
+```bat
+npm run typecheck
+npm test              # Vitest
+npm run test:motor    # unittest del motor Python
+npm run test:e2e      # Playwright (levanta sus propios servidores)
+```
+
+Playwright levanta (`webServer` en `playwright.config.ts`): el motor Python, Vite contra
+ese motor y una segunda instancia de Vite **sin motor** (su proxy apunta a un puerto
+sin servicio) para las pruebas `*.sinmotor.spec.ts`. Fuera de CI reutiliza servidores
+ya abiertos; con `CI=1` levanta siempre los propios. Puertos configurables:
+`CODEX_WEB_PORT` (5173), `CODEX_MOTOR_PORT` (8765), `CODEX_NOMOTOR_WEB_PORT` (5183).
+Las pruebas E2E corren en serie (`workers: 1`).
 
 ## Compilar para producción
 
@@ -36,19 +97,7 @@ Abrí el navegador en **http://localhost:5173**
 npm run build
 ```
 
-Los archivos quedan en la carpeta `dist/`.
-
-## Verificar tipos TypeScript
-
-```bat
-npm run typecheck
-```
-
-## Ejecutar pruebas
-
-```bat
-npm test
-```
+Los archivos quedan en `dist/`.
 
 ## Convención de coordenadas
 
@@ -63,6 +112,20 @@ npm test
 
 Para apoyar un objeto en el piso (`z_dominio = 0`), fijar `position.z = height / 2`.
 La conversión centralizada está en `src/scene/coords.ts`.
+
+## Proyecto vacío y bloque `pe`
+
+Un proyecto nuevo no trae equipos ni piezas. El trazado vacío lleva un `pe` neutro
+(`seccion_requerida_mm2: 0`, `cable_id: ''`, `conductores: []`) que significa "PE sin
+definir", no un requisito. Al calcular, `toMotorEntrada` omite el `pe` neutro (en
+`trazado/1` el motor lo trata como opcional); en cuanto se fija un cable PE viaja completo.
+Detalle en `src/project/emptyProject.ts`.
+
+## Editor inicial (heredado, `/?legacy=v1`)
+
+Las secciones siguientes describen el editor inicial. Se abre en `/?legacy=v1`.
+Usa su propia base IndexedDB (`codex-cable-tray-v1`), que el espacio de trabajo
+nunca lee ni escribe.
 
 ## Qué probar visualmente
 

@@ -26,7 +26,7 @@ export function AddSupportForm({ onClose }: { onClose: () => void }) {
   if (!context) {
     return (
       <div style={{ padding: '8px 12px', fontSize: 11, color: '#ff9955' }}>
-        Motor no conectado — reconectá para cargar el catálogo.
+        Cargando el catálogo de productos…
       </div>
     );
   }

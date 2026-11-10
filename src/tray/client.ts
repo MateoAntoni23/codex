@@ -1,5 +1,6 @@
 import { GestorSolicitudes } from '../../vendor/motor_bandejas/integracion/ts/gestorSolicitudes';
 import type { Solicitud } from '../../vendor/motor_bandejas/integracion/ts/contrato';
+import { catalogFingerprint } from '../catalog/staticCatalog';
 import { object, readResult, type Context, type Product, type CatalogPort, type CatalogCompatibility, type CatalogUnionComponent, type CatalogFamily } from './model';
 export async function getJson(path:string,init?:RequestInit):Promise<unknown>{
  const response=await fetch(`/api/motor/v1/${path}`,{...init,signal:init?.signal??AbortSignal.timeout(30000)});
@@ -76,5 +77,17 @@ export async function loadContext():Promise<Context>{
      )
    : [];
  return {productos:products as Product[],cables:[...cables].sort(),puertos,compatibilidades,componentesUnion,familias,ejemplos:examples.ejemplos as Context['ejemplos'],versions:JSON.stringify({health,decisiones_sha256:catalog.decisiones_sha256})};
+}
+/** Estado de salud del motor (`GET /v1/salud`). Lanza si el motor no responde. */
+export async function fetchEngineHealth():Promise<unknown>{return getJson('salud')}
+/**
+ * Identidad del catálogo que sirve el motor: SHA-256 de decisiones_producto.json y
+ * huella estructural del catálogo + cables (misma función que el catálogo
+ * empaquetado). Se compara contra `loadStaticCatalog()` antes de calcular.
+ */
+export async function fetchEngineCatalogIdentity():Promise<{decisionesSha256:string;fingerprint:string}>{
+ const catalog=await getJson('catalogos');
+ if(!object(catalog)||catalog.version_api!=='cad/1'||!object(catalog.catalogo)||!Array.isArray(catalog.cable_ids)||!catalog.cable_ids.every(x=>typeof x==='string')||typeof catalog.decisiones_sha256!=='string')throw Error('CONTEXTO_INCOMPATIBLE');
+ return {decisionesSha256:catalog.decisiones_sha256,fingerprint:catalogFingerprint(catalog.catalogo,catalog.cable_ids as string[])};
 }
 export const createManager=()=>new GestorSolicitudes(transport,'cad-tray');

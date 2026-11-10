@@ -261,7 +261,7 @@ export function WorkspaceTree() {
                 activateRouting();
               }}
               disabled={!context || entrada.piezas.length === 0}
-              title={!context ? 'Motor no conectado' : entrada.piezas.length === 0 ? 'Agregá piezas primero' : undefined}
+              title={!context ? 'Catálogo cargando…' : entrada.piezas.length === 0 ? 'Agregá piezas primero' : undefined}
             >
               ↗ Continuar trazado
             </button>
@@ -276,7 +276,7 @@ export function WorkspaceTree() {
             style={{ marginBottom: 4, background: '#1f3322', border: '1px solid #336644', width: '100%', textAlign: 'left' }}
             onClick={() => setAddingSegment(true)}
             disabled={!context}
-            title={!context ? 'Motor no conectado' : undefined}
+            title={!context ? 'Catálogo cargando…' : undefined}
           >
             + Agregar tramo recto
           </button>
@@ -291,7 +291,7 @@ export function WorkspaceTree() {
             {p.instancia_id} · {p.producto_id}
           </button>
         ))}
-        {!entrada && <p className="workspace-empty">Motor no conectado</p>}
+        {entrada && entrada.piezas.length === 0 && <p className="workspace-empty" data-testid="tray-empty">Sin piezas todavía</p>}
       </section>
 
       {/* Imported catalog (ELS-IMP-EQCX) — appears only when a catalog is loaded */}
@@ -352,7 +352,7 @@ export function WorkspaceTree() {
               style={{ marginBottom: 4, background: '#2a2a1a', border: '1px solid #666633', width: '100%', textAlign: 'left' }}
               onClick={() => setAddingSupport(true)}
               disabled={!context || entrada.piezas.length === 0}
-              title={!context ? 'Motor no conectado' : entrada.piezas.length === 0 ? 'Agregá piezas primero' : undefined}
+              title={!context ? 'Catálogo cargando…' : entrada.piezas.length === 0 ? 'Agregá piezas primero' : undefined}
             >
               + Agregar soporte
             </button>
