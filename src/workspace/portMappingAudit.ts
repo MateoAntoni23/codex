@@ -17,7 +17,7 @@ export interface AuditIssue {
   producto_id: string;
   master: string;
   boca: string;
-  kind: 'uncalibrated' | 'missing-catalog-port';
+  kind: 'uncalibrated' | 'missing-catalog-port' | 'role-mismatch';
   detail: string;
 }
 
@@ -25,7 +25,7 @@ export interface AuditInput {
   productos: readonly Product[];
   puertos: readonly CatalogPort[];
   /** Maestro del producto (id + bocas declaradas), o null si no tiene. */
-  masterFor: (p: Product) => { id: string; ports: readonly { recipePortName: string }[] } | null;
+  masterFor: (p: Product) => { id: string; ports: readonly { recipePortName: string; physicalLabel?: string }[] } | null;
   /** Nombres de boca que emite la receta paramétrica del producto, o null si no hay receta. */
   recipePortsFor: (p: Product) => readonly string[] | null;
   resolve: (productId: string, recipePortName: string) => PortResolution;
@@ -41,6 +41,9 @@ export interface AuditReport {
 
 export function auditPortMappings(input: AuditInput): AuditReport {
   const portIds = new Set(input.puertos.map((p) => p.puerto_id));
+  const nombreById = new Map(input.puertos.map((p) => [p.puerto_id, p.nombre_puerto ?? ''] as const));
+  // Sentido de una boca: derivación vs. resto (tronco / extremo / brazo).
+  const isDeriv = (s: string | undefined) => /deriv/i.test(s ?? '');
   const issues: AuditIssue[] = [];
   let withMaster = 0;
   let checkedPorts = 0;
@@ -59,6 +62,14 @@ export function auditPortMappings(input: AuditInput): AuditReport {
       const id = `${p.producto_id}-${r.catalogPortName}`;
       if (!portIds.has(id)) {
         issues.push({ producto_id: p.producto_id, master: master.id, boca, kind: 'missing-catalog-port', detail: `${id} no existe en PUERTOS_PRODUCTO` });
+        continue;
+      }
+      // Contraste de sentido contra nombre_puerto del catálogo: "boca derivación"
+      // tiene que caer en la boca que el patrón declara derivación, y viceversa.
+      const label = master.ports.find((x) => x.recipePortName === boca)?.physicalLabel;
+      const nombre = nombreById.get(id);
+      if (label !== undefined && isDeriv(label) !== isDeriv(nombre)) {
+        issues.push({ producto_id: p.producto_id, master: master.id, boca, kind: 'role-mismatch', detail: `patrón "${label}" → ${id} ("${nombre}")` });
       }
     }
   }

@@ -136,5 +136,27 @@
     "cable_id": "TEST",
     "origen_requisito": "test",
     "conductores": []
+  },
+  "uniones_ws": {
+    "CON-001": {
+      "estado": "documentada",
+      "verificacion": {
+        "huecoMm": 0,
+        "anguloDeg": 0,
+        "giroDeg": null,
+        "ok": true
+      },
+      "fecha_iso": "2026-11-10T23:46:54.311Z"
+    },
+    "CON-002": {
+      "estado": "documentada",
+      "verificacion": {
+        "huecoMm": 0,
+        "anguloDeg": 0.0000012074182697257333,
+        "giroDeg": null,
+        "ok": true
+      },
+      "fecha_iso": "2026-11-10T23:46:54.311Z"
+    }
   }
 }

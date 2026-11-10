@@ -1001,9 +1001,12 @@ const MASTER_ESCALERA: readonly MasterModel[] = [
       catalogAlaMm: 65,
     },
     ports: [
+      // Hito 2: el catálogo nombra P1 = "boca 1", P2 = "boca 2", P3 = "boca derivación"
+      // (PUERTOS_PRODUCTO.nombre_puerto), igual que el maestro de perforada. Antes la
+      // derivación estaba en P2 y un tronco en P3 (intercambiados).
       { recipePortName: 'P1', physicalLabel: 'Tronco (z_min)', catalogPortName: 'P1' },
-      { recipePortName: 'P2', physicalLabel: 'Boca derivación (x_max)', catalogPortName: 'P2' },
-      { recipePortName: 'P3', physicalLabel: 'Tronco (z_max)', catalogPortName: 'P3' },
+      { recipePortName: 'P2', physicalLabel: 'Tronco (z_max)', catalogPortName: 'P2' },
+      { recipePortName: 'P3', physicalLabel: 'Boca derivación (x_max)', catalogPortName: 'P3' },
     ],
     variationRule: {
       kind: 'ala-independent',

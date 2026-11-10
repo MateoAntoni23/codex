@@ -253,8 +253,9 @@ export function buildTSRecipe(params: {
   //   P3 = index 8 (z_max):        polygon[8]→polygon[9]
   const ports: PortDef[] = [
     portOnEdge('P1', polygon[0], polygon[1], ala_mm),
-    portOnEdge('P2', polygon[4], polygon[5], ala_mm),
-    portOnEdge('P3', polygon[8], polygon[9], ala_mm),
+    // Hito 2: nombres alineados con el catálogo (P3 = "boca derivación").
+    portOnEdge('P3', polygon[4], polygon[5], ala_mm),
+    portOnEdge('P2', polygon[8], polygon[9], ala_mm),
   ];
   const bb = bboxOf(polygon);
   return {
