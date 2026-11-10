@@ -36,7 +36,13 @@ import { resolveParametricEntry } from '../workspace/parametricBridge';
 import { useCatalogConfigStore } from './catalogConfigStore';
 import { InspectorTabContent, TABS, type TabId } from './ConfiguratorInspectorTabs';
 import { ConfiguratorViewer } from './ConfiguratorViewer';
-import { findMasterForProduct } from './masterModels';
+import { findMasterForProduct, type MasterModel } from './masterModels';
+import {
+  classifyAll,
+  listCommercialAssociates,
+  type PatternClassification,
+  type PatternKind,
+} from './patternClassification';
 import { classifySistema, SISTEMAS, type Sistema } from './sistemaClassifier';
 import {
   classifyProductMapping,
@@ -68,6 +74,36 @@ interface Filters extends BaseFilters {
 
 const EMPTY_FILTERS: Filters = { ...EMPTY_BASE_FILTERS, estado: '' };
 
+/**
+ * Modo de vista del Configurador (hito 4):
+ *   - 'all'      : lista plana — todos los productos (compatibilidad con hitos
+ *                  previos).
+ *   - 'patterns' : sólo patrones base — UNO por maestro. Lo que el usuario
+ *                  debe calibrar y aprobar.
+ *   - 'variants' : sólo variantes dimensionales generadas — se comprueban, no
+ *                  se calibran.
+ */
+type ViewMode = 'all' | 'patterns' | 'variants';
+
+function keepForViewMode(kind: PatternKind, mode: ViewMode): boolean {
+  if (mode === 'all') return true;
+  if (mode === 'patterns') return kind === 'pattern';
+  return kind === 'variant';
+}
+
+function patternKindLabel(kind: PatternKind): string {
+  switch (kind) {
+    case 'pattern':
+      return 'Patrón';
+    case 'variant':
+      return 'Variante';
+    case 'commercial-associate':
+      return 'Asociado';
+    case 'orphan':
+      return '—';
+  }
+}
+
 function matchesFilter(
   p: Product,
   f: Filters,
@@ -86,6 +122,9 @@ function ProductList({
   setFilters,
   options,
   familiasById,
+  viewMode,
+  setViewMode,
+  classifications,
 }: {
   products: readonly Product[];
   selected: string | null;
@@ -94,13 +133,34 @@ function ProductList({
   setFilters: (f: Filters) => void;
   options: FilterOptions;
   familiasById: Map<string, CatalogFamily>;
+  viewMode: ViewMode;
+  setViewMode: (m: ViewMode) => void;
+  classifications: Map<string, PatternClassification>;
 }) {
   // Subscribe to overrides so mapping badges + filter re-run on upsert/remove.
   const overrides = useCatalogConfigStore((s) => s.overrides);
   const visible = useMemo(
-    () => products.filter((p) => matchesFilter(p, filters, familiasById)),
-    [products, filters, overrides, familiasById],
+    () =>
+      products.filter((p) => {
+        if (!matchesFilter(p, filters, familiasById)) return false;
+        const kind = classifications.get(p.producto_id)?.kind ?? 'orphan';
+        return keepForViewMode(kind, viewMode);
+      }),
+    [products, filters, overrides, familiasById, viewMode, classifications],
   );
+
+  // Conteos por modo de vista (sobre la lista base, para mostrar distribución
+  // real aunque el usuario tenga filtros aplicados).
+  const viewModeCounts = useMemo(() => {
+    let patterns = 0;
+    let variants = 0;
+    for (const p of products) {
+      const kind = classifications.get(p.producto_id)?.kind ?? 'orphan';
+      if (kind === 'pattern') patterns++;
+      else if (kind === 'variant') variants++;
+    }
+    return { patterns, variants, all: products.length };
+  }, [products, classifications]);
 
   // Conteos por sistema para el UI jerárquico. Se recalculan sobre el conjunto
   // base (todos los productos) para que el usuario siempre vea la distribución
@@ -121,6 +181,40 @@ function ProductList({
   return (
     <aside className="cfg-panel cfg-panel-left">
       <div className="cfg-panel-title">Catálogo</div>
+      <div className="cfg-viewmode" role="tablist" aria-label="Modo de vista">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={viewMode === 'all'}
+          className={`cfg-viewmode-btn ${viewMode === 'all' ? 'is-active' : ''}`}
+          onClick={() => setViewMode('all')}
+          data-testid="cfg-viewmode-all"
+        >
+          Todos ({viewModeCounts.all})
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={viewMode === 'patterns'}
+          className={`cfg-viewmode-btn ${viewMode === 'patterns' ? 'is-active' : ''}`}
+          onClick={() => setViewMode('patterns')}
+          data-testid="cfg-viewmode-patterns"
+          title="Modelos fuente que requieren calibración del usuario"
+        >
+          Patrones base ({viewModeCounts.patterns})
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={viewMode === 'variants'}
+          className={`cfg-viewmode-btn ${viewMode === 'variants' ? 'is-active' : ''}`}
+          onClick={() => setViewMode('variants')}
+          data-testid="cfg-viewmode-variants"
+          title="Productos derivados que se comprueban, no se calibran"
+        >
+          Variantes ({viewModeCounts.variants})
+        </button>
+      </div>
       <div className="cfg-filters">
         <select
           value={filters.sistema}
@@ -253,6 +347,7 @@ function ProductList({
       <ul className="cfg-list">
         {visible.map((p) => {
           const info = classifyProductMapping(p);
+          const kind = classifications.get(p.producto_id)?.kind ?? 'orphan';
           return (
             <li key={p.producto_id}>
               <button
@@ -261,10 +356,14 @@ function ProductList({
                 onClick={() => onSelect(p.producto_id)}
                 data-testid={`cfg-product-${p.producto_id}`}
                 data-status={info.status}
+                data-kind={kind}
                 title={info.cause}
               >
                 <span className="cfg-list-sku">{p.sku}</span>
                 <span className="cfg-list-tipo">{p.tipo_pieza}</span>
+                <span className={`cfg-list-kind cfg-kind-${kind}`} data-testid={`cfg-kind-${p.producto_id}`}>
+                  {patternKindLabel(kind)}
+                </span>
                 <span className={`cfg-list-status cfg-status-${info.status}`}>
                   {info.label}
                 </span>
@@ -356,7 +455,15 @@ function ApprovalBanner({ product }: { product: Product | null }) {
   );
 }
 
-function Inspector({ product }: { product: Product | null }) {
+function Inspector({
+  product,
+  classification,
+  onNavigateTo,
+}: {
+  product: Product | null;
+  classification: PatternClassification | null;
+  onNavigateTo: (id: string) => void;
+}) {
   const [activeTab, setActiveTab] = useState<TabId>('producto');
   const context = useTrayStore((s) => s.context);
   const familias = context?.familias ?? [];
@@ -366,6 +473,11 @@ function Inspector({ product }: { product: Product | null }) {
   return (
     <aside className="cfg-panel cfg-panel-right">
       <div className="cfg-panel-title">Inspector</div>
+      <ClassificationBanner
+        product={product}
+        classification={classification}
+        onNavigateTo={onNavigateTo}
+      />
       <ApprovalBanner product={product} />
       <nav className="cfg-tabs" role="tablist">
         {TABS.map((t) => (
@@ -393,6 +505,177 @@ function Inspector({ product }: { product: Product | null }) {
         />
       </div>
     </aside>
+  );
+}
+
+/**
+ * Banner que informa, para el producto seleccionado, si es patrón base, un
+ * asociado comercial o una variante generada. Para las variantes muestra:
+ * origen (patrón), delta de dimensiones, regla+procedencia+revisión, y un
+ * botón "Ir al patrón" que mueve la selección al patrón canónico. Si el
+ * patrón de origen no está aprobado, aparece una advertencia.
+ */
+function ClassificationBanner({
+  product,
+  classification,
+  onNavigateTo,
+}: {
+  product: Product | null;
+  classification: PatternClassification | null;
+  onNavigateTo: (id: string) => void;
+}) {
+  // Suscribir a aprobaciones para que la advertencia de patrón se actualice.
+  const approvals = useCatalogConfigStore((s) => s.approvals);
+  const getInfo = useCatalogConfigStore((s) => s.getApprovalInfo);
+  void approvals;
+
+  if (!product || !classification) return null;
+  const { kind, master, variant, canonicalPatternProductId } = classification;
+
+  if (kind === 'orphan') {
+    return (
+      <div className="cfg-class-banner" data-kind="orphan" data-testid="cfg-class-banner">
+        <span className="cfg-class-label">Sin cobertura paramétrica</span>
+        <span className="cfg-class-detail">
+          {master
+            ? 'La combinación de dimensiones no está cubierta por la regla del maestro — requiere STEP propio.'
+            : 'No hay maestro asociado para la familia / tipo de pieza de este producto.'}
+        </span>
+      </div>
+    );
+  }
+
+  if (kind === 'pattern') {
+    return (
+      <PatternBanner product={product} master={master!} onNavigateTo={onNavigateTo} />
+    );
+  }
+
+  if (kind === 'commercial-associate') {
+    return (
+      <div
+        className="cfg-class-banner"
+        data-kind="commercial-associate"
+        data-testid="cfg-class-banner"
+      >
+        <span className="cfg-class-label">Asociado comercial del patrón {master!.label}</span>
+        <span className="cfg-class-detail">
+          Misma geometría que el patrón, distinto material/acabado/espesor. La calibración se
+          hereda del patrón canónico — no se calibra por separado.
+        </span>
+        {canonicalPatternProductId && canonicalPatternProductId !== product.producto_id && (
+          <div className="cfg-class-actions">
+            <button
+              type="button"
+              className="cfg-btn"
+              onClick={() => onNavigateTo(canonicalPatternProductId)}
+              data-testid="cfg-class-goto-pattern"
+            >
+              Ir al patrón ({canonicalPatternProductId})
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // kind === 'variant'
+  const rule = master!.variationRule;
+  const patternApproval = canonicalPatternProductId
+    ? getInfo(canonicalPatternProductId, master!.revision)
+    : null;
+  const patternPending = patternApproval?.status !== 'current';
+
+  return (
+    <div className="cfg-class-banner" data-kind="variant" data-testid="cfg-class-banner">
+      <span className="cfg-class-label">
+        Variante generada desde {master!.label}
+      </span>
+      <span className="cfg-class-detail">
+        Origen {master!.baseParams.ancho_mm} × {master!.baseParams.ala_mm} mm →
+        {' '}
+        resultado {variant!.ancho_mm ?? '?'} × {variant!.ala_mm ?? '?'} mm
+        {' · '}
+        regla <code>{rule.kind}</code> ({rule.provenance}) · revisión {master!.revision}
+      </span>
+      {patternPending && (
+        <span
+          className="cfg-class-warning"
+          data-testid="cfg-class-pattern-pending"
+        >
+          ⚠ El patrón de origen {patternApproval?.status === 'none'
+            ? 'aún no está aprobado'
+            : 'tiene aprobación desactualizada'} —
+          la geometría generada puede no ser definitiva.
+        </span>
+      )}
+      {canonicalPatternProductId && (
+        <div className="cfg-class-actions">
+          <button
+            type="button"
+            className="cfg-btn"
+            onClick={() => onNavigateTo(canonicalPatternProductId)}
+            data-testid="cfg-class-goto-pattern"
+          >
+            Ir al patrón ({canonicalPatternProductId})
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Banner específico para un patrón canónico. Muestra archivo fuente, revisión
+ * y dimensiones base, además de la lista de productos asociados comerciales
+ * (misma geometría, distinto material/acabado). Cada asociado es clicable
+ * para navegar a su ficha, pero el usuario entiende que la calibración vive
+ * en el patrón.
+ */
+function PatternBanner({
+  product,
+  master,
+  onNavigateTo,
+}: {
+  product: Product;
+  master: MasterModel;
+  onNavigateTo: (id: string) => void;
+}) {
+  const productos = useTrayStore((s) => s.context?.productos ?? []);
+  const associates = useMemo(
+    () => listCommercialAssociates(product, productos),
+    [product, productos],
+  );
+  return (
+    <div className="cfg-class-banner" data-kind="pattern" data-testid="cfg-class-banner">
+      <span className="cfg-class-label">Patrón base — {master.label}</span>
+      <span className="cfg-class-detail">
+        Archivo fuente <code>{master.source.stepFile}</code> · revisión {master.revision} ·
+        ancho {master.baseParams.ancho_mm} mm · ala {master.baseParams.ala_mm} mm
+      </span>
+      {associates.length > 0 && (
+        <div className="cfg-class-associates" data-testid="cfg-class-associates">
+          <span className="cfg-class-detail">
+            {associates.length} asociado{associates.length === 1 ? '' : 's'} comercial
+            {associates.length === 1 ? '' : 'es'} — misma geometría, distinto material/acabado:
+          </span>
+          <ul className="cfg-class-associates-list">
+            {associates.map((a) => (
+              <li key={a.producto_id}>
+                <button
+                  type="button"
+                  className="cfg-class-associate-btn"
+                  onClick={() => onNavigateTo(a.producto_id)}
+                  data-testid={`cfg-class-associate-${a.producto_id}`}
+                >
+                  {a.sku}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -526,6 +809,7 @@ export function ConfiguratorLayout() {
   const context = useTrayStore((s) => s.context);
   const [selected, setSelected] = useState<string | null>(null);
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
+  const [viewMode, setViewMode] = useState<ViewMode>('all');
 
   useEffect(() => {
     void useTrayStore.getState().initialize();
@@ -585,6 +869,11 @@ export function ConfiguratorLayout() {
     [products, selected],
   );
 
+  // Clasificación patrón/variante/asociado/huérfano por producto. Se recomputa
+  // sólo cuando cambia el snapshot — enumerateVariantsForMaster recorre los
+  // 12 maestros y es cacheable por referencia estable de `products`.
+  const classifications = useMemo(() => classifyAll(products), [products]);
+
   return (
     <div className="cfg-root" data-testid="configurator-root">
       <header className="cfg-toolbar">
@@ -601,9 +890,16 @@ export function ConfiguratorLayout() {
           setFilters={setFilters}
           options={filterOptions}
           familiasById={familiasById}
+          viewMode={viewMode}
+          setViewMode={setViewMode}
+          classifications={classifications}
         />
         <ConfiguratorViewer product={selectedProduct} />
-        <Inspector product={selectedProduct} />
+        <Inspector
+          product={selectedProduct}
+          classification={selectedProduct ? classifications.get(selectedProduct.producto_id) ?? null : null}
+          onNavigateTo={setSelected}
+        />
       </div>
     </div>
   );

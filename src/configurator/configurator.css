@@ -123,9 +123,9 @@
   padding: 6px 12px;
   cursor: pointer;
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: 1fr auto auto;
   grid-template-rows: auto auto;
-  column-gap: 8px;
+  column-gap: 6px;
   row-gap: 2px;
   font-size: 12px;
 }
@@ -147,8 +147,25 @@
   font-size: 11px;
 }
 
-.cfg-list-status {
+.cfg-list-kind {
   grid-column: 2;
+  grid-row: 1 / 3;
+  align-self: center;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 6px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+}
+
+.cfg-kind-pattern              { color: #ffcc88; border-color: #775533; background: #2a1e0c; }
+.cfg-kind-variant              { color: #88ccff; border-color: #335577; background: #0c1a2a; }
+.cfg-kind-commercial-associate { color: #aa88cc; border-color: #553377; background: #1a0c2a; }
+.cfg-kind-orphan               { color: #666688; border-color: #33334a; }
+
+.cfg-list-status {
+  grid-column: 3;
   grid-row: 1 / 3;
   align-self: center;
   font-size: 10px;
@@ -170,6 +187,116 @@
 .cfg-status-recipe-default-mapping { color: #88ccff; border-color: #335577; }
 .cfg-status-recipe-override        { color: #ffcc88; border-color: #775533; }
 .cfg-status-recipe-needs-mapping   { color: #ff9966; border-color: #884433; }
+
+/* ─── View mode toggle (patrones / variantes / todos) ─── */
+
+.cfg-viewmode {
+  display: flex;
+  gap: 2px;
+  padding: 6px 12px;
+  border-bottom: 1px solid #2a2a44;
+}
+
+.cfg-viewmode-btn {
+  flex: 1;
+  background: #0a0a14;
+  border: 1px solid #33334a;
+  color: #8888cc;
+  padding: 6px 8px;
+  font-size: 11px;
+  border-radius: 3px;
+  cursor: pointer;
+  text-align: center;
+}
+
+.cfg-viewmode-btn:hover { background: #1a1a2a; color: #e0e0f0; }
+.cfg-viewmode-btn.is-active {
+  background: #2a1e0c;
+  border-color: #775533;
+  color: #ffcc88;
+  font-weight: 600;
+}
+
+/* ─── Classification banner (variant / pattern / associate) ─── */
+
+.cfg-class-banner {
+  padding: 8px 12px;
+  border-bottom: 1px solid #2a2a44;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: #1a1a2a;
+}
+
+.cfg-class-banner[data-kind="pattern"]              { border-left: 3px solid #ffcc88; }
+.cfg-class-banner[data-kind="variant"]              { border-left: 3px solid #88ccff; }
+.cfg-class-banner[data-kind="commercial-associate"] { border-left: 3px solid #aa88cc; }
+.cfg-class-banner[data-kind="orphan"]               { border-left: 3px solid #666688; }
+
+.cfg-class-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #e0e0f0;
+}
+
+.cfg-class-detail {
+  font-size: 11px;
+  color: #8888cc;
+  line-height: 1.4;
+}
+
+.cfg-class-detail code {
+  color: #ffcc88;
+  background: rgba(255, 204, 136, 0.08);
+  padding: 1px 4px;
+  border-radius: 2px;
+  font-size: 10px;
+}
+
+.cfg-class-warning {
+  font-size: 11px;
+  color: #ffcc88;
+  background: rgba(255, 204, 136, 0.08);
+  padding: 4px 6px;
+  border-radius: 2px;
+}
+
+.cfg-class-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.cfg-class-associates {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+.cfg-class-associates-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.cfg-class-associate-btn {
+  background: #1a0c2a;
+  border: 1px solid #553377;
+  color: #aa88cc;
+  padding: 2px 8px;
+  font-size: 11px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.cfg-class-associate-btn:hover {
+  background: #2a1a3a;
+  color: #e0e0f0;
+}
 
 /* ─── Center: viewer ─── */
 
