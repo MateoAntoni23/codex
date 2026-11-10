@@ -146,6 +146,49 @@ export function isIdentityPortGeometry(g: PortGeometryOverride | undefined): boo
 }
 
 /**
+ * Mapping canónico para la curva vertical (compartido entre perforada CUPS y
+ * escalera CUS). Ambas comparten la misma receta `buildCUPSRecipe` que emite
+ * nombres semánticos `P1_horizontal`/`P2_vertical`; el catálogo SAMET publica
+ * P1/P2 en los puertos de cada SKU.
+ */
+const VERTICAL_CURVE_MAPPING: readonly PortMappingEntry[] = [
+  {
+    recipePortName: 'P1_horizontal',
+    catalogPortName: 'P1',
+    physicalLabel: 'Boca horizontal (bandeja)',
+    justification: 'Orden declarado en la receta paramétrica: P1 es la cara horizontal.',
+  },
+  {
+    recipePortName: 'P2_vertical',
+    catalogPortName: 'P2',
+    physicalLabel: 'Boca vertical (tramo ascendente/descendente)',
+    justification: 'Orden declarado en la receta paramétrica: P2 es la cara vertical.',
+  },
+];
+
+/**
+ * SKUs CUS escalera (40 variantes publicadas por SAMET) que comparten la
+ * receta `buildCUPSRecipe` por equivalencia conceptual autorizada por el
+ * usuario (2026-11-10). Todos usan el mismo mapping `VERTICAL_CURVE_MAPPING`
+ * — se declara aquí de forma explícita para que el inspector del
+ * configurador pueda enumerarlas sin descubrimiento dinámico.
+ */
+const CUS_PRODUCT_IDS: readonly string[] = (() => {
+  const ids: string[] = [];
+  for (const ancho of [150, 300, 450, 600] as const) {
+    for (const ala of [65, 90, 115, 150] as const) {
+      // Espesor 18 publica Z y G; espesor 14 sólo publica G (snapshot catálogo).
+      const skuAncho = String(ancho).padStart(3, '0');
+      const skuAla = String(ala).padStart(3, '0');
+      ids.push(`SAM_CUS-${skuAncho}-5-${skuAla}-18-Z`);
+      ids.push(`SAM_CUS-${skuAncho}-5-${skuAla}-18-G`);
+      ids.push(`SAM_CUS-${skuAncho}-5-${skuAla}-14-G`);
+    }
+  }
+  return ids;
+})();
+
+/**
  * Defaults por producto. Sólo se declaran mappings NO triviales (recetas
  * con nombres semánticos). Las recetas 2-boca (TRPS, CPS-45, CPS-90) usan
  * P1/P2 y caen en el fallback identidad implícito.
@@ -185,21 +228,12 @@ const DEFAULT_MAPPINGS: Readonly<Record<string, readonly PortMappingEntry[]>> = 
     { recipePortName: 'P3_z_neg', catalogPortName: 'P3', physicalLabel: 'Brazo Z−', justification: 'Orden de bocas del polígono medido.' },
     { recipePortName: 'P4_z_pos', catalogPortName: 'P4', physicalLabel: 'Brazo Z+', justification: 'Orden de bocas del polígono medido.' },
   ],
-  // ─── CUPS-300-A-Z (curva vertical interior) ──────────────────────────────
-  'SAM_CUPS-300-A-Z': [
-    {
-      recipePortName: 'P1_horizontal',
-      catalogPortName: 'P1',
-      physicalLabel: 'Boca horizontal (bandeja)',
-      justification: 'Orden declarado en la receta paramétrica: P1 es la cara horizontal.',
-    },
-    {
-      recipePortName: 'P2_vertical',
-      catalogPortName: 'P2',
-      physicalLabel: 'Boca vertical (tramo ascendente/descendente)',
-      justification: 'Orden declarado en la receta paramétrica: P2 es la cara vertical.',
-    },
-  ],
+  // ─── CUPS-300-A-Z (curva vertical interior perforada) ───────────────────
+  'SAM_CUPS-300-A-Z': VERTICAL_CURVE_MAPPING,
+  // ─── CUS escalera (curva vertical articulada) ────────────────────────────
+  // 40 variantes que comparten receta y mapping con CUPS por equivalencia
+  // conceptual autorizada por el usuario (2026-11-10).
+  ...Object.fromEntries(CUS_PRODUCT_IDS.map((id) => [id, VERTICAL_CURVE_MAPPING])),
 };
 
 // ─── Store de overrides (in-memory, serializable) ───────────────────────────

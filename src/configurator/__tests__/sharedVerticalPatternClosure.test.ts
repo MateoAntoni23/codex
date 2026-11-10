@@ -2,21 +2,24 @@
 /**
  * sharedVerticalPatternClosure — regresión del patrón vertical compartido.
  *
- * El "patrón vertical compartido" entre perforada y escalera se refiere al
- * modelo ascendente/descendente del catálogo:
+ * El "patrón vertical compartido" se refiere al modelo ascendente/descendente
+ * del catálogo, extendido ahora por equivalencia conceptual autorizada por el
+ * usuario (2026-11-10) a la curva vertical de escalera:
  *
  *   PERFORADA
  *     CUPS-{050..600}-A-Z  tipo_pieza="curva vertical interior"  (ascendente)
  *     CUPS-{050..600}-D-Z  tipo_pieza="curva vertical exterior"  (descendente)
  *
  *   ESCALERA
- *     CUS-*  tipo_pieza="curva vertical articulada" — pieza articulada de 5
- *     tramos. SAMET no publica STEP; el master escalera-vertical aún no está
- *     declarado. Esta regresión cubre sólo perforada; la aparición futura del
- *     master escalera queda señalada por `declaredVariantSkus=[]` en el maestro
- *     correspondiente.
+ *     CUS-{150,300,450,600}-5-{065,090,115,150}-{14,18}-{G,Z}
+ *       tipo_pieza="curva vertical articulada" (40 variantes).
+ *     La pieza real es articulada de 5 eslabones; SAMET no publica STEP ni
+ *     planos cotados. El usuario autorizó usar el polígono CUPS como
+ *     definición geométrica compartida, sin atribuir fidelidad al fabricante
+ *     (provenance='estimated'). No existe un SKU "CDS" escalera: la
+ *     orientación descendente se resuelve por colocación en escena.
  *
- * Propiedades a verificar (perforada):
+ * Propiedades a verificar (perforada + escalera):
  *   SV1. Los dos masters (curva_vertical_interior y curva_vertical_exterior)
  *        declaran la regla `depth-only` con `provenance=derived`.
  *   SV2. Las 6 variantes A-Z declaradas se resuelven al master interior.
@@ -140,13 +143,72 @@ describe('sharedVerticalPatternClosure — perforada CUPS A/D', () => {
     }
   });
 
-  it('SV7. documentación: escalera-vertical (CUS) aún no tiene master declarado', () => {
-    // Cuando SAMET publique CUS STEP (o se acepte una regla estimada basada en
-    // CS-45/CS-90 adaptados), se declarará master:escalera:curva_vertical_articulada.
-    // Hasta entonces, este test deja constancia de la ausencia.
-    const cusMaster = findMasterById(
-      'master:escalera:curva_vertical_articulada' as never,
-    );
-    expect(cusMaster).toBeNull();
+  it('SV7. CUS escalera comparte fuente geométrica y calibración con CUPS', () => {
+    // Equivalencia conceptual autorizada por el usuario (2026-11-10):
+    // master:escalera:curva_vertical reutiliza buildCUPSRecipe y el STEP
+    // CUPS-300-A-Z como fuente única. No hay duplicación de polígono ni
+    // calibración; sólo distinción comercial y rotulación.
+    const cusMaster = findMasterById('master:escalera:curva_vertical');
+    expect(cusMaster).toBeTruthy();
+    expect(cusMaster!.sistema).toBe('escalera');
+    expect(cusMaster!.pieceKind).toBe('curva_vertical');
+    expect(cusMaster!.recipeKey).toBe('escalera:curva_vertical');
+    // Fuente compartida con el patrón perforada.
+    const interior = findMasterById('master:perforada:curva_vertical_interior')!;
+    expect(cusMaster!.source.stepFile).toBe(interior.source.stepFile);
+    expect(cusMaster!.source.stepHashShort).toBe(interior.source.stepHashShort);
+    // Provenance='estimated' + rationale documenta la equivalencia.
+    expect(cusMaster!.variationRule.provenance).toBe('estimated');
+    expect(cusMaster!.variationRule.rationale).toMatch(/autorizad|equivalencia/i);
+    // Fidelity='pending' — no hay plano SAMET medido.
+    expect(cusMaster!.closure.fidelity.status).toBe('pending');
+  });
+
+  it('SV8. las 40 variantes CUS declaradas resuelven al master escalera-vertical', () => {
+    // Todos los SKUs del catálogo (anchos ×  alas × espesor × acabado) caen
+    // sobre el mismo master, vía regla `ala-independent` que no filtra por
+    // ala estricto.
+    const anchos = [150, 300, 450, 600] as const;
+    const alas = [65, 90, 115, 150] as const;
+    const combos: Array<{ ancho: number; ala: number; familia: 'SAM-STE-Z' | 'SAM-STE-G' }> = [];
+    for (const ancho of anchos) {
+      for (const ala of alas) {
+        combos.push({ ancho, ala, familia: 'SAM-STE-Z' });
+        combos.push({ ancho, ala, familia: 'SAM-STE-G' });
+      }
+    }
+    for (const { ancho, ala, familia } of combos) {
+      const skuAncho = String(ancho).padStart(3, '0');
+      const skuAla = String(ala).padStart(3, '0');
+      const acabado = familia === 'SAM-STE-Z' ? 'Z' : 'G';
+      const sku = `CUS-${skuAncho}-5-${skuAla}-18-${acabado}`;
+      const master = findMasterForProduct({
+        familia_id: familia,
+        tipo_pieza: 'curva vertical articulada',
+        ala_nominal_mm: ala,
+        sku,
+        producto_id: `SAM_${sku}`,
+      });
+      expect(
+        master,
+        `CUS ancho=${ancho} ala=${ala} ${familia}`,
+      ).toBeTruthy();
+      expect(master!.id).toBe('master:escalera:curva_vertical');
+    }
+  });
+
+  it('SV9. boca útil CUS = ancho_mm objetivo (patrón compartido: port.ancho_mm exacto)', () => {
+    // La receta escalera:curva_vertical delega en buildCUPSRecipe, por lo que
+    // port.ancho_mm propaga el ancho pedido sin pasar por el factor medido
+    // 298.9/300 (ese factor sólo aplica a escaleraRecipes). Verificamos para
+    // los 4 anchos del catálogo CUS.
+    for (const ancho of [150, 300, 450, 600] as const) {
+      const recipe = buildCUPSRecipe({ ancho_mm: ancho, ala_mm: 65 });
+      for (const portName of ['P1_horizontal', 'P2_vertical']) {
+        const port = recipe.ports.find((p) => p.name === portName);
+        expect(port, `${portName} @ CUS ancho=${ancho}`).toBeTruthy();
+        expect(port!.ancho_mm, `${portName} @ CUS ancho=${ancho}`).toBeCloseTo(ancho, 6);
+      }
+    }
   });
 });

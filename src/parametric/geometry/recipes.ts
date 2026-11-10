@@ -123,6 +123,10 @@ export function buildRecipeFor(
  *   - 'escalera:tramo_recto'         → `buildTRESRecipe`
  *   - 'escalera:curva_horizontal'    → `buildCS45Recipe` o `buildCS90Recipe`
  *                                       según `angulo_deg` en params.
+ *   - 'escalera:curva_vertical'      → `buildCUPSRecipe` (equivalencia
+ *                                       conceptual compartida con perforada,
+ *                                       autorizada por el usuario 2026-11-10;
+ *                                       SAMET no publica STEP de CUS).
  *   - 'escalera:derivacion_lateral'  → `buildTSRecipe`
  *   - 'escalera:cruz'                → `buildXSRecipe`
  *   - 'escalera:reduccion_lateral'   → `buildRISRecipe`
@@ -148,6 +152,14 @@ export function buildRecipeByKey(recipeKey: string, params: RawParams): Geometry
       return angulo_deg <= 45
         ? buildCS45Recipe({ ancho_mm, ala_mm })
         : buildCS90Recipe({ ancho_mm, ala_mm });
+    case 'escalera:curva_vertical':
+      // Equivalencia conceptual autorizada por el usuario (2026-11-10): la
+      // CUS escalera (articulada, 5 tramos) comparte la definición geométrica
+      // y calibración con la curva vertical perforada (CUPS). Rendering,
+      // polígono y bocas vienen de `buildCUPSRecipe` — sin copias. El ala
+      // comercial (65/90/115/150) NO afecta el polígono (CUPS no la usa);
+      // queda sólo como etiqueta para catalogación.
+      return buildCUPSRecipe({ ancho_mm, ala_mm });
     case 'escalera:derivacion_lateral':
       return buildTSRecipe({ ancho_mm, ala_mm });
     case 'escalera:cruz':

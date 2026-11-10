@@ -14,14 +14,18 @@ function makeProduct(partial: Partial<Product> & { producto_id: string; sku: str
 }
 
 describe('MASTER_MODELS inventory', () => {
-  it('tiene 14 maestros (8 perforada + 6 escalera)', () => {
+  it('tiene 15 maestros (8 perforada + 7 escalera)', () => {
     // 8 perforada = 6 geometrías medidas + 1 "derivación lateral pendiente"
     // (DCPS) declarada sin STEP + 1 "curva vertical exterior" (CUPS-D-Z) que
     // comparte patrón geométrico con CUPS-A-Z pero se declara aparte para
     // preservar la distinción comercial.
-    expect(MASTER_MODELS.length).toBe(14);
+    // 7 escalera = 6 geometrías medidas + 1 "curva vertical articulada" (CUS)
+    // que comparte el patrón geométrico CUPS por equivalencia conceptual
+    // autorizada por el usuario (2026-11-10). SAMET no publica STEP CUS;
+    // provenance='estimated'.
+    expect(MASTER_MODELS.length).toBe(15);
     expect(MASTER_MODELS.filter((m) => m.sistema === 'perforada').length).toBe(8);
-    expect(MASTER_MODELS.filter((m) => m.sistema === 'escalera').length).toBe(6);
+    expect(MASTER_MODELS.filter((m) => m.sistema === 'escalera').length).toBe(7);
   });
 
   it('cada maestro declara un id único', () => {
@@ -112,11 +116,14 @@ describe('MASTER_MODELS inventory', () => {
     // visual uniform-xz + ala-independent. Catálogo SAMET publica ancho ∈
     // {150,300,450,600} × ala ∈ {65,90,115,150} — propagación comprobada por
     // regresión pero NO validada vs segundo STEP → status='partial' con
-    // limitación explícita.
+    // limitación explícita. Excluye curva_vertical (CUS): comparte semántica
+    // depth-only con CUPS vía recipeKey='escalera:curva_vertical', no
+    // uniform-xz — su limitación concreta es "sin STEP articulado".
     const estimados = MASTER_MODELS.filter(
       (m) =>
         m.sistema === 'escalera' &&
         m.pieceKind !== 'tramo_recto' &&
+        m.pieceKind !== 'curva_vertical' &&
         m.variationRule.kind === 'ala-independent',
     );
     expect(estimados.length).toBeGreaterThan(0);

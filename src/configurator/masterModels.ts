@@ -855,6 +855,134 @@ const MASTER_ESCALERA: readonly MasterModel[] = [
     revision: 2,
   },
   {
+    // Escalera vertical articulada (CUS) — patrón GEOMÉTRICO COMPARTIDO con la
+    // curva vertical perforada (CUPS). SAMET publica la CUS como pieza
+    // articulada de 5 eslabones, pero NO entrega STEP propio ni planos cotados
+    // de la curvatura. Autorización explícita del usuario (2026-11-10): usar la
+    // fuente CUPS como definición geométrica única, parametrizada por ancho,
+    // sin atribuir fidelidad al fabricante. Las orientaciones ascendente y
+    // descendente se resuelven por colocación en escena (boca fuente), no por
+    // declarar masters disjuntos — el catálogo SAMET tampoco distingue
+    // "CDS" descendente para escalera (a diferencia de perforada CUPS A/D).
+    //
+    // IMPORTANTE: provenance='estimated' refleja que la equivalencia es
+    // conceptual y no medida. El ala comercial (65/90/115/150) NO afecta al
+    // polígono CUPS (buildCUPSRecipe hace `void ala_mm`) — queda sólo como
+    // etiqueta de catalogación.
+    id: 'master:escalera:curva_vertical',
+    label: 'Escalera — curva vertical articulada (CUS, patrón compartido CUPS)',
+    sistema: 'escalera',
+    pieceKind: 'curva_vertical',
+    source: {
+      // Fuente compartida con master:perforada:curva_vertical_interior y
+      // master:perforada:curva_vertical_exterior — sin copia de polígono ni de
+      // calibración; `buildCUPSRecipe` es el único generador autorizado.
+      stepFile: 'CUPS-300-A-Z.STEP',
+      stepHashShort: '28cf5602',
+      reportJsonPath: 'tools/step_parametric/report/CUPS-300-A-Z.json',
+      glbUrl: '/parametric/originals_glb/CUPS-300-A-Z.glb',
+    },
+    recipeKey: 'escalera:curva_vertical',
+    baseParams: { ancho_mm: 300, ala_mm: 65 },
+    canonicalRotationZDeg: 45,
+    catalogMatch: {
+      familiaIds: ESCALERA_FAMILIAS,
+      catalogTipoPieza: 'curva vertical articulada',
+      // ala base 65: la regla `ala-independent` + `varies: ['ancho','ala']`
+      // hace que findMasterForProduct NO filtre estrictamente por ala, así los
+      // 40 SKUs CUS (alas 65/90/115/150) resuelven a este maestro.
+      catalogAlaMm: 65,
+    },
+    ports: [
+      { recipePortName: 'P1_horizontal', physicalLabel: 'Boca horizontal (bandeja)', catalogPortName: 'P1' },
+      { recipePortName: 'P2_vertical', physicalLabel: 'Boca vertical (tramo ascendente/descendente)', catalogPortName: 'P2' },
+    ],
+    variationRule: {
+      // ala-independent + varies=['ancho','ala']: el ancho adapta profundidad Z
+      // (regla depth-only heredada de CUPS); ala es cosmética (CUPS la ignora).
+      // Declaramos ambos ejes para que la resolución capture los 40 SKUs sin
+      // filtrar estrictamente por ala.
+      kind: 'ala-independent',
+      provenance: 'estimated',
+      varies: ['ancho', 'ala'],
+      rationale: 'Equivalencia conceptual autorizada por el usuario (2026-11-10): la curva vertical CUS escalera comparte definición geométrica y calibración con CUPS (perforada curva vertical). Rendering, polígono y bocas vienen de `buildCUPSRecipe` — sin copia de malla ni de factores. El ancho adapta profundidad Z (regla `depth-only` de CUPS); el ala (65/90/115/150) NO afecta el polígono porque CUPS no la usa — queda como etiqueta comercial. No se mide fidelidad vs plano SAMET.',
+    },
+    declaredVariantSkus: [
+      // 40 SKUs del catálogo SAMET (anchos {150,300,450,600} × alas {65,90,115,150}
+      // × espesores {14,18} × acabados {G,Z}). No existe un CDS escalera: la
+      // orientación descendente se resuelve por colocación en escena.
+      'CUS-150-5-065-14-G',
+      'CUS-150-5-065-18-G',
+      'CUS-150-5-065-18-Z',
+      'CUS-150-5-090-14-G',
+      'CUS-150-5-090-18-G',
+      'CUS-150-5-090-18-Z',
+      'CUS-150-5-115-14-G',
+      'CUS-150-5-115-18-G',
+      'CUS-150-5-115-18-Z',
+      'CUS-150-5-150-14-G',
+      'CUS-300-5-065-14-G',
+      'CUS-300-5-065-18-G',
+      'CUS-300-5-065-18-Z',
+      'CUS-300-5-090-14-G',
+      'CUS-300-5-090-18-G',
+      'CUS-300-5-090-18-Z',
+      'CUS-300-5-115-14-G',
+      'CUS-300-5-115-18-G',
+      'CUS-300-5-115-18-Z',
+      'CUS-300-5-150-14-G',
+      'CUS-450-5-065-14-G',
+      'CUS-450-5-065-18-G',
+      'CUS-450-5-065-18-Z',
+      'CUS-450-5-090-14-G',
+      'CUS-450-5-090-18-G',
+      'CUS-450-5-090-18-Z',
+      'CUS-450-5-115-14-G',
+      'CUS-450-5-115-18-G',
+      'CUS-450-5-115-18-Z',
+      'CUS-450-5-150-14-G',
+      'CUS-600-5-065-14-G',
+      'CUS-600-5-065-18-G',
+      'CUS-600-5-065-18-Z',
+      'CUS-600-5-090-14-G',
+      'CUS-600-5-090-18-G',
+      'CUS-600-5-090-18-Z',
+      'CUS-600-5-115-14-G',
+      'CUS-600-5-115-18-G',
+      'CUS-600-5-115-18-Z',
+      'CUS-600-5-150-14-G',
+    ],
+    closure: {
+      continuity: {
+        status: 'partial',
+        regressionSpecs: [CUPS_PORT_FRAME_SPEC, CUPS_CHAIN_SPEC, CUPS_SECTION_UP_PERSISTENCE_SPEC],
+        limitations: [
+          'Continuidad heredada del patrón CUPS perforada: flush horizontal→vertical cubierto por la regresión compartida. El recorrido inverso (vertical→horizontal) y el encadenamiento de dos verticales consecutivas no están regresionados.',
+          'SAMET no publica un SKU "CDS" descendente para escalera — la orientación descendente se resuelve por colocación en escena (boca fuente), compartiendo el mismo polígono CUS. No hay master disjunto A/D en escalera (contrasta con perforada CUPS A/D).',
+          'Sin STEP CUS medido: la curvatura y la articulación (5 eslabones) no se representan. El polígono renderizado es el perfil CUPS, no una cadena articulada.',
+        ],
+      },
+      fidelity: {
+        status: 'pending',
+        regressionSpecs: [],
+        limitations: [
+          'Sin STEP propio: la fidelidad geométrica de CUS escalera no está comprobada contra plano SAMET. Equivalencia conceptual autorizada por el usuario (2026-11-10); registrar como "estimated" en toda UI de procedencia.',
+          'La pieza real es ARTICULADA (5 eslabones + radio aproximado 294 mm para ancho 300); el modelo paramétrico CUPS no representa esta articulación. Es una adaptación geométrica para renderizado/colocación, NO una ficha técnica del fabricante.',
+        ],
+      },
+      variants: {
+        status: 'partial',
+        regressionSpecs: [SHARED_VERTICAL_PATTERN_SPEC],
+        limitations: [
+          'Propagación compartida con CUPS: profundidad Z escala con ancho (depth-only). El ala comercial (65/90/115/150) NO afecta el polígono porque buildCUPSRecipe la ignora — queda sólo como etiqueta catalográfica.',
+          'Las 40 variantes CUS declaradas resuelven al master por tipo_pieza="curva vertical articulada" + familia SAM-STE-Z/G; la regla `ala-independent` hace que findMasterForProduct NO filtre por ala estricto.',
+          'provenance=estimated: autorizada por el usuario sin medición. Para auditoría con planos SAMET, marcar cada variante como pendiente de STEP articulado.',
+        ],
+      },
+    },
+    revision: 1,
+  },
+  {
     id: 'master:escalera:derivacion_lateral',
     label: 'Escalera — tee (TS)',
     sistema: 'escalera',
