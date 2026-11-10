@@ -131,6 +131,12 @@ test.describe('Reporte del usuario — escalera Z', () => {
       { timeout: 20_000 },
     );
 
+    // Hito 1: el catálogo es estático y se carga en un chunk diferido; hasta que llega, las
+    // piezas se dibujan esquemáticas. Esperarlo antes de cargar el proyecto.
+    await page.waitForFunction(
+      () => ((window as unknown as { __codex?: { trayStore?: { getState: () => { context: { productos: unknown[] } | null } } } }).__codex?.trayStore?.getState().context?.productos.length ?? 0) > 0,
+      { timeout: 20_000 },
+    );
     await loadUserProject(page, rawJson);
 
     const expectedIds = ['R1', 'R2', 'T1', 'R3', 'R4', 'CS1', 'R5'];
