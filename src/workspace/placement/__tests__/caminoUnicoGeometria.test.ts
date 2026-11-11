@@ -35,7 +35,7 @@ const MODULOS_GEOMETRIA = /(^|\/)parametric\/(catalog|geometry\/(?!buildPrism$)[
 const FUNCIONES_GEOMETRIA = new Set([
   'resolveRecipe', 'resolveParametricEntry', 'buildRecipeFromProduct', 'placeRecipe',
   'resolveRecipeForProduct', 'resolveRecipeWith', 'verifyGeometricFit', 'hasParametricRecipe',
-  'isParametricInsertable', 'buildLocalMesh', 'buildRecipeFor', 'buildRecipeByKey', 'getEscaleraOutline',
+  'isParametricInsertable', 'buildLocalMesh', 'buildRecipeFor', 'buildRecipeByKey', 'getEscaleraOutline', 'buildNominalRecipe',
 ]);
 
 /** Excepciones por archivo (ruta relativa a src, con /), con lo que se les permite. */
@@ -44,7 +44,7 @@ const EXCEPCIONES: Record<string, { motivo: string; modulos?: boolean; funciones
   'workspace/resolvedPortGeometry.ts': { motivo: 'motor interno: aplica la calibración a la receta', modulos: true },
   'workspace/placement/definitions.ts': {
     motivo: 'la definición efectiva misma',
-    funciones: ['resolveRecipe', 'resolveParametricEntry', 'buildRecipeFromProduct'],
+    funciones: ['resolveRecipe', 'resolveParametricEntry', 'buildRecipeFromProduct', 'buildNominalRecipe'],
   },
   'workspace/placement/migration.ts': { motivo: 'A-10: deduce la pose de un proyecto anterior', funciones: ['verifyGeometricFit'] },
   'configurator/migracionCalibracion.ts': {

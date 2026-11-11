@@ -183,7 +183,10 @@ function PieceVisual({
   }
 
   if (product && placed && !angleIssue) {
+    const nominal = placed.def.procedencia?.tipo === 'nominal';
     return (
+      <group>
+      {nominal && <UnresolvedMarker piece={piece} motivo={placed.def.procedencia!.nota} titulo="Geometría nominal" tipo="nominal" />}
       <PlacedMesh
         def={placed.def}
         huella={placed.colocacion.definicion.huella}
@@ -199,6 +202,7 @@ function PieceVisual({
           entryPortName: placed.colocacion.boca_entrada ?? null,
         }}
       />
+      </group>
     );
   }
 
@@ -242,24 +246,25 @@ function PieceVisual({
  * con modelo no resuelto (giro medido ≠ declarado): conserva sus bocas y se
  * dibuja con este aviso y su motivo en su centro.
  */
-function UnresolvedMarker({ piece, motivo, titulo = 'Sin resolver' }: { piece: Piece; motivo: string; titulo?: string }) {
+function UnresolvedMarker({ piece, motivo, titulo = 'Sin resolver', tipo = 'unresolved' }: { piece: Piece; motivo: string; titulo?: string; tipo?: 'unresolved' | 'nominal' }) {
+  const nominal = tipo === 'nominal';
   const ports = Object.values(piece.puertos);
   if (!ports.length) return null;
   const c = [0, 1, 2].map((i) => ports.reduce((s, p) => s + p.posicion_mm[i], 0) / ports.length) as V3;
   return (
     <group
       position={toViewer(c)}
-      onUpdate={(g) => { g.userData.codex = { kind: 'unresolved-marker', instanciaId: piece.instancia_id, titulo, motivo }; }}
+      onUpdate={(g) => { g.userData.codex = { kind: nominal ? 'nominal-marker' : 'unresolved-marker', instanciaId: piece.instancia_id, titulo, motivo }; }}
     >
       <mesh>
         <octahedronGeometry args={[0.18, 0]} />
-        <meshBasicMaterial color="#ff5a4f" wireframe />
+        <meshBasicMaterial color={nominal ? '#e0b040' : '#ff5a4f'} wireframe />
       </mesh>
       <Html center style={{ pointerEvents: 'none' }} position={[0, 0.3, 0]}>
         <div
-          data-testid="unresolved-marker"
+          data-testid={nominal ? 'nominal-marker' : 'unresolved-marker'}
           title={motivo}
-          style={{ background: 'rgba(60,0,0,0.85)', color: '#ffd0cc', fontSize: 10, padding: '2px 6px', borderRadius: 3, maxWidth: 260 }}
+          style={{ background: nominal ? 'rgba(50,40,0,0.85)' : 'rgba(60,0,0,0.85)', color: nominal ? '#ffe9b0' : '#ffd0cc', fontSize: 10, padding: '2px 6px', borderRadius: 3, maxWidth: 260 }}
         >
           <strong>{titulo}</strong>
           <div style={{ fontSize: 9, opacity: 0.9 }}>{motivo}</div>

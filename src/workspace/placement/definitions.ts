@@ -13,8 +13,9 @@
  * `caminoUnicoGeometria.test.ts` lo verifica. `modeloDeProducto` sólo clasifica
  * (tipo de pieza, si es colocable) y no entrega geometría.
  */
+import * as THREE from 'three';
 import type { Piece, Product, TrayInput } from '../../tray/model';
-import { buildRecipeFromProduct, datosFaltantesParaMaestro, resolveParametricEntry, resolveRecipe } from '../parametricBridge';
+import { buildNominalRecipe, buildRecipeFromProduct, datosFaltantesParaMaestro, NOTA_NOMINAL, resolveParametricEntry, resolveRecipe, tieneReglaNominal } from '../parametricBridge';
 import { calibracionVersion } from '../catalogPortMapping';
 import type { PieceKind } from '../../parametric/geometry/recipes';
 import { calibrarReceta } from './calibrarReceta';
@@ -62,6 +63,8 @@ export interface ModeloInfo {
   readonly recipeKey: string;
   /** El flujo interactivo sabe colocar hoy este tipo de pieza. */
   readonly colocable: boolean;
+  /** 'medido' (maestro / STEP) o 'nominal' (dimensiones del catálogo). */
+  readonly procedencia: 'medido' | 'nominal';
 }
 
 export type DefinicionEfectiva =
@@ -79,19 +82,26 @@ export type DefinicionEfectiva =
 export function modeloDeProducto(product: Product | null | undefined): ModeloInfo | null {
   if (!product) return null;
   const entry = resolveParametricEntry(product);
-  if (!entry) return null;
+  if (!entry) {
+    // Sin modelo medido: geometría nominal si el catálogo alcanza (decisión 2).
+    if (tieneReglaNominal(product)) {
+      return { patron: 'nominal:tramo_recto', tipo: 'tramo_recto', recipeKey: 'nominal:tramo_recto', colocable: true, procedencia: 'nominal' };
+    }
+    return null;
+  }
   const master = findMasterForProduct(product as Record<string, unknown>);
   return {
     patron: master?.id ?? String(entry.recipe),
     tipo: entry.piece_kind,
     recipeKey: String(entry.recipe),
     colocable: resolveRecipe(product) !== null,
+    procedencia: 'medido',
   };
 }
 
 /** Tramo recto (largo editable), perforada o escalera. */
 export function esTramoRecto(m: ModeloInfo | null | undefined): boolean {
-  return m?.tipo === 'tramo_recto' || m?.recipeKey === 'escalera:tramo_recto';
+  return m?.tipo === 'tramo_recto' || m?.recipeKey === 'escalera:tramo_recto' || m?.recipeKey === 'nominal:tramo_recto';
 }
 
 const MEMO = new Map<string, DefinicionEfectiva>();
@@ -155,10 +165,25 @@ export function resolveDefinition(product: Product, opts?: { longitud_mm?: numbe
 export function buildDefinition(product: Product, opts?: { longitud_mm?: number | null }): DefinitionResult {
   const entry = resolveRecipe(product);
   if (!entry) {
+    // Sin modelo medido: geometría nominal del catálogo, si alcanza (decisión 2).
+    const nominal = buildNominalRecipe(product, opts);
+    if (nominal?.ok) {
+      const def = definitionFromRecipe({
+        patron: 'nominal:tramo_recto',
+        revision: 'catalogo',
+        params: nominal.params,
+        raw: nominal.recipe,
+        resolved: nominal.recipe,
+        preTransform: new THREE.Matrix4(),
+        procedencia: { tipo: 'nominal', nota: NOTA_NOMINAL },
+      });
+      return { ok: true, def, huella: definitionHash(def), calibrada: false };
+    }
     if (esAnguloAjustable(product) && typeof (product as unknown as Record<string, unknown>).angulo_grados !== 'number') {
       // El catálogo no omite el ángulo: declara que la pieza no tiene uno fijo.
       return { ok: false, motivo: MOTIVO_ANGULO_AJUSTABLE };
     }
+    if (nominal && !nominal.ok) return { ok: false, motivo: nominal.motivo };
     const master = findMasterForProduct(product as Record<string, unknown>) ?? masterIgnorandoAla(product);
     const faltan = master ? datosFaltantesParaMaestro(master, product) : [];
     const sku = product.sku ?? product.producto_id;

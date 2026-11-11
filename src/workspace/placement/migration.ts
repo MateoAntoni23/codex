@@ -17,6 +17,7 @@ import {
   type ColocacionSinResolver,
   type Colocacion,
   type V3,
+  type StoredDefinition,
 } from './placementCore';
 
 export interface MigrationReport {
@@ -86,6 +87,44 @@ export function needsMigration(entrada: TrayInput | null | undefined): boolean {
   return !!entrada?.piezas.some((p) => !p.colocacion);
 }
 
+/**
+ * Ajuste genérico por bocas (para definiciones sin receta medida, p. ej. la
+ * geometría nominal del catálogo): prueba cada boca guardada como entrada, con
+ * mano nativa y espejo, coloca la definición y toma el intento de menor
+ * desvío. Misma tolerancia que verifyGeometricFit (2 mm / 1,5°).
+ */
+function ajustePorBocas(def: StoredDefinition, piece: Piece): { entryPortName: string; chirality: 'native' | 'mirrored'; posErrorMm: number; dirErrorDeg: number; matches: boolean } | null {
+  let mejor: { entryPortName: string; chirality: 'native' | 'mirrored'; posErrorMm: number; dirErrorDeg: number; matches: boolean } | null = null;
+  for (const nombre of Object.keys(piece.puertos)) {
+    const entry = piece.puertos[nombre] as TrayPort;
+    if (!def.ports.some((p) => p.name === nombre)) continue;
+    for (const mano of ['nativa', 'espejo'] as const) {
+      let pl;
+      try {
+        pl = placeDefinition({
+          def, huella: 'ajuste', mano, entryPortName: nombre, startPos: entry.posicion_mm,
+          entryDir: (entry.direccion as number[]).map((x) => -x),
+          ...(entry.orientacion_seccion_ws ? { sectionUp: entry.orientacion_seccion_ws as V3 } : {}),
+        });
+      } catch {
+        continue;
+      }
+      let pos = 0;
+      let deg = 0;
+      for (const wp of pl.ports) {
+        const old = piece.puertos[wp.name];
+        if (!old) { pos = Infinity; break; }
+        pos = Math.max(pos, Math.hypot(wp.pos[0] - old.posicion_mm[0], wp.pos[1] - old.posicion_mm[1], wp.pos[2] - old.posicion_mm[2]));
+        deg = Math.max(deg, angleDeg(wp.normal, old.direccion));
+      }
+      if (!mejor || pos + deg < mejor.posErrorMm + mejor.dirErrorDeg) {
+        mejor = { entryPortName: nombre, chirality: mano === 'espejo' ? 'mirrored' : 'native', posErrorMm: pos, dirErrorDeg: deg, matches: pos <= 2 && deg <= 1.5 };
+      }
+    }
+  }
+  return mejor;
+}
+
 export function migrateTray(
   entrada: TrayInput,
   products: ReadonlyMap<string, Product>,
@@ -108,7 +147,9 @@ export function migrateTray(
     if (!product) return fail('el producto no está en el catálogo');
     const def = resolveDefinition(product, { longitud_mm: lengthFromPiece(piece) });
     if (!def.ok) return fail(def.motivo);
-    const fit = verifyGeometricFit(product, piece);
+    // Geometría nominal (decisión 2): no hay receta medida para verifyGeometricFit;
+    // la pose se deduce probando cada boca como entrada, con las dos manos.
+    const fit = def.def.procedencia?.tipo === 'nominal' ? ajustePorBocas(def.def, piece) : verifyGeometricFit(product, piece);
     if (!fit) return fail('las bocas guardadas no corresponden a las del modelo');
     if (!fit.matches) {
       const desvio = `desvío ${fit.posErrorMm.toFixed(1)} mm / ${fit.dirErrorDeg.toFixed(1)}°, tolerancia 2 mm / 1,5°`;

@@ -60,6 +60,11 @@ export interface StoredDefinition {
    * es la del patrón aplicada a una variante distinta de la medida ("sin
    * verificar en este ancho").
    */
+  /**
+   * B-2 (decisión 2): la geometría no viene de un modelo medido sino de las
+   * dimensiones nominales del catálogo. Se ve en la ficha, la escena y Resultados.
+   */
+  readonly procedencia?: { readonly tipo: 'nominal'; readonly nota: string };
   readonly calibracion?: {
     readonly origen: 'patron' | 'excepcion';
     readonly patron: string;
@@ -313,8 +318,10 @@ export function definitionFromRecipe(input: {
   resolved: GeometryRecipe;
   preTransform: THREE.Matrix4;
   calibracion?: StoredDefinition['calibracion'];
+  procedencia?: StoredDefinition['procedencia'];
 }): StoredDefinition {
   return {
+    ...(input.procedencia ? { procedencia: input.procedencia } : {}),
     ...(input.calibracion ? { calibracion: input.calibracion } : {}),
     version: 'codex:definicion/1',
     patron: input.patron,

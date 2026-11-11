@@ -9,6 +9,7 @@
 import { useState } from 'react';
 import { useWorkspaceStore } from './useWorkspaceStore';
 import { useTrayStore } from '../tray/store';
+import { placedOf } from './placement/definitions';
 import { useRoutingStore } from './useRoutingStore';
 import { useTrayMoveState } from './useTrayMoveState';
 import { findBrokenConnections, pieceCentroid, removeConnections } from './trayMovement';
@@ -547,6 +548,12 @@ export function PieceCard({ piece }: { piece: Piece }) {
         <span className="inspector-category">Pieza de bandeja</span>
         <span className="inspector-title" data-testid="piece-title">{title}</span>
       </div>
+      {(() => {
+        const def = placedOf(entrada, piece)?.def;
+        return def?.procedencia?.tipo === 'nominal'
+          ? <p className="stage-note tone-warn" data-testid="piece-procedencia">Procedencia: {def.procedencia.nota}.</p>
+          : null;
+      })()}
 
       <BrokenConnectionsModal />
 

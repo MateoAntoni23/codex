@@ -16,6 +16,7 @@ import { summarizeResult } from './resultPresentation';
 import { Section } from './shared';
 import { unionsOf } from '../workspaceOperation';
 import { indexProducts, pieceLabelById } from './displayNames';
+import { placedOf } from '../placement/definitions';
 
 const ENGINE_LABEL: Record<string, string> = {
   desconocido: 'consultando…',
@@ -51,6 +52,26 @@ export function ResultSummary() {
         </ul>
       )}
     </div>
+  );
+}
+
+/** Decisión 2 (B-2): piezas colocadas con geometría nominal del catálogo. */
+function NominalList() {
+  const entrada = useTrayStore((s) => s.entrada);
+  const context = useTrayStore((s) => s.context);
+  const idx = indexProducts(context?.productos);
+  const piezas = (entrada?.piezas ?? []).filter((p) => placedOf(entrada, p)?.def.procedencia?.tipo === 'nominal');
+  if (!piezas.length) return null;
+  return (
+    <Section title={`Geometría nominal del catálogo (${piezas.length})`} testid="nominal-list">
+      <p className="stage-note">Sin modelo medido: la geometría sale de las dimensiones que declara el catálogo.</p>
+      {piezas.map((p) => (
+        <div key={p.instancia_id} className="stage-card" data-testid="nominal-row">
+          <div className="tone-warn">{pieceLabelById(p.instancia_id, entrada!.piezas, idx)}</div>
+          <div className="stage-row-sub">{placedOf(entrada, p)!.def.procedencia!.nota}</div>
+        </div>
+      ))}
+    </Section>
   );
 }
 
@@ -155,6 +176,7 @@ export function ResultadosPanel() {
       </Section>
 
       <ExceptionsList />
+      <NominalList />
 
       <Section title="Resultado">
         <ResultSummary />

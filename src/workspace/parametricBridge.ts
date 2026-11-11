@@ -29,7 +29,7 @@ import {
   type RawParams,
 } from '../parametric/geometry/recipes';
 import { buildPrism } from '../parametric/geometry/buildPrism';
-import type { GeometryRecipe, PortDef } from '../parametric/geometry/outlines';
+import { buildTRPSRecipe, type GeometryRecipe, type PortDef } from '../parametric/geometry/outlines';
 import type { Piece, Product, TrayPort } from '../tray/model';
 import { findMasterForProduct, type MasterModel } from '../configurator/masterModels';
 import { resolveRecipeForProduct } from './resolvedPortGeometry';
@@ -1121,3 +1121,53 @@ function tryPlacement(
 
 export { applyMBase as _applyMBaseForTests, phiForAlignment as _phiForTests };
 export { reflectAcrossEntryAxis as _reflectForTests, reflectDir as _reflectDirForTests };
+
+// ─── Geometría nominal del catálogo (B-2, decisión 2) ────────────────────────
+
+export const NOTA_NOMINAL = 'geometría nominal del catálogo, sin modelo medido';
+
+/**
+ * Receta NOMINAL para un producto sin modelo medido, construida sólo con lo
+ * que declara el catálogo (no se inventa nada). Reglas:
+ *   - tramo recto ('recta'): ancho y ala declarados; el largo, el de la
+ *     instancia o el comercial del catálogo. Rectángulo ancho × largo × ala con
+ *     bocas en los extremos (la misma construcción que el tramo medido TRPS).
+ *   - curva horizontal: haría falta ancho, ala, ángulo y radio declarados.
+ *     Ningún producto del catálogo actual los declara: no está implementada y
+ *     se informa como tal.
+ *   - otros tipos: el catálogo no da una regla nominal.
+ * Devuelve null si no aplica ninguna regla, o error con motivo si aplica y
+ * falta un dato.
+ */
+export function buildNominalRecipe(
+  product: SyntheticProductLike & { readonly tipo_pieza?: unknown },
+  opts?: { longitud_mm?: number | null },
+): { ok: true; recipe: GeometryRecipe; params: Record<string, number> } | { ok: false; motivo: string } | null {
+  const ancho = numOrNull(product.ancho_nominal_mm);
+  const ala = numOrNull(product.ala_nominal_mm);
+  if (product.tipo_pieza === 'recta') {
+    if (ancho === null || ala === null) {
+      const faltan = [ancho === null ? 'ancho_nominal_mm' : '', ala === null ? 'ala_nominal_mm' : ''].filter(Boolean).join(' ni ');
+      return { ok: false, motivo: `sin modelo medido y el catálogo no declara ${faltan} para construir la geometría nominal` };
+    }
+    const largo = opts?.longitud_mm && opts.longitud_mm > 0 ? opts.longitud_mm : numOrNull(product.longitud_comercial_mm);
+    if (largo === null) return { ok: false, motivo: 'sin modelo medido; geometría nominal: falta el largo (se indica al colocar el tramo)' };
+    return {
+      ok: true,
+      recipe: buildTRPSRecipe({ ancho_mm: ancho, ala_mm: ala, longitud_mm: largo }),
+      params: { ancho_mm: ancho, ala_mm: ala, longitud_mm: largo },
+    };
+  }
+  if (product.tipo_pieza === 'curva horizontal') {
+    return {
+      ok: false,
+      motivo: 'sin modelo medido; la geometría nominal de una curva necesita ancho, ala, ángulo y radio declarados (no implementada: ningún producto del catálogo los declara)',
+    };
+  }
+  return null;
+}
+
+/** El producto tiene una regla nominal que el catálogo alcanza a cubrir (sin mirar el largo). */
+export function tieneReglaNominal(product: SyntheticProductLike & { readonly tipo_pieza?: unknown }): boolean {
+  return product.tipo_pieza === 'recta' && numOrNull(product.ancho_nominal_mm) !== null && numOrNull(product.ala_nominal_mm) !== null;
+}
