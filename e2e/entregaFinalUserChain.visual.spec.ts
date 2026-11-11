@@ -9,10 +9,9 @@
  *      la variante TRPS-450-20-Z (fila `declared` en la tabla del maestro).
  *   3. Verifica mesh + dimensiones + bocas vía el bridge dev
  *      `window.__codex.configuratorMesh()` / `.configuratorPorts()`.
- *   4. Guarda una CORRECCIÓN DE ORIENTACIÓN en el maestro TRPS-300-22-Z
- *      (modelFrame rz_deg=15 + normal explícita en P1). Confirma que la
- *      variante TRPS-450-20-Z HEREDA tanto el marco del modelo como la normal
- *      configurada — sin volver a ejes globales por default.
+ *   4. Calibra el PATRÓN desde la variante medida TRPS-300-22-Z (B-2.5: giro
+ *      axial de P1 = 15°, corrección en los ejes de la boca). Confirma que la
+ *      variante TRPS-450-20-Z la HEREDA, marcada "sin verificar en este ancho".
  *   5. Inserta TRPS-450-20-Z en el workspace y conecta otra pieza compatible
  *      (CPS 90°) por el flujo de rutas real.
  *   6. Repite el escenario de inheritance con TRES-300-065 → TRES-450-090-18-Z
@@ -61,7 +60,6 @@ const OUT_DIR = resolve(__dirname, 'output');
 
 // Overrides elegidos para que el efecto sea visible y verificable numéricamente.
 const TRPS_MF_RZ_DEG = 15;
-const TRPS_P1_NORMAL = [-1, 0, 0] as const;
 const TRPS_REASON =
   'Entrega final — calibración test: marco rz=15° y normal P1 corregida en el maestro TRPS 300.';
 const TRES_MF_RZ_DEG = 10;
@@ -96,37 +94,6 @@ async function openOrientacionTab(page: Page): Promise<void> {
 async function openMaestroTab(page: Page): Promise<void> {
   await page.locator('[data-testid="cfg-tab-maestro"]').click();
   await page.locator('[data-testid="cfg-maestro-provenance"]').waitFor({ state: 'visible', timeout: 10_000 });
-}
-
-/**
- * Devuelve el modelFrame y port overrides efectivos para un producto.
- *
- * IMPORTANTE — no usamos `await import('/src/workspace/catalogPortMapping.ts')`
- * en page.evaluate: en dev-server Vite crea DOS instancias del módulo cuando
- * el path dinámico no empata exactamente con el path estático que usó la UI
- * (p.ej. `./catalogPortMapping` vs `/src/workspace/catalogPortMapping.ts`).
- * Esos dos "singletons" tienen states separados y el test lee un universo
- * paralelo vacío. En su lugar, leemos los helpers que ConfiguratorLayout
- * expone en `window.__codex`, que son los mismos bindings que la UI muta.
- */
-async function readEffectiveOverrides(page: Page, productId: string): Promise<{
-  modelFrame: Record<string, number> | null;
-  portP1: Record<string, unknown> | null;
-}> {
-  return page.evaluate((pid) => {
-    const w = window as unknown as {
-      __codex?: {
-        getModelFrameOverride?: (id: string) => unknown;
-        getPortGeometryOverride?: (id: string, port: string) => unknown;
-      };
-    };
-    const gMf = w.__codex?.getModelFrameOverride;
-    const gPg = w.__codex?.getPortGeometryOverride;
-    if (!gMf || !gPg) throw new Error('readEffectiveOverrides: __codex helpers no expuestos');
-    const mf = gMf(pid) as Record<string, number> | null;
-    const pg = gPg(pid, 'P1') as Record<string, unknown> | null;
-    return { modelFrame: mf, portP1: pg };
-  }, productId);
 }
 
 async function readConfiguratorMesh(page: Page): Promise<Record<string, unknown> | null> {
@@ -205,7 +172,7 @@ test.describe('Entrega final — cadena completa con JSON del usuario', () => {
     await page.evaluate(() => localStorage.clear());
   });
 
-  test('TRPS: variante 450 hereda modelFrame y normal configurada en el maestro 300', async ({ page }) => {
+  test('TRPS: variante 450 hereda la calibración del patrón medida en la 300 (marcada heredada)', async ({ page }) => {
     await gotoConfigurator(page);
 
     // ─── Seleccionar maestro TRPS 300 y abrir su tabla ──────────────────
@@ -228,40 +195,21 @@ test.describe('Entrega final — cadena completa con JSON del usuario', () => {
     ) ?? '';
     expect(provText.toLowerCase()).toContain('derivada');
 
-    // ─── Guardar modelFrame + normal P1 sobre el MAESTRO (TRPS-300) ─────
+    // ─── B-2.5: calibrar el PATRÓN desde la variante medida (TRPS-300) ───
+    // Ya no hay marco del modelo ni normales por SKU: la corrección es por boca,
+    // en sus propios ejes (giro axial de P1 = 15°).
     await openOrientacionTab(page);
     await page.locator('[data-testid="cfg-edit-orientacion"]').click();
-    await page.locator('[data-testid="cfg-mf-rz_deg"]').fill(String(TRPS_MF_RZ_DEG));
-    // Normal P1 corregida a (-1, 0, 0) explícita.
-    const normalInputs = page.locator('[data-testid="cfg-port-normal-P1"] input');
-    const nx = normalInputs.nth(0);
-    const ny = normalInputs.nth(1);
-    const nz = normalInputs.nth(2);
-    if (await nx.isVisible().catch(() => false)) {
-      await nx.fill(String(TRPS_P1_NORMAL[0]));
-      await ny.fill(String(TRPS_P1_NORMAL[1]));
-      await nz.fill(String(TRPS_P1_NORMAL[2]));
-    }
+    await expect(page.locator('[data-testid^="cfg-mf-"]')).toHaveCount(0);
+    await page.locator('[data-testid="cfg-port-rot-P1"]').fill(String(TRPS_MF_RZ_DEG));
     await page.locator('[data-testid="cfg-orientacion-reason"]').fill(TRPS_REASON);
     await page.locator('[data-testid="cfg-apply-orientacion"]').click();
-    // Vuelve a modo lectura.
     await expect(page.locator('[data-testid="cfg-edit-orientacion"]')).toBeVisible();
-
-    // ─── Inheritance: la variante TRPS-450-20-Z debe heredar modelFrame ──
-    const inheritedBefore = await readEffectiveOverrides(page, 'SAM_TRPS-450-20-Z');
-    expect(inheritedBefore.modelFrame, 'variante hereda modelFrame del maestro').not.toBeNull();
-    expect(inheritedBefore.modelFrame!.rz_deg).toBe(TRPS_MF_RZ_DEG);
-    // Si la UI publicó normal P1 (cuando el producto tiene bocas P1), se hereda;
-    // si no, el override se omite y portP1 queda null (fallback seguro).
-    if (inheritedBefore.portP1) {
-      expect(inheritedBefore.portP1.normal).toEqual([-1, 0, 0]);
-      // centerMm del maestro NO se arrastra — es absoluto, inválido en otro ancho.
-      expect(inheritedBefore.portP1.centerMm).toBeUndefined();
-    }
+    await expect(page.locator('[data-testid="cfg-calibracion-estado"]')).toContainText('Variante medida');
 
     // ─── Verificar visual de la VARIANTE TRPS-450-20-Z con calibración ──
-    // La variante se resuelve por maestro (ancho=450, regla ancho-only-z) con
-    // el modelFrame + normal P1 heredados del maestro TRPS-300-22-Z.
+    // La variante se resuelve por maestro (ancho=450, regla ancho-only-z) y
+    // hereda la calibración del patrón, marcada "sin verificar en este ancho".
     // Fail-fast: si no hay receta, la aserción falla con mensaje útil ANTES
     // de que el .screenshot() bloquee 180 s.
     await assertRecipeAvailable(page, 'SAM_TRPS-450-20-Z');
@@ -274,7 +222,8 @@ test.describe('Entrega final — cadena completa con JSON del usuario', () => {
     const mesh = await readConfiguratorMesh(page);
     expect(mesh, 'configuratorMesh devuelve datos para TRPS-450-20-Z').not.toBeNull();
     expect(mesh!.productoId).toBe('SAM_TRPS-450-20-Z');
-    expect(mesh!.isIdentity, 'la variante hereda modelFrame del maestro: NO es identidad').toBe(false);
+    expect(mesh!.isIdentity, 'la variante hereda la calibración del patrón: NO es identidad').toBe(false);
+    await expect(page.locator('[data-testid="cfg-viewer-calibracion"]')).toContainText('sin verificar en este ancho');
 
     const ports = await readConfiguratorPorts(page);
     const p1 = ports.find((p) => p.port === 'P1');
@@ -288,7 +237,7 @@ test.describe('Entrega final — cadena completa con JSON del usuario', () => {
     );
   });
 
-  test('TRES-450-090: hereda modelFrame de TRES-300-065 (ala-independent)', async ({ page }) => {
+  test('TRES-450-090: hereda la calibración del patrón de TRES-300-065 (ala-independent)', async ({ page }) => {
     await gotoConfigurator(page);
 
     await selectProduct(page, 'SAM_TRES-300-065-18-Z');
@@ -300,25 +249,25 @@ test.describe('Entrega final — cadena completa con JSON del usuario', () => {
     ) ?? '';
     expect(provText.toLowerCase()).toContain('derivada');
 
-    // ─── Guardar modelFrame rz=10° en el maestro ─────────────────────────
+    // ─── B-2.5: calibrar el patrón (giro axial de P1 = 10°) ─────────────
     await openOrientacionTab(page);
     await page.locator('[data-testid="cfg-edit-orientacion"]').click();
-    await page.locator('[data-testid="cfg-mf-rz_deg"]').fill(String(TRES_MF_RZ_DEG));
+    await page.locator('[data-testid="cfg-port-rot-P1"]').fill(String(TRES_MF_RZ_DEG));
     await page.locator('[data-testid="cfg-orientacion-reason"]').fill(TRES_REASON);
     await page.locator('[data-testid="cfg-apply-orientacion"]').click();
     await expect(page.locator('[data-testid="cfg-edit-orientacion"]')).toBeVisible();
 
-    // ─── Variantes: 450-065 (misma ala) y 450-090 (otra ala) heredan ────
+    // ─── Variantes: 450-065 (misma ala) y 450-090 (otra ala) la heredan ──
     for (const variantId of ['SAM_TRES-450-065-18-Z', 'SAM_TRES-450-090-18-Z']) {
-      const inh = await readEffectiveOverrides(page, variantId);
-      expect(inh.modelFrame, `${variantId} hereda modelFrame del maestro`).not.toBeNull();
-      expect(inh.modelFrame!.rz_deg, `${variantId} rz_deg heredado`).toBe(TRES_MF_RZ_DEG);
+      await selectProduct(page, variantId);
+      await page.locator('[data-testid="cfg-tab-orientacion"]').click();
+      await expect(page.locator('[data-testid="cfg-calibracion-estado"]'), `${variantId} hereda la calibración`).toContainText('sin verificar en este ancho');
     }
 
     // ─── Visualizar la VARIANTE TRES-450-090 con calibración heredada ───
     // Resolución común: el maestro TRES-300-065 (escalera:tramo_recto,
     // regla ala-independent) cubre TRES-450-090 porque la variación por ala
-    // forma parte de la regla del maestro. La variante usa el mismo modelFrame.
+    // forma parte de la regla del maestro. La variante usa la misma calibración del patrón.
     // Fail-fast: si no hay receta, fallamos con mensaje útil ANTES de que
     // .screenshot() bloquee 180 s en el testid que nunca llega.
     await assertRecipeAvailable(page, 'SAM_TRES-450-090-18-Z');
@@ -331,7 +280,7 @@ test.describe('Entrega final — cadena completa con JSON del usuario', () => {
     const mesh = await readConfiguratorMesh(page);
     expect(mesh, 'configuratorMesh devuelve datos para TRES-450-090').not.toBeNull();
     expect(mesh!.productoId).toBe('SAM_TRES-450-090-18-Z');
-    expect(mesh!.isIdentity, 'la variante hereda modelFrame del maestro: NO es identidad').toBe(false);
+    expect(mesh!.isIdentity, 'la variante hereda la calibración del patrón: NO es identidad').toBe(false);
 
     const ports = await readConfiguratorPorts(page);
     const p1v = ports.find((p) => p.port === 'P1');
@@ -371,9 +320,10 @@ test.describe('Entrega final — cadena completa con JSON del usuario', () => {
     await selectProduct(page, 'SAM_TRPS-300-22-Z');
     await openOrientacionTab(page);
     await page.locator('[data-testid="cfg-edit-orientacion"]').click();
-    await page.locator('[data-testid="cfg-mf-rz_deg"]').fill(String(TRPS_MF_RZ_DEG));
+    await page.locator('[data-testid="cfg-port-rot-P1"]').fill(String(TRPS_MF_RZ_DEG));
     await page.locator('[data-testid="cfg-orientacion-reason"]').fill(TRPS_REASON);
     await page.locator('[data-testid="cfg-apply-orientacion"]').click();
+    await expect(page.locator('[data-testid="cfg-edit-orientacion"]')).toBeVisible();
 
     // Volver al workspace y reimportar fixture para que el proyecto tenga tray + overrides.
     await page.goto('/?workspace=bandejas');
@@ -385,9 +335,10 @@ test.describe('Entrega final — cadena completa con JSON del usuario', () => {
     await selectProduct(page, 'SAM_TRPS-300-22-Z');
     await openOrientacionTab(page);
     await page.locator('[data-testid="cfg-edit-orientacion"]').click();
-    await page.locator('[data-testid="cfg-mf-rz_deg"]').fill(String(TRPS_MF_RZ_DEG));
+    await page.locator('[data-testid="cfg-port-rot-P1"]').fill(String(TRPS_MF_RZ_DEG));
     await page.locator('[data-testid="cfg-orientacion-reason"]').fill(TRPS_REASON);
     await page.locator('[data-testid="cfg-apply-orientacion"]').click();
+    await expect(page.locator('[data-testid="cfg-edit-orientacion"]')).toBeVisible();
 
     // ─── 3) Exportar workspace completo (contendrá tray + overrides) ─────
     await page.goto('/?workspace=bandejas');
@@ -401,11 +352,14 @@ test.describe('Entrega final — cadena completa con JSON del usuario', () => {
     const exportedRaw = readFileSync(exportedPath, 'utf-8');
     const exported = JSON.parse(exportedRaw) as {
       trayInput: { piezas: Array<{ instancia_id: string }>; conexiones: Array<{ conexion_id: string }> };
-      library?: { overrides: Record<string, unknown> };
+      library?: { overrides: Record<string, unknown>; calibracion?: { patrones: Record<string, { bocas: Record<string, { giro_deg: { axial: number } }> }> } };
     };
     expect(exported.trayInput.piezas.length).toBe(7);
     expect(exported.trayInput.conexiones.length).toBe(6);
-    expect(exported.library?.overrides?.['SAM_TRPS-300-22-Z']).toBeTruthy();
+    // B-2.5: el archivo lleva la calibración por patrón (no overrides por SKU).
+    const patronesExportados = Object.values(exported.library?.calibracion?.patrones ?? {});
+    expect(patronesExportados).toHaveLength(1);
+    expect(patronesExportados[0].bocas.P1.giro_deg.axial).toBe(TRPS_MF_RZ_DEG);
 
     // ─── 4) Reload entero + re-importar el archivo exportado ─────────────
     await page.reload();
@@ -442,16 +396,16 @@ test.describe('Entrega final — cadena completa con JSON del usuario', () => {
       const w = window as unknown as {
         __codex: {
           trayStore: { getState: () => { entrada: unknown } };
-          catalogConfigStore: { getState: () => { overrides: Record<string, unknown> } };
+          catalogConfigStore: { getState: () => { calibracion: { patrones: Record<string, unknown> } } };
         };
       };
       return {
         entrada: w.__codex.trayStore.getState().entrada,
-        overrides: w.__codex.catalogConfigStore.getState().overrides,
+        patrones: w.__codex.catalogConfigStore.getState().calibracion.patrones,
       };
     });
     expect(sinColocacion(afterReload.entrada)).toEqual(sinColocacion(exported.trayInput));
-    expect(Object.keys(afterReload.overrides)).toContain('SAM_TRPS-300-22-Z');
+    expect(afterReload.patrones).toEqual(exported.library!.calibracion!.patrones);
 
     await page
       .locator('canvas')

@@ -39,7 +39,8 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const OUT_DIR = resolve(__dirname, 'output');
 const EXCEL = resolve(__dirname, '../src/import/fixtures/ELS-IMP-EQCX_v1.0_Rev0.xlsx');
 const USER_REPORT = resolve(__dirname, 'fixtures/user-report-20261107.workspace.json');
-const LIB_KEY = 'codex:catalogConfig:v1';
+// B-2.5: la biblioteca persiste en v2; la v1 queda como copia del original y no se escribe.
+const LIB_KEY = 'codex:catalogConfig:v2';
 
 type Json = Record<string, unknown>;
 
@@ -220,7 +221,7 @@ test.describe('Hito 1 — el proyecto no se pierde', () => {
     await openFile(page, USER_REPORT);
     await expect.poll(async () => ((await projectSnapshot(page)).piezas as unknown[]).length).toBe(7);
     // Hito 2 (A-10): esperar a que la migración deduzca la colocación de las 7 piezas.
-    await expect.poll(async () => ((await projectSnapshot(page)).piezas as Array<{ colocacion?: unknown }>).every((p) => p.colocacion)).toBe(true);
+    await expect.poll(async () => ((await projectSnapshot(page)).piezas as Array<{ colocacion?: unknown }>).every((p) => p.colocacion), { timeout: 20_000 }).toBe(true);
     const first = await projectSnapshot(page);
     const original = JSON.parse(readFileSync(USER_REPORT, 'utf8')) as { projectV2: { elements: Json[]; evidence: unknown[] }; trayInput: Json };
 
@@ -280,7 +281,8 @@ test.describe('Hito 1 — el proyecto no se pierde', () => {
       return {
         mem: { overrides: Object.keys(s.overrides), approvals: Object.keys(s.approvals), aporte: Object.keys(s.aporteOverrides) },
         ls: JSON.parse(localStorage.getItem(key) ?? 'null'),
-        backups: Object.keys(localStorage).filter((k) => k.startsWith(`${key}:backup:`)),
+        // Las copias previas a adoptar usan LIBRARY_BACKUP_PREFIX; se excluyen las de la migración v1→v2.
+        backups: Object.keys(localStorage).filter((k) => k.startsWith('codex:catalogConfig:v1:backup:') && !k.includes(':migracion-v2:')),
       };
     }, [LIB_KEY]);
     expect(restored.mem).toEqual({ overrides: ['SAM_TPS-300-Z'], approvals: ['SAM_TPS-300-Z'], aporte: ['SAM_TPS-300-Z'] });
@@ -310,7 +312,7 @@ test.describe('Hito 1 — el proyecto no se pierde', () => {
     expect(await projectSnapshot(page)).toEqual(projectBefore); // cancelar tampoco cambia el proyecto
   });
 
-  test('A5 — un archivo sin bloque de biblioteca deja codex:catalogConfig:v1 byte a byte igual', async ({ page }) => {
+  test('A5 — un archivo sin bloque de biblioteca deja codex:catalogConfig:v2 byte a byte igual', async ({ page }) => {
     await openApp(page);
     await setLibrary(page, { overrides: SAMPLE_OVERRIDE, approvals: SAMPLE_APPROVAL, aporteOverrides: SAMPLE_APORTE });
     const raw = await page.evaluate((k) => localStorage.getItem(k), LIB_KEY);
