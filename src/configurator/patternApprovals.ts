@@ -50,6 +50,12 @@ export interface PatternApproval {
    * del patrón o excepción de la variante). Ausente en aprobaciones anteriores.
    */
   readonly approvedCalibracion?: unknown;
+  /**
+   * B-2 (decisión 3): definición efectiva aprobada. La aprobación sigue
+   * valiendo mientras la vigente dé la MISMA geometría (dentro de las
+   * tolerancias de las fuentes), aunque cambie la huella o la revisión.
+   */
+  readonly approvedDefinicion?: unknown;
 }
 
 /**

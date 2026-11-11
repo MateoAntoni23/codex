@@ -217,6 +217,23 @@ export function migrarBibliotecaPorSku(
   };
 }
 
+/**
+ * Definición tal como la daba un mapping por SKU anterior a B-2 (marco del
+ * modelo + bocas absolutas) para un producto: sirve para comparar la
+ * geometría de una aprobación vieja con la vigente. null si no se puede.
+ */
+export function definicionDeMappingAnterior(product: Product, mapping: ProductPortMapping | null | undefined): ReturnType<typeof definitionFromRecipe> | null {
+  const master = findMasterForProduct(product as Record<string, unknown>);
+  const entry = resolveParametricEntry(product);
+  if (!master || !entry) return null;
+  let raw;
+  try { raw = buildRecipeFromProduct(product, entry); } catch { return null; }
+  const porBoca: Record<string, PortGeometryOverride | null> = {};
+  for (const e of mapping?.entries ?? []) porBoca[e.recipePortName] = e.geometry ?? null;
+  const r = resolveRecipeWith(raw, mapping?.modelFrame ?? null, porBoca);
+  return definitionFromRecipe({ patron: master.id, revision: 'aprobacion-anterior', params: {}, raw, resolved: r.recipe, preTransform: r.preTransform });
+}
+
 // ─── PB5: bocas antes y después de migrar, pieza por pieza ────────────────────
 
 export interface DiferenciaBocas {

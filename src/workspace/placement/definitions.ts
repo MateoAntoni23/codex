@@ -18,6 +18,7 @@ import { buildRecipeFromProduct, datosFaltantesParaMaestro, resolveParametricEnt
 import { calibracionVersion } from '../catalogPortMapping';
 import type { PieceKind } from '../../parametric/geometry/recipes';
 import { calibrarReceta } from './calibrarReceta';
+import { compararConGuardada } from './geometriaEquivalente';
 import { bibliotecaVersion } from '../calibracionPatron';
 import { findMasterForProduct, MASTER_MODELS } from '../../configurator/masterModels';
 import { angleMismatch } from './angleCheck';
@@ -249,15 +250,30 @@ export function withDefinition(entrada: TrayInput, huella: string, def: StoredDe
  * Piezas cuya definición guardada difiere de la vigente (la biblioteca cambió
  * después de colocarlas). La pieza no cambia hasta que se acepte actualizar.
  */
-export function outdatedPieces(entrada: TrayInput, products: ReadonlyMap<string, Product>): Array<{ id: string; current: DefinitionResult }> {
-  const out: Array<{ id: string; current: DefinitionResult }> = [];
+/**
+ * Piezas DESACTUALIZADAS (A-6): la definición vigente da OTRA geometría que la
+ * guardada. Desde B-2 (decisión 3) no alcanza con que cambie la huella: se
+ * compara la pieza tal como está con la que daría la definición vigente
+ * colocada desde la misma boca (`compararConGuardada`, tolerancias de las
+ * fuentes). Un cambio de representación (más decimales, otra revisión) que no
+ * mueve nada no pide "actualizar".
+ */
+export function outdatedPieces(entrada: TrayInput, products: ReadonlyMap<string, Product>): Array<{ id: string; current: DefinitionResult; motivo: string }> {
+  const out: Array<{ id: string; current: DefinitionResult; motivo: string }> = [];
   for (const piece of entrada.piezas) {
     const c = piece.colocacion as Colocacion | undefined;
     if (!c || c.estado !== 'resuelta') continue;
     const product = products.get(piece.producto_id);
     if (!product) continue;
     const current = resolveDefinition(product, { longitud_mm: c.definicion.params.longitud_mm ?? null });
-    if (current.ok && current.huella !== c.definicion.huella) out.push({ id: piece.instancia_id, current });
+    if (!current.ok || current.huella === c.definicion.huella) continue;
+    const placed = placedOf(entrada, piece);
+    if (!placed) continue;
+    const cmp = compararConGuardada(
+      { def: placed.def, mano: c.mano, pose: c.pose, bocaEntrada: c.boca_entrada ?? placed.def.ports[0]?.name ?? 'P1' },
+      current.def,
+    );
+    if (!cmp.equivalente) out.push({ id: piece.instancia_id, current, motivo: cmp.motivo ?? 'la geometría cambió' });
   }
   return out;
 }

@@ -75,7 +75,11 @@ import {
   type CorreccionBoca,
   type ExcepcionVariante,
 } from '../workspace/calibracionPatron';
+import { definicionEfectiva } from '../workspace/placement/definitions';
+import { compararDefiniciones } from '../workspace/placement/geometriaEquivalente';
+import type { StoredDefinition } from '../workspace/placement/placementCore';
 import {
+  definicionDeMappingAnterior,
   correccionesDeOverride,
   migrarBibliotecaPorSku,
   type BibliotecaMigrada,
@@ -279,6 +283,13 @@ interface State {
 
 const vaciaMigrada = (): BibliotecaMigrada => ({ ...bibliotecaVacia(), pendientes: {} });
 
+/** Definición efectiva del producto para congelar en una aprobación. */
+function definicionAprobable(productId: string): { approvedDefinicion?: StoredDefinition } {
+  const product = productoDelIndice(productId);
+  const d = product ? definicionEfectiva(product) : null;
+  return d?.ok ? { approvedDefinicion: JSON.parse(JSON.stringify(d.def)) } : {};
+}
+
 /** Calibración de bocas que aplica hoy al producto (patrón o excepción). */
 export function calibracionDelProducto(productId: string): CalibracionAplicable {
   const product = productoDelIndice(productId);
@@ -294,7 +305,16 @@ export function calibracionDelProducto(productId: string): CalibracionAplicable 
  */
 export function huellaCalibracionProducto(productId: string, mapping: ProductPortMapping | null): string {
   const cal = calibracionDelProducto(productId);
-  return `${calibrationHash(mapping)}:${calibrationHash({ productId, source: 'override', entries: [], overrideReason: JSON.stringify(cal) })}`;
+  // Hash propio de la calibración (FNV-1a sobre su JSON). Antes se pasaba por
+  // calibrationHash dentro de overrideReason, que ese hash no lee: la huella no
+  // cambiaba al calibrar (defecto encontrado por aprobacionPorGeometria.test).
+  const txt = JSON.stringify(cal);
+  let h = 0x811c9dc5;
+  for (let i = 0; i < txt.length; i++) {
+    h ^= txt.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return `${calibrationHash(mapping)}:${h.toString(16).padStart(8, '0')}`;
 }
 
 /** Producto (datos de catálogo) para deducir una corrección: índice sembrado. */
@@ -475,6 +495,7 @@ export const useCatalogConfigStore = create<State>((set, get) => ({
       approvedAtRevision: masterRevision,
       approvedAtCalibrationHash: huellaCalibracionProducto(productId, mapping),
       approvedCalibracion: JSON.parse(JSON.stringify(calibracionDelProducto(productId))),
+      ...definicionAprobable(productId),
       approvedAt: new Date().toISOString(),
       approvedMapping,
     };
@@ -529,7 +550,17 @@ export const useCatalogConfigStore = create<State>((set, get) => ({
         }
       }
     }
-    return computeApprovalInfo(stored, masterRevision, currentHash);
+    const info = computeApprovalInfo(stored, masterRevision, currentHash);
+    if (info.status !== 'outdated' || !stored) return info;
+    // Decisión 3: si la geometría vigente es la aprobada (tolerancias de las
+    // fuentes), la aprobación se conserva aunque cambien huella o revisión.
+    const product = productoDelIndice(productId);
+    const vigente = product ? definicionEfectiva(product) : null;
+    if (!product || !vigente?.ok) return info;
+    const aprobada = (stored.approvedDefinicion as StoredDefinition | undefined)
+      ?? (stored.approvedMapping ? definicionDeMappingAnterior(product, stored.approvedMapping) : null);
+    if (!aprobada) return info;
+    return compararDefiniciones(aprobada, vigente.def).equivalente ? { ...info, status: 'current', outdatedReason: undefined } : info;
   },
   upsertAporte: (productId, rule) => {
     if (!isAporteRule(rule)) return;
