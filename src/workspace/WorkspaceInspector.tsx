@@ -6,13 +6,16 @@
  * Support selected → SupportCard (ID, piece, product, system, distance from P1)
  * Nothing selected → CalcPanel (pre-calc summary + structured results)
  */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useWorkspaceStore } from './useWorkspaceStore';
 import { useTrayStore } from '../tray/store';
 import { placedOf } from './placement/definitions';
 import { avisosDeModelo } from './placement/joins';
 import { useRoutingStore } from './useRoutingStore';
 import { useTrayMoveState } from './useTrayMoveState';
+import { useTrayRotateState } from './useTrayRotateState';
+import { aplicarRotacion } from './TrayRotateControls';
+import { PASO_ROTACION_DEG, type EjeMundo } from './trayRotation';
 import { findBrokenConnections, pieceCentroid, removeConnections } from './trayMovement';
 import { RoutingPanel } from './RoutingPanel';
 import { EquipmentEditorPanel } from '../preview/EquipmentEditorPanel';
@@ -407,6 +410,74 @@ function TrayCentroidEditor({
 }
 
 /**
+ * B-4 — panel de la herramienta "Rotar tramo": pivote (centro o boca), eje,
+ * ángulo editable (muestra el del arrastre en curso o el último) y Aplicar,
+ * que rota por el mismo camino que el gizmo (confirmación de uniones y una
+ * entrada en el historial).
+ */
+function TrayRotatePanel({ piece }: { piece: Piece }) {
+  const pivote = useTrayRotateState((s) => s.pivote);
+  const eje = useTrayRotateState((s) => s.eje);
+  const angulo = useTrayRotateState((s) => s.anguloDeg);
+  const libre = useTrayRotateState((s) => s.libre);
+  const { setPivote, setEje, setAngulo } = useTrayRotateState.getState();
+  const [texto, setTexto] = useState<string | null>(null);
+  const bocas = Object.keys(piece.puertos);
+  // Al cambiar de pieza, un pivote en una boca que ésta no tiene vuelve al centro.
+  const pivoteInvalido = pivote !== 'centro' && !bocas.includes(pivote.boca);
+  useEffect(() => { if (pivoteInvalido) setPivote('centro'); }, [pivoteInvalido, setPivote]);
+  const pivoteValor = pivote === 'centro' || pivoteInvalido ? 'centro' : `boca:${pivote.boca}`;
+  return (
+    <fieldset data-testid="tray-rotate-panel" style={{ margin: '4px 12px', border: '1px solid #4a6a90', padding: '4px 8px', borderRadius: 3, background: '#1b2a3c' }}>
+      <legend style={{ fontSize: 11, color: '#a8c8ee', padding: '0 4px' }}>Rotar tramo</legend>
+      <div style={{ fontSize: 10, color: '#9ab', marginBottom: 4 }} data-testid="tray-rotate-paso">
+        Paso {PASO_ROTACION_DEG}° · {libre ? 'giro libre (Shift)' : 'Shift: libre'}
+      </div>
+      <label style={{ display: 'flex', gap: 6, fontSize: 11, alignItems: 'center', marginBottom: 4 }}>
+        Pivote
+        <select
+          className="inspector-input"
+          data-testid="tray-rotate-pivot"
+          value={pivoteValor}
+          onChange={(e) => setPivote(e.target.value === 'centro' ? 'centro' : { boca: e.target.value.slice('boca:'.length) })}
+        >
+          <option value="centro">Centro de la pieza</option>
+          {bocas.map((b) => <option key={b} value={`boca:${b}`}>Boca {b}</option>)}
+        </select>
+      </label>
+      <div style={{ display: 'flex', gap: 6, fontSize: 11, alignItems: 'center' }}>
+        <select className="inspector-input" data-testid="tray-rotate-eje" value={eje} onChange={(e) => setEje(e.target.value as EjeMundo)}>
+          {(['X', 'Y', 'Z'] as const).map((k) => <option key={k} value={k}>Eje {k}</option>)}
+        </select>
+        <input
+          type="number"
+          className="inspector-input"
+          style={{ width: 80 }}
+          data-testid="tray-rotate-angulo"
+          value={texto ?? String(angulo)}
+          onChange={(e) => setTexto(e.target.value)}
+          onBlur={() => { if (texto !== null && Number.isFinite(Number(texto))) setAngulo(Number(texto)); }}
+        />
+        °
+        <button
+          type="button"
+          data-testid="tray-rotate-aplicar"
+          onClick={() => {
+            const deg = Number(texto ?? angulo);
+            if (!Number.isFinite(deg)) return;
+            setAngulo(deg);
+            aplicarRotacion(piece.instancia_id, eje, deg, pivote);
+            setTexto(null);
+          }}
+        >
+          Aplicar
+        </button>
+      </div>
+    </fieldset>
+  );
+}
+
+/**
  * Modal flotante en el inspector que aparece cuando un movimiento dejó
  * uniones sin coincidencia. El usuario puede:
  *  - Aceptar: confirma el movimiento Y descarta las conexiones afectadas
@@ -451,7 +522,7 @@ function BrokenConnectionsModal() {
       }}
     >
       <div style={{ fontSize: 12, color: '#ffccaa', marginBottom: 6, fontWeight: 600 }}>
-        ⚠ Mover el tramo desconectará {pending.brokenConexionIds.length} unión(es)
+        ⚠ Mover o rotar el tramo desconectará {pending.brokenConexionIds.length} unión(es)
       </div>
       <div style={{ fontSize: 11, color: '#ffe0cc', marginBottom: 8, lineHeight: 1.5 }}>
         Las siguientes conexiones perdieron la coincidencia entre sus bocas.
@@ -492,6 +563,8 @@ export function PieceCard({ piece }: { piece: Piece }) {
   const markDirty = useWorkspaceStore((s) => s.markDirty);
   const trayMoveMode     = useWorkspaceStore((s) => s.trayMoveMode);
   const setTrayMoveMode  = useWorkspaceStore((s) => s.setTrayMoveMode);
+  const trayRotateMode   = useWorkspaceStore((s) => s.trayRotateMode);
+  const setTrayRotateMode = useWorkspaceStore((s) => s.setTrayRotateMode);
 
   if (!entrada) return null;
 
@@ -580,7 +653,26 @@ export function PieceCard({ piece }: { piece: Piece }) {
         >
           {trayMoveMode ? '✥ Mover tramo (activo — Esc)' : '✥ Mover tramo'}
         </button>
+        <button
+          className={trayRotateMode ? 'tone-ok' : undefined}
+          data-testid="tray-rotate-toggle"
+          onClick={() => setTrayRotateMode(!trayRotateMode)}
+          title="Mostrar/ocultar el gizmo de rotación (anillos por eje) sobre la pieza"
+          style={{
+            fontSize: 11,
+            padding: '3px 10px',
+            background: trayRotateMode ? '#1f5a8a' : '#3c4967',
+            color: 'white',
+            border: `1px solid ${trayRotateMode ? '#7fc0f0' : '#5566aa'}`,
+            borderRadius: 3,
+            cursor: 'pointer',
+            fontWeight: trayRotateMode ? 600 : 400,
+          }}
+        >
+          {trayRotateMode ? '⟳ Rotar tramo (activo — Esc)' : '⟳ Rotar tramo'}
+        </button>
       </div>
+      {trayRotateMode && <TrayRotatePanel piece={piece} />}
 
       <TrayCentroidEditor
         piece={piece}

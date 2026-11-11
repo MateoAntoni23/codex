@@ -17,6 +17,7 @@ import {
   findBrokenConnections,
 } from './trayMovement';
 import { TrayObjects } from './TrayObjects';
+import { TrayRotateControls } from './TrayRotateControls';
 import { RoutingObjects } from './RoutingObjects';
 import type { ElementRenderProps } from '../scene/v2-adapter';
 import type { EquipmentElement } from '../types/domain-v2';
@@ -379,6 +380,7 @@ export function WorkspaceScene() {
   const setMoveMode      = useWorkspaceStore((s) => s.setMoveMode);
   const trayMoveMode     = useWorkspaceStore((s) => s.trayMoveMode);
   const setTrayMoveMode  = useWorkspaceStore((s) => s.setTrayMoveMode);
+  const trayRotateMode   = useWorkspaceStore((s) => s.trayRotateMode);
 
   const allRenderProps = useMemo(
     () => elements.map((el) => elementToRenderProps(el, elements)),
@@ -506,6 +508,7 @@ export function WorkspaceScene() {
           <TrayMoveHint pieceId={selectedTrayId} />
         </>
       )}
+      {trayRotateMode && selectedTrayId && <TrayRotateControls pieceId={selectedTrayId} />}
 
       {/* Routing objects — port markers + preview mesh when routing tool is active */}
       <RoutingObjects />

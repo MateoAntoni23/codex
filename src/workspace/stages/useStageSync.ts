@@ -42,6 +42,7 @@ export function useStageSync(): void {
         const ws = useWorkspaceStore.getState();
         if (ws.connectionToolActive) ws.deactivateConnectionTool();
         if (ws.trayMoveMode) ws.setTrayMoveMode(false);
+        if (ws.trayRotateMode) ws.setTrayRotateMode(false);
         if (s.bandejasTool !== 'seleccionar') useUiStore.getState().setBandejasTool('seleccionar');
       }
       if ((prev.stage === 'equipos' || prev.stage === 'planta') && useWorkspaceStore.getState().moveMode) {

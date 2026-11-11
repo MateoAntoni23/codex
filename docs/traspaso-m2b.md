@@ -143,6 +143,41 @@ convertirla (producto fuera del índice). Ahora el override queda intacto y se r
   derivación sobre el catálogo). `cadenaOperador` E2E (PB9) ahora exige los 4 avisos en las uniones con
   CUPS, 2 en la ficha y 2 filas en Resultados.
 
+Verify de cierre de B-3 (`e935bac`, worktree nuevo): tipos OK, Vitest 1681/1681, motor 190 OK,
+Playwright 87/87. La primera corrida en un worktree nuevo encontró un defecto latente de B-1: con
+`core.autocrlf=true` los `.mjs` generadores quedaban en CRLF y Vitest no podía importarlos. Se resolvió con
+`.gitattributes` (`e935bac`). El árbol principal no lo mostraba.
+
+## B-4 — gizmo de rotación ("Rotar tramo")
+- **Botón:** "⟳ Rotar tramo" en la ficha de la pieza, junto a "✥ Mover tramo" y excluyente con él. Se
+  apaga igual (Esc, cambio de selección o de etapa).
+- **Escena** (`TrayRotateControls.tsx`):
+  - `TransformControls` de drei en modo `rotate` (anillos por eje, espacio mundo), sobre un proxy en el
+    pivote;
+  - paso de 15° por defecto; con Shift el giro es libre;
+  - durante el arrastre la pieza se actualiza fuera del historial; al soltar queda una sola entrada
+    (deshacer y rehacer).
+- **Panel** (`tray-rotate-panel`):
+  - pivote: centro de la pieza o una boca;
+  - eje X, Y o Z;
+  - ángulo editable, que muestra el del arrastre;
+  - "Aplicar", por el mismo camino que el gizmo.
+- **Uniones:** si un giro deja uniones fuera de tolerancia (las cuatro condiciones), se pide confirmación
+  con el mismo aviso que al mover ("Mover o rotar el tramo desconectará N unión(es)"). Cancelar restaura y
+  aceptar descarta esas uniones, así que nunca quedan uniones inválidas registradas.
+- **Alternativa no hecha, queda pendiente:** mover el grupo unido. Se tomó el camino más chico
+  (confirmación).
+- **Lógica pura** (`trayRotation.ts`): conversión visor → trazado (rotación propia: el eje se transforma y
+  el ángulo se conserva), pivote, paso y resolución. Pruebas en `trayRotation.test.ts`.
+- **PB8** (`e2e/rotarGizmo.visual.spec.ts`, 3 pruebas, estables en 3 corridas):
+  - pieza suelta: 90° sobre Z, centro fijo, una entrada en el historial, deshacer y rehacer, Shift libre,
+    Esc;
+  - **arrastre real del anillo con el mouse:** gira sobre Z en pasos de 15°;
+  - pieza unida: pide confirmación; cancelar restaura; con pivote en P1 la boca queda fija; aceptar
+    descarta la unión, sin inválidas, con una entrada en el historial.
+
+  Capturas en `e2e/output/rotar-0*.png`.
+
 ## Recorte de alcance (operador, 2026-11-11)
 - **Descartado:** reglas nominales para T y X (aunque 40 T y 40 X declaran `radio_mm`); reducciones (les
   falta el largo y el segundo ancho está solo en la descripción); tapas y finales de tramo. Tema de
