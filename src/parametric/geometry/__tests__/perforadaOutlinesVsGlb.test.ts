@@ -1,8 +1,8 @@
 /**
- * Las curvas de perforada (CPS-45, CPS-90) de `outlines.ts` = su GLB original.
+ * Los contornos de perforada CPS-45, CPS-90 y XPS = su GLB original.
  *
- * Estos polígonos no tienen `__outline.json`: se transcribieron como literales
- * en `4236323` desde el GLB original, que es el STEP del usuario convertido por
+ * Desde B-1.3 se generan desde el STEP (perforadaOutlines.ts); antes eran
+ * literales transcritos en `4236323` desde el GLB original, que es el STEP del usuario convertido por
  * CadQuery (`tools/step_parametric/build_all.py` → `_export_originals_glb`,
  * `public/parametric/originals_glb/`). Hasta esta prueba nada los contrastaba
  * con su origen.
@@ -24,7 +24,7 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { buildCPS45Recipe, buildCPS90Recipe } from '../outlines';
+import { buildCPS45Recipe, buildCPS90Recipe, buildXPSRecipe } from '../outlines';
 
 const TOL_MM = 0.015;
 const GLB_DIR = resolve(__dirname, '../../../../public/parametric/originals_glb');
@@ -59,6 +59,7 @@ function readGlbPrimitives(path: string): P3[][] {
 const casos = [
   { glb: 'CPS-300-45-Z.glb', polygon: buildCPS45Recipe({ ancho_mm: 300, ala_mm: 50 }).polygon },
   { glb: 'CPS-300-90-Z.glb', polygon: buildCPS90Recipe({ ancho_mm: 300, ala_mm: 50 }).polygon },
+  { glb: 'XPS-300-Z.glb', polygon: buildXPSRecipe({ ancho_mm: 300, ala_mm: 50 }).polygon },
 ] as const;
 
 describe('outlines.ts perforada = cara superior del GLB original', () => {

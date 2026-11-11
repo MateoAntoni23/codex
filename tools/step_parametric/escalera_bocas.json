@@ -1,0 +1,84 @@
+{
+  "_formato": "codex:escalera-bocas/1",
+  "_descripcion": "Declaración a mano de qué aristas de cada contorno de escalera son bocas y cómo se llaman. Todo lo demás (polígono, bbox, extremos, largo, punto medio y normal de cada boca) sale del __outline.json extraído del STEP. Lo lee tools/step_parametric/emit_escalera_outlines.mjs, que valida cada boca con la regla 'una boca mide el ancho de bandeja' y escribe src/parametric/geometry/escaleraOutlines.ts.",
+  "_regla_ancho": "Una boca de ancho nominal N mide entre N - holgura_modelo_mm - precision_mm y N + precision_mm. holgura_modelo_mm = 300 - 298.9: diferencia entre el ancho nominal del catálogo del tramo recto de referencia (TRES, ancho 300) y el ancho útil de su contorno medido. precision_mm = 0.005: el extractor redondea a 0,001 mm y los vértices del STEP traen hasta 0,004 mm de dispersión de modelado (p. ej. x = 0.004 donde la pared es x = 0).",
+  "holgura_modelo_mm": 1.1,
+  "precision_mm": 0.005,
+  "contornos": [
+    {
+      "outline": "TRES-300-065-18-Z",
+      "const": "TRES_300_065_18_Z",
+      "sku": "SAM_TRES-300-065-18-Z",
+      "titulo": "tramo recto escalera 3000 mm, ancho 300, ala 65",
+      "baseAnchoMm": 298.9,
+      "bocas": [
+        { "nombre": "P1", "arista": 3, "ancho_nominal_mm": 300, "nota": "lado corto x_min" },
+        { "nombre": "P2", "arista": 1, "ancho_nominal_mm": 300, "nota": "lado corto x_max" }
+      ],
+      "nota": "Las aristas de 3000 mm son los largueros, no bocas."
+    },
+    {
+      "outline": "CS-300-45-065-18-Z",
+      "const": "CS_300_45_065_18_Z",
+      "sku": "SAM_CS-300-45-065-18-Z",
+      "titulo": "curva escalera 45°, ancho 300, ala 65",
+      "baseAnchoMm": 298.9,
+      "bocas": [
+        { "nombre": "P1", "arista": 6, "ancho_nominal_mm": 300, "nota": "z_max, horizontal" },
+        { "nombre": "P2", "arista": 2, "ancho_nominal_mm": 300, "nota": "cara diagonal a 45°" }
+      ],
+      "nota": "STEP reemplazado por el operador el 2026-11-11 (el anterior era un codo de 60°). La arista 7 queda pegada a x_min pero es pared (192,7 mm)."
+    },
+    {
+      "outline": "CS-300-90-065-18-Z",
+      "const": "CS_300_90_065_18_Z",
+      "sku": "SAM_CS-300-90-065-18-Z",
+      "titulo": "curva escalera 90°, ancho 300, ala 65",
+      "baseAnchoMm": 298.9,
+      "bocas": [
+        { "nombre": "P1", "arista": 1, "ancho_nominal_mm": 300, "nota": "extremo del brazo horizontal (x≈744)" },
+        { "nombre": "P2", "arista": 5, "ancho_nominal_mm": 300, "nota": "extremo del brazo vertical (z≈744)" }
+      ],
+      "nota": "Las aristas pegadas al bbox (0 y 6, 333 mm) son paredes exteriores, no bocas."
+    },
+    {
+      "outline": "TS-300-065-18-Z",
+      "const": "TS_300_065_18_Z",
+      "sku": "SAM_TS-300-065-18-Z",
+      "titulo": "T escalera, ancho 300, ala 65",
+      "baseAnchoMm": 298.9,
+      "bocas": [
+        { "nombre": "P1", "arista": 0, "ancho_nominal_mm": 300, "nota": "tronco z_min" },
+        { "nombre": "P3", "arista": 4, "ancho_nominal_mm": 300, "nota": "derivación x_max (P3 según el catálogo, 4e2ebd3)" },
+        { "nombre": "P2", "arista": 8, "ancho_nominal_mm": 300, "nota": "tronco z_max" }
+      ],
+      "nota": "El orden de la lista se conserva (measuredLadder usa la primera y la segunda); los nombres siguen al maestro: P2 tronco z_max, P3 derivación x_max. La arista x_min (1189 mm) es larguero del tronco."
+    },
+    {
+      "outline": "XS-300-065-18-Z",
+      "const": "XS_300_065_18_Z",
+      "sku": "SAM_XS-300-065-18-Z",
+      "titulo": "cruz escalera, ancho 300, ala 65",
+      "baseAnchoMm": 298.9,
+      "bocas": [
+        { "nombre": "P1", "arista": 3, "ancho_nominal_mm": 300, "nota": "brazo z_min" },
+        { "nombre": "P2", "arista": 7, "ancho_nominal_mm": 300, "nota": "brazo x_max" },
+        { "nombre": "P3", "arista": 11, "ancho_nominal_mm": 300, "nota": "brazo z_max" },
+        { "nombre": "P4", "arista": 15, "ancho_nominal_mm": 300, "nota": "brazo x_min" }
+      ],
+      "nota": "16 vértices, cruz simétrica."
+    },
+    {
+      "outline": "RIS-15-065-18-Z",
+      "const": "RIS_15_065_18_Z",
+      "sku": "SAM_RIS-15-065-18-Z",
+      "titulo": "reducción escalera 300→150, ala 65",
+      "baseAnchoMm": 298.9,
+      "bocas": [
+        { "nombre": "P1", "arista": 5, "ancho_nominal_mm": 150, "nota": "boca angosta z_min" },
+        { "nombre": "P2", "arista": 3, "ancho_nominal_mm": 300, "nota": "boca ancha z_max" }
+      ],
+      "nota": "La arista 0 (149,5 mm) es el tramo recto del lateral quebrado, no una boca. buildRISRecipe no usa baseAnchoMm (polígono fijo); se declara por consistencia."
+    }
+  ]
+}

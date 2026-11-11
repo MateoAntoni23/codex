@@ -1,23 +1,25 @@
 /**
  * outlines.ts — polígonos canónicos por tipo de pieza STP-Z 300.
  *
- * Procedencia (cadena completa):
- *   1. STEP de SolidWorks aportado por el usuario (análisis y sha256 en
- *      `tools/step_parametric/report/<pieza>.json`). Si el STEP es original
- *      del fabricante o un modelo hecho por el usuario no está confirmado: se
- *      usa como referencia geométrica, no como fuente oficial de cotas.
- *   2. `tools/step_parametric/build_all.py` (`_export_originals_glb`) lo
- *      convierte con CadQuery a `public/parametric/originals_glb/<pieza>.glb`,
- *      una primitiva por cara del sólido.
- *   3. Los vértices de cada polígono se tomaron de ese GLB (min/max de los
- *      accessor de cada cara), se trasladaron al marco canónico (centro del
- *      bbox GLB → centro del bbox canónico) y se copiaron aquí como literales
- *      redondeados a 0,01 mm (`4236323`). Ese paso no quedó versionado como
- *      herramienta: no hay `__outline.json` para perforada.
- * Por eso "medido del GLB" (comentarios) y "medido del STEP de referencia"
- * (notas de cada receta, visibles en la interfaz) dicen lo mismo: el GLB es el
- * STEP convertido. `perforadaOutlinesVsGlb.test.ts` contrasta CPS-45 y CPS-90
- * con su GLB.
+ * Procedencia:
+ *   - CPS-45, CPS-90 y XPS: GENERADOS desde el STEP (fase B-1.3). El STEP de
+ *     SolidWorks del usuario (sha256 en `tools/step_parametric/report/<pieza>.json`)
+ *     se extrae con `extract_outlines.py` a
+ *     `tools/step_parametric/report/perforada/<pieza>__outline.json`, y
+ *     `emit_perforada_outlines.mjs` escribe `perforadaOutlines.ts` en el marco
+ *     que usan estas recetas (declarado en `perforada_contornos.json`).
+ *     Reproducen los literales anteriores a ≤ 0,009 mm por vértice.
+ *   - DCPS y CUPS: siguen como literales. Venían del GLB original
+ *     (`public/parametric/originals_glb/<pieza>.glb`, el STEP convertido por
+ *     CadQuery en `build_all.py`), redondeados a 0,01 mm y copiados a mano en
+ *     `4236323`. DCPS no reproduce el STEP dentro de 0,015 mm: dos vértices
+ *     están cuadrados al bbox (x = 0 y 449,5 donde el STEP tiene 0,051 y
+ *     449,449). CUPS es un perfil vertical; el extractor no da planta.
+ *   - Si el STEP es original del fabricante o un modelo del usuario no está
+ *     confirmado: se usa como referencia geométrica, no como fuente oficial de
+ *     cotas. "Medido del STEP de referencia" (notas visibles en la interfaz)
+ *     vale para todos: el GLB es el STEP convertido.
+ *   `perforadaOutlinesVsGlb.test.ts` contrasta CPS-45, CPS-90 y XPS con su GLB.
  *
  * Son la fuente de verdad del contorno 2D que reemplaza la revolución suave
  * de CadQuery, que no reflejaba las secciones rectas con quiebres reales.
@@ -39,6 +41,7 @@
  */
 
 import type { Vec3 } from '../catalog';
+import { CPS45_OUTLINE_300, CPS90_OUTLINE_300, XPS_OUTLINE_300 } from './perforadaOutlines';
 
 type V2 = readonly [number, number];
 type V3 = Vec3;
@@ -165,15 +168,7 @@ export function buildTRPSRecipe(params: {
 // escala uniforme desde el origen.
 // -----------------------------------------------------------------------------
 
-const CPS45_OUTLINE_300: readonly V2[] = [
-  [109.84, 0],
-  [410.97, -0.43],
-  [410.97, -29.29],
-  [435.43, -88.33],
-  [455.83, -108.73],
-  [243.21, -321.98],
-  [109.84, -188.6],
-];
+// CPS45_OUTLINE_300: generado desde el STEP en perforadaOutlines.ts (no editar aquí).
 
 export function buildCPS45Recipe(params: {
   ancho_mm: number;
@@ -216,16 +211,7 @@ export function buildCPS45Recipe(params: {
 // el encabezado).
 // -----------------------------------------------------------------------------
 
-const CPS90_OUTLINE_300: readonly V2[] = [
-  [0, 0],
-  [298.9, -0.57],
-  [298.9, -209.57],
-  [534.46, -445.13],
-  [743.37, -445.13],
-  [744.12, -744.03],
-  [411.12, -744.03],
-  [0, -332.92],
-];
+// CPS90_OUTLINE_300: generado desde el STEP en perforadaOutlines.ts (no editar aquí).
 
 export function buildCPS90Recipe(params: {
   ancho_mm: number;
@@ -338,24 +324,7 @@ export function buildDCPSRecipe(params: {
 // 45° en las esquinas interiores.
 // -----------------------------------------------------------------------------
 
-const XPS_OUTLINE_300: readonly V2[] = [
-  [0, -74.2],
-  [28.71, -74.2],
-  [74.2, -28.71],
-  [74.2, 0],
-  [375.2, 0],
-  [375.2, -28.71],
-  [420.69, -74.2],
-  [449.4, -74.2],
-  [449.4, -375.2],
-  [420.69, -375.2],
-  [375.2, -420.69],
-  [375.2, -449.4],
-  [74.2, -449.4],
-  [74.2, -420.69],
-  [28.71, -375.2],
-  [0, -375.2],
-];
+// XPS_OUTLINE_300: generado desde el STEP en perforadaOutlines.ts (no editar aquí).
 
 export function buildXPSRecipe(params: {
   ancho_mm: number;

@@ -201,6 +201,851 @@
       "antes": "def-120290448a5450",
       "despues": "(sin modelo)",
       "motivo": "B-1.1: curva de ángulo ajustable (CAS). Sin angulo_grados ya no cae en el maestro de 45° por desempate ni toma 90° por defecto de la receta; queda sin definición con motivo."
+    },
+    "SAM_CS-150-90-065-18-G": {
+      "antes": "def-0fc5ec4397eb60",
+      "despues": "def-094b672ef99f5a",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde CS-300-90-065-18-Z__outline.json; 5 de 8 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,002 mm)."
+    },
+    "SAM_CS-150-90-090-18-G": {
+      "antes": "def-1a2ad1c2975208",
+      "despues": "def-1b767be232b461",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde CS-300-90-065-18-Z__outline.json; 5 de 8 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,002 mm)."
+    },
+    "SAM_CS-150-90-115-18-G": {
+      "antes": "def-093aeff949dc16",
+      "despues": "def-0f384e9c75279f",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde CS-300-90-065-18-Z__outline.json; 5 de 8 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,002 mm)."
+    },
+    "SAM_CS-150-90-065-14-G": {
+      "antes": "def-0fc5ec4397eb60",
+      "despues": "def-094b672ef99f5a",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde CS-300-90-065-18-Z__outline.json; 5 de 8 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,002 mm)."
+    },
+    "SAM_CS-150-90-090-14-G": {
+      "antes": "def-1a2ad1c2975208",
+      "despues": "def-1b767be232b461",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde CS-300-90-065-18-Z__outline.json; 5 de 8 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,002 mm)."
+    },
+    "SAM_CS-150-90-115-14-G": {
+      "antes": "def-093aeff949dc16",
+      "despues": "def-0f384e9c75279f",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde CS-300-90-065-18-Z__outline.json; 5 de 8 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,002 mm)."
+    },
+    "SAM_CS-150-90-150-14-G": {
+      "antes": "def-0517f866c8f9d2",
+      "despues": "def-146d4f4ea6c8ec",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde CS-300-90-065-18-Z__outline.json; 5 de 8 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,002 mm)."
+    },
+    "SAM_CS-300-90-065-18-G": {
+      "antes": "def-1787b587ae654f",
+      "despues": "def-001587105c6c98",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde CS-300-90-065-18-Z__outline.json; 5 de 8 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,002 mm)."
+    },
+    "SAM_CS-300-90-090-18-G": {
+      "antes": "def-088765982b650c",
+      "despues": "def-0049dbc3763c78",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde CS-300-90-065-18-Z__outline.json; 5 de 8 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,002 mm)."
+    },
+    "SAM_CS-300-90-115-18-G": {
+      "antes": "def-0870c05409cc84",
+      "despues": "def-19b03864b6ff59",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde CS-300-90-065-18-Z__outline.json; 5 de 8 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,002 mm)."
+    },
+    "SAM_CS-300-90-065-14-G": {
+      "antes": "def-1787b587ae654f",
+      "despues": "def-001587105c6c98",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde CS-300-90-065-18-Z__outline.json; 5 de 8 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,002 mm)."
+    },
+    "SAM_CS-300-90-090-14-G": {
+      "antes": "def-088765982b650c",
+      "despues": "def-0049dbc3763c78",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde CS-300-90-065-18-Z__outline.json; 5 de 8 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,002 mm)."
+    },
+    "SAM_CS-300-90-115-14-G": {
+      "antes": "def-0870c05409cc84",
+      "despues": "def-19b03864b6ff59",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde CS-300-90-065-18-Z__outline.json; 5 de 8 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,002 mm)."
+    },
+    "SAM_CS-300-90-150-14-G": {
+      "antes": "def-1b4813b6b0f364",
+      "despues": "def-0158843f366512",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde CS-300-90-065-18-Z__outline.json; 5 de 8 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,002 mm)."
+    },
+    "SAM_CS-450-90-065-18-G": {
+      "antes": "def-0c6f582d879fbc",
+      "despues": "def-02c4ff0589c72d",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde CS-300-90-065-18-Z__outline.json; 5 de 8 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,002 mm)."
+    },
+    "SAM_CS-450-90-090-18-G": {
+      "antes": "def-1b9efbdcdd26c2",
+      "despues": "def-0d7909fdbdb129",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde CS-300-90-065-18-Z__outline.json; 5 de 8 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,002 mm)."
+    },
+    "SAM_CS-450-90-115-18-G": {
+      "antes": "def-06772ae9532e80",
+      "despues": "def-1c8d08312e335d",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde CS-300-90-065-18-Z__outline.json; 5 de 8 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,002 mm)."
+    },
+    "SAM_CS-450-90-065-14-G": {
+      "antes": "def-0c6f582d879fbc",
+      "despues": "def-02c4ff0589c72d",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde CS-300-90-065-18-Z__outline.json; 5 de 8 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,002 mm)."
+    },
+    "SAM_CS-450-90-090-14-G": {
+      "antes": "def-1b9efbdcdd26c2",
+      "despues": "def-0d7909fdbdb129",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde CS-300-90-065-18-Z__outline.json; 5 de 8 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,002 mm)."
+    },
+    "SAM_CS-450-90-115-14-G": {
+      "antes": "def-06772ae9532e80",
+      "despues": "def-1c8d08312e335d",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde CS-300-90-065-18-Z__outline.json; 5 de 8 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,002 mm)."
+    },
+    "SAM_CS-450-90-150-14-G": {
+      "antes": "def-0cac10b037db23",
+      "despues": "def-077a3a76e3a586",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde CS-300-90-065-18-Z__outline.json; 5 de 8 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,002 mm)."
+    },
+    "SAM_CS-600-90-065-18-G": {
+      "antes": "def-07ce494132047d",
+      "despues": "def-13049fb3bf0e0a",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde CS-300-90-065-18-Z__outline.json; 5 de 8 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,002 mm)."
+    },
+    "SAM_CS-600-90-090-18-G": {
+      "antes": "def-1e7a682afd1560",
+      "despues": "def-0039234009697a",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde CS-300-90-065-18-Z__outline.json; 5 de 8 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,002 mm)."
+    },
+    "SAM_CS-600-90-115-18-G": {
+      "antes": "def-12856d482a5121",
+      "despues": "def-033591e2d84da4",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde CS-300-90-065-18-Z__outline.json; 5 de 8 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,002 mm)."
+    },
+    "SAM_CS-600-90-065-14-G": {
+      "antes": "def-07ce494132047d",
+      "despues": "def-13049fb3bf0e0a",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde CS-300-90-065-18-Z__outline.json; 5 de 8 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,002 mm)."
+    },
+    "SAM_CS-600-90-090-14-G": {
+      "antes": "def-1e7a682afd1560",
+      "despues": "def-0039234009697a",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde CS-300-90-065-18-Z__outline.json; 5 de 8 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,002 mm)."
+    },
+    "SAM_CS-600-90-115-14-G": {
+      "antes": "def-12856d482a5121",
+      "despues": "def-033591e2d84da4",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde CS-300-90-065-18-Z__outline.json; 5 de 8 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,002 mm)."
+    },
+    "SAM_CS-600-90-150-14-G": {
+      "antes": "def-164ea1749b2f79",
+      "despues": "def-1f77b4e1fb70f7",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde CS-300-90-065-18-Z__outline.json; 5 de 8 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,002 mm)."
+    },
+    "SAM_TS-150-065-18-G": {
+      "antes": "def-09c4b4180f1d13",
+      "despues": "def-12b42ac9e11b0d",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde TS-300-065-18-Z__outline.json; 8 de 10 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,005 mm)."
+    },
+    "SAM_TS-150-090-18-G": {
+      "antes": "def-07ba081cb27082",
+      "despues": "def-0447ec773299d9",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde TS-300-065-18-Z__outline.json; 8 de 10 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,005 mm)."
+    },
+    "SAM_TS-150-115-18-G": {
+      "antes": "def-02793bb1ad1869",
+      "despues": "def-169a52fd272361",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde TS-300-065-18-Z__outline.json; 8 de 10 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,005 mm)."
+    },
+    "SAM_TS-150-065-14-G": {
+      "antes": "def-09c4b4180f1d13",
+      "despues": "def-12b42ac9e11b0d",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde TS-300-065-18-Z__outline.json; 8 de 10 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,005 mm)."
+    },
+    "SAM_TS-150-090-14-G": {
+      "antes": "def-07ba081cb27082",
+      "despues": "def-0447ec773299d9",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde TS-300-065-18-Z__outline.json; 8 de 10 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,005 mm)."
+    },
+    "SAM_TS-150-115-14-G": {
+      "antes": "def-02793bb1ad1869",
+      "despues": "def-169a52fd272361",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde TS-300-065-18-Z__outline.json; 8 de 10 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,005 mm)."
+    },
+    "SAM_TS-150-150-14-G": {
+      "antes": "def-0e4565bc493210",
+      "despues": "def-17547f9750f17f",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde TS-300-065-18-Z__outline.json; 8 de 10 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,005 mm)."
+    },
+    "SAM_TS-300-065-18-G": {
+      "antes": "def-1b042411dae810",
+      "despues": "def-0ca839ab5d86a5",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde TS-300-065-18-Z__outline.json; 8 de 10 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,005 mm)."
+    },
+    "SAM_TS-300-090-18-G": {
+      "antes": "def-098f3202666a47",
+      "despues": "def-1f5356a5e21d74",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde TS-300-065-18-Z__outline.json; 8 de 10 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,005 mm)."
+    },
+    "SAM_TS-300-115-18-G": {
+      "antes": "def-0bf0c2c023cba8",
+      "despues": "def-049ed59da69050",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde TS-300-065-18-Z__outline.json; 8 de 10 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,005 mm)."
+    },
+    "SAM_TS-300-065-14-G": {
+      "antes": "def-1b042411dae810",
+      "despues": "def-0ca839ab5d86a5",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde TS-300-065-18-Z__outline.json; 8 de 10 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,005 mm)."
+    },
+    "SAM_TS-300-090-14-G": {
+      "antes": "def-098f3202666a47",
+      "despues": "def-1f5356a5e21d74",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde TS-300-065-18-Z__outline.json; 8 de 10 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,005 mm)."
+    },
+    "SAM_TS-300-115-14-G": {
+      "antes": "def-0bf0c2c023cba8",
+      "despues": "def-049ed59da69050",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde TS-300-065-18-Z__outline.json; 8 de 10 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,005 mm)."
+    },
+    "SAM_TS-300-150-14-G": {
+      "antes": "def-0fcfcd8dbc3a69",
+      "despues": "def-16ebef50515aa0",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde TS-300-065-18-Z__outline.json; 8 de 10 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,005 mm)."
+    },
+    "SAM_TS-450-065-18-G": {
+      "antes": "def-0fbd742ff838a2",
+      "despues": "def-146260d56d92c8",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde TS-300-065-18-Z__outline.json; 8 de 10 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,005 mm)."
+    },
+    "SAM_TS-450-090-18-G": {
+      "antes": "def-1f0664bad06080",
+      "despues": "def-0f189043c884d6",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde TS-300-065-18-Z__outline.json; 8 de 10 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,005 mm)."
+    },
+    "SAM_TS-450-115-18-G": {
+      "antes": "def-0ecbe07775e27d",
+      "despues": "def-0c7cda18dc1b91",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde TS-300-065-18-Z__outline.json; 8 de 10 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,005 mm)."
+    },
+    "SAM_TS-450-065-14-G": {
+      "antes": "def-0fbd742ff838a2",
+      "despues": "def-146260d56d92c8",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde TS-300-065-18-Z__outline.json; 8 de 10 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,005 mm)."
+    },
+    "SAM_TS-450-090-14-G": {
+      "antes": "def-1f0664bad06080",
+      "despues": "def-0f189043c884d6",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde TS-300-065-18-Z__outline.json; 8 de 10 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,005 mm)."
+    },
+    "SAM_TS-450-115-14-G": {
+      "antes": "def-0ecbe07775e27d",
+      "despues": "def-0c7cda18dc1b91",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde TS-300-065-18-Z__outline.json; 8 de 10 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,005 mm)."
+    },
+    "SAM_TS-450-150-14-G": {
+      "antes": "def-1c8286a445a23c",
+      "despues": "def-1664efa23ac5ad",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde TS-300-065-18-Z__outline.json; 8 de 10 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,005 mm)."
+    },
+    "SAM_TS-600-065-18-G": {
+      "antes": "def-0160a5d915b0c9",
+      "despues": "def-1ded382251e228",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde TS-300-065-18-Z__outline.json; 8 de 10 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,005 mm)."
+    },
+    "SAM_TS-600-090-18-G": {
+      "antes": "def-14fb01595bee85",
+      "despues": "def-1a6941f8b6a6c5",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde TS-300-065-18-Z__outline.json; 8 de 10 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,005 mm)."
+    },
+    "SAM_TS-600-115-18-G": {
+      "antes": "def-1ce1f91cedfb40",
+      "despues": "def-0474744903ce99",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde TS-300-065-18-Z__outline.json; 8 de 10 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,005 mm)."
+    },
+    "SAM_TS-600-065-14-G": {
+      "antes": "def-0160a5d915b0c9",
+      "despues": "def-1ded382251e228",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde TS-300-065-18-Z__outline.json; 8 de 10 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,005 mm)."
+    },
+    "SAM_TS-600-090-14-G": {
+      "antes": "def-14fb01595bee85",
+      "despues": "def-1a6941f8b6a6c5",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde TS-300-065-18-Z__outline.json; 8 de 10 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,005 mm)."
+    },
+    "SAM_TS-600-115-14-G": {
+      "antes": "def-1ce1f91cedfb40",
+      "despues": "def-0474744903ce99",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde TS-300-065-18-Z__outline.json; 8 de 10 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,005 mm)."
+    },
+    "SAM_TS-600-150-14-G": {
+      "antes": "def-19f2e8a113509c",
+      "despues": "def-19d99e20a0c0e3",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde TS-300-065-18-Z__outline.json; 8 de 10 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,005 mm)."
+    },
+    "SAM_XS-150-065-18-G": {
+      "antes": "def-14fe4ba0154525",
+      "despues": "def-0541c7b288545f",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde XS-300-065-18-Z__outline.json; 16 de 16 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,004 mm)."
+    },
+    "SAM_XS-150-090-18-G": {
+      "antes": "def-0c32e26675242a",
+      "despues": "def-00f1c40654bc2d",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde XS-300-065-18-Z__outline.json; 16 de 16 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,004 mm)."
+    },
+    "SAM_XS-150-115-18-G": {
+      "antes": "def-17cc9cd0e127b4",
+      "despues": "def-051dd249b1347a",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde XS-300-065-18-Z__outline.json; 16 de 16 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,004 mm)."
+    },
+    "SAM_XS-150-065-14-G": {
+      "antes": "def-14fe4ba0154525",
+      "despues": "def-0541c7b288545f",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde XS-300-065-18-Z__outline.json; 16 de 16 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,004 mm)."
+    },
+    "SAM_XS-150-090-14-G": {
+      "antes": "def-0c32e26675242a",
+      "despues": "def-00f1c40654bc2d",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde XS-300-065-18-Z__outline.json; 16 de 16 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,004 mm)."
+    },
+    "SAM_XS-150-115-14-G": {
+      "antes": "def-17cc9cd0e127b4",
+      "despues": "def-051dd249b1347a",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde XS-300-065-18-Z__outline.json; 16 de 16 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,004 mm)."
+    },
+    "SAM_XS-150-150-14-G": {
+      "antes": "def-164fb4501077a2",
+      "despues": "def-1633eaf8085923",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde XS-300-065-18-Z__outline.json; 16 de 16 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,004 mm)."
+    },
+    "SAM_XS-300-065-18-G": {
+      "antes": "def-08a3e94a837b42",
+      "despues": "def-034096d5b1866d",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde XS-300-065-18-Z__outline.json; 16 de 16 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,004 mm)."
+    },
+    "SAM_XS-300-090-18-G": {
+      "antes": "def-01ec3b652a208a",
+      "despues": "def-14abd48513dd9f",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde XS-300-065-18-Z__outline.json; 16 de 16 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,004 mm)."
+    },
+    "SAM_XS-300-115-18-G": {
+      "antes": "def-1a11f14d72d919",
+      "despues": "def-102c0e48bb70ae",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde XS-300-065-18-Z__outline.json; 16 de 16 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,004 mm)."
+    },
+    "SAM_XS-300-065-14-G": {
+      "antes": "def-08a3e94a837b42",
+      "despues": "def-034096d5b1866d",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde XS-300-065-18-Z__outline.json; 16 de 16 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,004 mm)."
+    },
+    "SAM_XS-300-090-14-G": {
+      "antes": "def-01ec3b652a208a",
+      "despues": "def-14abd48513dd9f",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde XS-300-065-18-Z__outline.json; 16 de 16 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,004 mm)."
+    },
+    "SAM_XS-300-115-14-G": {
+      "antes": "def-1a11f14d72d919",
+      "despues": "def-102c0e48bb70ae",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde XS-300-065-18-Z__outline.json; 16 de 16 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,004 mm)."
+    },
+    "SAM_XS-300-150-14-G": {
+      "antes": "def-1f26e00a380f9f",
+      "despues": "def-0cee055ff599c0",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde XS-300-065-18-Z__outline.json; 16 de 16 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,004 mm)."
+    },
+    "SAM_XS-450-065-18-G": {
+      "antes": "def-159e0bfacb453d",
+      "despues": "def-11ee8e4c076726",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde XS-300-065-18-Z__outline.json; 16 de 16 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,004 mm)."
+    },
+    "SAM_XS-450-090-18-G": {
+      "antes": "def-18e52a41c6ac66",
+      "despues": "def-0942195a0a2d8b",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde XS-300-065-18-Z__outline.json; 16 de 16 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,004 mm)."
+    },
+    "SAM_XS-450-115-18-G": {
+      "antes": "def-137a23504e26e3",
+      "despues": "def-13dbd555085fac",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde XS-300-065-18-Z__outline.json; 16 de 16 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,004 mm)."
+    },
+    "SAM_XS-450-065-14-G": {
+      "antes": "def-159e0bfacb453d",
+      "despues": "def-11ee8e4c076726",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde XS-300-065-18-Z__outline.json; 16 de 16 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,004 mm)."
+    },
+    "SAM_XS-450-090-14-G": {
+      "antes": "def-18e52a41c6ac66",
+      "despues": "def-0942195a0a2d8b",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde XS-300-065-18-Z__outline.json; 16 de 16 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,004 mm)."
+    },
+    "SAM_XS-450-115-14-G": {
+      "antes": "def-137a23504e26e3",
+      "despues": "def-13dbd555085fac",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde XS-300-065-18-Z__outline.json; 16 de 16 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,004 mm)."
+    },
+    "SAM_XS-450-150-14-G": {
+      "antes": "def-0bfe9f0c2896cc",
+      "despues": "def-0a2fa46daec509",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde XS-300-065-18-Z__outline.json; 16 de 16 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,004 mm)."
+    },
+    "SAM_XS-600-065-18-G": {
+      "antes": "def-15f60e803fc7de",
+      "despues": "def-153c92b29dc0b1",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde XS-300-065-18-Z__outline.json; 16 de 16 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,004 mm)."
+    },
+    "SAM_XS-600-090-18-G": {
+      "antes": "def-174c862775bb09",
+      "despues": "def-1a906e4a18cb66",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde XS-300-065-18-Z__outline.json; 16 de 16 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,004 mm)."
+    },
+    "SAM_XS-600-115-18-G": {
+      "antes": "def-184a05c3f9b0fd",
+      "despues": "def-1ed76242a50582",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde XS-300-065-18-Z__outline.json; 16 de 16 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,004 mm)."
+    },
+    "SAM_XS-600-065-14-G": {
+      "antes": "def-15f60e803fc7de",
+      "despues": "def-153c92b29dc0b1",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde XS-300-065-18-Z__outline.json; 16 de 16 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,004 mm)."
+    },
+    "SAM_XS-600-090-14-G": {
+      "antes": "def-174c862775bb09",
+      "despues": "def-1a906e4a18cb66",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde XS-300-065-18-Z__outline.json; 16 de 16 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,004 mm)."
+    },
+    "SAM_XS-600-115-14-G": {
+      "antes": "def-184a05c3f9b0fd",
+      "despues": "def-1ed76242a50582",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde XS-300-065-18-Z__outline.json; 16 de 16 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,004 mm)."
+    },
+    "SAM_XS-600-150-14-G": {
+      "antes": "def-07d6ec2d4ef18d",
+      "despues": "def-029760fb0c8903",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde XS-300-065-18-Z__outline.json; 16 de 16 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,004 mm)."
+    },
+    "SAM_CS-150-90-065-18-Z": {
+      "antes": "def-0fc5ec4397eb60",
+      "despues": "def-094b672ef99f5a",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde CS-300-90-065-18-Z__outline.json; 5 de 8 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,002 mm)."
+    },
+    "SAM_CS-150-90-090-18-Z": {
+      "antes": "def-1a2ad1c2975208",
+      "despues": "def-1b767be232b461",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde CS-300-90-065-18-Z__outline.json; 5 de 8 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,002 mm)."
+    },
+    "SAM_CS-150-90-115-18-Z": {
+      "antes": "def-093aeff949dc16",
+      "despues": "def-0f384e9c75279f",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde CS-300-90-065-18-Z__outline.json; 5 de 8 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,002 mm)."
+    },
+    "SAM_CS-300-90-065-18-Z": {
+      "antes": "def-1787b587ae654f",
+      "despues": "def-001587105c6c98",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde CS-300-90-065-18-Z__outline.json; 5 de 8 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,002 mm)."
+    },
+    "SAM_CS-300-90-090-18-Z": {
+      "antes": "def-088765982b650c",
+      "despues": "def-0049dbc3763c78",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde CS-300-90-065-18-Z__outline.json; 5 de 8 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,002 mm)."
+    },
+    "SAM_CS-300-90-115-18-Z": {
+      "antes": "def-0870c05409cc84",
+      "despues": "def-19b03864b6ff59",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde CS-300-90-065-18-Z__outline.json; 5 de 8 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,002 mm)."
+    },
+    "SAM_CS-450-90-065-18-Z": {
+      "antes": "def-0c6f582d879fbc",
+      "despues": "def-02c4ff0589c72d",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde CS-300-90-065-18-Z__outline.json; 5 de 8 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,002 mm)."
+    },
+    "SAM_CS-450-90-090-18-Z": {
+      "antes": "def-1b9efbdcdd26c2",
+      "despues": "def-0d7909fdbdb129",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde CS-300-90-065-18-Z__outline.json; 5 de 8 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,002 mm)."
+    },
+    "SAM_CS-450-90-115-18-Z": {
+      "antes": "def-06772ae9532e80",
+      "despues": "def-1c8d08312e335d",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde CS-300-90-065-18-Z__outline.json; 5 de 8 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,002 mm)."
+    },
+    "SAM_CS-600-90-065-18-Z": {
+      "antes": "def-07ce494132047d",
+      "despues": "def-13049fb3bf0e0a",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde CS-300-90-065-18-Z__outline.json; 5 de 8 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,002 mm)."
+    },
+    "SAM_CS-600-90-090-18-Z": {
+      "antes": "def-1e7a682afd1560",
+      "despues": "def-0039234009697a",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde CS-300-90-065-18-Z__outline.json; 5 de 8 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,002 mm)."
+    },
+    "SAM_CS-600-90-115-18-Z": {
+      "antes": "def-12856d482a5121",
+      "despues": "def-033591e2d84da4",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde CS-300-90-065-18-Z__outline.json; 5 de 8 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,002 mm)."
+    },
+    "SAM_TS-150-065-18-Z": {
+      "antes": "def-09c4b4180f1d13",
+      "despues": "def-12b42ac9e11b0d",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde TS-300-065-18-Z__outline.json; 8 de 10 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,005 mm)."
+    },
+    "SAM_TS-150-090-18-Z": {
+      "antes": "def-07ba081cb27082",
+      "despues": "def-0447ec773299d9",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde TS-300-065-18-Z__outline.json; 8 de 10 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,005 mm)."
+    },
+    "SAM_TS-150-115-18-Z": {
+      "antes": "def-02793bb1ad1869",
+      "despues": "def-169a52fd272361",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde TS-300-065-18-Z__outline.json; 8 de 10 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,005 mm)."
+    },
+    "SAM_TS-300-065-18-Z": {
+      "antes": "def-1b042411dae810",
+      "despues": "def-0ca839ab5d86a5",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde TS-300-065-18-Z__outline.json; 8 de 10 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,005 mm)."
+    },
+    "SAM_TS-300-090-18-Z": {
+      "antes": "def-098f3202666a47",
+      "despues": "def-1f5356a5e21d74",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde TS-300-065-18-Z__outline.json; 8 de 10 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,005 mm)."
+    },
+    "SAM_TS-300-115-18-Z": {
+      "antes": "def-0bf0c2c023cba8",
+      "despues": "def-049ed59da69050",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde TS-300-065-18-Z__outline.json; 8 de 10 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,005 mm)."
+    },
+    "SAM_TS-450-065-18-Z": {
+      "antes": "def-0fbd742ff838a2",
+      "despues": "def-146260d56d92c8",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde TS-300-065-18-Z__outline.json; 8 de 10 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,005 mm)."
+    },
+    "SAM_TS-450-090-18-Z": {
+      "antes": "def-1f0664bad06080",
+      "despues": "def-0f189043c884d6",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde TS-300-065-18-Z__outline.json; 8 de 10 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,005 mm)."
+    },
+    "SAM_TS-450-115-18-Z": {
+      "antes": "def-0ecbe07775e27d",
+      "despues": "def-0c7cda18dc1b91",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde TS-300-065-18-Z__outline.json; 8 de 10 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,005 mm)."
+    },
+    "SAM_TS-600-065-18-Z": {
+      "antes": "def-0160a5d915b0c9",
+      "despues": "def-1ded382251e228",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde TS-300-065-18-Z__outline.json; 8 de 10 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,005 mm)."
+    },
+    "SAM_TS-600-090-18-Z": {
+      "antes": "def-14fb01595bee85",
+      "despues": "def-1a6941f8b6a6c5",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde TS-300-065-18-Z__outline.json; 8 de 10 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,005 mm)."
+    },
+    "SAM_TS-600-115-18-Z": {
+      "antes": "def-1ce1f91cedfb40",
+      "despues": "def-0474744903ce99",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde TS-300-065-18-Z__outline.json; 8 de 10 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,005 mm)."
+    },
+    "SAM_XS-150-065-18-Z": {
+      "antes": "def-14fe4ba0154525",
+      "despues": "def-0541c7b288545f",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde XS-300-065-18-Z__outline.json; 16 de 16 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,004 mm)."
+    },
+    "SAM_XS-150-090-18-Z": {
+      "antes": "def-0c32e26675242a",
+      "despues": "def-00f1c40654bc2d",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde XS-300-065-18-Z__outline.json; 16 de 16 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,004 mm)."
+    },
+    "SAM_XS-150-115-18-Z": {
+      "antes": "def-17cc9cd0e127b4",
+      "despues": "def-051dd249b1347a",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde XS-300-065-18-Z__outline.json; 16 de 16 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,004 mm)."
+    },
+    "SAM_XS-300-065-18-Z": {
+      "antes": "def-08a3e94a837b42",
+      "despues": "def-034096d5b1866d",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde XS-300-065-18-Z__outline.json; 16 de 16 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,004 mm)."
+    },
+    "SAM_XS-300-090-18-Z": {
+      "antes": "def-01ec3b652a208a",
+      "despues": "def-14abd48513dd9f",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde XS-300-065-18-Z__outline.json; 16 de 16 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,004 mm)."
+    },
+    "SAM_XS-300-115-18-Z": {
+      "antes": "def-1a11f14d72d919",
+      "despues": "def-102c0e48bb70ae",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde XS-300-065-18-Z__outline.json; 16 de 16 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,004 mm)."
+    },
+    "SAM_XS-450-065-18-Z": {
+      "antes": "def-159e0bfacb453d",
+      "despues": "def-11ee8e4c076726",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde XS-300-065-18-Z__outline.json; 16 de 16 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,004 mm)."
+    },
+    "SAM_XS-450-090-18-Z": {
+      "antes": "def-18e52a41c6ac66",
+      "despues": "def-0942195a0a2d8b",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde XS-300-065-18-Z__outline.json; 16 de 16 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,004 mm)."
+    },
+    "SAM_XS-450-115-18-Z": {
+      "antes": "def-137a23504e26e3",
+      "despues": "def-13dbd555085fac",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde XS-300-065-18-Z__outline.json; 16 de 16 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,004 mm)."
+    },
+    "SAM_XS-600-065-18-Z": {
+      "antes": "def-15f60e803fc7de",
+      "despues": "def-153c92b29dc0b1",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde XS-300-065-18-Z__outline.json; 16 de 16 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,004 mm)."
+    },
+    "SAM_XS-600-090-18-Z": {
+      "antes": "def-174c862775bb09",
+      "despues": "def-1a906e4a18cb66",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde XS-300-065-18-Z__outline.json; 16 de 16 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,004 mm)."
+    },
+    "SAM_XS-600-115-18-Z": {
+      "antes": "def-184a05c3f9b0fd",
+      "despues": "def-1ed76242a50582",
+      "motivo": "B-1.2: escaleraOutlines.ts generado desde XS-300-065-18-Z__outline.json; 16 de 16 vértices pasan de la transcripción redondeada a 0,01 mm a los 3 decimales del JSON (máx 0,004 mm)."
+    },
+    "SAM_CPS-050-90-Z": {
+      "antes": "def-05d85dfc459976",
+      "despues": "def-14651faee0558b",
+      "motivo": "B-1.3: CPS-90 generado desde el STEP (report/perforada/CPS-300-90-Z__outline.json) en lugar de los literales redondeados a 0,01 mm; vértices a ≤ 0,009 mm de los anteriores."
+    },
+    "SAM_CPS-100-90-Z": {
+      "antes": "def-0b9a6f08601a53",
+      "despues": "def-1e666b76573358",
+      "motivo": "B-1.3: CPS-90 generado desde el STEP (report/perforada/CPS-300-90-Z__outline.json) en lugar de los literales redondeados a 0,01 mm; vértices a ≤ 0,009 mm de los anteriores."
+    },
+    "SAM_CPS-150-90-Z": {
+      "antes": "def-10ad6e2cf22a7c",
+      "despues": "def-15662ef8e83b86",
+      "motivo": "B-1.3: CPS-90 generado desde el STEP (report/perforada/CPS-300-90-Z__outline.json) en lugar de los literales redondeados a 0,01 mm; vértices a ≤ 0,009 mm de los anteriores."
+    },
+    "SAM_CPS-200-90-Z": {
+      "antes": "def-14be290973b946",
+      "despues": "def-19022e88b5ed3b",
+      "motivo": "B-1.3: CPS-90 generado desde el STEP (report/perforada/CPS-300-90-Z__outline.json) en lugar de los literales redondeados a 0,01 mm; vértices a ≤ 0,009 mm de los anteriores."
+    },
+    "SAM_CPS-300-90-Z": {
+      "antes": "def-027eee1146f8a2",
+      "despues": "def-1a9d73043f4869",
+      "motivo": "B-1.3: CPS-90 generado desde el STEP (report/perforada/CPS-300-90-Z__outline.json) en lugar de los literales redondeados a 0,01 mm; vértices a ≤ 0,009 mm de los anteriores."
+    },
+    "SAM_CPS-450-90-Z": {
+      "antes": "def-1d25bf555ea972",
+      "despues": "def-0bfd74bdad00fc",
+      "motivo": "B-1.3: CPS-90 generado desde el STEP (report/perforada/CPS-300-90-Z__outline.json) en lugar de los literales redondeados a 0,01 mm; vértices a ≤ 0,009 mm de los anteriores."
+    },
+    "SAM_CPS-600-90-Z": {
+      "antes": "def-1ce3ce2dfec58b",
+      "despues": "def-08091fbdb5d64c",
+      "motivo": "B-1.3: CPS-90 generado desde el STEP (report/perforada/CPS-300-90-Z__outline.json) en lugar de los literales redondeados a 0,01 mm; vértices a ≤ 0,009 mm de los anteriores."
+    },
+    "SAM_CPS-050-45-Z": {
+      "antes": "def-1cada54f3104bc",
+      "despues": "def-07cde7eb25a050",
+      "motivo": "B-1.3: CPS-45 generado desde el STEP (report/perforada/CPS-300-45-Z__outline.json) en lugar de los literales redondeados a 0,01 mm; vértices a ≤ 0,009 mm de los anteriores."
+    },
+    "SAM_CPS-100-45-Z": {
+      "antes": "def-147fc368f6026d",
+      "despues": "def-04b7706e2b28b1",
+      "motivo": "B-1.3: CPS-45 generado desde el STEP (report/perforada/CPS-300-45-Z__outline.json) en lugar de los literales redondeados a 0,01 mm; vértices a ≤ 0,009 mm de los anteriores."
+    },
+    "SAM_CPS-150-45-Z": {
+      "antes": "def-1960e0df31c6a3",
+      "despues": "def-1cab5a9c1a9ca0",
+      "motivo": "B-1.3: CPS-45 generado desde el STEP (report/perforada/CPS-300-45-Z__outline.json) en lugar de los literales redondeados a 0,01 mm; vértices a ≤ 0,009 mm de los anteriores."
+    },
+    "SAM_CPS-200-45-Z": {
+      "antes": "def-1008344d5fb549",
+      "despues": "def-1fb4fb58a3403c",
+      "motivo": "B-1.3: CPS-45 generado desde el STEP (report/perforada/CPS-300-45-Z__outline.json) en lugar de los literales redondeados a 0,01 mm; vértices a ≤ 0,009 mm de los anteriores."
+    },
+    "SAM_CPS-300-45-Z": {
+      "antes": "def-152753e719db38",
+      "despues": "def-10feb1b741c18b",
+      "motivo": "B-1.3: CPS-45 generado desde el STEP (report/perforada/CPS-300-45-Z__outline.json) en lugar de los literales redondeados a 0,01 mm; vértices a ≤ 0,009 mm de los anteriores."
+    },
+    "SAM_CPS-450-45-Z": {
+      "antes": "def-136fcc8ec41541",
+      "despues": "def-1d9e73f861f124",
+      "motivo": "B-1.3: CPS-45 generado desde el STEP (report/perforada/CPS-300-45-Z__outline.json) en lugar de los literales redondeados a 0,01 mm; vértices a ≤ 0,009 mm de los anteriores."
+    },
+    "SAM_CPS-600-45-Z": {
+      "antes": "def-11d808b9ba987d",
+      "despues": "def-1a7dcf3781bc45",
+      "motivo": "B-1.3: CPS-45 generado desde el STEP (report/perforada/CPS-300-45-Z__outline.json) en lugar de los literales redondeados a 0,01 mm; vértices a ≤ 0,009 mm de los anteriores."
+    },
+    "SAM_XPS-050-Z": {
+      "antes": "def-0bdaccdfef6822",
+      "despues": "def-1b8008dbb24691",
+      "motivo": "B-1.3: XPS generado desde el STEP (report/perforada/XPS-300-Z__outline.json) en lugar de los literales redondeados a 0,01 mm; vértices a ≤ 0,0042 mm de los anteriores."
+    },
+    "SAM_XPS-100-Z": {
+      "antes": "def-14ed6e26ee981f",
+      "despues": "def-1d37720c4de2a8",
+      "motivo": "B-1.3: XPS generado desde el STEP (report/perforada/XPS-300-Z__outline.json) en lugar de los literales redondeados a 0,01 mm; vértices a ≤ 0,0042 mm de los anteriores."
+    },
+    "SAM_XPS-150-Z": {
+      "antes": "def-1f632a1e9b1ff3",
+      "despues": "def-1716ce158beb6d",
+      "motivo": "B-1.3: XPS generado desde el STEP (report/perforada/XPS-300-Z__outline.json) en lugar de los literales redondeados a 0,01 mm; vértices a ≤ 0,0042 mm de los anteriores."
+    },
+    "SAM_XPS-200-Z": {
+      "antes": "def-1fbd16e37064e6",
+      "despues": "def-13cf42545dfe4a",
+      "motivo": "B-1.3: XPS generado desde el STEP (report/perforada/XPS-300-Z__outline.json) en lugar de los literales redondeados a 0,01 mm; vértices a ≤ 0,0042 mm de los anteriores."
+    },
+    "SAM_XPS-300-Z": {
+      "antes": "def-0b1c8963b9d5f6",
+      "despues": "def-0e2a95bbabf23b",
+      "motivo": "B-1.3: XPS generado desde el STEP (report/perforada/XPS-300-Z__outline.json) en lugar de los literales redondeados a 0,01 mm; vértices a ≤ 0,0042 mm de los anteriores."
+    },
+    "SAM_XPS-450-Z": {
+      "antes": "def-1e7a57ddabad03",
+      "despues": "def-160840c8fc2267",
+      "motivo": "B-1.3: XPS generado desde el STEP (report/perforada/XPS-300-Z__outline.json) en lugar de los literales redondeados a 0,01 mm; vértices a ≤ 0,0042 mm de los anteriores."
+    },
+    "SAM_XPS-600-Z": {
+      "antes": "def-19b1ef5e7d441d",
+      "despues": "def-197c09abee1cf2",
+      "motivo": "B-1.3: XPS generado desde el STEP (report/perforada/XPS-300-Z__outline.json) en lugar de los literales redondeados a 0,01 mm; vértices a ≤ 0,0042 mm de los anteriores."
+    },
+    "SAM_CPS-050-90-ZN": {
+      "antes": "def-05d85dfc459976",
+      "despues": "def-14651faee0558b",
+      "motivo": "B-1.3: CPS-90 generado desde el STEP (report/perforada/CPS-300-90-Z__outline.json) en lugar de los literales redondeados a 0,01 mm; vértices a ≤ 0,009 mm de los anteriores."
+    },
+    "SAM_CPS-100-90-ZN": {
+      "antes": "def-0b9a6f08601a53",
+      "despues": "def-1e666b76573358",
+      "motivo": "B-1.3: CPS-90 generado desde el STEP (report/perforada/CPS-300-90-Z__outline.json) en lugar de los literales redondeados a 0,01 mm; vértices a ≤ 0,009 mm de los anteriores."
+    },
+    "SAM_CPS-150-90-ZN": {
+      "antes": "def-10ad6e2cf22a7c",
+      "despues": "def-15662ef8e83b86",
+      "motivo": "B-1.3: CPS-90 generado desde el STEP (report/perforada/CPS-300-90-Z__outline.json) en lugar de los literales redondeados a 0,01 mm; vértices a ≤ 0,009 mm de los anteriores."
+    },
+    "SAM_CPS-200-90-ZN": {
+      "antes": "def-14be290973b946",
+      "despues": "def-19022e88b5ed3b",
+      "motivo": "B-1.3: CPS-90 generado desde el STEP (report/perforada/CPS-300-90-Z__outline.json) en lugar de los literales redondeados a 0,01 mm; vértices a ≤ 0,009 mm de los anteriores."
+    },
+    "SAM_CPS-300-90-ZN": {
+      "antes": "def-027eee1146f8a2",
+      "despues": "def-1a9d73043f4869",
+      "motivo": "B-1.3: CPS-90 generado desde el STEP (report/perforada/CPS-300-90-Z__outline.json) en lugar de los literales redondeados a 0,01 mm; vértices a ≤ 0,009 mm de los anteriores."
+    },
+    "SAM_CPS-450-90-ZN": {
+      "antes": "def-1d25bf555ea972",
+      "despues": "def-0bfd74bdad00fc",
+      "motivo": "B-1.3: CPS-90 generado desde el STEP (report/perforada/CPS-300-90-Z__outline.json) en lugar de los literales redondeados a 0,01 mm; vértices a ≤ 0,009 mm de los anteriores."
+    },
+    "SAM_CPS-600-90-ZN": {
+      "antes": "def-1ce3ce2dfec58b",
+      "despues": "def-08091fbdb5d64c",
+      "motivo": "B-1.3: CPS-90 generado desde el STEP (report/perforada/CPS-300-90-Z__outline.json) en lugar de los literales redondeados a 0,01 mm; vértices a ≤ 0,009 mm de los anteriores."
+    },
+    "SAM_CPS-050-90-ZB": {
+      "antes": "def-05d85dfc459976",
+      "despues": "def-14651faee0558b",
+      "motivo": "B-1.3: CPS-90 generado desde el STEP (report/perforada/CPS-300-90-Z__outline.json) en lugar de los literales redondeados a 0,01 mm; vértices a ≤ 0,009 mm de los anteriores."
+    },
+    "SAM_CPS-100-90-ZB": {
+      "antes": "def-0b9a6f08601a53",
+      "despues": "def-1e666b76573358",
+      "motivo": "B-1.3: CPS-90 generado desde el STEP (report/perforada/CPS-300-90-Z__outline.json) en lugar de los literales redondeados a 0,01 mm; vértices a ≤ 0,009 mm de los anteriores."
+    },
+    "SAM_CPS-150-90-ZB": {
+      "antes": "def-10ad6e2cf22a7c",
+      "despues": "def-15662ef8e83b86",
+      "motivo": "B-1.3: CPS-90 generado desde el STEP (report/perforada/CPS-300-90-Z__outline.json) en lugar de los literales redondeados a 0,01 mm; vértices a ≤ 0,009 mm de los anteriores."
+    },
+    "SAM_CPS-200-90-ZB": {
+      "antes": "def-14be290973b946",
+      "despues": "def-19022e88b5ed3b",
+      "motivo": "B-1.3: CPS-90 generado desde el STEP (report/perforada/CPS-300-90-Z__outline.json) en lugar de los literales redondeados a 0,01 mm; vértices a ≤ 0,009 mm de los anteriores."
+    },
+    "SAM_CPS-300-90-ZB": {
+      "antes": "def-027eee1146f8a2",
+      "despues": "def-1a9d73043f4869",
+      "motivo": "B-1.3: CPS-90 generado desde el STEP (report/perforada/CPS-300-90-Z__outline.json) en lugar de los literales redondeados a 0,01 mm; vértices a ≤ 0,009 mm de los anteriores."
+    },
+    "SAM_CPS-450-90-ZB": {
+      "antes": "def-1d25bf555ea972",
+      "despues": "def-0bfd74bdad00fc",
+      "motivo": "B-1.3: CPS-90 generado desde el STEP (report/perforada/CPS-300-90-Z__outline.json) en lugar de los literales redondeados a 0,01 mm; vértices a ≤ 0,009 mm de los anteriores."
+    },
+    "SAM_CPS-600-90-ZB": {
+      "antes": "def-1ce3ce2dfec58b",
+      "despues": "def-08091fbdb5d64c",
+      "motivo": "B-1.3: CPS-90 generado desde el STEP (report/perforada/CPS-300-90-Z__outline.json) en lugar de los literales redondeados a 0,01 mm; vértices a ≤ 0,009 mm de los anteriores."
+    },
+    "SAM_CPS-050-45-ZN": {
+      "antes": "def-1cada54f3104bc",
+      "despues": "def-07cde7eb25a050",
+      "motivo": "B-1.3: CPS-45 generado desde el STEP (report/perforada/CPS-300-45-Z__outline.json) en lugar de los literales redondeados a 0,01 mm; vértices a ≤ 0,009 mm de los anteriores."
+    },
+    "SAM_CPS-100-45-ZN": {
+      "antes": "def-147fc368f6026d",
+      "despues": "def-04b7706e2b28b1",
+      "motivo": "B-1.3: CPS-45 generado desde el STEP (report/perforada/CPS-300-45-Z__outline.json) en lugar de los literales redondeados a 0,01 mm; vértices a ≤ 0,009 mm de los anteriores."
+    },
+    "SAM_CPS-150-45-ZN": {
+      "antes": "def-1960e0df31c6a3",
+      "despues": "def-1cab5a9c1a9ca0",
+      "motivo": "B-1.3: CPS-45 generado desde el STEP (report/perforada/CPS-300-45-Z__outline.json) en lugar de los literales redondeados a 0,01 mm; vértices a ≤ 0,009 mm de los anteriores."
+    },
+    "SAM_CPS-200-45-ZN": {
+      "antes": "def-1008344d5fb549",
+      "despues": "def-1fb4fb58a3403c",
+      "motivo": "B-1.3: CPS-45 generado desde el STEP (report/perforada/CPS-300-45-Z__outline.json) en lugar de los literales redondeados a 0,01 mm; vértices a ≤ 0,009 mm de los anteriores."
+    },
+    "SAM_CPS-300-45-ZN": {
+      "antes": "def-152753e719db38",
+      "despues": "def-10feb1b741c18b",
+      "motivo": "B-1.3: CPS-45 generado desde el STEP (report/perforada/CPS-300-45-Z__outline.json) en lugar de los literales redondeados a 0,01 mm; vértices a ≤ 0,009 mm de los anteriores."
+    },
+    "SAM_CPS-450-45-ZN": {
+      "antes": "def-136fcc8ec41541",
+      "despues": "def-1d9e73f861f124",
+      "motivo": "B-1.3: CPS-45 generado desde el STEP (report/perforada/CPS-300-45-Z__outline.json) en lugar de los literales redondeados a 0,01 mm; vértices a ≤ 0,009 mm de los anteriores."
+    },
+    "SAM_CPS-600-45-ZN": {
+      "antes": "def-11d808b9ba987d",
+      "despues": "def-1a7dcf3781bc45",
+      "motivo": "B-1.3: CPS-45 generado desde el STEP (report/perforada/CPS-300-45-Z__outline.json) en lugar de los literales redondeados a 0,01 mm; vértices a ≤ 0,009 mm de los anteriores."
+    },
+    "SAM_CPS-050-45-ZB": {
+      "antes": "def-1cada54f3104bc",
+      "despues": "def-07cde7eb25a050",
+      "motivo": "B-1.3: CPS-45 generado desde el STEP (report/perforada/CPS-300-45-Z__outline.json) en lugar de los literales redondeados a 0,01 mm; vértices a ≤ 0,009 mm de los anteriores."
+    },
+    "SAM_CPS-100-45-ZB": {
+      "antes": "def-147fc368f6026d",
+      "despues": "def-04b7706e2b28b1",
+      "motivo": "B-1.3: CPS-45 generado desde el STEP (report/perforada/CPS-300-45-Z__outline.json) en lugar de los literales redondeados a 0,01 mm; vértices a ≤ 0,009 mm de los anteriores."
+    },
+    "SAM_CPS-150-45-ZB": {
+      "antes": "def-1960e0df31c6a3",
+      "despues": "def-1cab5a9c1a9ca0",
+      "motivo": "B-1.3: CPS-45 generado desde el STEP (report/perforada/CPS-300-45-Z__outline.json) en lugar de los literales redondeados a 0,01 mm; vértices a ≤ 0,009 mm de los anteriores."
+    },
+    "SAM_CPS-200-45-ZB": {
+      "antes": "def-1008344d5fb549",
+      "despues": "def-1fb4fb58a3403c",
+      "motivo": "B-1.3: CPS-45 generado desde el STEP (report/perforada/CPS-300-45-Z__outline.json) en lugar de los literales redondeados a 0,01 mm; vértices a ≤ 0,009 mm de los anteriores."
+    },
+    "SAM_CPS-300-45-ZB": {
+      "antes": "def-152753e719db38",
+      "despues": "def-10feb1b741c18b",
+      "motivo": "B-1.3: CPS-45 generado desde el STEP (report/perforada/CPS-300-45-Z__outline.json) en lugar de los literales redondeados a 0,01 mm; vértices a ≤ 0,009 mm de los anteriores."
+    },
+    "SAM_CPS-450-45-ZB": {
+      "antes": "def-136fcc8ec41541",
+      "despues": "def-1d9e73f861f124",
+      "motivo": "B-1.3: CPS-45 generado desde el STEP (report/perforada/CPS-300-45-Z__outline.json) en lugar de los literales redondeados a 0,01 mm; vértices a ≤ 0,009 mm de los anteriores."
+    },
+    "SAM_CPS-600-45-ZB": {
+      "antes": "def-11d808b9ba987d",
+      "despues": "def-1a7dcf3781bc45",
+      "motivo": "B-1.3: CPS-45 generado desde el STEP (report/perforada/CPS-300-45-Z__outline.json) en lugar de los literales redondeados a 0,01 mm; vértices a ≤ 0,009 mm de los anteriores."
     }
   }
 }

@@ -366,26 +366,16 @@ function projectPortsFromEscaleraOutline(
     }
   }
 
-  // Si hay ≤2 aristas de boundary con normal eje, están garantizadas como
-  // ortonormales (son los boundaries x_min/x_max/z_min/z_max). Para curvas
-  // mitereadas con bocas que no caen sobre bordes rectos, se marcaría; no es
-  // el caso en los outlines medidos actuales.
-  const projectedByBoundary = new Map<string, { center: Vec3Readonly; normal: Vec3Readonly }>();
-  for (const edge of outline.boundary_edges) {
-    if (!edge.boundary) continue;
-    projectedByBoundary.set(edge.boundary, projectEscaleraEdge(edge, factorX, factorZ, targetAla));
-  }
-
-  // Mapear los puertos declarados por el maestro a los boundaries medidos. El
-  // maestro usa nombres P1/P2/P3/P4; los boundary_edges del outline están
-  // listados en el orden P1→P2→… (ver escaleraOutlines.ts). Mantenemos ese
-  // orden como contrato — si un maestro renombra su physicalLabel debe
-  // preservarlo coherentemente.
-  const boundariesInOrder: ('x_min' | 'x_max' | 'z_min' | 'z_max' | null)[] =
-    outline.boundary_edges.map((e) => e.boundary);
-  const projected: ProjectedPort[] = master.ports.map((mp, idx) => {
-    const boundary = boundariesInOrder[idx] ?? null;
-    const geom = boundary ? projectedByBoundary.get(boundary) : null;
+  // Cada puerto del maestro se proyecta desde la boca del contorno con su
+  // mismo nombre (declarado en tools/step_parametric/escalera_bocas.json).
+  // Antes se emparejaba por posición y por la etiqueta de borde de bbox
+  // (x_min, …): las bocas que no caen sobre un borde (cara diagonal de la
+  // CS-45) quedaban sin proyectar, y en la T P2/P3 salían intercambiadas
+  // respecto del maestro (P2 = tronco z_max, P3 = derivación x_max).
+  const bocaPorNombre = new Map(outline.boundary_edges.map((e) => [e.nombre, e]));
+  const projected: ProjectedPort[] = master.ports.map((mp) => {
+    const boca = bocaPorNombre.get(mp.recipePortName);
+    const geom = boca ? projectEscaleraEdge(boca, factorX, factorZ, targetAla) : null;
     return {
       recipePortName: mp.recipePortName,
       catalogPortName: mp.catalogPortName,
