@@ -31,6 +31,29 @@ import { readFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+/**
+ * Hito 2 (A-10): al abrir un proyecto anterior se deduce la colocación de cada pieza
+ * (campo `colocacion` + tabla `definiciones_ws`) y las bocas pasan a derivarse de la
+ * pose. Para comparar contra el archivo original se quitan esos datos y se
+ * redondean las bocas a 1e-6 mm (la migración del fixture no corre ninguna boca).
+ */
+function sinColocacion<T>(v: T): T {
+  const strip = (x: unknown): unknown => {
+    if (typeof x === 'number') return Math.round(x * 1e6) / 1e6 + 0;
+    if (Array.isArray(x)) return x.map(strip);
+    if (x && typeof x === 'object') {
+      const o: Record<string, unknown> = {};
+      for (const [k, val] of Object.entries(x)) {
+        if (k === 'colocacion' || k === 'definiciones_ws' || k === 'uniones_ws' || k === 'orientacion_seccion_ws') continue;
+        o[k] = strip(val);
+      }
+      return o;
+    }
+    return x;
+  };
+  return strip(v) as T;
+}
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const FIXTURE = resolve(__dirname, 'fixtures/user-report-20261107.workspace.json');
@@ -427,7 +450,7 @@ test.describe('Entrega final — cadena completa con JSON del usuario', () => {
         overrides: w.__codex.catalogConfigStore.getState().overrides,
       };
     });
-    expect(afterReload.entrada).toEqual(exported.trayInput);
+    expect(sinColocacion(afterReload.entrada)).toEqual(sinColocacion(exported.trayInput));
     expect(Object.keys(afterReload.overrides)).toContain('SAM_TRPS-300-22-Z');
 
     await page
