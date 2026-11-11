@@ -283,8 +283,12 @@ export function diferenciasDeBocas(
         if (!pb) continue;
         maxMm = Math.max(maxMm, Math.hypot(pa.pos[0] - pb.pos[0], pa.pos[1] - pb.pos[1], pa.pos[2] - pb.pos[2]));
         for (const k of ['normal', 'vDir'] as const) {
-          const d = Math.max(-1, Math.min(1, pa[k][0] * pb[k][0] + pa[k][1] * pb[k][1] + pa[k][2] * pb[k][2]));
-          maxDeg = Math.max(maxDeg, (Math.atan2(Math.sqrt(Math.max(0, 1 - d * d)), d) * 180) / Math.PI);
+          // atan2(|a×b|, a·b): bien condicionado cerca de 0 (acos o √(1−d²) dan
+          // 1,2e-6° con vectores iguales cuando a·b queda a un ULP de 1).
+          const [x, y, z] = pa[k];
+          const [u, v, w] = pb[k];
+          const cr = Math.hypot(y * w - z * v, z * u - x * w, x * v - y * u);
+          maxDeg = Math.max(maxDeg, (Math.atan2(cr, x * u + y * v + z * w) * 180) / Math.PI);
         }
       }
       const iguales = maxMm <= TOL_IGUALDAD && maxDeg <= TOL_IGUALDAD;
