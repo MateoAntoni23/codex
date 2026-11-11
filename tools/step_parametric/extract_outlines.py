@@ -125,6 +125,11 @@ def extract_top_outline(path: Path):
     # bbox
     bb = cq.Solid(shape).BoundingBox()
     ymax = bb.ymax
+    # Convención: Y es el eje del ala (altura de la pieza) y la planta está en
+    # XZ. Si Y es la mayor extensión (p. ej. RCS-30-15, 450 mm en Y), la cara
+    # en y = ymax es una sección transversal y no la planta: no hay contorno.
+    if (bb.ymax - bb.ymin) > max(bb.xmax - bb.xmin, bb.zmax - bb.zmin):
+        return None
 
     exp = TopExp_Explorer(shape, TopAbs_FACE)
     best = None
@@ -136,7 +141,11 @@ def extract_top_outline(path: Path):
             exp.Next()
             continue
         fy = normal[1]
-        if abs(fy - 1.0) < 1e-3:  # +Y
+        # Plano horizontal (eje ±Y). El sentido del eje del plano depende de
+        # cómo lo escribió el CAD y no dice hacia dónde está el material: el
+        # STEP de CS-300-45 (11/11) trae la cara superior con eje −Y. Lo que
+        # identifica la cara superior es que esté en y = ymax.
+        if abs(abs(fy) - 1.0) < 1e-3:
             # must lie at y ≈ ymax
             fbb = cq.Face(f).BoundingBox()
             if abs(fbb.ymax - ymax) < 1e-3 and abs(fbb.ymin - ymax) < 1e-3:
@@ -222,7 +231,13 @@ def main() -> int:
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
 
-    files = sorted(list(src.glob("*.STEP")) + list(src.glob("*.step")) + list(src.glob("*.stp")), key=lambda p: p.name.lower())
+    # En Windows el glob no distingue mayúsculas: "*.STEP" y "*.step" devuelven
+    # los mismos archivos. Se deduplica por nombre en minúsculas.
+    seen = {}
+    for pat in ("*.STEP", "*.step", "*.stp"):
+        for p in src.glob(pat):
+            seen.setdefault(p.name.lower(), p)
+    files = [seen[k] for k in sorted(seen)]
     results = []
     for p in files:
         print(f"[extract] {p.name} ...", flush=True)
@@ -230,13 +245,17 @@ def main() -> int:
             r = extract_top_outline(p)
         except Exception as e:
             r = {"file": p.name, "error": str(e)}
+        if r is None:
+            # No se escribe nada: si existía un __outline.json anterior queda
+            # como estaba, así que se avisa en vez de omitirlo en silencio.
+            print(f"[extract] {p.name}: SIN CONTORNO (sin planta en XZ: no hay cara plana en y = ymax o Y no es el eje del ala); no se escribe archivo", flush=True)
         if r:
             results.append(r)
             (out / f"{p.stem}__outline.json").write_text(
                 json.dumps(r, indent=2), encoding="utf-8"
             )
     (out / "outlines.inventory.json").write_text(json.dumps(results, indent=2), encoding="utf-8")
-    print(f"[extract] {len(results)} outlines → {out}")
+    print(f"[extract] {len(results)} outlines -> {out}")
     return 0
 
 
