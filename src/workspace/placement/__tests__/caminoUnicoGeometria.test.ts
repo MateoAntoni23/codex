@@ -14,8 +14,10 @@
  * Los imports `import type` no cuentan: no obtienen geometría.
  *
  * Excepciones, cada una con su razón: el motor interno de la definición
- * (parametricBridge, resolvedPortGeometry, definitions) y la migración (A-10),
- * que deduce la pose de un proyecto anterior con verifyGeometricFit.
+ * (parametricBridge, resolvedPortGeometry, definitions), la migración de
+ * proyectos (A-10), que deduce la pose de uno anterior con verifyGeometricFit,
+ * y la migración de la biblioteca (B-2.6), que reproduce la resolución por SKU
+ * anterior para convertirla.
  *
  * Control negativo: el analizador se prueba con módulos sintéticos que violan
  * cada regla.
@@ -42,9 +44,13 @@ const EXCEPCIONES: Record<string, { motivo: string; modulos?: boolean; funciones
   'workspace/resolvedPortGeometry.ts': { motivo: 'motor interno: aplica la calibración a la receta', modulos: true },
   'workspace/placement/definitions.ts': {
     motivo: 'la definición efectiva misma',
-    funciones: ['resolveRecipe', 'resolveParametricEntry', 'buildRecipeFromProduct', 'resolveRecipeForProduct'],
+    funciones: ['resolveRecipe', 'resolveParametricEntry', 'buildRecipeFromProduct'],
   },
   'workspace/placement/migration.ts': { motivo: 'A-10: deduce la pose de un proyecto anterior', funciones: ['verifyGeometricFit'] },
+  'configurator/migracionCalibracion.ts': {
+    motivo: 'B-2.6: reproduce la resolución por SKU anterior para migrarla a corrección por patrón',
+    funciones: ['buildRecipeFromProduct', 'resolveParametricEntry', 'resolveRecipeWith', 'resolveRecipeForProduct'],
+  },
 };
 
 interface ImportDecl { from: string; tipo: boolean; nombres: { nombre: string; tipo: boolean }[] }

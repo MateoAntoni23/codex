@@ -6,7 +6,8 @@
  * que declaran y la rama de rechazo de `angleCheck.test.ts` no se ejecuta con
  * ninguna. Esta prueba la cubre con un dato que el operador sí puede cargar:
  * una calibración de boca que gira la boca P2 de una curva de 90°. La
- * geometría base es la del catálogo; el desajuste lo produce la calibración.
+ * geometría base es la del catálogo; el desajuste lo produce la calibración
+ * del patrón (B-2.5).
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { loadStaticCatalog, seedStaticCatalog } from '../../../catalog/staticCatalog';
@@ -15,9 +16,9 @@ import {
   clearPortMappingOverrides,
   clearProductCatalogIndex,
   setMasterResolver,
-  setPortMappingOverrides,
 } from '../../catalogPortMapping';
 import { buildDefinition, resolveDefinition } from '../definitions';
+import { clearBibliotecaCalibracion, setBibliotecaCalibracion } from '../../calibracionPatron';
 import { measuredTurnDeg } from '../angleCheck';
 import { migrateTray } from '../migration';
 import type { Product, TrayInput } from '../../../tray/model';
@@ -27,29 +28,25 @@ const GIRO_CALIBRACION_DEG = 15;
 let product: Product;
 let products: Map<string, Product>;
 
-/** Gira un vector alrededor del eje vertical (Y) del marco de la receta. */
-function rotY(v: readonly number[], deg: number): [number, number, number] {
-  const r = (deg * Math.PI) / 180;
-  return [v[0] * Math.cos(r) + v[2] * Math.sin(r), v[1], -v[0] * Math.sin(r) + v[2] * Math.cos(r)];
-}
-
+/**
+ * Calibración del patrón de la CPS-90 (B-2.5): la boca P2 girada
+ * GIRO_CALIBRACION_DEG alrededor de su eje vertical, que cambia el giro entre
+ * bocas de la curva.
+ */
 function calibrarP2Girada(): void {
   const base = buildDefinition(product);
   if (!base.ok) throw new Error(base.motivo);
-  const p2 = base.def.ports.find((p) => p.name === 'P2')!;
-  setPortMappingOverrides({
-    [product.producto_id]: {
-      productId: product.producto_id,
-      source: 'override',
-      overrideReason: `prueba: boca P2 calibrada girada ${GIRO_CALIBRACION_DEG}°`,
-      entries: [
-        { recipePortName: 'P1', catalogPortName: 'P1', physicalLabel: '', justification: '' },
-        {
-          recipePortName: 'P2', catalogPortName: 'P2', physicalLabel: '', justification: '',
-          geometry: { normal: rotY(p2.normal, GIRO_CALIBRACION_DEG) },
-        },
-      ],
+  const patron = base.def.patron;
+  setBibliotecaCalibracion({
+    version: 'codex:calibracion/2',
+    patrones: {
+      [patron]: {
+        patron,
+        motivo: `prueba: boca P2 calibrada girada ${GIRO_CALIBRACION_DEG}°`,
+        bocas: { P2: { desplazamiento_mm: { lateral: 0, vertical: 0, axial: 0 }, giro_deg: { lateral: 0, vertical: GIRO_CALIBRACION_DEG, axial: 0 } } },
+      },
     },
+    excepciones: {},
   });
 }
 
@@ -71,7 +68,7 @@ afterAll(() => {
 
 describe('calibración que cambia el giro de una curva → modelo no resuelto', () => {
   it('sin calibración, la curva se resuelve', () => {
-    clearPortMappingOverrides();
+    clearBibliotecaCalibracion();
     expect(resolveDefinition(product).ok).toBe(true);
   });
 
@@ -89,7 +86,7 @@ describe('calibración que cambia el giro de una curva → modelo no resuelto', 
         `modelo no resuelto: el contorno medido gira ${medido.toFixed(2)}° entre bocas y la pieza declara 90° (tolerancia 0,5°)`,
       );
     }
-    clearPortMappingOverrides();
+    clearBibliotecaCalibracion();
   });
 
   it('la migración deja la pieza sin resolver con ese motivo y conserva sus bocas', () => {
@@ -109,6 +106,6 @@ describe('calibración que cambia el giro de una curva → modelo no resuelto', 
     expect(report.sinResolver).toEqual([{ id: 'C90', producto_id: product.producto_id, motivo: (r as { motivo: string }).motivo }]);
     expect(out.piezas[0].colocacion).toEqual({ version: 1, estado: 'sin_resolver', motivo: (r as { motivo: string }).motivo });
     expect(out.piezas[0].puertos).toEqual(puertos);
-    clearPortMappingOverrides();
+    clearBibliotecaCalibracion();
   });
 });

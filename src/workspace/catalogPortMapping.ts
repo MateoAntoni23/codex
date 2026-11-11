@@ -303,6 +303,11 @@ export function setPortMappingOverrides(overrides: Record<string, ProductPortMap
   _overrides = { ...overrides };
 }
 
+/** Copia de los overrides vigentes (para guardar y restaurar el estado). */
+export function getAllOverrides(): Record<string, ProductPortMapping> {
+  return { ..._overrides };
+}
+
 export function clearPortMappingOverrides(): void {
   _version++;
   _overrides = {};

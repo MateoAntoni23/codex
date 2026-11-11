@@ -11,8 +11,8 @@ import {
   clearPortMappingOverrides,
   clearProductCatalogIndex,
   setMasterResolver,
-  setPortMappingOverrides,
 } from '../../catalogPortMapping';
+import { clearBibliotecaCalibracion, setBibliotecaCalibracion } from '../../calibracionPatron';
 import { matchesCatalogNominal, migrateTray, MOTIVO_NOMINAL_CATALOGO } from '../migration';
 import { outdatedPieces, placedOf, resolveDefinition, updateOutdatedPieces, withDefinition } from '../definitions';
 import { placeDefinition, puertosFromWorld, worldPorts } from '../placementCore';
@@ -121,9 +121,18 @@ describe('PA5 — editar la calibración no cambia piezas ya colocadas', () => {
     tray = withDefinition(tray, d0.huella, d0.def);
     const portsBefore = JSON.stringify(tray.piezas[0].puertos);
 
-    // El operador calibra el patrón (giro del modelo) en el configurador.
-    setPortMappingOverrides({
-      'SAM_TPS-300-Z': { productId: 'SAM_TPS-300-Z', source: 'override', entries: [], modelFrame: { rx_deg: 0, ry_deg: 0, rz_deg: 90, tx_mm: 0, ty_mm: 0, tz_mm: 0 } },
+    // El operador calibra el patrón en el configurador (B-2.5: corrección por
+    // boca en sus ejes; aquí la boca de derivación, 5 mm hacia afuera y 2° de giro).
+    const patron = d0.def.patron;
+    setBibliotecaCalibracion({
+      version: 'codex:calibracion/2',
+      patrones: {
+        [patron]: {
+          patron,
+          bocas: { boca_derivacion: { desplazamiento_mm: { lateral: 0, vertical: 0, axial: 5 }, giro_deg: { lateral: 0, vertical: 2, axial: 0 } } },
+        },
+      },
+      excepciones: {},
     });
     try {
       // La pieza colocada NO cambia: se dibuja desde su definición guardada.
@@ -140,7 +149,7 @@ describe('PA5 — editar la calibración no cambia piezas ya colocadas', () => {
       expect(JSON.stringify(upd.piezas[0].puertos)).not.toBe(portsBefore);
       expect(JSON.stringify(tray.piezas[0].puertos)).toBe(portsBefore); // el original no se tocó
     } finally {
-      clearPortMappingOverrides();
+      clearBibliotecaCalibracion();
     }
   });
 });

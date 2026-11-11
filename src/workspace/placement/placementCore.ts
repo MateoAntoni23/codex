@@ -54,6 +54,18 @@ export interface StoredDefinition {
     readonly preTransform: readonly number[];
   };
   readonly ports: readonly DefPort[];
+  /**
+   * Calibración de bocas aplicada (B-2.5), si hay. Entra en la huella: la misma
+   * pieza con otra calibración es otra definición. `heredada`: la calibración
+   * es la del patrón aplicada a una variante distinta de la medida ("sin
+   * verificar en este ancho").
+   */
+  readonly calibracion?: {
+    readonly origen: 'patron' | 'excepcion';
+    readonly patron: string;
+    readonly heredada: boolean;
+    readonly nota?: string;
+  };
 }
 
 export interface Pose {
@@ -300,8 +312,10 @@ export function definitionFromRecipe(input: {
   /** Receta resuelta (bocas post calibración, marco local de la definición). */
   resolved: GeometryRecipe;
   preTransform: THREE.Matrix4;
+  calibracion?: StoredDefinition['calibracion'];
 }): StoredDefinition {
   return {
+    ...(input.calibracion ? { calibracion: input.calibracion } : {}),
     version: 'codex:definicion/1',
     patron: input.patron,
     revision: input.revision,

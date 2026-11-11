@@ -17,7 +17,8 @@ import type { Piece, Product, TrayInput } from '../../tray/model';
 import { buildRecipeFromProduct, datosFaltantesParaMaestro, resolveParametricEntry, resolveRecipe } from '../parametricBridge';
 import { calibracionVersion } from '../catalogPortMapping';
 import type { PieceKind } from '../../parametric/geometry/recipes';
-import { resolveRecipeForProduct } from '../resolvedPortGeometry';
+import { calibrarReceta } from './calibrarReceta';
+import { bibliotecaVersion } from '../calibracionPatron';
 import { findMasterForProduct, MASTER_MODELS } from '../../configurator/masterModels';
 import { angleMismatch } from './angleCheck';
 import {
@@ -98,7 +99,7 @@ const MEMO_MAX = 2000;
 function claveMemo(product: Product, longitud: number | null | undefined): string {
   const r = product as unknown as Record<string, unknown>;
   return JSON.stringify([
-    calibracionVersion(), product.producto_id, product.sku, r.familia_id, product.tipo_pieza, product.ancho_nominal_mm,
+    calibracionVersion(), bibliotecaVersion(), product.producto_id, product.sku, r.familia_id, product.tipo_pieza, product.ancho_nominal_mm,
     r.ala_nominal_mm, r.longitud_comercial_mm, r.angulo_grados, r.descripcion_original, r.observaciones, longitud ?? null,
   ]);
 }
@@ -175,8 +176,9 @@ export function buildDefinition(product: Product, opts?: { longitud_mm?: number 
   } catch (e) {
     return { ok: false, motivo: `no se pudo construir la receta: ${e instanceof Error ? e.message : String(e)}` };
   }
-  const resolved = resolveRecipeForProduct(raw, product.producto_id);
   const master = findMasterForProduct(product as Record<string, unknown>);
+  // B-2.5: calibración POR PATRÓN (corrección por boca en sus ejes), no por SKU.
+  const resolved = calibrarReceta(raw, product, master);
   const params: Record<string, number> = {};
   const r = product as Record<string, unknown>;
   if (typeof product.ancho_nominal_mm === 'number') params.ancho_mm = product.ancho_nominal_mm;
@@ -193,8 +195,9 @@ export function buildDefinition(product: Product, opts?: { longitud_mm?: number 
     raw,
     resolved: resolved.recipe,
     preTransform: resolved.preTransform,
+    ...(resolved.info ? { calibracion: resolved.info } : {}),
   });
-  return { ok: true, def, huella: definitionHash(def), calibrada: !resolved.isIdentity };
+  return { ok: true, def, huella: definitionHash(def), calibrada: resolved.calibrada };
 }
 
 /**
