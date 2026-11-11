@@ -87,6 +87,9 @@ function ProductMesh({ product }: { product: Product }) {
   // Se suscribe a overrides para recomputar la escena al aplicar cambios
   // (modelFrame/portGeometry). Cambiar el producto también recomputa.
   const overrides = useCatalogConfigStore((s) => s.overrides);
+  // B-2.5: la calibración por patrón vive en `calibracion`; sin esto el visor no
+  // se refrescaba al calibrar (lo encontró la E2E de reactividad).
+  const calibracion = useCatalogConfigStore((s) => s.calibracion);
 
   const scene = useMemo(() => {
     // B-2: la misma definición efectiva que el espacio de trabajo.
@@ -101,7 +104,7 @@ function ProductMesh({ product }: { product: Product }) {
       ports: d.def.ports.map((p) => ({ name: p.name, center: p.center, normal: p.normal })),
       isIdentity: !d.calibrada,
     };
-  }, [product, overrides]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [product, overrides, calibracion]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Why: `onUpdate` de R3F sólo se dispara de forma fiable al adjuntar hijos;
   // asignar `geometry`/`matrix` desde allí deja la malla congelada cuando el

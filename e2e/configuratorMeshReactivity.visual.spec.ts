@@ -175,88 +175,55 @@ test.describe('Configurator — reactividad de malla (bug report 2026-11)', () =
     }
   });
 
-  test('B. modelFrame rota la MALLA (matrixWorld) y las bocas a la vez', async ({ page }) => {
+  // B-2.5: la calibración es por boca del patrón (corrección en sus propios
+  // ejes). Mueve la boca calibrada, NO la malla: ya no hay marco del modelo.
+  test('B. calibrar una boca la mueve en sus ejes y no mueve la malla; quitarla vuelve al medido', async ({ page }) => {
     await gotoConfigurator(page);
     const canvas = page.locator('[data-testid="cfg-viewer-canvas"]');
     await selectProduct(page, 'SAM_TPS-300-Z');
 
-    // ─── Baseline (identidad) ──────────────────────────────────────────────
     const before = await readMesh(page);
-    expect(before.isIdentity, 'estado inicial debe ser identity').toBe(true);
+    expect(before.isIdentity, 'estado inicial: sin calibración').toBe(true);
     const portsBefore = await readPorts(page);
-    const bocaDervBefore = portsBefore.find((p) => p.port === 'boca_derivacion');
-    expect(bocaDervBefore, 'boca_derivacion debe existir en TPS').toBeDefined();
+    const dervBefore = portsBefore.find((p) => p.port === 'boca_derivacion')!;
+    expect(dervBefore, 'boca_derivacion debe existir en TPS').toBeDefined();
     await canvas.screenshot({ path: resolve(OUT_DIR, 'reactivity-B-01-before.png') });
 
-    // ─── Aplicar rx_deg = 30 ───────────────────────────────────────────────
+    // 6 mm hacia afuera (eje axial = normal saliente de la boca).
     await page.locator('[data-testid="cfg-tab-orientacion"]').click();
     await page.locator('[data-testid="cfg-edit-orientacion"]').click();
-    await page.locator('[data-testid="cfg-mf-rx_deg"]').fill('30');
-    await page.locator('[data-testid="cfg-orientacion-reason"]').fill(
-      'E2E reactividad — rx=30 debe rotar malla Y bocas al mismo tiempo',
-    );
+    await page.locator('[data-testid="cfg-port-desp-axial-boca_derivacion"]').fill('6');
+    await page.locator('[data-testid="cfg-orientacion-reason"]').fill('E2E reactividad — boca de derivación 6 mm afuera');
     await page.locator('[data-testid="cfg-apply-orientacion"]').click();
-    // La pestaña vuelve al modo lectura cuando se aplica.
     await expect(page.locator('[data-testid="cfg-edit-orientacion"]')).toBeVisible();
-
-    // Esperar a que el mesh refleje el override.
     await page.waitForFunction(() => {
-      const w = window as unknown as {
-        __codex: { configuratorMesh: () => { isIdentity: boolean } | null };
-      };
+      const w = window as unknown as { __codex: { configuratorMesh: () => { isIdentity: boolean } | null } };
       return w.__codex.configuratorMesh()?.isIdentity === false;
     }, { timeout: 5_000 });
 
     const after = await readMesh(page);
-    expect(after.isIdentity, 'después del override, isIdentity=false').toBe(false);
-    expect(
-      after.productoId,
-      'el override no cambia el producto activo',
-    ).toBe(before.productoId);
-
-    // La parte de rotación del matrixWorld DEBE diferir (no sólo la traslación).
-    const rotBefore = rotationPart(before.matrixWorld);
-    const rotAfter = rotationPart(after.matrixWorld);
-    const rotDelta = maxAbsDelta(rotBefore, rotAfter);
-    expect(
-      rotDelta,
-      `la rotación del matrixWorld debe cambiar tras aplicar rx=30 ` +
-      `(delta=${rotDelta.toExponential(2)}) — si es ~0 la malla no rotó.`,
-    ).toBeGreaterThan(1e-4);
-
-    // Las bocas también se mueven (consistencia malla+bocas): la Y de la
-    // boca_derivacion debía ser >0 y ahora aparece como (0, Y·cos30, Y·sin30)
-    // en coordenadas locales mm.
+    // La malla NO se mueve: misma matriz.
+    expect(maxAbsDelta(before.matrixWorld, after.matrixWorld), 'la malla no se mueve').toBeLessThan(1e-9);
+    // La boca se mueve 6 mm sobre su normal; las demás no.
     const portsAfter = await readPorts(page);
-    const bocaDervAfter = portsAfter.find((p) => p.port === 'boca_derivacion');
-    expect(bocaDervAfter, 'boca_derivacion sigue presente tras el override').toBeDefined();
-    const bocaDelta = Math.hypot(
-      bocaDervAfter!.centerMm[0] - bocaDervBefore!.centerMm[0],
-      bocaDervAfter!.centerMm[1] - bocaDervBefore!.centerMm[1],
-      bocaDervAfter!.centerMm[2] - bocaDervBefore!.centerMm[2],
-    );
-    expect(
-      bocaDelta,
-      'boca_derivacion debe moverse en mm con rx=30',
-    ).toBeGreaterThan(1);
-
+    const dervAfter = portsAfter.find((p) => p.port === 'boca_derivacion')!;
+    const esperado = dervBefore.centerMm.map((c, k) => c + 6 * dervBefore.normalMm[k]);
+    const err = Math.hypot(...dervAfter.centerMm.map((c, k) => c - esperado[k]));
+    expect(err, `boca_derivacion debe quedar 6 mm afuera (error ${err})`).toBeLessThan(1e-6);
+    for (const p of portsAfter.filter((q) => q.port !== 'boca_derivacion')) {
+      const b = portsBefore.find((q) => q.port === p.port)!;
+      expect(Math.hypot(...p.centerMm.map((c, k) => c - b.centerMm[k])), `${p.port} no se mueve`).toBeLessThan(1e-9);
+    }
     await canvas.screenshot({ path: resolve(OUT_DIR, 'reactivity-B-02-after.png') });
 
-    // ─── Quitar overrides restaura identidad ──────────────────────────────
+    // Quitar la calibración vuelve al medido.
     await page.locator('[data-testid="cfg-reset-orientacion"]').click();
     await page.waitForFunction(() => {
-      const w = window as unknown as {
-        __codex: { configuratorMesh: () => { isIdentity: boolean } | null };
-      };
+      const w = window as unknown as { __codex: { configuratorMesh: () => { isIdentity: boolean } | null } };
       return w.__codex.configuratorMesh()?.isIdentity === true;
     }, { timeout: 5_000 });
-    const reset = await readMesh(page);
-    const rotReset = rotationPart(reset.matrixWorld);
-    const rotResetDelta = maxAbsDelta(rotBefore, rotReset);
-    expect(
-      rotResetDelta,
-      'tras "Quitar overrides" la matriz debe volver a identidad',
-    ).toBeLessThan(1e-4);
+    const reset = (await readPorts(page)).find((p) => p.port === 'boca_derivacion')!;
+    expect(Math.hypot(...reset.centerMm.map((c, k) => c - dervBefore.centerMm[k]))).toBeLessThan(1e-9);
     await canvas.screenshot({ path: resolve(OUT_DIR, 'reactivity-B-03-reset.png') });
   });
 

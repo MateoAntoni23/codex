@@ -33,68 +33,87 @@ test.describe('Configurador — Orientación y Continuaciones', () => {
   test.beforeEach(async ({ page }) => {
     // Partimos de localStorage limpio para no arrastrar overrides de otros tests.
     await page.goto('/');
-    await page.evaluate(() => localStorage.removeItem('codex:catalogConfig:v1'));
+    await page.evaluate(() => { localStorage.removeItem('codex:catalogConfig:v1'); localStorage.removeItem('codex:catalogConfig:v2'); });
   });
 
-  test('aplica giro de instalación y modelFrame.rz_deg y persiste tras reload', async ({ page }) => {
+  // B-2.5: la pestaña edita la calibración del PATRÓN (corrección por boca en
+  // sus ejes); no hay marco del modelo. Persiste en codex:catalogConfig:v2.
+  test('calibra el patrón (giro axial + desplazamiento de una boca) y persiste tras reload', async ({ page }) => {
     await openConfiguratorWithTPS(page);
 
     await page.locator('[data-testid="cfg-tab-orientacion"]').click();
     await page.locator('[data-testid="cfg-edit-orientacion"]').click();
+    // No hay campos de marco del modelo.
+    await expect(page.locator('[data-testid^="cfg-mf-"]')).toHaveCount(0);
 
-    // Model frame: rz_deg = 90
-    const rzInput = page.locator('[data-testid="cfg-mf-rz_deg"]');
-    await rzInput.fill('90');
-
-    // boca_derivacion: giro de instalación = 15°
-    const portRot = page.locator('[data-testid="cfg-port-rot-boca_derivacion"]');
-    await portRot.fill('15');
-
-    // Motivo
+    // boca_derivacion: giro axial (antes "giro de instalación") 15° y 4 mm hacia afuera.
+    await page.locator('[data-testid="cfg-port-rot-boca_derivacion"]').fill('15');
+    await page.locator('[data-testid="cfg-port-desp-axial-boca_derivacion"]').fill('4');
     await page.locator('[data-testid="cfg-orientacion-reason"]').fill(
-      'Calibración STEP 2026-11: boca lateral desalineada 15°; modelo girado 90° en Z.',
+      'Calibración STEP 2026-11: boca lateral desalineada 15° y 4 mm hacia afuera.',
     );
     await page.locator('[data-testid="cfg-apply-orientacion"]').click();
-
-    // La pestaña vuelve al modo lectura — debe mostrar los valores aplicados.
     await expect(page.locator('[data-testid="cfg-edit-orientacion"]')).toBeVisible();
+    // TPS-300 es la variante medida del patrón: sin marca de heredada.
+    await expect(page.locator('[data-testid="cfg-calibracion-estado"]')).toContainText('Variante medida');
 
-    // Reload y verificar que el override sobrevive sin tocar archivos.
     await page.reload();
     await openConfiguratorWithTPS(page);
     await page.locator('[data-testid="cfg-tab-orientacion"]').click();
 
-    // La vista de sólo lectura debe exponer rz_deg=90 y installRotationDeg=15.
-    // Lo verificamos consultando el store expuesto directamente desde React.
     const persisted = await page.evaluate(() => {
-      const raw = localStorage.getItem('codex:catalogConfig:v1');
+      const raw = localStorage.getItem('codex:catalogConfig:v2');
       return raw ? JSON.parse(raw) : null;
     });
     expect(persisted).toBeTruthy();
-    expect(persisted.version).toBe('codex:catalogConfig/1');
-    const tps = persisted.overrides['SAM_TPS-300-Z'];
-    expect(tps).toBeTruthy();
-    expect(tps.modelFrame?.rz_deg).toBe(90);
-    const dev = tps.entries.find(
-      (e: { recipePortName: string }) => e.recipePortName === 'boca_derivacion',
-    );
-    expect(dev.geometry.installRotationDeg).toBe(15);
+    expect(persisted.version).toBe('codex:catalogConfig/2');
+    const patrones = Object.values(persisted.calibracion.patrones) as Array<{ bocas: Record<string, { giro_deg: { axial: number }; desplazamiento_mm: { axial: number } }> }>;
+    expect(patrones).toHaveLength(1);
+    expect(patrones[0].bocas.boca_derivacion.giro_deg.axial).toBe(15);
+    expect(patrones[0].bocas.boca_derivacion.desplazamiento_mm.axial).toBe(4);
+    // La v1 no se escribe.
+    expect(await page.evaluate(() => localStorage.getItem('codex:catalogConfig:v1'))).toBeNull();
+    // Y se lee de vuelta en la vista.
+    await expect(page.locator('[data-testid="cfg-calibracion-patron"]')).toContainText('15');
   });
 
-  test('Cancel descarta cambios sin persistir', async ({ page }) => {
+  test('una variante distinta de la medida muestra la calibración como heredada; la excepción pide motivo', async ({ page }) => {
+    await openConfiguratorWithTPS(page);
+    await page.locator('[data-testid="cfg-tab-orientacion"]').click();
+    await page.locator('[data-testid="cfg-edit-orientacion"]').click();
+    await page.locator('[data-testid="cfg-port-rot-boca_derivacion"]').fill('10');
+    await page.locator('[data-testid="cfg-orientacion-reason"]').fill('Calibración del patrón desde la variante medida.');
+    await page.locator('[data-testid="cfg-apply-orientacion"]').click();
+
+    // Otra variante del patrón.
+    await page.locator('[data-testid="cfg-product-SAM_TPS-450-Z"]').click();
+    await page.locator('[data-testid="cfg-tab-orientacion"]').click();
+    await expect(page.locator('[data-testid="cfg-calibracion-estado"]')).toContainText('sin verificar en este ancho');
+    await expect(page.locator('[data-testid="cfg-viewer-calibracion"]')).toContainText('sin verificar en este ancho');
+
+    // Declararla excepción sin motivo suficiente no se aplica.
+    await page.locator('[data-testid="cfg-edit-orientacion"]').click();
+    await page.locator('[data-testid="cfg-calibracion-excepcion"]').check();
+    await page.locator('[data-testid="cfg-orientacion-reason"]').fill('corto');
+    await page.locator('[data-testid="cfg-apply-orientacion"]').click();
+    await expect(page.locator('.cfg-tab-note-error')).toContainText('al menos 10 caracteres');
+  });
+
+  test('Cancelar descarta cambios sin persistir', async ({ page }) => {
     await openConfiguratorWithTPS(page);
     await page.locator('[data-testid="cfg-tab-orientacion"]').click();
     await page.locator('[data-testid="cfg-edit-orientacion"]').click();
 
-    await page.locator('[data-testid="cfg-mf-rz_deg"]').fill('45');
     await page.locator('[data-testid="cfg-port-rot-boca_derivacion"]').fill('30');
-    // Cancel (no motive, no apply).
+    await page.locator('[data-testid="cfg-port-desp-lateral-boca_derivacion"]').fill('2');
     await page.locator('.cfg-actions button:has-text("Cancelar")').click();
 
-    const persisted = await page.evaluate(() => {
-      return localStorage.getItem('codex:catalogConfig:v1');
-    });
-    expect(persisted).toBeNull();
+    const persisted = await page.evaluate(() => ({
+      v1: localStorage.getItem('codex:catalogConfig:v1'),
+      v2: localStorage.getItem('codex:catalogConfig:v2'),
+    }));
+    expect(persisted.v1).toBeNull();
+    expect(persisted.v2).toBeNull();
   });
 
   test('Continuaciones muestra TRPS-300-22-Z como recomendado desde boca_derivacion', async ({ page }) => {

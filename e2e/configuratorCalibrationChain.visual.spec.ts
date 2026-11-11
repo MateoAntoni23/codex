@@ -209,34 +209,32 @@ test.describe('Cadena de calibración — Configurador → trazado → motor', (
     await clearLocalStorage(page);
   });
 
-  test('visor del Configurador responde al aplicar modelFrame', async ({ page }) => {
+  // B-2.5: la calibración es del patrón, por boca; ya no hay marco del modelo.
+  test('visor del Configurador refleja la calibración del patrón aplicada por la interfaz', async ({ page }) => {
     await page.goto('/?configurator=v1');
     await waitForConfiguratorReady(page);
-
     const canvas = page.locator('[data-testid="cfg-viewer-canvas"]');
     await canvas.screenshot({ path: resolve(OUT_DIR, 'calib-01-identity.png') });
 
-    // Aplicar modelFrame.rz_deg via UI real.
     await page.locator('[data-testid="cfg-tab-orientacion"]').click();
     await page.locator('[data-testid="cfg-edit-orientacion"]').click();
-    await page.locator('[data-testid="cfg-mf-rx_deg"]').fill(String(OVERRIDE_RX_DEG));
+    await page.locator('[data-testid="cfg-port-rot-boca_derivacion"]').fill(String(OVERRIDE_RX_DEG));
     await page.locator('[data-testid="cfg-orientacion-reason"]').fill(OVERRIDE_REASON);
     await page.locator('[data-testid="cfg-apply-orientacion"]').click();
-
-    // La pestaña vuelve a lectura y el visor re-renderiza cuando el store
-    // cambia (ConfiguratorViewer está suscripto a `overrides`).
     await expect(page.locator('[data-testid="cfg-edit-orientacion"]')).toBeVisible();
-    await page.waitForTimeout(500);
+    await page.waitForFunction(() => {
+      const w = window as unknown as { __codex: { configuratorMesh: () => { isIdentity: boolean } | null } };
+      return w.__codex.configuratorMesh()?.isIdentity === false;
+    }, { timeout: 5_000 });
     await canvas.screenshot({ path: resolve(OUT_DIR, 'calib-02-overrided.png') });
 
-    // Verificar persistencia.
     const persisted = await page.evaluate(() => {
-      const raw = localStorage.getItem('codex:catalogConfig:v1');
+      const raw = localStorage.getItem('codex:catalogConfig:v2');
       return raw ? JSON.parse(raw) : null;
     });
-    expect(persisted).toBeTruthy();
-    expect(persisted.version).toBe('codex:catalogConfig/1');
-    expect(persisted.overrides['SAM_TPS-300-Z']?.modelFrame?.rx_deg).toBe(OVERRIDE_RX_DEG);
+    expect(persisted?.version).toBe('codex:catalogConfig/2');
+    const patron = Object.values(persisted.calibracion.patrones)[0] as { bocas: Record<string, { giro_deg: { axial: number } }> };
+    expect(patron.bocas.boca_derivacion.giro_deg.axial).toBe(OVERRIDE_RX_DEG);
   });
 
   test('routing aplica corrección y motor recibe boca_derivacion traducida a P3', async ({ page }) => {
@@ -332,29 +330,29 @@ test.describe('Cadena de calibración — Configurador → trazado → motor', (
     expect(['P1', 'P2', 'P3']).toContain(tpsEnd);
   });
 
-  test('override sobrevive reload de la página', async ({ page }) => {
-    // Preparar un override vía el Configurador (usamos el flujo UI real).
+  test('la calibración del patrón sobrevive reload de la página', async ({ page }) => {
     await page.goto('/?configurator=v1');
     await waitForConfiguratorReady(page);
     await page.locator('[data-testid="cfg-tab-orientacion"]').click();
     await page.locator('[data-testid="cfg-edit-orientacion"]').click();
-    await page.locator('[data-testid="cfg-mf-rx_deg"]').fill(String(OVERRIDE_RX_DEG));
+    await page.locator('[data-testid="cfg-port-rot-boca_derivacion"]').fill(String(OVERRIDE_RX_DEG));
     await page.locator('[data-testid="cfg-orientacion-reason"]').fill(OVERRIDE_REASON);
     await page.locator('[data-testid="cfg-apply-orientacion"]').click();
+    await expect(page.locator('[data-testid="cfg-edit-orientacion"]')).toBeVisible();
 
-    // Reload entero y volver a entrar al Configurador.
     await page.reload();
     await waitForConfiguratorReady(page);
-
     const persisted = await page.evaluate(() => {
-      const raw = localStorage.getItem('codex:catalogConfig:v1');
+      const raw = localStorage.getItem('codex:catalogConfig:v2');
       return raw ? JSON.parse(raw) : null;
     });
-    expect(persisted?.overrides?.['SAM_TPS-300-Z']?.modelFrame?.rx_deg).toBe(OVERRIDE_RX_DEG);
-
-    // El visor debe seguir en el Configurador — el store ya está hidratado.
-    await page.locator('[data-testid="cfg-viewer-canvas"]').waitFor({ state: 'visible', timeout: 10_000 });
-    await page.locator('[data-testid="cfg-viewer-canvas"]')
-      .screenshot({ path: resolve(OUT_DIR, 'calib-05-after-reload.png') });
+    const patron = Object.values(persisted?.calibracion?.patrones ?? {})[0] as { bocas: Record<string, { giro_deg: { axial: number } }> } | undefined;
+    expect(patron?.bocas.boca_derivacion.giro_deg.axial).toBe(OVERRIDE_RX_DEG);
+    // Hidratada: el visor la aplica sin volver a editar.
+    await page.waitForFunction(() => {
+      const w = window as unknown as { __codex: { configuratorMesh: () => { isIdentity: boolean } | null } };
+      return w.__codex.configuratorMesh()?.isIdentity === false;
+    }, { timeout: 10_000 });
+    await page.locator('[data-testid="cfg-viewer-canvas"]').screenshot({ path: resolve(OUT_DIR, 'calib-05-after-reload.png') });
   });
 });
