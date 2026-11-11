@@ -757,7 +757,7 @@ const MASTER_ESCALERA: readonly MasterModel[] = [
     pieceKind: 'curva_horizontal',
     source: {
       stepFile: 'CS-300-45-065-18-Z.STEP',
-      stepHashShort: '2f572cc3',
+      stepHashShort: '123dd1e8',
       reportJsonPath: 'tools/step_parametric/report/escalera/CS-300-45-065-18-Z.json',
     },
     recipeKey: 'escalera:curva_horizontal',
@@ -800,7 +800,10 @@ const MASTER_ESCALERA: readonly MasterModel[] = [
     // revision 2: bocas corregidas (P2 ahora sobre la cara diagonal
     // polygon[1]→polygon[2], long 298.9, NO sobre la pared x_min de 213 mm).
     // Invalida aprobaciones previas: la geometría de la boca cambió.
-    revision: 2,
+    // revision 3 (2026-11-11): STEP reemplazado por el operador. El anterior
+    // (2f572cc3) era un codo de 60°; el nuevo (123dd1e8) gira 45°. Contorno y
+    // bocas nuevos (P1 polygon[6]→[7], P2 polygon[2]→[3]).
+    revision: 3,
   },
   {
     id: 'master:escalera:curva_horizontal_90',

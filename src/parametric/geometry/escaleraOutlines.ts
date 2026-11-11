@@ -73,30 +73,35 @@ export const TRES_300_065_18_Z: EscaleraOutline = {
 
 // ─── CS-300-45-065-18-Z — curva escalera 45°, ancho 300, ala 65 ───────────
 // 8 vértices, mitreada (NO arco suave).
+//
+// Contorno del STEP reemplazado por el operador el 2026-11-11 (sha256
+// 123dd1e8…). El anterior (sha256 2f572cc3…) era un codo de 60°, no de 45°:
+// sus bocas tenían normales a −30° y +90°. Valores copiados sin redondear de
+// `CS-300-45-065-18-Z__outline.json`; `escaleraOutlinesVsReport.test.ts` los
+// contrasta contra ese JSON.
 export const CS_300_45_065_18_Z: EscaleraOutline = {
   source_file: 'CS-300-45-065-18-Z.STEP',
-  bbox_local: { x_max: 541.795, z_max: 652.565, y_height_mm: 65.0 },
+  bbox_local: { x_max: 492.211, z_max: 651.049, y_height_mm: 65.0 },
   baseAnchoMm: 298.9,
   polygon: [
-    [184.27, 120.13],
-    [392.35, 0.0],
-    [541.79, 258.85],
-    [403.08, 338.94],
-    [298.9, 519.39],
-    [298.9, 652.57],
-    [0.0, 652.57],
-    [0.0, 439.3],
+    [0.0, 458.333],
+    [125.494, 155.363],
+    [280.857, 0.0],
+    [492.211, 211.354],
+    [378.889, 324.676],
+    [298.9, 517.788],
+    [298.9, 651.049],
+    [0.004, 651.049],
   ],
   boundary_edges: [
-    // P1: arista superior z_max (horizontal) — centro (149.45, 652.57), normal +Z, long 298.9.
-    { i: 5, a: [298.9, 652.57], b: [0.0, 652.57], length_mm: 298.9, midpoint: [149.45, 652.57], outward_normal: [0.0, 1.0], boundary: 'z_max' },
-    // P2: arista diagonal 60° — centro (467.07, 129.425), normal (0.866,-0.5), long 298.87.
-    // NO pegada a un borde del bbox (es la cara diagonal mitreada de entrada).
-    // Antes esta posición la ocupaba polygon[6]→polygon[7] (pared izquierda,
-    // long 213) porque la detección automática elige aristas pegadas al bbox;
-    // ver escaleraRecipes.buildCS45Recipe para la justificación de la boca
-    // real como la cara diagonal.
-    { i: 1, a: [392.35, 0.0], b: [541.79, 258.85], length_mm: 298.87, midpoint: [467.07, 129.425], outward_normal: [0.8660, -0.5], boundary: null },
+    // Bocas = las dos aristas que miden el ancho de bandeja (~298,9 mm). Las
+    // demás miden 327,9 / 219,7 / 160,3 / 209,0 / 133,3 / 192,7 mm y son
+    // paredes, aunque la detección automática marque la 7 como 'x_min'.
+    // P1: arista superior z_max (horizontal), polygon[6]→polygon[7], normal +Z, long 298.896.
+    { i: 6, a: [298.9, 651.049], b: [0.004, 651.049], length_mm: 298.896, midpoint: [149.452, 651.049], outward_normal: [0.0, 1.0], boundary: 'z_max' },
+    // P2: arista diagonal a 45°, polygon[2]→polygon[3], normal (0.707,−0.707), long 298.9.
+    // No está pegada a un borde del bbox.
+    { i: 2, a: [280.857, 0.0], b: [492.211, 211.354], length_mm: 298.9, midpoint: [386.534, 105.677], outward_normal: [0.707, -0.707], boundary: null },
   ],
 };
 

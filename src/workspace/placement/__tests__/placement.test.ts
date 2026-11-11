@@ -36,6 +36,20 @@ import {
 import { checkJoin, TOL_ANG_DEG, TOL_POS_MM } from '../joins';
 import type { Product, TrayInput } from '../../../tray/model';
 
+/**
+ * Ángulo entre vectores con atan2(|a×b|, a·b). Para invariantes de 1e-6° no
+ * sirve acos(a·b): cuando el producto escalar queda a un ULP de 1, acos da
+ * √(2·2,2e-16) rad = 1,207e-6°, aunque los vectores sean el mismo. atan2 está
+ * bien condicionado cerca de 0.
+ */
+function angleDegExact(a: readonly number[], b: readonly number[]): number {
+  const cx = a[1] * b[2] - a[2] * b[1];
+  const cy = a[2] * b[0] - a[0] * b[2];
+  const cz = a[0] * b[1] - a[1] * b[0];
+  const dot = a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  return (Math.atan2(Math.hypot(cx, cy, cz), dot) * 180) / Math.PI;
+}
+
 let cat: StaticCatalog;
 
 beforeAll(async () => {
@@ -105,8 +119,8 @@ describe('PA2 — colocar, guardar, recargar y dibujar (propiedad sobre todo el 
       for (const product of products) {
         // PA2 prueba el mecanismo (colocar → guardar → recargar → dibujar) sobre
         // TODOS los patrones, así que usa la definición sin la verificación de
-        // ángulo: un modelo no resuelto (CS-45 escalera) se rechaza al colocar y
-        // su defecto se informa en angleCheck.test.ts, no aquí.
+        // ángulo: un modelo no resuelto se rechaza al colocar y su defecto se
+        // informa en angleCheck.test.ts y angleMismatchCalibracion.test.ts, no aquí.
         const d = buildDefinition(product);
         expect(d.ok, `${patron} ${product.sku}`).toBe(true);
         if (!d.ok) continue;
@@ -117,7 +131,7 @@ describe('PA2 — colocar, guardar, recargar y dibujar (propiedad sobre todo el 
               // Invariantes de la colocación: la boca de entrada queda donde se pidió.
               const e = placed.ports.find((p) => p.name === port.name)!;
               expect(Math.hypot(...(e.pos.map((v, i) => v - START[i]) as V3))).toBeLessThan(1e-6);
-              expect(angleDeg(e.normal, cfg.dir.map((x) => -x))).toBeLessThan(1e-6);
+              expect(angleDegExact(e.normal, cfg.dir.map((x) => -x))).toBeLessThan(1e-6);
               // La pose es una rotación propia.
               const R = new THREE.Matrix3().fromArray(m3FromQuat(placed.colocacion.pose.rotacion).flat()).transpose();
               expect(R.determinant()).toBeCloseTo(1, 9);
