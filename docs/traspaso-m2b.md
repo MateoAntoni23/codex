@@ -1,6 +1,7 @@
 # Traspaso — Hito 2, fase B (rama `feat/m2b-definicion-unica`)
 
-Estado al 2026-11-11, punto de control después de B-2. **B-3 y B-4 no empezaron.**
+Estado al 2026-11-11. **B-2 cerrada y verificada** (`8242769`). Alcance recortado por el operador: ver
+"Recorte de alcance" al final.
 Base: `a7794b8`. Encargo completo: ver el mensaje del operador "ENCARGO: HITO 2, FASE B".
 
 ## Línea base (a7794b8, `npm run verify` aislado)
@@ -38,7 +39,7 @@ TRES, CS-45 y RIS no cambian. B-2 no cambió ninguna huella (la prueba sigue en 
 **PB2** (`outlinesGenerated.test.ts` y demostración en disco): regenerar con el repo limpio no produce
 cambios; alterar un vértice del JSON y regenerar sí. Controles negativos de la regla del ancho incluidos.
 
-## B-2 — hecha, último tramo sin empujar al escribir esto (se empuja con este archivo)
+## B-2 — cerrada
 | | Qué | Commits |
 |---|---|---|
 | 4 | `definicionEfectiva` (`placement/definitions.ts`) como única puerta a la geometría. El índice por SKU de `parametric/catalog.ts` sale del espacio de trabajo. La escalera se dibuja desde la definición. Se quitaron los `placeRecipe` de reserva. | `6ee27c0`, `17946cf` |
@@ -79,24 +80,18 @@ Diferencias listadas pieza por pieza (variantes que antes heredaban por búsqued
 Defecto encontrado y corregido antes de empujar: `upsertOverride` descartaba la geometría cuando no podía
 convertirla (producto fuera del índice). Ahora el override queda intacto y se registra como pendiente.
 
-## Quedó a medias / sin verificar
-- **E2E del configurador en ROJO (5), sin reescribir.** Todas usan los campos `cfg-mf-*` (marco del
-  modelo, que ya no existe) o exigen que el `modelFrame` rote la malla:
-  1. `configuratorCalibrationChain` › "visor del Configurador responde al aplicar modelFrame";
-  2. `configuratorCalibrationChain` › "override sobrevive reload de la página";
-  3. `configuratorMeshReactivity` › "B. modelFrame rota la MALLA…";
-  4. `configuratorOrientacion` › "aplica giro de instalación y modelFrame.rz_deg y persiste tras reload";
-  5. `configuratorOrientacion` › "Cancel descarta cambios sin persistir".
+## Cierre de B-2
+- E2E del configurador (5) reescritas para la calibración por patrón (`424921e`). Encontraron que el visor
+  no se refrescaba al calibrar (corregido).
+- `npm run verify` sobre `424921e`, tras cerrar el Vite y el motor que quedaron abiertos: Playwright 81/87.
+  Las 6 fallas eran pruebas que seguían en la biblioteca v1 o el marco del modelo:
+  - `entregaFinalUserChain` (3);
+  - `proyectoPersistente` A4 y A5, que leían `codex:catalogConfig:v1`;
+  - `proyectoPersistente` A3: en la corrida completa la migración superó una espera de 5 s.
 
-  Hay que reescribirlas para la pestaña nueva (corrección por boca y excepción) antes de dar B-2 por
-  cerrada. Del mismo lote pasaron calibrationPlayground, configuratorMaestroTab, modeloNoResuelto y
-  sharedVerticalPattern.
-- `npm run verify` completo de B-2: **no corrido.**
-- Aprobaciones: su huella ahora incluye la calibración del patrón, así que toda aprobación previa va a
-  figurar como "calibración cambió" tras migrar.
-- Pendiente de decidir: si una pieza **sin modelo** debe poder colocarse (hoy tramos y arcos esquemáticos
-  con el largo o el radio del catálogo; el radio por defecto 300 ya no existe).
-- DCPS: literales a 0,051 mm del STEP; no hay prueba contra el GLB porque fallaría. Decidir antes de B-3.
+  Reescritas en `8242769`.
+- **`npm run verify` sobre `8242769`: limpio.** Tipos OK, Vitest 1675/1675, motor 190 OK (2 omitidas),
+  Playwright 87/87.
 - `measuredLadder.ts` quedó sin uso en la app (solo lo importan pruebas).
 
 ## Decisiones del operador tras el punto de control (aplicadas)
@@ -122,3 +117,19 @@ convertirla (producto fuera del índice). Ahora el override queda intacto y se r
     declara radio ni ángulo), T 42, otros.
 
   La procedencia se ve en la escena, la ficha y Resultados. La migración resuelve las piezas nominales.
+
+## Recorte de alcance (operador, 2026-11-11)
+- **Descartado:** reglas nominales para T y X (aunque 40 T y 40 X declaran `radio_mm`); reducciones (les
+  falta el largo y el segundo ancho está solo en la descripción); tapas y finales de tramo. Tema de
+  modelado para después: tapas y finales no son piezas de recorrido, deberían ser material asociado a una
+  pieza.
+- **B-3 se reduce a la cuarta condición de unión** (ancho de boca y aviso de ala de las CUPS).
+- **POSPUESTOS, no cancelados (no se tocan en esta fase):**
+  - **Anclaje de la DCPS (8):** el patrón declara una sola boca (P1). La pieza guarda tramo anfitrión,
+    distancia a lo largo del eje y lado; la pose se deriva del anclaje. El anfitrión conserva sus extremos
+    y su largo, y mover o rotar el anfitrión arrastra a la DCPS (PB7).
+  - **Ángulo por instancia de las CAS (8b):** solo código. Sin rango inventado, se registra quién lo
+    declaró y el ángulo entra en la huella. Sin modelo, el motivo es "curva de ángulo ajustable sin modelo
+    geométrico; falta el STEP de la pieza"; no se construye desde la curva de 90°. Incluye listar los
+    productos que toman prestado un maestro que no es suyo.
+- **B-4 (gizmo de rotación) se mantiene completa.**
