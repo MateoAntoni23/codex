@@ -806,16 +806,18 @@ describe('planAddAccessory', () => {
     expect(Math.abs(dz)).toBeCloseTo(1500, 3);
   });
 
-  it('CUPS entering via P2_vertical desde entryDir horizontal queda bloqueado por guard de consistencia', () => {
-    // La ruta legacy (entryDir horizontal) detecta que el puerto de entrada
-    // tiene normal con componente Y local — colocar CUPS "de canto" por su
-    // boca vertical no tiene sentido físico y se rechaza con mensaje claro.
-    // Nota: entrar por P2_vertical SÍ es válido cuando el puerto origen es
-    // vertical (startPort.dir con componente Z); se cubre en tests de puente.
+  it('CUPS entering via P2_vertical desde entryDir horizontal: la colocación única la coloca con marco completo', () => {
+    // Antes la ruta legacy (placeRecipe) rechazaba esta entrada ("componente Y
+    // local"). Desde la fase A la interfaz coloca con marco completo (normal +
+    // orientación transversal) y la acepta: la boca vertical queda enfrentada
+    // a la dirección de avance. B-2 deja un solo camino, el de la interfaz.
     const entrada = makeTrayInput({ piezas: [makePiece('SEG-1')] });
-    expect(() =>
-      planAddAccessory(entrada, START_FROM_TRPS, CUPS_PRODUCT, COMPAT_OK, 'P2_vertical', 'left'),
-    ).toThrow(/componente Y local/);
+    const op = planAddAccessory(entrada, START_FROM_TRPS, CUPS_PRODUCT, COMPAT_OK, 'P2_vertical', 'left');
+    const entry = op.newPiece.puertos.P2_vertical!;
+    const d = START_FROM_TRPS.dir;
+    expect(Math.hypot(...(entry.posicion_mm.map((v, k) => v - START_FROM_TRPS.pos[k]) as [number, number, number]))).toBeLessThan(1e-6);
+    const dotNd = entry.direccion[0] * d[0] + entry.direccion[1] * d[1] + entry.direccion[2] * d[2];
+    expect(dotNd).toBeCloseTo(-1, 9);
   });
 
   it('does not mutate the entrada', () => {

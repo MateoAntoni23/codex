@@ -16,8 +16,8 @@ import type { DirectCompatResult, StartPort, Point3 } from './routingRules';
 import { buildSegmentPiece, generateSegmentId } from './addTraySegment';
 import { buildCurvePiece, generateCurveId, computeTurnPerp } from './addCurvePiece';
 import { computeEndpoint, generateConnectionId } from './routingRules';
-import { resolveRecipe, placeRecipe, chiralityForTurn } from './parametricBridge';
-import type { RoutingPlacement } from './placement/routingPlacement';
+import { tieneDefinicion } from './placement/definitions';
+import { computeRoutingPlacement, type RoutingPlacement } from './placement/routingPlacement';
 import { puertosFromWorld, type StoredDefinition } from './placement/placementCore';
 import { withDefinition } from './placement/definitions';
 import { checkConnection, type JoinCheck } from './placement/joins';
@@ -283,6 +283,14 @@ export function planAddSegment(
   // newPiecePort tells which port of the new piece sits at the connection point.
   // 'P2' means the piece is geometrically reversed so P2 is at startPos.
   const newPiecePort = compat.newPiecePort;
+  // Sin colocación del llamador y con modelo: la misma función que preview y
+  // confirmación (B-2: no hay otro camino para una pieza con definición).
+  if (!placement && tieneDefinicion(newProduct)) {
+    placement = computeRoutingPlacement({
+      product: newProduct, startPort, entryPortName: newPiecePort, side: 'left', lengthMm, entryDir: effectiveDir,
+    });
+  }
+  if (placement && !placement.ok) throw new Error(`planAddSegment: ${newProduct.sku ?? newProduct.producto_id}: ${placement.motivo}`);
   // Con modelo: la pieza es la colocación calculada (la misma que dibujó el preview).
   const newPiece = placement?.ok
     ? pieceFromPlacement(newId, newProduct, placement, { longitud_mm: lengthMm })
@@ -344,11 +352,14 @@ export function planAddCurve(
     throw new Error(`planAddCurve: unexpected newPiecePort '${newPiecePort}'; only P1 entry is supported`);
   }
 
-  // Preferimos la receta paramétrica medida del STEP cuando existe: así la
-  // trayectoria y el P2 de la pieza confirmada coinciden con el preview
-  // (no hay "arco sustituto" de 450 mm). Caemos al fallback cuando el
-  // producto no está en el catálogo paramétrico.
-  const parametricEntry = resolveRecipe(newProduct);
+  // Con modelo, la pieza es la colocación calculada (la misma que dibujó el
+  // preview; B-2: no hay otro camino). Sin modelo, se representa como arco
+  // esquemático sólo si el catálogo declara el radio: no se inventa uno.
+  // Sin colocación del llamador, se calcula con la MISMA función que usan el
+  // preview y la confirmación (no es un camino aparte).
+  if (!placement && tieneDefinicion(newProduct)) {
+    placement = computeRoutingPlacement({ product: newProduct, startPort, entryPortName: 'P1', side: turnDirection });
+  }
   let newPiece: Piece;
   if (placement?.ok) {
     const p1 = placement.ports.find((p) => p.name === 'P1')!;
@@ -356,37 +367,13 @@ export function planAddCurve(
     newPiece = pieceFromPlacement(newId, newProduct, placement, {
       longitud_eje_mm: radiansToArcLengthForPlacement(p1.pos, p2.pos, angleDeg),
     });
-  } else if (parametricEntry && parametricEntry.piece_kind === 'curva_horizontal') {
-    const chirality = chiralityForTurn(turnDirection);
-    const placed = placeRecipe(
-      newProduct,
-      parametricEntry,
-      startPort.pos,
-      entryDir,
-      chirality,
-      undefined,
-      startPort.sectionUp ? { sectionUp: startPort.sectionUp } : undefined,
-    );
-    const arcLenMm = radiansToArcLengthForPlacement(placed.p1.pos, placed.p2.pos, angleDeg);
-    newPiece = {
-      instancia_id: newId,
-      producto_id: newProduct.producto_id,
-      longitud_eje_mm: arcLenMm,
-      puertos: {
-        P1: {
-          posicion_mm: [placed.p1.pos[0], placed.p1.pos[1], placed.p1.pos[2]],
-          direccion: [placed.p1.outwardNormal[0], placed.p1.outwardNormal[1], placed.p1.outwardNormal[2]],
-          orientacion_seccion_ws: [placed.p1.vDir[0], placed.p1.vDir[1], placed.p1.vDir[2]],
-        },
-        P2: {
-          posicion_mm: [placed.p2.pos[0], placed.p2.pos[1], placed.p2.pos[2]],
-          direccion: [placed.p2.outwardNormal[0], placed.p2.outwardNormal[1], placed.p2.outwardNormal[2]],
-          orientacion_seccion_ws: [placed.p2.vDir[0], placed.p2.vDir[1], placed.p2.vDir[2]],
-        },
-      },
-    };
+  } else if (tieneDefinicion(newProduct)) {
+    throw new Error(`planAddCurve: ${newProduct.sku ?? newProduct.producto_id} tiene modelo y no llegó su colocación${placement && !placement.ok ? ` (${placement.motivo})` : ''}`);
   } else {
-    const radioInterior = ((newProduct as Record<string, unknown>).radio_mm as number | undefined) ?? 300;
+    const radioInterior = (newProduct as Record<string, unknown>).radio_mm;
+    if (typeof radioInterior !== 'number' || !Number.isFinite(radioInterior)) {
+      throw new Error(`planAddCurve: ${newProduct.sku ?? newProduct.producto_id} no tiene modelo y el catálogo no declara su radio (radio_mm); no se coloca una curva con un radio inventado`);
+    }
     const radiusMm = radioInterior + (newProduct.ancho_nominal_mm ?? 0) / 2;
     const turnPerp = computeTurnPerp(entryDir, turnDirection);
     newPiece = buildCurvePiece(newId, newProduct.producto_id, startPort.pos, entryDir, turnPerp, angleDeg, radiusMm);
@@ -433,13 +420,8 @@ export function planAddAccessory(
   placement?: RoutingPlacement,
 ): PendingSegmentAddition {
   if (!compat.ok) throw new Error('planAddAccessory: compat.ok must be true');
-
-  const parametricEntry = resolveRecipe(newProduct);
-  if (!parametricEntry) {
-    throw new Error(
-      `planAddAccessory: producto ${newProduct.sku ?? newProduct.producto_id} no tiene receta paramétrica habilitada`,
-    );
-  }
+  // Sin colocación del llamador, la misma función que preview y confirmación.
+  if (!placement) placement = computeRoutingPlacement({ product: newProduct, startPort, entryPortName, side: turnDirection });
 
   const pieceIds = new Set(entrada.piezas.map((p) => p.instancia_id));
   const connIds = new Set(entrada.conexiones.map((c) => c.conexion_id));
@@ -456,44 +438,11 @@ export function planAddAccessory(
       ...defOf(placement),
     };
   }
-  const chirality = chiralityForTurn(turnDirection);
-  const placed = placeRecipe(
-    newProduct,
-    parametricEntry,
-    startPort.pos,
-    startPort.dir,
-    chirality,
-    undefined,
-    { entryPortName, ...(startPort.sectionUp ? { sectionUp: startPort.sectionUp } : {}) },
+  // B-2: un accesorio sólo se coloca con la colocación calculada desde su
+  // definición efectiva; no hay otro camino.
+  throw new Error(
+    `planAddAccessory: ${newProduct.sku ?? newProduct.producto_id} sin colocación: ${placement && !placement.ok ? placement.motivo : 'no se calculó'}`,
   );
-
-  const puertos: Record<string, { posicion_mm: [number, number, number]; direccion: [number, number, number]; orientacion_seccion_ws: [number, number, number] }> = {};
-  for (const port of placed.ports) {
-    puertos[port.name] = {
-      posicion_mm: [port.pos[0], port.pos[1], port.pos[2]],
-      direccion: [port.outwardNormal[0], port.outwardNormal[1], port.outwardNormal[2]],
-      orientacion_seccion_ws: [port.vDir[0], port.vDir[1], port.vDir[2]],
-    };
-  }
-
-  const newPiece: Piece = {
-    instancia_id: newId,
-    producto_id: newProduct.producto_id,
-    puertos,
-  };
-
-  const connId = generateConnectionId(connIds);
-  const newConnection = {
-    conexion_id: connId,
-    a: [startPort.pieceId, startPort.portName] as [string, string],
-    b: [newId, entryPortName] as [string, string],
-  };
-
-  const peExtension = findPeExtensionProposal(
-    entrada, startPort.pieceId, startPort.portName, newId,
-  );
-
-  return { kind: 'add_segment', newPiece, newConnection, resolution: compat, peExtension };
 }
 
 /**

@@ -5,9 +5,18 @@
  *
  * La pieza colocada referencia una definición guardada por huella; la vigente
  * sólo se usa para colocar piezas nuevas y para detectar desactualización (A-6).
+ *
+ * B-2 — CAMINO ÚNICO: `definicionEfectiva` es la única puerta a la geometría de
+ * un producto para el espacio de trabajo y el configurador (preview,
+ * confirmación, render, configurador y adaptador del motor). Ningún otro módulo
+ * de esos árboles construye recetas ni lee contornos por su cuenta;
+ * `caminoUnicoGeometria.test.ts` lo verifica. `modeloDeProducto` sólo clasifica
+ * (tipo de pieza, si es colocable) y no entrega geometría.
  */
 import type { Piece, Product, TrayInput } from '../../tray/model';
-import { buildRecipeFromProduct, datosFaltantesParaMaestro, resolveRecipe } from '../parametricBridge';
+import { buildRecipeFromProduct, datosFaltantesParaMaestro, resolveParametricEntry, resolveRecipe } from '../parametricBridge';
+import { calibracionVersion } from '../catalogPortMapping';
+import type { PieceKind } from '../../parametric/geometry/recipes';
 import { resolveRecipeForProduct } from '../resolvedPortGeometry';
 import { findMasterForProduct, MASTER_MODELS } from '../../configurator/masterModels';
 import { angleMismatch } from './angleCheck';
@@ -41,17 +50,94 @@ export type DefinitionResult =
   | { ok: true; def: StoredDefinition; huella: string }
   | { ok: false; motivo: string };
 
+/** Clasificación del modelo de un producto (sin geometría). */
+export interface ModeloInfo {
+  /** Id del maestro (o de la receta, si no hay maestro). */
+  readonly patron: string;
+  /** Tipo de pieza del modelo. */
+  readonly tipo: PieceKind;
+  /** Clave de receta del maestro (p. ej. 'tramo_recto', 'escalera:tramo_recto'). */
+  readonly recipeKey: string;
+  /** El flujo interactivo sabe colocar hoy este tipo de pieza. */
+  readonly colocable: boolean;
+}
+
+export type DefinicionEfectiva =
+  | { ok: true; def: StoredDefinition; huella: string; modelo: ModeloInfo }
+  | { ok: false; motivo: string; modelo: ModeloInfo | null };
+
 /**
- * Definición efectiva vigente del producto. `longitud_mm` sólo aplica a tramos
- * rectos (largo editable). Error con motivo si el producto no tiene modelo o si
- * su contorno gira otro ángulo que el declarado (modelo no resuelto): una pieza
- * así no se coloca.
+ * Clasificación del modelo del producto: tipo de pieza y si es colocable. No
+ * entrega geometría (para eso, `definicionEfectiva`). null = sin modelo.
+ */
+export function modeloDeProducto(product: Product | null | undefined): ModeloInfo | null {
+  if (!product) return null;
+  const entry = resolveParametricEntry(product);
+  if (!entry) return null;
+  const master = findMasterForProduct(product as Record<string, unknown>);
+  return {
+    patron: master?.id ?? String(entry.recipe),
+    tipo: entry.piece_kind,
+    recipeKey: String(entry.recipe),
+    colocable: resolveRecipe(product) !== null,
+  };
+}
+
+/** Tramo recto (largo editable), perforada o escalera. */
+export function esTramoRecto(m: ModeloInfo | null | undefined): boolean {
+  return m?.tipo === 'tramo_recto' || m?.recipeKey === 'escalera:tramo_recto';
+}
+
+const MEMO = new Map<string, DefinicionEfectiva>();
+const MEMO_MAX = 2000;
+
+function claveMemo(product: Product, longitud: number | null | undefined): string {
+  const r = product as unknown as Record<string, unknown>;
+  return JSON.stringify([
+    calibracionVersion(), product.producto_id, product.sku, r.familia_id, product.tipo_pieza, product.ancho_nominal_mm,
+    r.ala_nominal_mm, r.longitud_comercial_mm, r.angulo_grados, r.descripcion_original, r.observaciones, longitud ?? null,
+  ]);
+}
+
+/**
+ * DEFINICIÓN EFECTIVA de un producto: la única función que entrega geometría
+ * (B-2). Devuelve la definición con su huella y la clasificación del modelo, o
+ * un error con motivo (sin modelo, dato del catálogo que falta, ángulo que no
+ * coincide…). Pura respecto de (producto, opciones, estado de calibración):
+ * el resultado se memoriza con la versión de ese estado.
+ *
+ * `longitud_mm` sólo aplica a tramos rectos (largo editable).
+ */
+export function definicionEfectiva(product: Product, opts?: { longitud_mm?: number | null }): DefinicionEfectiva {
+  const key = claveMemo(product, opts?.longitud_mm);
+  const hit = MEMO.get(key);
+  if (hit) return hit;
+  const modelo = modeloDeProducto(product);
+  const d = buildDefinition(product, opts);
+  let out: DefinicionEfectiva;
+  if (!d.ok) out = { ok: false, motivo: d.motivo, modelo };
+  else {
+    const bad = angleMismatch(d.def);
+    out = bad || !modelo ? { ok: false, motivo: bad?.motivo ?? 'sin modelo', modelo } : { ...d, modelo };
+  }
+  if (MEMO.size >= MEMO_MAX) MEMO.clear();
+  MEMO.set(key, out);
+  return out;
+}
+
+/** El producto tiene definición efectiva (se puede colocar). */
+export function tieneDefinicion(product: Product | null | undefined): boolean {
+  return !!product && definicionEfectiva(product).ok;
+}
+
+/**
+ * Definición efectiva vigente del producto (alias histórico de
+ * `definicionEfectiva`). Error con motivo si el producto no tiene modelo o si
+ * su contorno gira otro ángulo que el declarado (modelo no resuelto).
  */
 export function resolveDefinition(product: Product, opts?: { longitud_mm?: number | null }): DefinitionResult {
-  const d = buildDefinition(product, opts);
-  if (!d.ok) return d;
-  const bad = angleMismatch(d.def);
-  return bad ? { ok: false, motivo: bad.motivo } : d;
+  const d = definicionEfectiva(product, opts);
+  return d.ok ? { ok: true, def: d.def, huella: d.huella } : { ok: false, motivo: d.motivo };
 }
 
 /**

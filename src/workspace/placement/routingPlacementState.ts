@@ -6,7 +6,7 @@
 import type { Context, TrayInput, Product } from '../../tray/model';
 import type { StartPort } from '../routingRules';
 import { checkDirectCompatibility, snapDirectionToAxis } from '../routingRules';
-import { resolveRecipe, buildRecipeFromProduct } from '../parametricBridge';
+import { definicionEfectiva, esTramoRecto, modeloDeProducto } from './definitions';
 import { computeRoutingPlacement, type RoutingPlacement } from './routingPlacement';
 
 export interface RoutingStateSlice {
@@ -21,13 +21,12 @@ export interface RoutingStateSlice {
 
 /** Piece kinds que eligen boca de entrada (3+ bocas o curva vertical). */
 export function needsEntryChoice(product: Product | null | undefined): boolean {
-  const kind = product ? resolveRecipe(product)?.piece_kind : undefined;
+  const kind = modeloDeProducto(product)?.tipo;
   return kind === 'derivacion_lateral' || kind === 'cruz' || kind === 'curva_vertical';
 }
 
 export function isStraightKind(product: Product): boolean {
-  const e = resolveRecipe(product);
-  return e?.piece_kind === 'tramo_recto' || e?.recipe === 'escalera:tramo_recto';
+  return esTramoRecto(modeloDeProducto(product));
 }
 
 export function routingPlacementFromState(
@@ -37,7 +36,7 @@ export function routingPlacementFromState(
 ): RoutingPlacement | null {
   if (!context || !entrada || !r.startPort || r.step === 'selectingPort' || !r.selectedProductId) return null;
   const product = context.productos.find((p) => p.producto_id === r.selectedProductId);
-  if (!product || !resolveRecipe(product)) return null;
+  if (!product || !modeloDeProducto(product)?.colocable) return null;
   const startPort = r.startPort;
   let entryPortName: string;
   let entryDir: readonly number[] | undefined;
@@ -45,11 +44,9 @@ export function routingPlacementFromState(
   if (needsEntryChoice(product)) {
     if (r.entryPortName) entryPortName = r.entryPortName;
     else {
-      try {
-        entryPortName = buildRecipeFromProduct(product, resolveRecipe(product)!).ports[0]?.name ?? 'P1';
-      } catch {
-        return null;
-      }
+      const d = definicionEfectiva(product);
+      if (!d.ok) return null;
+      entryPortName = d.def.ports[0]?.name ?? 'P1';
     }
   } else if (isStraightKind(product)) {
     const existing = entrada.piezas.find((p) => p.instancia_id === startPort.pieceId);

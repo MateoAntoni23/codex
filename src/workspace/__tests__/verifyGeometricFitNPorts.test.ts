@@ -52,7 +52,7 @@ const CUPS_300: Product = {
 const TPS_300: Product = {
   producto_id: 'SAM_TPS-300-Z',
   descripcion_original: 'TPS-300-Z',
-  tipo_pieza: 'tee simétrica',
+  tipo_pieza: 'T', // valor real del catálogo (antes 'tee simétrica', que sólo resolvía por el índice por SKU)
   ancho_nominal_mm: 300,
   sku: 'TPS-300-Z',
   ala_nominal_mm: 50,
@@ -62,7 +62,7 @@ const TPS_300: Product = {
 const XPS_300: Product = {
   producto_id: 'SAM_XPS-300-Z',
   descripcion_original: 'XPS-300-Z',
-  tipo_pieza: 'cruz',
+  tipo_pieza: 'X', // valor real del catálogo (antes 'cruz', que sólo resolvía por el índice por SKU)
   ancho_nominal_mm: 300,
   sku: 'XPS-300-Z',
   ala_nominal_mm: 50,

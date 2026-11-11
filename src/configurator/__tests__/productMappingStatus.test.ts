@@ -1,4 +1,6 @@
 // @vitest-environment node
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, it, expect, beforeEach } from 'vitest';
 import type { Product } from '../../tray/model';
 import {
@@ -10,11 +12,19 @@ import { classifyProductMapping } from '../productMappingStatus';
 
 // Minimal factory: Product has a known shape (producto_id, sku, tipo_pieza, ancho_nominal_mm, descripcion_original)
 // plus free-form extras like familia_id. The real Product is `Record<string, unknown> &` the required fields.
+const SNAPSHOT = JSON.parse(readFileSync(
+  resolve(__dirname, '../../../vendor/motor_bandejas/datos/catalogo/catalogo_bandejas_snapshot.json'), 'utf8',
+)) as { PRODUCTOS: Product[] };
+
+// B-2: el modelo se resuelve por el maestro (familia, tipo, ala), así que el
+// producto de prueba es el del catálogo real; los inventados quedan como estaban.
 function makeProduct(partial: Partial<Product> & { producto_id: string; sku: string }): Product {
+  const real = SNAPSHOT.PRODUCTOS.find((p) => p.producto_id === partial.producto_id);
   return {
     descripcion_original: partial.descripcion_original ?? '',
     tipo_pieza: partial.tipo_pieza ?? 'recta',
     ancho_nominal_mm: partial.ancho_nominal_mm ?? 300,
+    ...(real ?? {}),
     ...partial,
   } as Product;
 }

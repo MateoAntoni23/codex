@@ -65,9 +65,11 @@ const CPS_90: Product = {
 
 describe('parametricBridge.resolveRecipe', () => {
   it('encuentra recetas para rectos y curvas 300 por SKU bare', () => {
-    expect(resolveRecipe(TRPS_300)?.recipe).toBe('TRPS-300-22-Z.STEP');
-    expect(resolveRecipe(CPS_45)?.recipe).toBe('CPS-300-45-Z.STEP');
-    expect(resolveRecipe(CPS_90)?.recipe).toBe('CPS-300-90-Z.STEP');
+    // B-2: se resuelven por su maestro (recipeKey), no por el índice por SKU de
+    // src/parametric/catalog.ts (que ya no participa en el espacio de trabajo).
+    expect(resolveRecipe(TRPS_300)?.recipe).toBe('tramo_recto');
+    expect(resolveRecipe(CPS_45)?.recipe).toBe('curva_horizontal');
+    expect(resolveRecipe(CPS_90)?.recipe).toBe('curva_horizontal');
   });
 
   it('devuelve null para productos sin receta o sin SKU', () => {

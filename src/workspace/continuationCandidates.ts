@@ -39,25 +39,21 @@
  * resueltos y usa el resultado para pintar el selector.
  */
 import type { Product } from '../tray/model';
+import { modeloDeProducto } from './placement/definitions';
 import {
   isInteractivelyInsertable,
   isStraight,
   isHorizontalCurve,
   isVerticalCurve,
 } from './pieceClassification';
-import {
-  isParametricInsertable,
-  resolveParametricEntry,
-} from './parametricBridge';
 
 /**
  * "Tiene modelo paramétrico" en el sentido amplio: existe receta geométrica
  * para el producto aunque el `piece_kind` todavía no esté habilitado para
- * inserción interactiva. Contrasta con `hasParametricRecipe` en
- * parametricBridge, que exige kind soportado.
+ * inserción interactiva (`modeloDeProducto(p).colocable`).
  */
-function hasParametricModel(product: { sku?: string | null } | null | undefined): boolean {
-  return resolveParametricEntry(product) !== null;
+function hasParametricModel(product: Product | null | undefined): boolean {
+  return modeloDeProducto(product) !== null;
 }
 
 export type CandidateCategory = 'recommended' | 'other';
@@ -91,9 +87,9 @@ export interface ContinuationInputs {
 }
 
 function describeKindPendiente(product: Product): string {
-  const entry = resolveParametricEntry(product);
-  if (!entry) return 'Inserción interactiva pendiente para este tipo de pieza.';
-  switch (entry.piece_kind) {
+  const modelo = modeloDeProducto(product);
+  if (!modelo) return 'Inserción interactiva pendiente para este tipo de pieza.';
+  switch (modelo.tipo) {
     case 'derivacion_lateral':
       return 'Derivación lateral (T): tres bocas. Inserción interactiva pendiente — requiere elegir boca de entrada y conservar las dos bocas libres para continuar.';
     case 'cruz':
@@ -149,7 +145,7 @@ export function buildContinuationCandidates(
     if (seen.has(p.producto_id)) continue;
     const isCompat = compatibleIds.has(p.producto_id);
     const isParametric = hasParametricModel(p);
-    const kindSupported = isParametric ? isParametricInsertable(p) : false;
+    const kindSupported = isParametric ? modeloDeProducto(p)?.colocable === true : false;
     const insertable = isInteractivelyInsertable(p) || kindSupported;
 
     if (isCompat) {

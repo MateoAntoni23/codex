@@ -19,7 +19,6 @@
 
 import * as THREE from 'three';
 import {
-  PARAMETRIC_CATALOG,
   type ParametricEntry,
   type ParametricVariantView,
 } from '../parametric/catalog';
@@ -137,18 +136,9 @@ export interface GeometricFit {
   readonly matches: boolean;
 }
 
-// ─── Índice de recetas por SKU ───────────────────────────────────────────────
-//
-// El campo `sku` del snapshot del catálogo real coincide 1:1 con el `sku` de
-// cada vista paramétrica (reconstruction/variant). No hay prefijo `SAM_` ni
-// extensión `.STEP` — el `entry.recipe` sí la lleva, pero ese campo es un
-// identificador interno de la vista ?pilot=step.
-
-const ENTRY_BY_SKU = new Map<string, ParametricEntry>();
-for (const entry of PARAMETRIC_CATALOG) {
-  ENTRY_BY_SKU.set(entry.reconstruction.sku, entry);
-  ENTRY_BY_SKU.set(entry.variant.sku, entry);
-}
+// El índice por SKU de `src/parametric/catalog.ts` (PARAMETRIC_CATALOG, vista
+// ?pilot=step) ya NO participa en el espacio de trabajo (B-2): todo producto se
+// resuelve por su maestro. Ver `resolveParametricEntry`.
 
 const SUPPORTED_PIECE_KINDS: ReadonlySet<PieceKind> = new Set([
   'tramo_recto',
@@ -388,11 +378,6 @@ export function resolveParametricEntry(
   product: SyntheticProductLike | null | undefined,
 ): ParametricEntry | null {
   if (!product) return null;
-  const sku = typeof product.sku === 'string' ? product.sku : null;
-  if (sku) {
-    const hit = ENTRY_BY_SKU.get(sku);
-    if (hit) return hit;
-  }
   return resolveParametricEntryViaMaster(product);
 }
 

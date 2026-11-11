@@ -38,7 +38,9 @@ import {
   getLimitationReason,
   formatProductOption,
 } from './pieceClassification';
-import { hasParametricRecipe, resolveRecipe, placeRecipe, chiralityForTurn, buildRecipeFromProduct } from './parametricBridge';
+import { chiralityForTurn } from './parametricBridge';
+import { definicionEfectiva, tieneDefinicion, modeloDeProducto } from './placement/definitions';
+import { placeDefinition, worldPorts } from './placement/placementCore';
 import { buildContinuationCandidates, type ContinuationCandidate } from './continuationCandidates';
 import { routingPlacementFromState } from './placement/routingPlacementState';
 import { UNIONS_KEY, unionsOf, type UnionRecord } from './workspaceOperation';
@@ -269,18 +271,18 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
   // receta paramétrica que resuelve la geometría (p.ej. curvas con radio_mm
   // nulo en catálogo pero medidas en el STEP paramétrico).
   const compatibleProducts = useMemo(
-    () => compatibleWalkable.filter((p) => isInteractivelyInsertable(p) || hasParametricRecipe(p)),
+    () => compatibleWalkable.filter((p) => isInteractivelyInsertable(p) || tieneDefinicion(p)),
     [compatibleWalkable],
   );
   const nonInsertableCompatible = useMemo(
-    () => compatibleWalkable.filter((p) => !isInteractivelyInsertable(p) && !hasParametricRecipe(p)),
+    () => compatibleWalkable.filter((p) => !isInteractivelyInsertable(p) && !tieneDefinicion(p)),
     [compatibleWalkable],
   );
   // Clasificación visual separada (sin alterar compatibilidades del catálogo):
   // los que tienen modelo paramétrico se cuentan aparte y se marcan con ◆ en
   // el selector; el resto queda como insertable sin modelo.
   const parametricCompatible = useMemo(
-    () => compatibleProducts.filter((p) => hasParametricRecipe(p)),
+    () => compatibleProducts.filter((p) => tieneDefinicion(p)),
     [compatibleProducts],
   );
 
@@ -353,19 +355,14 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
   // bocas de entrada (sólo se usa cuando el piece_kind lo exige, ver abajo).
   const selectedRecipe = useMemo(() => {
     if (!selectedProduct) return null;
-    const entry = resolveRecipe(selectedProduct);
-    if (!entry) return null;
-    try {
-      return { entry, recipe: buildRecipeFromProduct(selectedProduct, entry) };
-    } catch {
-      return null;
-    }
+    const d = definicionEfectiva(selectedProduct);
+    return d.ok ? d : null;
   }, [selectedProduct]);
 
   // Piece_kind requiere elegir boca de entrada explícitamente (3+ bocas o
   // curva vertical con dos bocas semánticamente distintas horizontal/vertical).
   const needsEntryPortChoice = useMemo(() => {
-    const kind = selectedRecipe?.entry.piece_kind;
+    const kind = selectedRecipe?.modelo.tipo;
     return (
       kind === 'derivacion_lateral' || kind === 'cruz' || kind === 'curva_vertical'
     );
@@ -378,7 +375,7 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
   // siempre en true permite insertar accesorios por su boca vertical.
   const entryPortOptions = useMemo(() => {
     if (!selectedRecipe) return [];
-    return selectedRecipe.recipe.ports.map((p) => ({
+    return selectedRecipe.def.ports.map((p) => ({
       name: p.name,
       normal: p.normal,
       supported: true as const,
@@ -420,10 +417,11 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
 
   // Receta paramétrica resuelta para el producto seleccionado — null cuando
   // caemos al fallback de arco sustituto (familia sin catálogo paramétrico).
-  const parametricEntry = useMemo(
-    () => (selectedProduct ? resolveRecipe(selectedProduct) : null),
-    [selectedProduct],
-  );
+  const parametricEntry = useMemo(() => {
+    if (!selectedProduct) return null;
+    const d = definicionEfectiva(selectedProduct);
+    return d.ok ? d : null;
+  }, [selectedProduct]);
 
   // Ajuste geométrico: evalúa la colocación del puente paramétrico desde el
   // puerto activo. Para curvas calcula P2 en coordenadas de mundo; el panel
@@ -431,29 +429,29 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
   // lejos quedaría el arco sustituto de la geometría real del STEP.
   const geometricFit = useMemo(() => {
     if (!parametricEntry || !selectedProduct || !startPort) return null;
-    if (parametricEntry.piece_kind !== 'curva_horizontal') return null;
+    if (parametricEntry.modelo.tipo !== 'curva_horizontal') return null;
     try {
-      const chirality = chiralityForTurn(turnDirection);
-      const placed = placeRecipe(
-        selectedProduct,
-        parametricEntry,
-        startPort.pos,
-        startPort.dir,
-        chirality,
-        undefined,
-        startPort.sectionUp ? { sectionUp: startPort.sectionUp } : undefined,
-      );
-      const dx = placed.p2.pos[0] - placed.p1.pos[0];
-      const dy = placed.p2.pos[1] - placed.p1.pos[1];
-      const dz = placed.p2.pos[2] - placed.p1.pos[2];
-      const chord = Math.hypot(dx, dy, dz);
-      const angleDeg = ((selectedProduct as Record<string, unknown>).angulo_grados as number | undefined) ?? 0;
+      const mano = chiralityForTurn(turnDirection) === 'mirrored' ? 'espejo' as const : 'nativa' as const;
+      const placed = placeDefinition({
+        def: parametricEntry.def,
+        huella: parametricEntry.huella,
+        mano,
+        entryPortName: 'P1',
+        startPos: startPort.pos,
+        entryDir: startPort.dir,
+        ...(startPort.sectionUp ? { sectionUp: startPort.sectionUp } : {}),
+      });
+      const ports = worldPorts(parametricEntry.def, mano, placed.colocacion.pose);
+      const a = ports.find((p) => p.name === 'P1')!.pos;
+      const b = ports.find((p) => p.name === 'P2')!.pos;
+      const chord = Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]);
+      const angleDeg = ((selectedProduct as Record<string, unknown>).angulo_grados as number | undefined) ?? null;
+      if (angleDeg === null) return { ok: false as const, reason: 'el catálogo no declara angulo_grados' };
       const θ = (angleDeg * Math.PI) / 180;
       const sinHalf = Math.sin(θ / 2);
       const centerlineR = sinHalf > 1e-9 ? chord / (2 * sinHalf) : null;
-      const catalogR = (selectedProduct as Record<string, unknown>).radio_mm as number | null | undefined;
-      const fallbackR = (catalogR ?? 300) + (selectedProduct.ancho_nominal_mm ?? 0) / 2;
-      return { ok: true as const, centerlineR, fallbackR, catalogR: catalogR ?? null, angleDeg };
+      const catalogR = ((selectedProduct as Record<string, unknown>).radio_mm as number | null | undefined) ?? null;
+      return { ok: true as const, centerlineR, catalogR, angleDeg };
     } catch (err) {
       return { ok: false as const, reason: err instanceof Error ? err.message : String(err) };
     }
@@ -670,7 +668,7 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
                   >
                     {products.map((p) => (
                       <option key={p.producto_id} value={p.producto_id}>
-                        {hasParametricRecipe(p) ? '◆ ' : '○ '}{formatProductOption(p)}
+                        {tieneDefinicion(p) ? '◆ ' : '○ '}{formatProductOption(p)}
                       </option>
                     ))}
                   </optgroup>
@@ -787,27 +785,28 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
           borderLeft: `2px solid ${parametricEntry ? '#3355aa' : '#aa8822'}`,
         }}>
           <div style={{ fontWeight: 600, marginBottom: 2 }}>
-            {parametricEntry ? 'Ajuste geométrico — receta paramétrica' : 'Ajuste geométrico — arco sustituto'}
+            {parametricEntry ? 'Ajuste geométrico — modelo medido' : 'Ajuste geométrico — sin modelo'}
           </div>
           {parametricEntry && geometricFit?.ok && (
             <div style={{ color: '#aaaacc' }}>
-              Receta <code style={{ color: '#99ccff' }}>{parametricEntry.recipe}</code>. Radio medido en el STEP:{' '}
+              Patrón <code style={{ color: '#99ccff' }}>{parametricEntry.modelo.patron}</code>. Radio de línea central medido en el modelo:{' '}
               <strong style={{ color: '#99ccff' }}>
                 {geometricFit.centerlineR != null ? `${geometricFit.centerlineR.toFixed(1)} mm` : '—'}
               </strong>{' '}
-              (fallback catálogo: {geometricFit.fallbackR.toFixed(0)} mm
-              {geometricFit.catalogR == null ? ' — radio nominal null, derivado por defecto 300' : ''}).
+              (catálogo: {geometricFit.catalogR == null ? 'radio no declarado' : `radio interior ${geometricFit.catalogR} mm`}).
             </div>
           )}
           {parametricEntry && geometricFit && !geometricFit.ok && (
             <div style={{ color: '#ff9955' }}>
-              La receta paramétrica no se puede colocar desde este puerto: {geometricFit.reason}. Se usará el arco sustituto.
+              La pieza no se puede colocar desde este puerto: {geometricFit.reason}.
             </div>
           )}
           {!parametricEntry && (
             <div style={{ color: '#ccbb99' }}>
-              Sin receta paramétrica confirmada para este SKU — se extruirá un arco sustituto con
-              radio = (radio_mm ∣ 300) + ancho/2. La curva de la pieza confirmada podría diferir del STEP original.
+              Sin modelo geométrico para este producto ({definicionEfectiva(selectedProduct).ok ? '' : (definicionEfectiva(selectedProduct) as { motivo: string }).motivo}).
+              {((selectedProduct as Record<string, unknown>).radio_mm == null)
+                ? ' El catálogo no declara radio: la curva no se puede colocar.'
+                : ' Se representará como arco esquemático con el radio interior del catálogo; no es geometría medida.'}
             </div>
           )}
         </div>
@@ -1234,11 +1233,11 @@ export function RoutingPanel() {
       : { ...documentedCompat, ok: true, needsReduction: false, newPiecePort: 'P1', reason: `Excepción con motivo: ${exception!.motivo}` };
 
     const isSelectedCurve = isHorizontalCurve(selectedProductForComp);
-    const selectedRecipeEntry = resolveRecipe(selectedProductForComp);
+    const selectedTipo = modeloDeProducto(selectedProductForComp)?.tipo;
     const selectedIsAccessory =
-      selectedRecipeEntry?.piece_kind === 'derivacion_lateral' ||
-      selectedRecipeEntry?.piece_kind === 'cruz' ||
-      selectedRecipeEntry?.piece_kind === 'curva_vertical';
+      selectedTipo === 'derivacion_lateral' ||
+      selectedTipo === 'cruz' ||
+      selectedTipo === 'curva_vertical';
 
     // A-1: la colocación que se guarda es la que dibujó el preview: mismo cálculo,
     // mismas entradas (el estado del recorrido), mismo objeto memorizado.

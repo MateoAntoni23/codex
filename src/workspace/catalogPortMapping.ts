@@ -245,6 +245,16 @@ const DEFAULT_MAPPINGS: Readonly<Record<string, readonly PortMappingEntry[]>> = 
 
 let _overrides: Readonly<Record<string, ProductPortMapping>> = {};
 
+/**
+ * Versión del estado que interviene en la definición efectiva (overrides,
+ * índices, resolución de maestros). Cambia en cada escritura; la definición
+ * efectiva la usa como parte de su clave de memoria.
+ */
+let _version = 0;
+export function calibracionVersion(): number {
+  return _version;
+}
+
 // ─── Herencia maestro → variantes ────────────────────────────────────────────
 //
 // Cuando el usuario configura el "producto base" de un maestro (p.ej.
@@ -289,10 +299,12 @@ type ProductIndexEntry = {
 let _productIndex: Readonly<Record<string, ProductIndexEntry>> = {};
 
 export function setPortMappingOverrides(overrides: Record<string, ProductPortMapping>): void {
+  _version++;
   _overrides = { ...overrides };
 }
 
 export function clearPortMappingOverrides(): void {
+  _version++;
   _overrides = {};
 }
 
@@ -302,6 +314,7 @@ export function clearPortMappingOverrides(): void {
  * workspace lo llama al cargar `context.productos`.
  */
 export function setProductCatalogIndex(products: readonly ProductIndexEntry[]): void {
+  _version++;
   const idx: Record<string, ProductIndexEntry> = {};
   for (const p of products) {
     if (p?.producto_id) idx[p.producto_id] = p;
@@ -310,6 +323,7 @@ export function setProductCatalogIndex(products: readonly ProductIndexEntry[]): 
 }
 
 export function clearProductCatalogIndex(): void {
+  _version++;
   _productIndex = {};
 }
 
@@ -333,6 +347,7 @@ type MasterResolver = (product: ProductIndexEntry) => {
 let _masterResolver: MasterResolver | null = null;
 
 export function setMasterResolver(resolver: MasterResolver | null): void {
+  _version++;
   _masterResolver = resolver;
 }
 
@@ -469,6 +484,7 @@ let _catalogPorts: Readonly<Record<string, ReadonlySet<string>>> | null = null;
 export function setCatalogPortIndex(
   puertos: readonly { producto_id: string; puerto_id: string }[],
 ): void {
+  _version++;
   // El código del puerto (P1, P2…) es el sufijo de `puerto_id` tras
   // `${producto_id}-`; `nombre_puerto` es sólo descriptivo ("extremo A", "boca 1").
   const idx: Record<string, Set<string>> = {};
@@ -480,6 +496,7 @@ export function setCatalogPortIndex(
 }
 
 export function clearCatalogPortIndex(): void {
+  _version++;
   _catalogPorts = null;
 }
 

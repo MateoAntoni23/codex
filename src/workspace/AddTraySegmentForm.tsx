@@ -14,9 +14,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { useTrayStore } from '../tray/store';
 import { useWorkspaceStore } from './useWorkspaceStore';
 import { validateSegmentInput, generateSegmentId, buildSegmentPiece, type Point3 } from './addTraySegment';
-import { hasParametricRecipe } from './parametricBridge';
 import type { Piece } from '../tray/model';
-import { resolveDefinition, withDefinition } from './placement/definitions';
+import { resolveDefinition, tieneDefinicion, withDefinition } from './placement/definitions';
 import { placeDefinition, puertosFromWorld, type StoredDefinition } from './placement/placementCore';
 import {
   applyCascade,
@@ -86,7 +85,7 @@ export function AddTraySegmentForm({ onClose }: { onClose: () => void }) {
   // conjunto ya reducido por los selectores para mantener coherencia con el
   // indicador ◆/○ que aparece en las opciones.
   const [onlyParametric, setOnlyParametric] = useState<boolean>(() =>
-    rectaProducts.some((p) => hasParametricRecipe(p)),
+    rectaProducts.some((p) => tieneDefinicion(p)),
   );
 
   // Estado de filtros compartido con el Configurador (sin `estado`). Fijamos
@@ -100,14 +99,14 @@ export function AddTraySegmentForm({ onClose }: { onClose: () => void }) {
 
   const visibleProducts = useMemo(() => {
     const base = rectaProducts.filter((p) => matchesFilter(p, filters, familiasById));
-    return onlyParametric ? base.filter((p) => hasParametricRecipe(p)) : base;
+    return onlyParametric ? base.filter((p) => tieneDefinicion(p)) : base;
   }, [rectaProducts, filters, familiasById, onlyParametric]);
 
   const defaultProductId = useMemo(
     () =>
-      visibleProducts.find((p) => hasParametricRecipe(p))?.producto_id
+      visibleProducts.find((p) => tieneDefinicion(p))?.producto_id
       ?? visibleProducts[0]?.producto_id
-      ?? rectaProducts.find((p) => hasParametricRecipe(p))?.producto_id
+      ?? rectaProducts.find((p) => tieneDefinicion(p))?.producto_id
       ?? rectaProducts[0]?.producto_id
       ?? '',
     [visibleProducts, rectaProducts],
@@ -153,8 +152,8 @@ export function AddTraySegmentForm({ onClose }: { onClose: () => void }) {
     ?? rectaProducts[0];
   const ala = (selectedProduct as Record<string, unknown>).ala_nominal_mm;
   const extraKeys: string[] = ['familia', 'material', 'acabado'];
-  const hasRecipe = hasParametricRecipe(selectedProduct);
-  const parametricCount = visibleProducts.filter((p) => hasParametricRecipe(p)).length;
+  const hasRecipe = tieneDefinicion(selectedProduct);
+  const parametricCount = visibleProducts.filter((p) => tieneDefinicion(p)).length;
 
   const dist = Math.hypot(p2[0] - p1[0], p2[1] - p1[1], p2[2] - p1[2]);
 
@@ -226,8 +225,8 @@ export function AddTraySegmentForm({ onClose }: { onClose: () => void }) {
     }
     for (const g of groups.values()) {
       g.products.sort((a, b) => {
-        const ap = hasParametricRecipe(a) ? 0 : 1;
-        const bp = hasParametricRecipe(b) ? 0 : 1;
+        const ap = tieneDefinicion(a) ? 0 : 1;
+        const bp = tieneDefinicion(b) ? 0 : 1;
         if (ap !== bp) return ap - bp;
         return a.sku.localeCompare(b.sku);
       });
@@ -353,7 +352,7 @@ export function AddTraySegmentForm({ onClose }: { onClose: () => void }) {
           {Array.from(familyGroups.entries()).map(([famId, { name, acabado, products }]) => (
             <optgroup key={famId} label={acabado ? `${name} (${acabado})` : name}>
               {products.map((p) => {
-                const rec = hasParametricRecipe(p);
+                const rec = tieneDefinicion(p);
                 return (
                   <option key={p.producto_id} value={p.producto_id}>
                     {rec ? '◆ ' : '○ '}{p.sku} — {p.descripcion_original}

@@ -35,21 +35,21 @@
     {
       "instancia_id": "CRV-1",
       "producto_id": "SAM_CPS-300-90-Z",
-      "longitud_eje_mm": 933.5171884320579,
+      "longitud_eje_mm": 933.517188432058,
       "puertos": {
         "P1": {
           "posicion_mm": [
             3000,
-            0,
-            0
+            2.842170943040401e-14,
+            -1.7763568394002505e-14
           ],
           "direccion": [
             -1,
-            0,
-            0
+            3.469446951953614e-17,
+            2.218328528992512e-16
           ],
           "orientacion_seccion_ws": [
-            0,
+            1.1102230246251565e-16,
             0,
             1
           ]
@@ -57,51 +57,119 @@
         "P2": {
           "posicion_mm": [
             3593.164083290664,
-            595.4247668147889,
-            0
+            595.4247668147891,
+            -2.1316282072803006e-13
           ],
           "direccion": [
-            -0.00440281405274267,
+            -0.004402814052742691,
             0.999990307567237,
-            0
+            -1.1046703169035297e-16
           ],
           "orientacion_seccion_ws": [
-            0,
+            1.1102230246251565e-16,
             0,
             1
           ]
         }
+      },
+      "colocacion": {
+        "version": 1,
+        "estado": "resuelta",
+        "definicion": {
+          "huella": "def-1a9d73043f4869",
+          "patron": "master:perforada:curva_horizontal_90",
+          "revision": "1",
+          "params": {
+            "ancho_mm": 300,
+            "ala_mm": 50,
+            "angulo_deg": 90
+          }
+        },
+        "mano": "espejo",
+        "pose": {
+          "posicion_mm": [
+            3000.000007614675,
+            -149.45227078987438,
+            -25
+          ],
+          "rotacion": [
+            0.4995238561042715,
+            0.500475690900886,
+            0.5004756909008858,
+            0.4995238561042715
+          ]
+        },
+        "boca_entrada": "P1"
       }
     },
     {
       "instancia_id": "SEG-1",
       "producto_id": "SAM_TRPS-300-22-Z",
-      "longitud_mm": 3000.0000000000005,
+      "longitud_mm": 3000,
       "puertos": {
         "P1": {
           "posicion_mm": [
             3593.164083290664,
-            595.4247668147889,
-            0
+            595.4247668147891,
+            -2.877698079828406e-13
           ],
           "direccion": [
-            0.004402814052742693,
-            -0.9999903075672368,
-            0
+            0.004402814052742344,
+            -0.999990307567237,
+            -5.551115123125784e-17
+          ],
+          "orientacion_seccion_ws": [
+            -1.6653345369377353e-16,
+            2.2204460492503136e-16,
+            1
           ]
         },
         "P2": {
           "posicion_mm": [
-            3579.955641132436,
-            3595.3956895165,
-            0
+            3579.9556411324374,
+            3595.3956895164993,
+            -1.2079226507921703e-13
           ],
           "direccion": [
-            -0.004402814052742693,
-            0.9999903075672368,
-            0
+            -0.004402814052742344,
+            0.999990307567237,
+            5.551115123125784e-17
+          ],
+          "orientacion_seccion_ws": [
+            -1.6653345369377353e-16,
+            2.2204460492503136e-16,
+            1
           ]
         }
+      },
+      "colocacion": {
+        "version": 1,
+        "estado": "resuelta",
+        "definicion": {
+          "huella": "def-052f9de8c0af6e",
+          "patron": "master:perforada:tramo_recto",
+          "revision": "1",
+          "params": {
+            "ancho_mm": 300,
+            "ala_mm": 50,
+            "longitud_mm": 3000
+          }
+        },
+        "mano": "nativa",
+        "pose": {
+          "posicion_mm": [
+            3743.16262942575,
+            596.0851889227005,
+            -25.000000000000213
+          ],
+          "rotacion": [
+            0.49889808226411764,
+            0.5010994946247557,
+            0.5010994946247558,
+            0.4988980822641177
+          ]
+        },
+        "boca_entrada": "P1"
       }
     }
   ],
@@ -137,26 +205,238 @@
     "origen_requisito": "test",
     "conductores": []
   },
+  "definiciones_ws": {
+    "def-1a9d73043f4869": {
+      "version": "codex:definicion/1",
+      "patron": "master:perforada:curva_horizontal_90",
+      "revision": "1",
+      "params": {
+        "ancho_mm": 300,
+        "ala_mm": 50,
+        "angulo_deg": 90
+      },
+      "mesh": {
+        "polygon": [
+          [
+            0.004,
+            0
+          ],
+          [
+            298.9,
+            -0.569
+          ],
+          [
+            298.9,
+            -209.572
+          ],
+          [
+            534.459,
+            -445.131
+          ],
+          [
+            743.373,
+            -445.131
+          ],
+          [
+            744.12,
+            -744.031
+          ],
+          [
+            411.12,
+            -744.031
+          ],
+          [
+            0,
+            -332.911
+          ]
+        ],
+        "height": 50,
+        "extrudeAlongY": true,
+        "translate": [
+          0,
+          0,
+          0
+        ],
+        "preTransform": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      "ports": [
+        {
+          "name": "P1",
+          "center": [
+            149.452,
+            25,
+            -0.2845
+          ],
+          "normal": [
+            0.0019036687308761969,
+            0,
+            0.9999981880210399
+          ],
+          "v_dir": [
+            0,
+            1,
+            0
+          ],
+          "ancho_mm": 298.8965415942446,
+          "ala_mm": 50
+        },
+        {
+          "name": "P2",
+          "center": [
+            743.7465,
+            25,
+            -594.5809999999999
+          ],
+          "normal": [
+            0.9999968771052793,
+            0,
+            0.0024991557952412213
+          ],
+          "v_dir": [
+            0,
+            1,
+            0
+          ],
+          "ancho_mm": 298.90093343614706,
+          "ala_mm": 50
+        }
+      ]
+    },
+    "def-052f9de8c0af6e": {
+      "version": "codex:definicion/1",
+      "patron": "master:perforada:tramo_recto",
+      "revision": "1",
+      "params": {
+        "ancho_mm": 300,
+        "ala_mm": 50,
+        "longitud_mm": 3000
+      },
+      "mesh": {
+        "polygon": [
+          [
+            0,
+            0
+          ],
+          [
+            3000,
+            0
+          ],
+          [
+            3000,
+            -300
+          ],
+          [
+            0,
+            -300
+          ]
+        ],
+        "height": 50,
+        "extrudeAlongY": true,
+        "translate": [
+          0,
+          0,
+          0
+        ],
+        "preTransform": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ]
+      },
+      "ports": [
+        {
+          "name": "P1",
+          "center": [
+            0,
+            25,
+            -150
+          ],
+          "normal": [
+            -1,
+            0,
+            0
+          ],
+          "v_dir": [
+            0,
+            1,
+            0
+          ],
+          "ancho_mm": 300,
+          "ala_mm": 50
+        },
+        {
+          "name": "P2",
+          "center": [
+            3000,
+            25,
+            -150
+          ],
+          "normal": [
+            1,
+            0,
+            0
+          ],
+          "v_dir": [
+            0,
+            1,
+            0
+          ],
+          "ancho_mm": 300,
+          "ala_mm": 50
+        }
+      ]
+    }
+  },
   "uniones_ws": {
     "CON-001": {
       "estado": "documentada",
       "verificacion": {
-        "huecoMm": 0,
+        "huecoMm": 3.351623381340333e-14,
         "anguloDeg": 0,
         "giroDeg": null,
         "ok": true
       },
-      "fecha_iso": "2026-11-11T15:14:50.881Z"
+      "fecha_iso": "2026-11-11T15:30:09.021Z"
     },
     "CON-002": {
       "estado": "documentada",
       "verificacion": {
-        "huecoMm": 0,
+        "huecoMm": 7.460698725481052e-14,
         "anguloDeg": 0,
-        "giroDeg": null,
+        "giroDeg": 0,
         "ok": true
       },
-      "fecha_iso": "2026-11-11T15:14:50.882Z"
+      "fecha_iso": "2026-11-11T15:30:09.022Z"
     }
   }
 }
