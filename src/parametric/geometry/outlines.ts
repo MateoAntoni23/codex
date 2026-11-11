@@ -2,19 +2,19 @@
  * outlines.ts — polígonos canónicos por tipo de pieza STP-Z 300.
  *
  * Procedencia:
- *   - CPS-45, CPS-90 y XPS: GENERADOS desde el STEP (fase B-1.3). El STEP de
+ *   - CPS-45, CPS-90, XPS y DCPS: GENERADOS desde el STEP (fase B-1.3; DCPS en B-2). El STEP de
  *     SolidWorks del usuario (sha256 en `tools/step_parametric/report/<pieza>.json`)
  *     se extrae con `extract_outlines.py` a
  *     `tools/step_parametric/report/perforada/<pieza>__outline.json`, y
  *     `emit_perforada_outlines.mjs` escribe `perforadaOutlines.ts` en el marco
  *     que usan estas recetas (declarado en `perforada_contornos.json`).
  *     Reproducen los literales anteriores a ≤ 0,009 mm por vértice.
- *   - DCPS y CUPS: siguen como literales. Venían del GLB original
- *     (`public/parametric/originals_glb/<pieza>.glb`, el STEP convertido por
- *     CadQuery en `build_all.py`), redondeados a 0,01 mm y copiados a mano en
- *     `4236323`. DCPS no reproduce el STEP dentro de 0,015 mm: dos vértices
- *     están cuadrados al bbox (x = 0 y 449,5 donde el STEP tiene 0,051 y
- *     449,449). CUPS es un perfil vertical; el extractor no da planta.
+ *   - CUPS: sigue como literal (perfil vertical; el extractor no da planta).
+ *     Venía del GLB original (el STEP convertido por CadQuery en
+ *     `build_all.py`), copiado a mano en `4236323`.
+ *   - DCPS: sus literales tenían dos vértices enderezados al bbox (x = 0 y
+ *     449,5 donde el STEP tiene 0,051 y 449,449: las bocas del tronco inclinan
+ *     0,0097°). Era descuido de transcripción, no una regla: se genera del STEP.
  *   - Si el STEP es original del fabricante o un modelo del usuario no está
  *     confirmado: se usa como referencia geométrica, no como fuente oficial de
  *     cotas. "Medido del STEP de referencia" (notas visibles en la interfaz)
@@ -41,7 +41,7 @@
  */
 
 import type { Vec3 } from '../catalog';
-import { CPS45_OUTLINE_300, CPS90_OUTLINE_300, XPS_OUTLINE_300 } from './perforadaOutlines';
+import { CPS45_OUTLINE_300, CPS90_OUTLINE_300, DCPS_OUTLINE_300, XPS_OUTLINE_300 } from './perforadaOutlines';
 
 type V2 = readonly [number, number];
 type V3 = Vec3;
@@ -262,18 +262,7 @@ export function buildCPS90Recipe(params: {
 // maestro oficial SAMET.
 // -----------------------------------------------------------------------------
 
-const DCPS_OUTLINE_300: readonly V2[] = [
-  [0, -74.2],
-  [28.77, -74.2],
-  [74.25, -28.71],
-  [74.25, 0],
-  [375.26, 0],
-  [375.26, -28.71],
-  [420.74, -74.2],
-  [449.5, -74.2],
-  [449.5, -375.15],
-  [0, -375.15],
-];
+// DCPS_OUTLINE_300: generado desde el STEP en perforadaOutlines.ts (no editar aquí).
 
 export function buildDCPSRecipe(params: {
   ancho_mm: number;

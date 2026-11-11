@@ -2,10 +2,51 @@
   "_formato": "codex:perforada-contornos/1",
   "_descripcion": "Contornos de perforada que se generan desde tools/step_parametric/report/perforada/<pieza>__outline.json (extraídos del STEP con extract_outlines.py). Lo lee tools/step_parametric/emit_perforada_outlines.mjs, que escribe src/parametric/geometry/perforadaOutlines.ts. Sólo se declara el marco en que las recetas de outlines.ts usan cada polígono; los números salen del JSON.",
   "_marco": "El polígono se traslada para que su bbox quede en x mín = min_x_mm y z máx = max_z_mm (el marco que ya usaban los literales; moverlo correría bocas y calibraciones). El extractor orienta el polígono con área firmada positiva en (x, z); outlines.ts usa el sentido contrario, así que se invierte el orden, y 'inicio' es el vértice del JSON que pasa a ser polygon[0] (las recetas eligen bocas por índice).",
-  "_no_incluidos": "DCPS-300-Z: sus literales no reproducen el STEP dentro de 0,015 mm (dos vértices cuadrados al bbox, 0,051 mm); siguen como literales. TRPS: la receta construye el rectángulo con los parámetros, no usa contorno. CUPS: perfil vertical, el extractor no da planta. EMPS y EMTS: extraídos, sin receta.",
+  "_no_incluidos": "TRPS: la receta construye el rectángulo con los parámetros, no usa contorno. CUPS: perfil vertical, el extractor no da planta. EMPS y EMTS: extraídos, sin receta. (DCPS se incluyó en B-2: sus literales tenían dos vértices enderezados al bbox, 0,051 mm, por descuido de transcripción; el STEP inclina 0,0097° esas aristas.)",
   "contornos": [
-    { "outline": "CPS-300-45-Z", "const": "CPS45_OUTLINE_300", "titulo": "codo plano 45°", "marco": { "min_x_mm": 109.84, "max_z_mm": 0 }, "invertir": true, "inicio": 0 },
-    { "outline": "CPS-300-90-Z", "const": "CPS90_OUTLINE_300", "titulo": "codo plano 90°", "marco": { "min_x_mm": 0, "max_z_mm": 0 }, "invertir": true, "inicio": 7 },
-    { "outline": "XPS-300-Z", "const": "XPS_OUTLINE_300", "titulo": "cruz plana", "marco": { "min_x_mm": 0, "max_z_mm": 0 }, "invertir": true, "inicio": 15 }
+    {
+      "outline": "CPS-300-45-Z",
+      "const": "CPS45_OUTLINE_300",
+      "titulo": "codo plano 45°",
+      "marco": {
+        "min_x_mm": 109.84,
+        "max_z_mm": 0
+      },
+      "invertir": true,
+      "inicio": 0
+    },
+    {
+      "outline": "CPS-300-90-Z",
+      "const": "CPS90_OUTLINE_300",
+      "titulo": "codo plano 90°",
+      "marco": {
+        "min_x_mm": 0,
+        "max_z_mm": 0
+      },
+      "invertir": true,
+      "inicio": 7
+    },
+    {
+      "outline": "XPS-300-Z",
+      "const": "XPS_OUTLINE_300",
+      "titulo": "cruz plana",
+      "marco": {
+        "min_x_mm": 0,
+        "max_z_mm": 0
+      },
+      "invertir": true,
+      "inicio": 15
+    },
+    {
+      "outline": "DCPS-300-Z",
+      "const": "DCPS_OUTLINE_300",
+      "titulo": "derivación T (patrón compartido con TPS)",
+      "marco": {
+        "min_x_mm": 0,
+        "max_z_mm": 0
+      },
+      "invertir": true,
+      "inicio": 9
+    }
   ]
 }

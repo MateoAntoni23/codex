@@ -1046,6 +1046,146 @@
       "antes": "def-11d808b9ba987d",
       "despues": "def-1a7dcf3781bc45",
       "motivo": "B-1.3: CPS-45 generado desde el STEP (report/perforada/CPS-300-45-Z__outline.json) en lugar de los literales redondeados a 0,01 mm; vértices a ≤ 0,009 mm de los anteriores."
+    },
+    "SAM_TPS-050-Z": {
+      "antes": "def-1078275f93fefd",
+      "despues": "def-03cf514d7baff7",
+      "motivo": "B-2: DCPS generado desde el STEP (report/perforada/DCPS-300-Z__outline.json); los literales tenían dos vértices enderezados al bbox (0,051 mm) y el resto redondeado a 0,01 mm. TPS usa la misma receta."
+    },
+    "SAM_TPS-100-Z": {
+      "antes": "def-0af32a0fa09b8c",
+      "despues": "def-14fe372fbfdc00",
+      "motivo": "B-2: DCPS generado desde el STEP (report/perforada/DCPS-300-Z__outline.json); los literales tenían dos vértices enderezados al bbox (0,051 mm) y el resto redondeado a 0,01 mm. TPS usa la misma receta."
+    },
+    "SAM_TPS-150-Z": {
+      "antes": "def-053c4ee7dac61e",
+      "despues": "def-0ec1a7b560cc96",
+      "motivo": "B-2: DCPS generado desde el STEP (report/perforada/DCPS-300-Z__outline.json); los literales tenían dos vértices enderezados al bbox (0,051 mm) y el resto redondeado a 0,01 mm. TPS usa la misma receta."
+    },
+    "SAM_TPS-200-Z": {
+      "antes": "def-0d4a0052735393",
+      "despues": "def-096d0ea018a72e",
+      "motivo": "B-2: DCPS generado desde el STEP (report/perforada/DCPS-300-Z__outline.json); los literales tenían dos vértices enderezados al bbox (0,051 mm) y el resto redondeado a 0,01 mm. TPS usa la misma receta."
+    },
+    "SAM_TPS-300-Z": {
+      "antes": "def-0c483ddc2e3b19",
+      "despues": "def-0e00a85fd8d28b",
+      "motivo": "B-2: DCPS generado desde el STEP (report/perforada/DCPS-300-Z__outline.json); los literales tenían dos vértices enderezados al bbox (0,051 mm) y el resto redondeado a 0,01 mm. TPS usa la misma receta."
+    },
+    "SAM_TPS-450-Z": {
+      "antes": "def-0e6db7d9c553a8",
+      "despues": "def-0eb7bd3f9b1d9a",
+      "motivo": "B-2: DCPS generado desde el STEP (report/perforada/DCPS-300-Z__outline.json); los literales tenían dos vértices enderezados al bbox (0,051 mm) y el resto redondeado a 0,01 mm. TPS usa la misma receta."
+    },
+    "SAM_TPS-600-Z": {
+      "antes": "def-08e7b9d9e4fad1",
+      "despues": "def-076bc54a9dd441",
+      "motivo": "B-2: DCPS generado desde el STEP (report/perforada/DCPS-300-Z__outline.json); los literales tenían dos vértices enderezados al bbox (0,051 mm) y el resto redondeado a 0,01 mm. TPS usa la misma receta."
+    },
+    "SAM_DCPS-050-Z": {
+      "antes": "def-0c16bebda4bfcf",
+      "despues": "def-0396026fbae799",
+      "motivo": "B-2: DCPS generado desde el STEP (report/perforada/DCPS-300-Z__outline.json); los literales tenían dos vértices enderezados al bbox (0,051 mm) y el resto redondeado a 0,01 mm. TPS usa la misma receta."
+    },
+    "SAM_DCPS-100-Z": {
+      "antes": "def-0ec986dba2a2c6",
+      "despues": "def-0b9ab4eecfd656",
+      "motivo": "B-2: DCPS generado desde el STEP (report/perforada/DCPS-300-Z__outline.json); los literales tenían dos vértices enderezados al bbox (0,051 mm) y el resto redondeado a 0,01 mm. TPS usa la misma receta."
+    },
+    "SAM_DCPS-150-Z": {
+      "antes": "def-0889b0c8801d79",
+      "despues": "def-0cc77fc8d72deb",
+      "motivo": "B-2: DCPS generado desde el STEP (report/perforada/DCPS-300-Z__outline.json); los literales tenían dos vértices enderezados al bbox (0,051 mm) y el resto redondeado a 0,01 mm. TPS usa la misma receta."
+    },
+    "SAM_DCPS-200-Z": {
+      "antes": "def-0c905ee3083661",
+      "despues": "def-197c1df6cc7a56",
+      "motivo": "B-2: DCPS generado desde el STEP (report/perforada/DCPS-300-Z__outline.json); los literales tenían dos vértices enderezados al bbox (0,051 mm) y el resto redondeado a 0,01 mm. TPS usa la misma receta."
+    },
+    "SAM_DCPS-300-Z": {
+      "antes": "def-13707a4795cba2",
+      "despues": "def-0b08c6fb964980",
+      "motivo": "B-2: DCPS generado desde el STEP (report/perforada/DCPS-300-Z__outline.json); los literales tenían dos vértices enderezados al bbox (0,051 mm) y el resto redondeado a 0,01 mm. TPS usa la misma receta."
+    },
+    "SAM_DCPS-450-Z": {
+      "antes": "def-04a41ec3741e3d",
+      "despues": "def-1fccfb84ea79de",
+      "motivo": "B-2: DCPS generado desde el STEP (report/perforada/DCPS-300-Z__outline.json); los literales tenían dos vértices enderezados al bbox (0,051 mm) y el resto redondeado a 0,01 mm. TPS usa la misma receta."
+    },
+    "SAM_DCPS-600-Z": {
+      "antes": "def-0608d5c8d4d29e",
+      "despues": "def-10348a3b2dca4a",
+      "motivo": "B-2: DCPS generado desde el STEP (report/perforada/DCPS-300-Z__outline.json); los literales tenían dos vértices enderezados al bbox (0,051 mm) y el resto redondeado a 0,01 mm. TPS usa la misma receta."
+    },
+    "SAM_TPS-050-ZN": {
+      "antes": "def-1078275f93fefd",
+      "despues": "def-03cf514d7baff7",
+      "motivo": "B-2: DCPS generado desde el STEP (report/perforada/DCPS-300-Z__outline.json); los literales tenían dos vértices enderezados al bbox (0,051 mm) y el resto redondeado a 0,01 mm. TPS usa la misma receta."
+    },
+    "SAM_TPS-100-ZN": {
+      "antes": "def-0af32a0fa09b8c",
+      "despues": "def-14fe372fbfdc00",
+      "motivo": "B-2: DCPS generado desde el STEP (report/perforada/DCPS-300-Z__outline.json); los literales tenían dos vértices enderezados al bbox (0,051 mm) y el resto redondeado a 0,01 mm. TPS usa la misma receta."
+    },
+    "SAM_TPS-150-ZN": {
+      "antes": "def-053c4ee7dac61e",
+      "despues": "def-0ec1a7b560cc96",
+      "motivo": "B-2: DCPS generado desde el STEP (report/perforada/DCPS-300-Z__outline.json); los literales tenían dos vértices enderezados al bbox (0,051 mm) y el resto redondeado a 0,01 mm. TPS usa la misma receta."
+    },
+    "SAM_TPS-200-ZN": {
+      "antes": "def-0d4a0052735393",
+      "despues": "def-096d0ea018a72e",
+      "motivo": "B-2: DCPS generado desde el STEP (report/perforada/DCPS-300-Z__outline.json); los literales tenían dos vértices enderezados al bbox (0,051 mm) y el resto redondeado a 0,01 mm. TPS usa la misma receta."
+    },
+    "SAM_TPS-300-ZN": {
+      "antes": "def-0c483ddc2e3b19",
+      "despues": "def-0e00a85fd8d28b",
+      "motivo": "B-2: DCPS generado desde el STEP (report/perforada/DCPS-300-Z__outline.json); los literales tenían dos vértices enderezados al bbox (0,051 mm) y el resto redondeado a 0,01 mm. TPS usa la misma receta."
+    },
+    "SAM_TPS-450-ZN": {
+      "antes": "def-0e6db7d9c553a8",
+      "despues": "def-0eb7bd3f9b1d9a",
+      "motivo": "B-2: DCPS generado desde el STEP (report/perforada/DCPS-300-Z__outline.json); los literales tenían dos vértices enderezados al bbox (0,051 mm) y el resto redondeado a 0,01 mm. TPS usa la misma receta."
+    },
+    "SAM_TPS-600-ZN": {
+      "antes": "def-08e7b9d9e4fad1",
+      "despues": "def-076bc54a9dd441",
+      "motivo": "B-2: DCPS generado desde el STEP (report/perforada/DCPS-300-Z__outline.json); los literales tenían dos vértices enderezados al bbox (0,051 mm) y el resto redondeado a 0,01 mm. TPS usa la misma receta."
+    },
+    "SAM_TPS-050-ZB": {
+      "antes": "def-1078275f93fefd",
+      "despues": "def-03cf514d7baff7",
+      "motivo": "B-2: DCPS generado desde el STEP (report/perforada/DCPS-300-Z__outline.json); los literales tenían dos vértices enderezados al bbox (0,051 mm) y el resto redondeado a 0,01 mm. TPS usa la misma receta."
+    },
+    "SAM_TPS-100-ZB": {
+      "antes": "def-0af32a0fa09b8c",
+      "despues": "def-14fe372fbfdc00",
+      "motivo": "B-2: DCPS generado desde el STEP (report/perforada/DCPS-300-Z__outline.json); los literales tenían dos vértices enderezados al bbox (0,051 mm) y el resto redondeado a 0,01 mm. TPS usa la misma receta."
+    },
+    "SAM_TPS-150-ZB": {
+      "antes": "def-053c4ee7dac61e",
+      "despues": "def-0ec1a7b560cc96",
+      "motivo": "B-2: DCPS generado desde el STEP (report/perforada/DCPS-300-Z__outline.json); los literales tenían dos vértices enderezados al bbox (0,051 mm) y el resto redondeado a 0,01 mm. TPS usa la misma receta."
+    },
+    "SAM_TPS-200-ZB": {
+      "antes": "def-0d4a0052735393",
+      "despues": "def-096d0ea018a72e",
+      "motivo": "B-2: DCPS generado desde el STEP (report/perforada/DCPS-300-Z__outline.json); los literales tenían dos vértices enderezados al bbox (0,051 mm) y el resto redondeado a 0,01 mm. TPS usa la misma receta."
+    },
+    "SAM_TPS-300-ZB": {
+      "antes": "def-0c483ddc2e3b19",
+      "despues": "def-0e00a85fd8d28b",
+      "motivo": "B-2: DCPS generado desde el STEP (report/perforada/DCPS-300-Z__outline.json); los literales tenían dos vértices enderezados al bbox (0,051 mm) y el resto redondeado a 0,01 mm. TPS usa la misma receta."
+    },
+    "SAM_TPS-450-ZB": {
+      "antes": "def-0e6db7d9c553a8",
+      "despues": "def-0eb7bd3f9b1d9a",
+      "motivo": "B-2: DCPS generado desde el STEP (report/perforada/DCPS-300-Z__outline.json); los literales tenían dos vértices enderezados al bbox (0,051 mm) y el resto redondeado a 0,01 mm. TPS usa la misma receta."
+    },
+    "SAM_TPS-600-ZB": {
+      "antes": "def-08e7b9d9e4fad1",
+      "despues": "def-076bc54a9dd441",
+      "motivo": "B-2: DCPS generado desde el STEP (report/perforada/DCPS-300-Z__outline.json); los literales tenían dos vértices enderezados al bbox (0,051 mm) y el resto redondeado a 0,01 mm. TPS usa la misma receta."
     }
   }
 }

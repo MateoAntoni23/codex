@@ -49,3 +49,17 @@ export const XPS_OUTLINE_300: readonly (readonly [number, number])[] = [
   [28.71, -375.2],
   [0, -375.2],
 ];
+
+// ─── DCPS-300-Z — derivación T (patrón compartido con TPS) (10 vértices)
+export const DCPS_OUTLINE_300: readonly (readonly [number, number])[] = [
+  [0.051, -74.198],
+  [28.761, -74.198],
+  [74.249, -28.71],
+  [74.249, 0],
+  [375.252, 0],
+  [375.252, -28.71],
+  [420.739, -74.198],
+  [449.449, -74.198],
+  [449.5, -375.149],
+  [0, -375.149],
+];

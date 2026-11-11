@@ -24,7 +24,7 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { buildCPS45Recipe, buildCPS90Recipe, buildXPSRecipe } from '../outlines';
+import { buildCPS45Recipe, buildCPS90Recipe, buildDCPSRecipe, buildXPSRecipe } from '../outlines';
 
 const TOL_MM = 0.015;
 const GLB_DIR = resolve(__dirname, '../../../../public/parametric/originals_glb');
@@ -60,6 +60,7 @@ const casos = [
   { glb: 'CPS-300-45-Z.glb', polygon: buildCPS45Recipe({ ancho_mm: 300, ala_mm: 50 }).polygon },
   { glb: 'CPS-300-90-Z.glb', polygon: buildCPS90Recipe({ ancho_mm: 300, ala_mm: 50 }).polygon },
   { glb: 'XPS-300-Z.glb', polygon: buildXPSRecipe({ ancho_mm: 300, ala_mm: 50 }).polygon },
+  { glb: 'DCPS-300-Z.glb', polygon: buildDCPSRecipe({ ancho_mm: 300, ala_mm: 50 }).polygon },
 ] as const;
 
 describe('outlines.ts perforada = cara superior del GLB original', () => {
