@@ -39,7 +39,7 @@ const SAVED_OVERRIDE_P1 = { centerMm: [-185, 125, 150] as const };
 const SAVED_OVERRIDE_P2 = { centerMm: [-40, -20, 150] as const };
 
 describe('CUPS 300 — override -150→+150 grabado por el usuario', () => {
-  const recipe = buildRecipeFor('curva_vertical', { ancho_mm: 300 });
+  const recipe = buildRecipeFor('curva_vertical', { ancho_mm: 300, ala_mm: 50 });
 
   it('la base de la receta coloca ambos puertos en centerZ = -ancho/2 = -150 mm', () => {
     const p1 = recipe.ports.find((p) => p.name === 'P1_horizontal')!;
@@ -79,7 +79,7 @@ describe('CUPS 300 — override -150→+150 grabado por el usuario', () => {
     // posiciones absolutas de 300 a 450. Si la única regla fuera "centerZ
     // = +150", en 450 (mesh Z ∈ [-450, 0]) la boca seguiría estando lejos
     // de cualquier cara.
-    const recipe450 = buildRecipeFor('curva_vertical', { ancho_mm: 450 });
+    const recipe450 = buildRecipeFor('curva_vertical', { ancho_mm: 450, ala_mm: 50 });
     const p1Base = recipe450.ports.find((p) => p.name === 'P1_horizontal')!;
     expect(p1Base.center[2]).toBeCloseTo(-225, 3); // ancho/2
     // Aplicar el valor +150 a 450 dejaría la boca a Z=+150, que sigue sin

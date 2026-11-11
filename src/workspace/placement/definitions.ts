@@ -7,9 +7,9 @@
  * sólo se usa para colocar piezas nuevas y para detectar desactualización (A-6).
  */
 import type { Piece, Product, TrayInput } from '../../tray/model';
-import { buildRecipeFromProduct, resolveRecipe } from '../parametricBridge';
+import { buildRecipeFromProduct, datosFaltantesParaMaestro, resolveRecipe } from '../parametricBridge';
 import { resolveRecipeForProduct } from '../resolvedPortGeometry';
-import { findMasterForProduct } from '../../configurator/masterModels';
+import { findMasterForProduct, MASTER_MODELS } from '../../configurator/masterModels';
 import { angleMismatch } from './angleCheck';
 import {
   definitionFromRecipe,
@@ -22,6 +22,20 @@ import {
 } from './placementCore';
 
 export const DEFINITIONS_KEY = 'definiciones_ws';
+
+/**
+ * Curva de ángulo ajustable (p. ej. CAS, "CURVA AJUSTABLE (Adjustable Elbow)",
+ * observación "Ángulo ajustable: rango no declarado"). El ángulo lo fija el
+ * montaje: debería ser un parámetro de la instancia elegido al colocar, como
+ * `longitud_mm` de un tramo (pendiente; hasta entonces no hay definición).
+ */
+export const MOTIVO_ANGULO_AJUSTABLE =
+  'curva de ángulo ajustable: el ángulo lo fija el montaje, no el producto. Hace falta indicarlo al colocar la pieza.';
+
+export function esAnguloAjustable(product: Product): boolean {
+  const r = product as unknown as Record<string, unknown>;
+  return /ajustable/i.test(String(r.descripcion_original ?? '')) || /[áa]ngulo ajustable/i.test(String(r.observaciones ?? ''));
+}
 
 export type DefinitionResult =
   | { ok: true; def: StoredDefinition; huella: string }
@@ -46,7 +60,21 @@ export function resolveDefinition(product: Product, opts?: { longitud_mm?: numbe
  */
 export function buildDefinition(product: Product, opts?: { longitud_mm?: number | null }): DefinitionResult {
   const entry = resolveRecipe(product);
-  if (!entry) return { ok: false, motivo: `sin modelo paramétrico para ${product.sku ?? product.producto_id}` };
+  if (!entry) {
+    if (esAnguloAjustable(product) && typeof (product as unknown as Record<string, unknown>).angulo_grados !== 'number') {
+      // El catálogo no omite el ángulo: declara que la pieza no tiene uno fijo.
+      return { ok: false, motivo: MOTIVO_ANGULO_AJUSTABLE };
+    }
+    const master = findMasterForProduct(product as Record<string, unknown>) ?? masterIgnorandoAla(product);
+    const faltan = master ? datosFaltantesParaMaestro(master, product) : [];
+    const sku = product.sku ?? product.producto_id;
+    return {
+      ok: false,
+      motivo: faltan.length
+        ? `sin definición para ${sku}: el catálogo no declara ${faltan.join(', ')}`
+        : `sin modelo paramétrico para ${sku}`,
+    };
+  }
   const takesLength = entry.piece_kind === 'tramo_recto' || entry.recipe === 'escalera:tramo_recto';
   const longitud = takesLength && opts?.longitud_mm && opts.longitud_mm > 0 ? opts.longitud_mm : null;
   let raw;
@@ -75,6 +103,22 @@ export function buildDefinition(product: Product, opts?: { longitud_mm?: number 
     preTransform: resolved.preTransform,
   });
   return { ok: true, def, huella: definitionHash(def) };
+}
+
+/**
+ * Maestro que correspondería al producto si declarara ala: sólo para nombrar en
+ * el motivo el dato que falta. No habilita ninguna definición.
+ */
+function masterIgnorandoAla(product: Product) {
+  const r = product as unknown as Record<string, unknown>;
+  if (typeof r.ala_nominal_mm === 'number') return null;
+  const alas = new Set<number>();
+  for (const m of MASTER_MODELS) if (typeof m.catalogMatch.catalogAlaMm === 'number') alas.add(m.catalogMatch.catalogAlaMm);
+  for (const ala of alas) {
+    const m = findMasterForProduct({ ...r, ala_nominal_mm: ala });
+    if (m) return m;
+  }
+  return null;
 }
 
 /** Largo de un tramo a partir de su definición guardada (si aplica). */

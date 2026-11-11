@@ -1,0 +1,206 @@
+{
+  "_formato": "codex:huellas-cambios/1",
+  "_descripcion": "Cambios de huella de definición respecto de huellas-base.json, cada uno con su motivo. Una huella distinta deja como desactualizadas (A-6) las piezas ya colocadas con la definición anterior.",
+  "cambios": {
+    "SAM_CAS-150-065-14-G": {
+      "antes": "def-083ee1b4673553",
+      "despues": "(sin modelo)",
+      "motivo": "B-1.1: curva de ángulo ajustable (CAS). Sin angulo_grados ya no cae en el maestro de 45° por desempate ni toma 90° por defecto de la receta; queda sin definición con motivo."
+    },
+    "SAM_CAS-150-065-18-G": {
+      "antes": "def-083ee1b4673553",
+      "despues": "(sin modelo)",
+      "motivo": "B-1.1: curva de ángulo ajustable (CAS). Sin angulo_grados ya no cae en el maestro de 45° por desempate ni toma 90° por defecto de la receta; queda sin definición con motivo."
+    },
+    "SAM_CAS-150-065-18-Z": {
+      "antes": "def-083ee1b4673553",
+      "despues": "(sin modelo)",
+      "motivo": "B-1.1: curva de ángulo ajustable (CAS). Sin angulo_grados ya no cae en el maestro de 45° por desempate ni toma 90° por defecto de la receta; queda sin definición con motivo."
+    },
+    "SAM_CAS-150-090-14-G": {
+      "antes": "def-05992ce6345911",
+      "despues": "(sin modelo)",
+      "motivo": "B-1.1: curva de ángulo ajustable (CAS). Sin angulo_grados ya no cae en el maestro de 45° por desempate ni toma 90° por defecto de la receta; queda sin definición con motivo."
+    },
+    "SAM_CAS-150-090-18-G": {
+      "antes": "def-05992ce6345911",
+      "despues": "(sin modelo)",
+      "motivo": "B-1.1: curva de ángulo ajustable (CAS). Sin angulo_grados ya no cae en el maestro de 45° por desempate ni toma 90° por defecto de la receta; queda sin definición con motivo."
+    },
+    "SAM_CAS-150-090-18-Z": {
+      "antes": "def-05992ce6345911",
+      "despues": "(sin modelo)",
+      "motivo": "B-1.1: curva de ángulo ajustable (CAS). Sin angulo_grados ya no cae en el maestro de 45° por desempate ni toma 90° por defecto de la receta; queda sin definición con motivo."
+    },
+    "SAM_CAS-150-115-14-G": {
+      "antes": "def-1386894484bfad",
+      "despues": "(sin modelo)",
+      "motivo": "B-1.1: curva de ángulo ajustable (CAS). Sin angulo_grados ya no cae en el maestro de 45° por desempate ni toma 90° por defecto de la receta; queda sin definición con motivo."
+    },
+    "SAM_CAS-150-115-18-G": {
+      "antes": "def-1386894484bfad",
+      "despues": "(sin modelo)",
+      "motivo": "B-1.1: curva de ángulo ajustable (CAS). Sin angulo_grados ya no cae en el maestro de 45° por desempate ni toma 90° por defecto de la receta; queda sin definición con motivo."
+    },
+    "SAM_CAS-150-115-18-Z": {
+      "antes": "def-1386894484bfad",
+      "despues": "(sin modelo)",
+      "motivo": "B-1.1: curva de ángulo ajustable (CAS). Sin angulo_grados ya no cae en el maestro de 45° por desempate ni toma 90° por defecto de la receta; queda sin definición con motivo."
+    },
+    "SAM_CAS-150-150-14-G": {
+      "antes": "def-087e82cb03e0d6",
+      "despues": "(sin modelo)",
+      "motivo": "B-1.1: curva de ángulo ajustable (CAS). Sin angulo_grados ya no cae en el maestro de 45° por desempate ni toma 90° por defecto de la receta; queda sin definición con motivo."
+    },
+    "SAM_CAS-300-065-14-G": {
+      "antes": "def-07b263ca9db1b7",
+      "despues": "(sin modelo)",
+      "motivo": "B-1.1: curva de ángulo ajustable (CAS). Sin angulo_grados ya no cae en el maestro de 45° por desempate ni toma 90° por defecto de la receta; queda sin definición con motivo."
+    },
+    "SAM_CAS-300-065-18-G": {
+      "antes": "def-07b263ca9db1b7",
+      "despues": "(sin modelo)",
+      "motivo": "B-1.1: curva de ángulo ajustable (CAS). Sin angulo_grados ya no cae en el maestro de 45° por desempate ni toma 90° por defecto de la receta; queda sin definición con motivo."
+    },
+    "SAM_CAS-300-065-18-Z": {
+      "antes": "def-07b263ca9db1b7",
+      "despues": "(sin modelo)",
+      "motivo": "B-1.1: curva de ángulo ajustable (CAS). Sin angulo_grados ya no cae en el maestro de 45° por desempate ni toma 90° por defecto de la receta; queda sin definición con motivo."
+    },
+    "SAM_CAS-300-090-14-G": {
+      "antes": "def-143ca950a21006",
+      "despues": "(sin modelo)",
+      "motivo": "B-1.1: curva de ángulo ajustable (CAS). Sin angulo_grados ya no cae en el maestro de 45° por desempate ni toma 90° por defecto de la receta; queda sin definición con motivo."
+    },
+    "SAM_CAS-300-090-18-G": {
+      "antes": "def-143ca950a21006",
+      "despues": "(sin modelo)",
+      "motivo": "B-1.1: curva de ángulo ajustable (CAS). Sin angulo_grados ya no cae en el maestro de 45° por desempate ni toma 90° por defecto de la receta; queda sin definición con motivo."
+    },
+    "SAM_CAS-300-090-18-Z": {
+      "antes": "def-143ca950a21006",
+      "despues": "(sin modelo)",
+      "motivo": "B-1.1: curva de ángulo ajustable (CAS). Sin angulo_grados ya no cae en el maestro de 45° por desempate ni toma 90° por defecto de la receta; queda sin definición con motivo."
+    },
+    "SAM_CAS-300-115-14-G": {
+      "antes": "def-0cb88f19ed4811",
+      "despues": "(sin modelo)",
+      "motivo": "B-1.1: curva de ángulo ajustable (CAS). Sin angulo_grados ya no cae en el maestro de 45° por desempate ni toma 90° por defecto de la receta; queda sin definición con motivo."
+    },
+    "SAM_CAS-300-115-18-G": {
+      "antes": "def-0cb88f19ed4811",
+      "despues": "(sin modelo)",
+      "motivo": "B-1.1: curva de ángulo ajustable (CAS). Sin angulo_grados ya no cae en el maestro de 45° por desempate ni toma 90° por defecto de la receta; queda sin definición con motivo."
+    },
+    "SAM_CAS-300-115-18-Z": {
+      "antes": "def-0cb88f19ed4811",
+      "despues": "(sin modelo)",
+      "motivo": "B-1.1: curva de ángulo ajustable (CAS). Sin angulo_grados ya no cae en el maestro de 45° por desempate ni toma 90° por defecto de la receta; queda sin definición con motivo."
+    },
+    "SAM_CAS-300-150-14-G": {
+      "antes": "def-02a95917d2909b",
+      "despues": "(sin modelo)",
+      "motivo": "B-1.1: curva de ángulo ajustable (CAS). Sin angulo_grados ya no cae en el maestro de 45° por desempate ni toma 90° por defecto de la receta; queda sin definición con motivo."
+    },
+    "SAM_CAS-450-065-14-G": {
+      "antes": "def-1310f2580ed6ae",
+      "despues": "(sin modelo)",
+      "motivo": "B-1.1: curva de ángulo ajustable (CAS). Sin angulo_grados ya no cae en el maestro de 45° por desempate ni toma 90° por defecto de la receta; queda sin definición con motivo."
+    },
+    "SAM_CAS-450-065-18-G": {
+      "antes": "def-1310f2580ed6ae",
+      "despues": "(sin modelo)",
+      "motivo": "B-1.1: curva de ángulo ajustable (CAS). Sin angulo_grados ya no cae en el maestro de 45° por desempate ni toma 90° por defecto de la receta; queda sin definición con motivo."
+    },
+    "SAM_CAS-450-065-18-Z": {
+      "antes": "def-1310f2580ed6ae",
+      "despues": "(sin modelo)",
+      "motivo": "B-1.1: curva de ángulo ajustable (CAS). Sin angulo_grados ya no cae en el maestro de 45° por desempate ni toma 90° por defecto de la receta; queda sin definición con motivo."
+    },
+    "SAM_CAS-450-090-14-G": {
+      "antes": "def-05d85d0d53e535",
+      "despues": "(sin modelo)",
+      "motivo": "B-1.1: curva de ángulo ajustable (CAS). Sin angulo_grados ya no cae en el maestro de 45° por desempate ni toma 90° por defecto de la receta; queda sin definición con motivo."
+    },
+    "SAM_CAS-450-090-18-G": {
+      "antes": "def-05d85d0d53e535",
+      "despues": "(sin modelo)",
+      "motivo": "B-1.1: curva de ángulo ajustable (CAS). Sin angulo_grados ya no cae en el maestro de 45° por desempate ni toma 90° por defecto de la receta; queda sin definición con motivo."
+    },
+    "SAM_CAS-450-090-18-Z": {
+      "antes": "def-05d85d0d53e535",
+      "despues": "(sin modelo)",
+      "motivo": "B-1.1: curva de ángulo ajustable (CAS). Sin angulo_grados ya no cae en el maestro de 45° por desempate ni toma 90° por defecto de la receta; queda sin definición con motivo."
+    },
+    "SAM_CAS-450-115-14-G": {
+      "antes": "def-07ab70e6bb15e9",
+      "despues": "(sin modelo)",
+      "motivo": "B-1.1: curva de ángulo ajustable (CAS). Sin angulo_grados ya no cae en el maestro de 45° por desempate ni toma 90° por defecto de la receta; queda sin definición con motivo."
+    },
+    "SAM_CAS-450-115-18-G": {
+      "antes": "def-07ab70e6bb15e9",
+      "despues": "(sin modelo)",
+      "motivo": "B-1.1: curva de ángulo ajustable (CAS). Sin angulo_grados ya no cae en el maestro de 45° por desempate ni toma 90° por defecto de la receta; queda sin definición con motivo."
+    },
+    "SAM_CAS-450-115-18-Z": {
+      "antes": "def-07ab70e6bb15e9",
+      "despues": "(sin modelo)",
+      "motivo": "B-1.1: curva de ángulo ajustable (CAS). Sin angulo_grados ya no cae en el maestro de 45° por desempate ni toma 90° por defecto de la receta; queda sin definición con motivo."
+    },
+    "SAM_CAS-450-150-14-G": {
+      "antes": "def-00aeaaada82c65",
+      "despues": "(sin modelo)",
+      "motivo": "B-1.1: curva de ángulo ajustable (CAS). Sin angulo_grados ya no cae en el maestro de 45° por desempate ni toma 90° por defecto de la receta; queda sin definición con motivo."
+    },
+    "SAM_CAS-600-065-14-G": {
+      "antes": "def-119b0dc0bbc235",
+      "despues": "(sin modelo)",
+      "motivo": "B-1.1: curva de ángulo ajustable (CAS). Sin angulo_grados ya no cae en el maestro de 45° por desempate ni toma 90° por defecto de la receta; queda sin definición con motivo."
+    },
+    "SAM_CAS-600-065-18-G": {
+      "antes": "def-119b0dc0bbc235",
+      "despues": "(sin modelo)",
+      "motivo": "B-1.1: curva de ángulo ajustable (CAS). Sin angulo_grados ya no cae en el maestro de 45° por desempate ni toma 90° por defecto de la receta; queda sin definición con motivo."
+    },
+    "SAM_CAS-600-065-18-Z": {
+      "antes": "def-119b0dc0bbc235",
+      "despues": "(sin modelo)",
+      "motivo": "B-1.1: curva de ángulo ajustable (CAS). Sin angulo_grados ya no cae en el maestro de 45° por desempate ni toma 90° por defecto de la receta; queda sin definición con motivo."
+    },
+    "SAM_CAS-600-090-14-G": {
+      "antes": "def-08495536f14d58",
+      "despues": "(sin modelo)",
+      "motivo": "B-1.1: curva de ángulo ajustable (CAS). Sin angulo_grados ya no cae en el maestro de 45° por desempate ni toma 90° por defecto de la receta; queda sin definición con motivo."
+    },
+    "SAM_CAS-600-090-18-G": {
+      "antes": "def-08495536f14d58",
+      "despues": "(sin modelo)",
+      "motivo": "B-1.1: curva de ángulo ajustable (CAS). Sin angulo_grados ya no cae en el maestro de 45° por desempate ni toma 90° por defecto de la receta; queda sin definición con motivo."
+    },
+    "SAM_CAS-600-090-18-Z": {
+      "antes": "def-08495536f14d58",
+      "despues": "(sin modelo)",
+      "motivo": "B-1.1: curva de ángulo ajustable (CAS). Sin angulo_grados ya no cae en el maestro de 45° por desempate ni toma 90° por defecto de la receta; queda sin definición con motivo."
+    },
+    "SAM_CAS-600-115-14-G": {
+      "antes": "def-091ddd05d9d762",
+      "despues": "(sin modelo)",
+      "motivo": "B-1.1: curva de ángulo ajustable (CAS). Sin angulo_grados ya no cae en el maestro de 45° por desempate ni toma 90° por defecto de la receta; queda sin definición con motivo."
+    },
+    "SAM_CAS-600-115-18-G": {
+      "antes": "def-091ddd05d9d762",
+      "despues": "(sin modelo)",
+      "motivo": "B-1.1: curva de ángulo ajustable (CAS). Sin angulo_grados ya no cae en el maestro de 45° por desempate ni toma 90° por defecto de la receta; queda sin definición con motivo."
+    },
+    "SAM_CAS-600-115-18-Z": {
+      "antes": "def-091ddd05d9d762",
+      "despues": "(sin modelo)",
+      "motivo": "B-1.1: curva de ángulo ajustable (CAS). Sin angulo_grados ya no cae en el maestro de 45° por desempate ni toma 90° por defecto de la receta; queda sin definición con motivo."
+    },
+    "SAM_CAS-600-150-14-G": {
+      "antes": "def-120290448a5450",
+      "despues": "(sin modelo)",
+      "motivo": "B-1.1: curva de ángulo ajustable (CAS). Sin angulo_grados ya no cae en el maestro de 45° por desempate ni toma 90° por defecto de la receta; queda sin definición con motivo."
+    }
+  }
+}

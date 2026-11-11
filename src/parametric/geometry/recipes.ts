@@ -34,30 +34,31 @@ export type PieceKind =
 
 export type RawParams = Readonly<Record<string, number | string | null>>;
 
-function readNumber(params: RawParams, key: string, fallback: number): number {
-  const raw = params[key];
-  if (typeof raw === 'number' && Number.isFinite(raw)) return raw;
-  return fallback;
+/**
+ * Un parámetro dimensional que el producto no declara. No hay valores por
+ * defecto: antes había (ala 65, ancho 300, largo 3000, ángulo 90) y rellenaban
+ * en silencio piezas con medidas inventadas. Ahora la receta no se construye y
+ * el motivo llega a quien la pidió (`buildDefinition` lo informa como
+ * "no se pudo construir la receta: …").
+ */
+export class ParametroFaltanteError extends Error {
+  constructor(readonly parametro: string, readonly contexto: string) {
+    super(`falta ${parametro} (${NOMBRE_CATALOGO[parametro] ?? parametro} en el catálogo) para ${contexto}`);
+    this.name = 'ParametroFaltanteError';
+  }
 }
 
-/**
- * Advierte una sola vez por combinación (piece_kind, key) cuando se activa un
- * fallback. Mantener un fallback (65 mm para ala) es intencional: no todas las
- * familias usan la misma cota (p.ej. escalera SAM-STE y perforada SAM-STP-Z
- * difieren); cambiarlo globalmente taparía bugs de datos. Esta traza permite
- * localizar en caliente los productos que llegan sin dimensional declarado.
- */
-const FALLBACK_WARNED = new Set<string>();
-function warnFallback(piece_kind: PieceKind, key: string, fallback: number): void {
-  const tag = `${piece_kind}:${key}`;
-  if (FALLBACK_WARNED.has(tag)) return;
-  FALLBACK_WARNED.add(tag);
-  // eslint-disable-next-line no-console
-  console.warn(
-    `[parametric/recipes] fallback ${key}=${fallback} aplicado para piece_kind=${piece_kind}. ` +
-    `El producto no publica '${key}' — revisá el snapshot del catálogo. ` +
-    `Este fallback NO sustituye un valor real y no corresponde a todas las familias.`,
-  );
+const NOMBRE_CATALOGO: Record<string, string> = {
+  ancho_mm: 'ancho_nominal_mm',
+  ala_mm: 'ala_nominal_mm',
+  longitud_mm: 'longitud_comercial_mm',
+  angulo_deg: 'angulo_grados',
+};
+
+function requireNumber(params: RawParams, key: string, contexto: string): number {
+  const raw = params[key];
+  if (typeof raw === 'number' && Number.isFinite(raw)) return raw;
+  throw new ParametroFaltanteError(key, contexto);
 }
 
 /**
@@ -69,24 +70,16 @@ export function buildRecipeFor(
   piece_kind: PieceKind,
   params: RawParams,
 ): GeometryRecipe {
-  const ancho_mm_raw = params.ancho_mm;
-  const ancho_mm =
-    typeof ancho_mm_raw === 'number' && Number.isFinite(ancho_mm_raw)
-      ? ancho_mm_raw
-      : (warnFallback(piece_kind, 'ancho_mm', 300), 300);
-  const ala_mm_raw = params.ala_mm;
-  const ala_mm =
-    typeof ala_mm_raw === 'number' && Number.isFinite(ala_mm_raw)
-      ? ala_mm_raw
-      : (warnFallback(piece_kind, 'ala_mm', 65), 65);
+  const ancho_mm = requireNumber(params, 'ancho_mm', piece_kind);
+  const ala_mm = requireNumber(params, 'ala_mm', piece_kind);
 
   switch (piece_kind) {
     case 'tramo_recto': {
-      const longitud_mm = readNumber(params, 'longitud_mm', 3000);
+      const longitud_mm = requireNumber(params, 'longitud_mm', piece_kind);
       return buildTRPSRecipe({ ancho_mm, ala_mm, longitud_mm });
     }
     case 'curva_horizontal': {
-      const ang = readNumber(params, 'angulo_deg', 90);
+      const ang = requireNumber(params, 'angulo_deg', piece_kind);
       return ang <= 45
         ? buildCPS45Recipe({ ancho_mm, ala_mm })
         : buildCPS90Recipe({ ancho_mm, ala_mm });
@@ -132,24 +125,14 @@ export function buildRecipeFor(
  *   - 'escalera:reduccion_lateral'   → `buildRISRecipe`
  */
 export function buildRecipeByKey(recipeKey: string, params: RawParams): GeometryRecipe {
-  const ancho_mm_raw = params.ancho_mm;
-  const ancho_mm =
-    typeof ancho_mm_raw === 'number' && Number.isFinite(ancho_mm_raw)
-      ? ancho_mm_raw
-      : 300;
-  const ala_mm_raw = params.ala_mm;
-  const ala_mm =
-    typeof ala_mm_raw === 'number' && Number.isFinite(ala_mm_raw)
-      ? ala_mm_raw
-      : 65;
-  const longitud_mm = readNumber(params, 'longitud_mm', 3000);
-  const angulo_deg = readNumber(params, 'angulo_deg', 90);
+  const ancho_mm = requireNumber(params, 'ancho_mm', recipeKey);
+  const ala_mm = requireNumber(params, 'ala_mm', recipeKey);
 
   switch (recipeKey) {
     case 'escalera:tramo_recto':
-      return buildTRESRecipe({ ancho_mm, ala_mm, longitud_mm });
+      return buildTRESRecipe({ ancho_mm, ala_mm, longitud_mm: requireNumber(params, 'longitud_mm', recipeKey) });
     case 'escalera:curva_horizontal':
-      return angulo_deg <= 45
+      return requireNumber(params, 'angulo_deg', recipeKey) <= 45
         ? buildCS45Recipe({ ancho_mm, ala_mm })
         : buildCS90Recipe({ ancho_mm, ala_mm });
     case 'escalera:curva_vertical':

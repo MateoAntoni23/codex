@@ -195,20 +195,36 @@ function masterPieceKindToParametric(master: MasterModel): PieceKind | null {
   }
 }
 
-function numOr(value: unknown, fallback: number): number {
-  return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+function numOrNull(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
+/**
+ * Datos dimensionales que el maestro necesita y el producto no declara en el
+ * catálogo. Sin valores por defecto: si falta alguno, la pieza no tiene
+ * definición y el motivo lo nombra.
+ */
+export function datosFaltantesParaMaestro(master: MasterModel, product: SyntheticProductLike): string[] {
+  const faltan: string[] = [];
+  if (numOrNull(product.ancho_nominal_mm) === null) faltan.push('ancho_nominal_mm');
+  if (numOrNull(product.ala_nominal_mm) === null) faltan.push('ala_nominal_mm');
+  if (master.baseParams.longitud_mm !== undefined && numOrNull(product.longitud_comercial_mm) === null) faltan.push('longitud_comercial_mm');
+  if (master.baseParams.angulo_deg !== undefined && numOrNull(product.angulo_grados) === null) faltan.push('angulo_grados');
+  return faltan;
 }
 
 function paramsForMaster(master: MasterModel, product: SyntheticProductLike): RawParams {
   const params: Record<string, number | string | null> = {
-    ancho_mm: numOr(product.ancho_nominal_mm, master.baseParams.ancho_mm),
-    ala_mm: numOr(product.ala_nominal_mm, master.baseParams.ala_mm),
+    // Sólo lo que declara el producto: los baseParams del maestro describen el
+    // modelo medido, no rellenan datos que el catálogo no publica.
+    ancho_mm: numOrNull(product.ancho_nominal_mm),
+    ala_mm: numOrNull(product.ala_nominal_mm),
   };
   if (master.baseParams.longitud_mm !== undefined) {
-    params.longitud_mm = numOr(product.longitud_comercial_mm, master.baseParams.longitud_mm);
+    params.longitud_mm = numOrNull(product.longitud_comercial_mm);
   }
   if (master.baseParams.angulo_deg !== undefined) {
-    params.angulo_deg = numOr(product.angulo_grados, master.baseParams.angulo_deg);
+    params.angulo_deg = numOrNull(product.angulo_grados);
   }
   return params as RawParams;
 }

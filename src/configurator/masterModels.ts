@@ -1195,12 +1195,12 @@ export function findMasterForProduct(product: {
   const effective = withPrefix.length > 0 ? withPrefix : candidates;
   if (effective.length === 1) return effective[0];
   // Para curva_horizontal hay dos (45° y 90°): desempatar por angulo_grados.
+  // Sin ángulo, o con un ángulo que no es el de ningún maestro, NO se elige el
+  // primero de la lista: antes las 40 CAS (ángulo ajustable) caían así en el
+  // maestro de 45° y se construían con el ángulo por defecto de la receta (90°).
   const angulo = typeof product.angulo_grados === 'number' ? product.angulo_grados : null;
-  if (angulo !== null) {
-    const byAngle = effective.find((m) => m.baseParams.angulo_deg === angulo);
-    if (byAngle) return byAngle;
-  }
-  return effective[0];
+  if (angulo === null) return null;
+  return effective.find((m) => m.baseParams.angulo_deg === angulo) ?? null;
 }
 
 export function findMasterById(id: string): MasterModel | null {

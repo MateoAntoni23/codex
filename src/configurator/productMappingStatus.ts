@@ -51,7 +51,6 @@ import {
   isParametricInsertable,
 } from '../workspace/parametricBridge';
 import type { ParametricEntry } from '../parametric/catalog';
-import { buildRecipeFor, type RawParams } from '../parametric/geometry/recipes';
 
 export type MappingStatus =
   | 'no-recipe'
@@ -87,12 +86,11 @@ const LABELS: Record<MappingStatus, string> = {
  * declaración explícita.
  */
 function recipeUsesCanonicalPortNames(entry: ParametricEntry): boolean {
-  try {
-    const recipe = buildRecipeFor(entry.piece_kind, {} as RawParams);
-    return recipe.ports.every((p) => /^P\d+$/.test(p.name));
-  } catch {
-    return false;
-  }
+  // Los nombres de boca de la reconstrucción de la entrada; antes se construía
+  // una receta con parámetros vacíos, que sólo funcionaba con los valores por
+  // defecto (ala 65, ancho 300) que ya no existen.
+  const ports = entry.reconstruction.ports;
+  return ports.length > 0 && ports.every((p) => /^P\d+$/.test(p.name));
 }
 
 /**

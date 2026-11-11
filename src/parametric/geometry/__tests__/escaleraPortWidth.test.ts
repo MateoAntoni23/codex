@@ -48,7 +48,7 @@ describe('escalera — bocas operativas mantienen ancho ≈ 300 al generarse a 3
     }
   });
 
-  it('CS-90 (curva horizontal 90°, incluye CAS por dispatcher default): P1 y P2 a ancho 300', () => {
+  it('CS-90 (curva horizontal 90°): P1 y P2 a ancho 300', () => {
     const recipe = buildRecipeByKey('escalera:curva_horizontal', {
       ancho_mm: 300,
       ala_mm: 65,
@@ -63,22 +63,12 @@ describe('escalera — bocas operativas mantienen ancho ≈ 300 al generarse a 3
     }
   });
 
-  it('CAS (curva sin angulo_grados → dispatcher default a 90°): P1 y P2 a ancho 300', () => {
-    // CAS se diferencia de CS en la UI porque el producto no publica
-    // `angulo_grados`. El dispatcher `buildRecipeByKey` aplica default
-    // angulo_deg=90 en ese caso — el resultado efectivo es CS-90.
-    const recipe = buildRecipeByKey('escalera:curva_horizontal', {
-      ancho_mm: 300,
-      ala_mm: 65,
-      // sin angulo_deg: defaultea a 90 (ver recipes.ts:142).
-    });
-    expect(recipe.ports).toHaveLength(2);
-    for (const p of recipe.ports) {
-      expect(
-        Math.abs(p.ancho_mm - 300),
-        `CAS ${p.name} ancho_mm=${p.ancho_mm}, esperado ≈ 300`,
-      ).toBeLessThan(EPS_ANCHO_MM);
-    }
+  it('CAS (curva sin angulo_grados): ya no hay ángulo por defecto, la receta no se construye', () => {
+    // Antes el dispatcher rellenaba angulo_deg=90 y la CAS (curva de ángulo
+    // ajustable) salía como CS-90 sin aviso. Desde B-1.1 un parámetro que falta
+    // es un error; la definición informa el motivo del ángulo ajustable
+    // (ver sinValoresPorDefecto.test.ts).
+    expect(() => buildRecipeByKey('escalera:curva_horizontal', { ancho_mm: 300, ala_mm: 65 })).toThrow(/falta angulo_deg/);
   });
 
   it('TS (derivación lateral): P1, P2, P3 a ancho 300', () => {
