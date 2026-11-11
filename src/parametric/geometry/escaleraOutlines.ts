@@ -162,7 +162,9 @@ export const TS_300_065_18_Z: EscaleraOutline = {
     // P2: ramal (x_max).
     { i: 4, a: [743.46, 444.47], b: [743.46, 744.44], length_mm: 299.96, midpoint: [743.46, 594.46], outward_normal: [1.0, 0.0], boundary: 'x_max' },
     // P3: tronco superior (z_max).
-    { i: 8, a: [298.99, 980.0], b: [298.99, 1189.0], length_mm: 298.99, midpoint: [149.49, 1189.0], outward_normal: [0.0, 1.0], boundary: 'z_max' },
+    // a/b corregidos 2026-11-11 desde el __outline.json: antes decían
+    // [298.99, 980.0] → [298.99, 1189.0], los extremos de la arista 7 (pared).
+    { i: 8, a: [298.985, 1189.0], b: [0.0, 1189.0], length_mm: 298.99, midpoint: [149.49, 1189.0], outward_normal: [0.0, 1.0], boundary: 'z_max' },
   ],
 };
 
