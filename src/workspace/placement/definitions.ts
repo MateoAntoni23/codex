@@ -10,6 +10,7 @@ import type { Piece, Product, TrayInput } from '../../tray/model';
 import { buildRecipeFromProduct, resolveRecipe } from '../parametricBridge';
 import { resolveRecipeForProduct } from '../resolvedPortGeometry';
 import { findMasterForProduct } from '../../configurator/masterModels';
+import { angleMismatch } from './angleCheck';
 import {
   definitionFromRecipe,
   definitionHash,
@@ -28,9 +29,22 @@ export type DefinitionResult =
 
 /**
  * Definición efectiva vigente del producto. `longitud_mm` sólo aplica a tramos
- * rectos (largo editable). Error con motivo si el producto no tiene modelo.
+ * rectos (largo editable). Error con motivo si el producto no tiene modelo o si
+ * su contorno gira otro ángulo que el declarado (modelo no resuelto): una pieza
+ * así no se coloca.
  */
 export function resolveDefinition(product: Product, opts?: { longitud_mm?: number | null }): DefinitionResult {
+  const d = buildDefinition(product, opts);
+  if (!d.ok) return d;
+  const bad = angleMismatch(d.def);
+  return bad ? { ok: false, motivo: bad.motivo } : d;
+}
+
+/**
+ * Definición construida SIN verificar el ángulo. Sólo para medir y diagnosticar
+ * (p. ej. la prueba de ángulos); para colocar se usa `resolveDefinition`.
+ */
+export function buildDefinition(product: Product, opts?: { longitud_mm?: number | null }): DefinitionResult {
   const entry = resolveRecipe(product);
   if (!entry) return { ok: false, motivo: `sin modelo paramétrico para ${product.sku ?? product.producto_id}` };
   const takesLength = entry.piece_kind === 'tramo_recto' || entry.recipe === 'escalera:tramo_recto';

@@ -21,7 +21,7 @@ import {
   clearProductCatalogIndex,
   setMasterResolver,
 } from '../../catalogPortMapping';
-import { resolveDefinition, placedOf, withDefinition } from '../definitions';
+import { buildDefinition, resolveDefinition, placedOf, withDefinition } from '../definitions';
 import {
   angleDeg,
   buildDefinitionGeometry,
@@ -103,7 +103,11 @@ describe('PA2 — colocar, guardar, recargar y dibujar (propiedad sobre todo el 
     ];
     for (const [patron, products] of sampleByPattern()) {
       for (const product of products) {
-        const d = resolveDefinition(product);
+        // PA2 prueba el mecanismo (colocar → guardar → recargar → dibujar) sobre
+        // TODOS los patrones, así que usa la definición sin la verificación de
+        // ángulo: un modelo no resuelto (CS-45 escalera) se rechaza al colocar y
+        // su defecto se informa en angleCheck.test.ts, no aquí.
+        const d = buildDefinition(product);
         expect(d.ok, `${patron} ${product.sku}`).toBe(true);
         if (!d.ok) continue;
         for (const port of d.def.ports) {

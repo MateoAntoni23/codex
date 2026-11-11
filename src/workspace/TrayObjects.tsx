@@ -20,6 +20,7 @@ import { useRoutingStore } from './useRoutingStore';
 import type { Piece, Product, TrayInput } from '../tray/model';
 import { isPortDiagEnabled } from './portFrameDiag';
 import { placedOf } from './placement/definitions';
+import { angleMismatch } from './placement/angleCheck';
 import { PlacedMesh } from './placement/PlacedMesh';
 import { checkJoin, formatJoin } from './placement/joins';
 import { getCompatibleProductIds } from './routingRules';
@@ -137,10 +138,14 @@ function PieceVisual({
   // nada con verifyGeometricFit (queda para la migración y el diagnóstico).
   const placed = placedOf(entrada, piece);
   const colocacion = piece.colocacion;
+  // Modelo no resuelto: la definición guardada gira otro ángulo que el declarado
+  // (p. ej. colocada antes de la verificación). No se dibuja su malla como si
+  // estuviera bien: queda el esquema por sus bocas, con marcador y motivo.
+  const angleIssue = placed ? angleMismatch(placed.def) : null;
 
   // Familia escalera: generador de largueros + travesaños a partir de las bocas,
   // que se derivan de la pose guardada (el preview usa el mismo generador).
-  if (product && isLadderFamily(product)) {
+  if (product && isLadderFamily(product) && !angleIssue) {
     return (
       <group>
         <LadderPiece piece={piece} product={product} selected={selected} onClick={onClick} />
@@ -149,7 +154,7 @@ function PieceVisual({
     );
   }
 
-  if (product && placed) {
+  if (product && placed && !angleIssue) {
     return (
       <PlacedMesh
         def={placed.def}
@@ -199,30 +204,37 @@ function PieceVisual({
     <group>
       {fallback}
       {colocacion?.estado === 'sin_resolver' && <UnresolvedMarker piece={piece} motivo={colocacion.motivo} />}
+      {angleIssue && <UnresolvedMarker piece={piece} motivo={angleIssue.motivo} titulo="Modelo no resuelto" />}
     </group>
   );
 }
 
 /**
- * A-10: marcador visible de una pieza "sin resolver" (no encajó al migrar):
- * conserva sus bocas y se dibuja con este aviso en su centro.
+ * A-10: marcador visible de una pieza "sin resolver" (no encajó al migrar) o
+ * con modelo no resuelto (giro medido ≠ declarado): conserva sus bocas y se
+ * dibuja con este aviso y su motivo en su centro.
  */
-function UnresolvedMarker({ piece, motivo }: { piece: Piece; motivo: string }) {
+function UnresolvedMarker({ piece, motivo, titulo = 'Sin resolver' }: { piece: Piece; motivo: string; titulo?: string }) {
   const ports = Object.values(piece.puertos);
   if (!ports.length) return null;
   const c = [0, 1, 2].map((i) => ports.reduce((s, p) => s + p.posicion_mm[i], 0) / ports.length) as V3;
   return (
     <group
       position={toViewer(c)}
-      onUpdate={(g) => { g.userData.codex = { kind: 'unresolved-marker', instanciaId: piece.instancia_id, motivo }; }}
+      onUpdate={(g) => { g.userData.codex = { kind: 'unresolved-marker', instanciaId: piece.instancia_id, titulo, motivo }; }}
     >
       <mesh>
         <octahedronGeometry args={[0.18, 0]} />
         <meshBasicMaterial color="#ff5a4f" wireframe />
       </mesh>
       <Html center style={{ pointerEvents: 'none' }} position={[0, 0.3, 0]}>
-        <div style={{ background: 'rgba(60,0,0,0.85)', color: '#ffd0cc', fontSize: 10, padding: '2px 6px', borderRadius: 3, whiteSpace: 'nowrap' }}>
-          Sin resolver
+        <div
+          data-testid="unresolved-marker"
+          title={motivo}
+          style={{ background: 'rgba(60,0,0,0.85)', color: '#ffd0cc', fontSize: 10, padding: '2px 6px', borderRadius: 3, maxWidth: 260 }}
+        >
+          <strong>{titulo}</strong>
+          <div style={{ fontSize: 9, opacity: 0.9 }}>{motivo}</div>
         </div>
       </Html>
     </group>
