@@ -17,6 +17,7 @@ import { Section } from './shared';
 import { unionsOf } from '../workspaceOperation';
 import { indexProducts, pieceLabelById } from './displayNames';
 import { placedOf } from '../placement/definitions';
+import { avisosDeModelo } from '../placement/joins';
 
 const ENGINE_LABEL: Record<string, string> = {
   desconocido: 'consultando…',
@@ -69,6 +70,29 @@ function NominalList() {
         <div key={p.instancia_id} className="stage-card" data-testid="nominal-row">
           <div className="tone-warn">{pieceLabelById(p.instancia_id, entrada!.piezas, idx)}</div>
           <div className="stage-row-sub">{placedOf(entrada, p)!.def.procedencia!.nota}</div>
+        </div>
+      ))}
+    </Section>
+  );
+}
+
+/**
+ * B-3: avisos de modelo — bocas cuya ala medida difiere de la que declara el
+ * catálogo (caso CUPS). No invalidan las uniones; se informan.
+ */
+function AvisosModeloList() {
+  const entrada = useTrayStore((s) => s.entrada);
+  const context = useTrayStore((s) => s.context);
+  const idx = indexProducts(context?.productos);
+  const filas = (entrada?.piezas ?? []).map((p) => ({ p, avisos: avisosDeModelo(entrada, p) })).filter((f) => f.avisos.length);
+  if (!filas.length) return null;
+  return (
+    <Section title={`Avisos de modelo (${filas.length})`} testid="aviso-modelo-list">
+      <p className="stage-note">La geometría viene del modelo medido y difiere de lo que declara el catálogo. Las uniones no se invalidan por esto.</p>
+      {filas.map(({ p, avisos }) => (
+        <div key={p.instancia_id} className="stage-card" data-testid="aviso-modelo-row">
+          <div className="tone-warn">{pieceLabelById(p.instancia_id, entrada!.piezas, idx)}</div>
+          {avisos.map((a) => <div key={a} className="stage-row-sub">{a}</div>)}
         </div>
       ))}
     </Section>
@@ -177,6 +201,7 @@ export function ResultadosPanel() {
 
       <ExceptionsList />
       <NominalList />
+      <AvisosModeloList />
 
       <Section title="Resultado">
         <ResultSummary />

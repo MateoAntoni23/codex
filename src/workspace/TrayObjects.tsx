@@ -23,7 +23,7 @@ import { placedOf } from './placement/definitions';
 import { worldPorts } from './placement/placementCore';
 import { angleMismatch } from './placement/angleCheck';
 import { PlacedMesh } from './placement/PlacedMesh';
-import { checkJoin, formatJoin } from './placement/joins';
+import { bocaConSeccion, checkJoin, formatJoin } from './placement/joins';
 import { getCompatibleProductIds } from './routingRules';
 import { UNIONS_KEY, unionRecord, unionsOf } from './workspaceOperation';
 import { LadderPiece, isLadderFamily } from './ladderGeometry';
@@ -383,16 +383,18 @@ export function TrayObjects() {
       // A-7: se informa hueco, ángulo y giro; NUNCA se mueven piezas para tapar el hueco.
       const pa = entrada.piezas.find((p) => p.instancia_id === aInst);
       const pb = entrada.piezas.find((p) => p.instancia_id === instanciaId);
-      const A = pa?.puertos[aPort];
-      const B = pb?.puertos[puertoId];
+      const A = pa ? bocaConSeccion(entrada, pa, aPort) : null;
+      const B = pb ? bocaConSeccion(entrada, pb, puertoId) : null;
       if (!pa || !pb || !A || !B) { deactivateConnectionTool(); return; }
       const check = checkJoin(A, B);
       const documented = getCompatibleProductIds(context?.compatibilidades ?? [], pa.producto_id, aPort).has(pb.producto_id);
       const head = `Unir ${aInst}.${aPort} ↔ ${instanciaId}.${puertoId}
 ${formatJoin(check)}`;
-      const body = check.ok
+      const body = (check.ok
         ? 'La unión cumple las tolerancias (D-14).'
-        : `La unión NO cumple las tolerancias (${check.motivos.join('; ')}). No se mueve ninguna pieza: el hueco queda a la vista.`;
+        : `La unión NO cumple las tolerancias (${check.motivos.join('; ')}). No se mueve ninguna pieza: el hueco queda a la vista.`)
+        + (check.avisos.length ? `
+Avisos: ${check.avisos.join('; ')}` : '');
       if (confirm(`${head}
 ${body}
 ¿Registrar la unión?`)) {

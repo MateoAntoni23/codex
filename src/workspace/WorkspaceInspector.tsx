@@ -10,6 +10,7 @@ import { useState } from 'react';
 import { useWorkspaceStore } from './useWorkspaceStore';
 import { useTrayStore } from '../tray/store';
 import { placedOf } from './placement/definitions';
+import { avisosDeModelo } from './placement/joins';
 import { useRoutingStore } from './useRoutingStore';
 import { useTrayMoveState } from './useTrayMoveState';
 import { findBrokenConnections, pieceCentroid, removeConnections } from './trayMovement';
@@ -554,6 +555,9 @@ export function PieceCard({ piece }: { piece: Piece }) {
           ? <p className="stage-note tone-warn" data-testid="piece-procedencia">Procedencia: {def.procedencia.nota}.</p>
           : null;
       })()}
+      {avisosDeModelo(entrada, piece).map((a) => (
+        <p key={a} className="stage-note tone-warn" data-testid="piece-aviso-modelo">Aviso de modelo — {a}.</p>
+      ))}
 
       <BrokenConnectionsModal />
 

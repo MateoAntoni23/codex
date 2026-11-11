@@ -227,6 +227,7 @@ export function BandejasPanel() {
             <span>
               {endLabel(c.a[0], c.a[1])} ↔ {endLabel(c.b[0], c.b[1])}
               {chk && !chk.ok && <span className="tone-danger"> · no cumple ({formatJoin(chk)})</span>}
+              {chk?.avisos.filter((a) => a.startsWith('ala (boca')).map((a) => <span key={a} className="tone-warn" data-testid="join-aviso-ala"> · {a}</span>)}
               {exc && <span className="tone-warn"> · excepción</span>}
             </span>
             <button type="button" className="stage-icon-btn tone-danger" aria-label="Eliminar unión" onClick={() => removeConexion(c.conexion_id)}>×</button>

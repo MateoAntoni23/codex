@@ -118,6 +118,31 @@ convertirla (producto fuera del índice). Ahora el override queda intacto y se r
 
   La procedencia se ve en la escena, la ficha y Resultados. La migración resuelve las piezas nominales.
 
+## B-3 (reducida) — cuarta condición de unión
+`placement/joins.ts`. La sección de cada boca sale de su definición guardada, y el ala declarada de
+`colocacion.definicion.params.ala_mm`, que es la del catálogo al colocar.
+- **Ancho:** la unión es inválida si |La − Lb| > 2 × 0,379 % × max(La, Lb), unos 2,27 mm en 300.
+  - **Derivación:** el mayor desvío de una boca medida respecto del nominal, sobre las 361 definiciones,
+    es 0,3782 %. Es la CPS-45: 1,134 mm en 300 y 2,269 mm en 600, porque el perfil escala.
+  - **Discrimina:** con el peor desvío hacia adentro, cada par de anchos vecinos del catálogo (el paso
+    más chico es 44 → 50) queda separado por más que la tolerancia.
+  - **Primera versión descartada (1,11 mm):** venía de la regla de bocas de escalera. Rompía recto–CPS-45
+    en la cadena del operador (300 contra 301,134).
+- **Ala:**
+  - si el catálogo declara alas distintas, la unión es inválida;
+  - si declara la misma y el modelo mide otra cosa, hay aviso: "la boca del modelo mide X mm de ala y el
+    catálogo declara Y mm". El umbral es la tolerancia de posición D-14 (1 mm); las diferencias reales
+    son 0 o ≥ 13,44 mm;
+  - si falta el dato, "no verificable".
+- **Dónde se ve el aviso:** en la fila de la unión (`join-aviso-ala`), en la ficha (`piece-aviso-modelo`),
+  en Resultados ("Avisos de modelo", `aviso-modelo-list`) y en el diálogo de unir.
+- **No cambia:** el registro guardado de cada unión (`uniones_ws`); la verificación se recalcula en vivo.
+- **Otros con el aviso:** las CUS de escalera (curva vertical) también dan aviso de ala, porque usan el
+  perfil de 36,56 mm con alas declaradas de 65 a 150.
+- **Pruebas:** `anchoBocaJoins.test.ts` (PB6, alas distintas, no verificable, regresión de la cadena,
+  derivación sobre el catálogo). `cadenaOperador` E2E (PB9) ahora exige los 4 avisos en las uniones con
+  CUPS, 2 en la ficha y 2 filas en Resultados.
+
 ## Recorte de alcance (operador, 2026-11-11)
 - **Descartado:** reglas nominales para T y X (aunque 40 T y 40 X declaran `radio_mm`); reducciones (les
   falta el largo y el segundo ancho está solo en la descripción); tapas y finales de tramo. Tema de

@@ -95,10 +95,29 @@ test.describe('PA4 / PA8 — cadena del operador', () => {
       expect(j!.huecoMm).toBeLessThanOrEqual(1);
       expect(j!.anguloDeg).toBeLessThanOrEqual(1);
       expect(j!.giroDeg!).toBeLessThanOrEqual(1);
+      // B-3: la sección se verifica (ancho conocido en todas las uniones).
+      expect(j!.anchosMm).not.toBeNull();
     }
+
+    // B-3 / PB6: las 4 uniones con una CUPS son válidas con aviso de ala del modelo
+    // (36,56 mm medidos contra 50 declarados); el aviso se ve en la unión,
+    // en la ficha de la pieza y en Resultados.
+    const avisosUnion = page.getByTestId('join-aviso-ala');
+    await expect(avisosUnion).toHaveCount(4);
+    await expect(avisosUnion.first()).toContainText('la boca del modelo mide 36.56 mm de ala y el catálogo declara 50 mm');
+    const cupsId = await page.evaluate(() => {
+      const w = window as unknown as { __codex: { trayStore: { getState: () => { entrada: { piezas: Array<{ instancia_id: string; producto_id: string }> } } } } };
+      return w.__codex.trayStore.getState().entrada.piezas.find((p) => p.producto_id === 'SAM_CUPS-300-A-Z')!.instancia_id;
+    });
+    await page.evaluate((id) => {
+      (window as unknown as { __codex: { workspaceStore: { getState: () => { selectTray: (id: string) => void } } } }).__codex.workspaceStore.getState().selectTray(id);
+    }, cupsId);
+    await expect(page.getByTestId('piece-aviso-modelo')).toHaveCount(2);
+    await expect(page.getByTestId('piece-aviso-modelo').first()).toContainText('mide 36.56 mm de ala y el catálogo declara 50 mm');
 
     // Excepciones listadas en Resultados con su motivo.
     await page.getByTestId('stage-tab-resultados').click();
+    await expect(page.getByTestId('aviso-modelo-row')).toHaveCount(2);
     await expect(page.getByTestId('exception-row')).toHaveCount(2);
     await expect(page.getByTestId('exceptions-list')).toContainText('Motivo:');
 
