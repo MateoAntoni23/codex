@@ -98,3 +98,27 @@ convertirla (producto fuera del índice). Ahora el override queda intacto y se r
   con el largo o el radio del catálogo; el radio por defecto 300 ya no existe).
 - DCPS: literales a 0,051 mm del STEP; no hay prueba contra el GLB porque fallaría. Decidir antes de B-3.
 - `measuredLadder.ts` quedó sin uso en la app (solo lo importan pruebas).
+
+## Decisiones del operador tras el punto de control (aplicadas)
+- **CAS:** el maestro que tomaban por desempate era el de **CS-45** (verificado con una sonda sobre
+  `findMasterForProduct`); la receta ponía 90° por defecto.
+- **Decisión 1, DCPS** (`1f8b7e7`, `d277cd6`): fue un **descuido de transcripción**. En el STEP, las bocas
+  del tronco (300,951 mm) inclinan 0,0097°; los literales las enderezaban (0 / 449,5 donde el STEP dice
+  0,051 / 449,449). Se genera desde el STEP. PB1: +28 huellas declaradas (7 DCPS y 21 TPS).
+  `1f8b7e7` se empujó con PB5 en rojo (ruido de 1,2e-6° en la medición de ángulos); `d277cd6` lo corrige.
+- **Decisión 3, geometría y no huella** (`15b33ae`): tolerancia de 0,01 mm × max(1, ancho/300) y 0,01°.
+  Sobre las 237 huellas cambiadas desde a7794b8:
+  - **173** con la misma geometría;
+  - **24** con cambio real: DCPS/TPS 100–600, de 0,0185 a 0,111 mm;
+  - **40** sin definición (CAS).
+
+  Las aprobaciones guardan la definición aprobada; las anteriores se reconstruyen desde su
+  `approvedMapping`. Se corrigió un defecto de c80ea84: la huella de calibración de las aprobaciones no
+  cambiaba al calibrar el patrón.
+- **Decisión 2, geometría nominal** (`e068eb0`): de 896 productos,
+  - **352** tienen modelo medido;
+  - **9** tienen geometría nominal suficiente (tramos rectos FAMIQ);
+  - **535** no tienen nada: reducciones 126, tapas 111, finales 51, curvas horizontales 49 (ninguna
+    declara radio ni ángulo), T 42, otros.
+
+  La procedencia se ve en la escena, la ficha y Resultados. La migración resuelve las piezas nominales.
