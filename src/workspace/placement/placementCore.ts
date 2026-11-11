@@ -199,6 +199,24 @@ export function meshLocalMatrix(def: StoredDefinition, mano: Mano): THREE.Matrix
   return mano === 'espejo' ? S4.clone().multiply(pre) : pre;
 }
 
+/**
+ * Geometría de la definición SIN la calibración del modelo (polígono crudo de
+ * la receta extruido y trasladado). Para el configurador, que muestra la
+ * calibración como matriz aparte: cruda · `definitionPreTransform(def)` =
+ * `buildDefinitionGeometry(def, 'nativa')`.
+ */
+export function buildDefinitionRawGeometry(def: StoredDefinition): THREE.BufferGeometry {
+  const geom = buildPrism(def.mesh.polygon as Array<[number, number]>, def.mesh.height, def.mesh.extrudeAlongY);
+  const [tx, ty, tz] = def.mesh.translate;
+  if (tx !== 0 || ty !== 0 || tz !== 0) geom.translate(tx, ty, tz);
+  return geom;
+}
+
+/** Calibración del modelo guardada en la definición (matriz 4×4). */
+export function definitionPreTransform(def: StoredDefinition): THREE.Matrix4 {
+  return new THREE.Matrix4().fromArray(def.mesh.preTransform as number[]);
+}
+
 /** Geometría local (en marco de la definición, mano aplicada). */
 export function buildDefinitionGeometry(def: StoredDefinition, mano: Mano): THREE.BufferGeometry {
   const geom = buildPrism(def.mesh.polygon as Array<[number, number]>, def.mesh.height, def.mesh.extrudeAlongY);

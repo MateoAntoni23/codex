@@ -20,6 +20,7 @@ import { useRoutingStore } from './useRoutingStore';
 import type { Piece, Product, TrayInput } from '../tray/model';
 import { isPortDiagEnabled } from './portFrameDiag';
 import { placedOf } from './placement/definitions';
+import { worldPorts } from './placement/placementCore';
 import { angleMismatch } from './placement/angleCheck';
 import { PlacedMesh } from './placement/PlacedMesh';
 import { checkJoin, formatJoin } from './placement/joins';
@@ -143,8 +144,35 @@ function PieceVisual({
   // estuviera bien: queda el esquema por sus bocas, con marcador y motivo.
   const angleIssue = placed ? angleMismatch(placed.def) : null;
 
-  // Familia escalera: generador de largueros + travesaños a partir de las bocas,
-  // que se derivan de la pose guardada (el preview usa el mismo generador).
+  // Escalera con definición guardada: largueros + planta DESDE LA DEFINICIÓN
+  // (B-2), con la misma matriz y las mismas bocas que el preview.
+  if (product && placed && !angleIssue && isLadderFamily(product)) {
+    return (
+      <PlacedMesh
+        estilo="escalera"
+        def={placed.def}
+        huella={placed.colocacion.definicion.huella}
+        mano={placed.colocacion.mano}
+        pose={placed.colocacion.pose}
+        color={selected ? '#ffcf33' : '#50b8de'}
+        opacity={isPortDiagEnabled() ? 0.4 : 0.85}
+        onClick={onClick}
+        userData={{
+          kind: 'ladder-definition',
+          instanciaId: piece.instancia_id,
+          sku: product.sku,
+          entryPortName: placed.colocacion.boca_entrada ?? null,
+          // Mismo formato que el esquema por bocas (nombre → posición en mm), para diagnóstico.
+          ports: Object.fromEntries(worldPorts(placed.def, placed.colocacion.mano, placed.colocacion.pose).map((wp) => [wp.name, wp.pos])),
+          widthMm: placed.def.ports[0]?.ancho_mm ?? null,
+          alaMm: placed.def.mesh.height,
+        }}
+      />
+    );
+  }
+
+  // Escalera SIN definición (sin resolver o proyecto anterior): esquema de
+  // largueros a partir de sus bocas guardadas, con marcador si corresponde.
   if (product && isLadderFamily(product) && !angleIssue) {
     return (
       <group>

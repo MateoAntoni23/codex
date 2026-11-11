@@ -25,8 +25,8 @@ import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls, Line } from '@react-three/drei';
 import * as THREE from 'three';
 import type { Product } from '../tray/model';
-import { resolveParametricEntry, buildRecipeFromProduct, buildLocalMesh } from '../workspace/parametricBridge';
-import { resolveRecipeForProduct } from '../workspace/resolvedPortGeometry';
+import { definicionEfectiva, modeloDeProducto } from '../workspace/placement/definitions';
+import { buildDefinitionRawGeometry, definitionPreTransform } from '../workspace/placement/placementCore';
 import { useCatalogConfigStore } from './catalogConfigStore';
 
 const MM_TO_VIEWER = new THREE.Matrix4().set(
@@ -89,31 +89,19 @@ function ProductMesh({ product }: { product: Product }) {
   const overrides = useCatalogConfigStore((s) => s.overrides);
 
   const scene = useMemo(() => {
-    const entry = resolveParametricEntry(product);
-    if (!entry) return null;
-    try {
-      const raw = buildRecipeFromProduct(product, entry);
-      const resolved = resolveRecipeForProduct(raw, product.producto_id);
-      const geom = buildLocalMesh(raw);
-      // Transformación local-raw → viewer: MM_TO_VIEWER * preTransform.
-      const mTransform = new THREE.Matrix4().multiplyMatrices(
-        MM_TO_VIEWER,
-        resolved.preTransform,
-      );
-      return {
-        geom,
-        matrix: mTransform,
-        ports: resolved.recipe.ports.map((p) => ({
-          name: p.name,
-          center: p.center,
-          normal: p.normal,
-        })),
-        isIdentity: resolved.isIdentity,
-      };
-    } catch {
-      return null;
-    }
-  }, [product, overrides]);
+    // B-2: la misma definición efectiva que el espacio de trabajo.
+    const d = definicionEfectiva(product);
+    if (!d.ok) return null;
+    const geom = buildDefinitionRawGeometry(d.def);
+    // Transformación local-raw → viewer: MM_TO_VIEWER * calibración del modelo.
+    const mTransform = new THREE.Matrix4().multiplyMatrices(MM_TO_VIEWER, definitionPreTransform(d.def));
+    return {
+      geom,
+      matrix: mTransform,
+      ports: d.def.ports.map((p) => ({ name: p.name, center: p.center, normal: p.normal })),
+      isIdentity: !d.calibrada,
+    };
+  }, [product, overrides]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Why: `onUpdate` de R3F sólo se dispara de forma fiable al adjuntar hijos;
   // asignar `geometry`/`matrix` desde allí deja la malla congelada cuando el
@@ -239,7 +227,7 @@ function AxisHelpers() {
 }
 
 export function ConfiguratorViewer({ product }: { product: Product | null }) {
-  const hasRecipe = !!product && !!resolveParametricEntry(product);
+  const hasRecipe = !!product && !!modeloDeProducto(product);
   return (
     <section className="cfg-viewer" data-testid="cfg-viewer">
       {product ? (

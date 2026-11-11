@@ -46,11 +46,7 @@ import {
   getEffectiveMapping,
   type ProductPortMapping,
 } from '../workspace/catalogPortMapping';
-import {
-  resolveParametricEntry,
-  isParametricInsertable,
-} from '../workspace/parametricBridge';
-import type { ParametricEntry } from '../parametric/catalog';
+import { definicionEfectiva, modeloDeProducto } from '../workspace/placement/definitions';
 
 export type MappingStatus =
   | 'no-recipe'
@@ -85,12 +81,11 @@ const LABELS: Record<MappingStatus, string> = {
  * caso la asociación con el catálogo SAMET es la identidad y no requiere
  * declaración explícita.
  */
-function recipeUsesCanonicalPortNames(entry: ParametricEntry): boolean {
-  // Los nombres de boca de la reconstrucción de la entrada; antes se construía
-  // una receta con parámetros vacíos, que sólo funcionaba con los valores por
-  // defecto (ala 65, ancho 300) que ya no existen.
-  const ports = entry.reconstruction.ports;
-  return ports.length > 0 && ports.every((p) => /^P\d+$/.test(p.name));
+function recipeUsesCanonicalPortNames(product: Product): boolean {
+  // Nombres de boca de la definición efectiva (B-2: el mismo camino que el
+  // espacio de trabajo).
+  const d = definicionEfectiva(product);
+  return d.ok && d.def.ports.length > 0 && d.def.ports.every((p) => /^P\d+$/.test(p.name));
 }
 
 /**
@@ -98,8 +93,8 @@ function recipeUsesCanonicalPortNames(entry: ParametricEntry): boolean {
  * exclusivamente el estado actual de overrides via getEffectiveMapping.
  */
 export function classifyProductMapping(product: Product): MappingStatusInfo {
-  const entry = resolveParametricEntry(product);
-  if (!entry) {
+  const modelo = modeloDeProducto(product);
+  if (!modelo) {
     return {
       status: 'no-recipe',
       label: LABELS['no-recipe'],
@@ -108,12 +103,12 @@ export function classifyProductMapping(product: Product): MappingStatusInfo {
       insertable: false,
     };
   }
-  const insertable = isParametricInsertable(product);
+  const insertable = modelo.colocable;
   if (!insertable) {
     return {
       status: 'recipe-not-ready',
       label: LABELS['recipe-not-ready'],
-      cause: `La receta existe (piece_kind=${entry.piece_kind}) pero el puente paramétrico no coloca aún este tipo interactivamente.`,
+      cause: `La receta existe (piece_kind=${modelo.tipo}) pero el puente paramétrico no coloca aún este tipo interactivamente.`,
       action: 'Habilitar piece_kind en SUPPORTED_PIECE_KINDS de parametricBridge, o aislar la pieza con una excepción de proyecto.',
       insertable: false,
     };
@@ -138,7 +133,7 @@ export function classifyProductMapping(product: Product): MappingStatusInfo {
     };
   }
   // Sin mapping declarado: distinguir identidad trivial de "falta trabajo".
-  if (recipeUsesCanonicalPortNames(entry)) {
+  if (recipeUsesCanonicalPortNames(product)) {
     return {
       status: 'recipe-default-identity',
       label: LABELS['recipe-default-identity'],

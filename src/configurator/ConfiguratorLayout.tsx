@@ -32,7 +32,7 @@ import {
   listOverriddenProductIds,
   type ProductPortMapping,
 } from '../workspace/catalogPortMapping';
-import { resolveParametricEntry } from '../workspace/parametricBridge';
+import { modeloDeProducto } from '../workspace/placement/definitions';
 import { useCatalogConfigStore } from './catalogConfigStore';
 import { InspectorTabContent, TABS, type TabId } from './ConfiguratorInspectorTabs';
 import { ConfiguratorViewer } from './ConfiguratorViewer';
@@ -839,7 +839,7 @@ export function ConfiguratorLayout() {
     w.__codex.hasParametricRecipe = (productId: string): boolean => {
       const ctx = useTrayStore.getState().context;
       const p = ctx?.productos.find((x) => x.producto_id === productId);
-      return !!p && !!resolveParametricEntry(p);
+      return !!p && !!modeloDeProducto(p);
     };
     return () => {
       if (w.__codex) {

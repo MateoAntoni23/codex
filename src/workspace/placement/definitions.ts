@@ -47,7 +47,7 @@ export function esAnguloAjustable(product: Product): boolean {
 }
 
 export type DefinitionResult =
-  | { ok: true; def: StoredDefinition; huella: string }
+  | { ok: true; def: StoredDefinition; huella: string; calibrada?: boolean }
   | { ok: false; motivo: string };
 
 /** Clasificación del modelo de un producto (sin geometría). */
@@ -63,7 +63,11 @@ export interface ModeloInfo {
 }
 
 export type DefinicionEfectiva =
-  | { ok: true; def: StoredDefinition; huella: string; modelo: ModeloInfo }
+  | {
+      ok: true; def: StoredDefinition; huella: string; modelo: ModeloInfo;
+      /** La definición lleva una calibración de la biblioteca (marco o bocas). */
+      calibrada: boolean;
+    }
   | { ok: false; motivo: string; modelo: ModeloInfo | null };
 
 /**
@@ -118,7 +122,9 @@ export function definicionEfectiva(product: Product, opts?: { longitud_mm?: numb
   if (!d.ok) out = { ok: false, motivo: d.motivo, modelo };
   else {
     const bad = angleMismatch(d.def);
-    out = bad || !modelo ? { ok: false, motivo: bad?.motivo ?? 'sin modelo', modelo } : { ...d, modelo };
+    out = bad || !modelo
+      ? { ok: false, motivo: bad?.motivo ?? 'sin modelo', modelo }
+      : { ok: true, def: d.def, huella: d.huella, modelo, calibrada: d.calibrada === true };
   }
   if (MEMO.size >= MEMO_MAX) MEMO.clear();
   MEMO.set(key, out);
@@ -188,7 +194,7 @@ export function buildDefinition(product: Product, opts?: { longitud_mm?: number 
     resolved: resolved.recipe,
     preTransform: resolved.preTransform,
   });
-  return { ok: true, def, huella: definitionHash(def) };
+  return { ok: true, def, huella: definitionHash(def), calibrada: !resolved.isIdentity };
 }
 
 /**

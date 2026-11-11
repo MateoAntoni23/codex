@@ -35,19 +35,15 @@
  */
 
 import type { Product } from '../tray/model';
-import { buildRecipeFor, type PieceKind } from '../parametric/geometry/recipes';
-import {
-  ESCALERA_OUTLINES_BY_SKU,
-  type EscaleraOutline,
-  type MeasuredEdge,
-} from '../parametric/geometry/escaleraOutlines';
+import type { PieceKind } from '../parametric/geometry/recipes';
+import { definicionEfectiva } from '../workspace/placement/definitions';
+import { buildDefinitionGeometry } from '../workspace/placement/placementCore';
 import {
   findMasterForProduct,
   type MasterModel,
   type MasterVariationRule,
 } from './masterModels';
 
-type Vec3Readonly = readonly [number, number, number];
 
 export type MasterVariantOrigin =
   | 'base'
@@ -98,6 +94,36 @@ export interface MasterVariant {
   readonly rationale: string;
   /** Advertencias concretas (p.ej. "regla estimada", "ala declarada 90 ≠ 65"). */
   readonly warnings: readonly string[];
+}
+
+/**
+ * Bocas y bbox de la variante desde su DEFINICIÓN EFECTIVA (B-2: el mismo
+ * camino que el espacio de trabajo; antes se proyectaban aquí con recetas y
+ * contornos propios). Cada boca del maestro se busca por nombre en la
+ * definición; bbox en el marco local de la definición (calibración incluida).
+ */
+function proyeccionDesdeDefinicion(
+  master: MasterModel,
+  product: Product,
+): { ports: readonly ProjectedPort[]; bbox: NonNullable<MasterVariant['bbox']> } | { motivo: string } {
+  const d = definicionEfectiva(product);
+  if (!d.ok) return { motivo: d.motivo };
+  const byName = new Map(d.def.ports.map((p) => [p.name, p]));
+  const ports: ProjectedPort[] = master.ports.map((mp) => {
+    const p = byName.get(mp.recipePortName);
+    return {
+      recipePortName: mp.recipePortName,
+      catalogPortName: mp.catalogPortName,
+      physicalLabel: mp.physicalLabel,
+      centerMm: p ? ([p.center[0], p.center[1], p.center[2]] as const) : null,
+      normal: p ? ([p.normal[0], p.normal[1], p.normal[2]] as const) : null,
+    };
+  });
+  const g = buildDefinitionGeometry(d.def, 'nativa');
+  g.computeBoundingBox();
+  const b = g.boundingBox!;
+  g.dispose();
+  return { ports, bbox: { min: [b.min.x, b.min.y, b.min.z] as const, max: [b.max.x, b.max.y, b.max.z] as const } };
 }
 
 // ─── Selección de productos del snapshot asociables al maestro ───────────────
@@ -206,196 +232,6 @@ function num(v: unknown): number | null {
   return typeof v === 'number' && Number.isFinite(v) ? v : null;
 }
 
-function projectPortsViaRecipe(
-  master: MasterModel,
-  targetAncho: number,
-  targetAla: number,
-  targetLongitud: number | null,
-  targetAngulo: number | null,
-): { ports: ProjectedPort[]; bbox: MasterVariant['bbox'] } | null {
-  if (master.sistema === 'escalera') {
-    return projectPortsFromEscaleraOutline(master, targetAncho, targetAla, targetLongitud, targetAngulo);
-  }
-  const key = recipeKeyForMaster(master);
-  if (!key) return null;
-  const params: Record<string, number | string | null> = {
-    ancho_mm: targetAncho,
-    ala_mm: targetAla,
-  };
-  if (key === 'tramo_recto' && targetLongitud !== null) {
-    params.longitud_mm = targetLongitud;
-  }
-  if (key === 'curva_horizontal' && targetAngulo !== null) {
-    params.angulo_deg = targetAngulo;
-  }
-  const recipe = buildRecipeFor(key, params);
-  const portByRecipeName = new Map(recipe.ports.map((p) => [p.name, p]));
-  const projected: ProjectedPort[] = master.ports.map((mp) => {
-    const rp = portByRecipeName.get(mp.recipePortName);
-    return {
-      recipePortName: mp.recipePortName,
-      catalogPortName: mp.catalogPortName,
-      physicalLabel: mp.physicalLabel,
-      centerMm: rp ? reorthoNormalizedCenter(rp.center, master.variationRule) : null,
-      normal: rp ? normalizeDir(rp.normal) : null,
-    };
-  });
-  return {
-    ports: projected,
-    bbox: { min: recipe.bboxMin as Vec3Readonly, max: recipe.bboxMax as Vec3Readonly },
-  };
-}
-
-// Normales deben permanecer unitarias — buildRecipeFor ya las produce unitarias
-// pero la variante puede introducir ruido numérico si alguna coordenada se
-// reescaló por otro factor. Reortonormalizar aquí blinda contra regresión.
-function normalizeDir(d: readonly [number, number, number]): Vec3Readonly {
-  const L = Math.hypot(d[0], d[1], d[2]);
-  if (L < 1e-9 || Math.abs(L - 1) < 1e-9) return [d[0], d[1], d[2]] as const;
-  return [d[0] / L, d[1] / L, d[2] / L] as const;
-}
-
-// Para variantes con scale no uniforme (ancho-only-z, depth-only) la receta
-// ya recibió el `ancho_mm` objetivo y buildRecipeFor emite centers escalados
-// coherentemente. No se re-escala aquí para evitar doble transformación.
-function reorthoNormalizedCenter(
-  c: readonly [number, number, number],
-  _rule: MasterVariationRule,
-): Vec3Readonly {
-  return [c[0], c[1], c[2]] as const;
-}
-
-// ─── Proyección de puertos para maestros escalera ────────────────────────────
-//
-// No hay dispatcher paramétrico publicado para escalera, pero cada maestro
-// escalera lleva un outline medido (`escaleraOutlines.ts`) con los centros 2D
-// de las bocas en el plano XZ local y la altura Y del ala. Proyectamos esos
-// centros a ancho/ala objetivo según una regla editable, reflejando la
-// decisión del usuario:
-//   - TRES (tramo_recto): regla `ala-independent` MEDIDA (polígono rectangular;
-//     Z escala por ancho/300, X escala por longitud/3000, Y escala por ala/65).
-//   - CS/TS/XS (no tramo_recto): hipótesis visual `uniform-xz` por ancho/300,
-//     Y independiente por ala/65 — EXPLÍCITA como no validada.
-//   - RIS (reducción): sin regla (baseParams.ancho_mm fijo 300→150), no se
-//     proyecta hacia otro ancho sin STEP.
-function escaleraBaseSku(master: MasterModel): string | null {
-  switch (master.id) {
-    case 'master:escalera:tramo_recto':
-      return 'SAM_TRES-300-065-18-Z';
-    case 'master:escalera:curva_horizontal_45':
-      return 'SAM_CS-300-45-065-18-Z';
-    case 'master:escalera:curva_horizontal_90':
-      return 'SAM_CS-300-90-065-18-Z';
-    case 'master:escalera:derivacion_lateral':
-      return 'SAM_TS-300-065-18-Z';
-    case 'master:escalera:cruz':
-      return 'SAM_XS-300-065-18-Z';
-    case 'master:escalera:reduccion_lateral':
-      return 'SAM_RIS-15-065-18-Z';
-    default:
-      return null;
-  }
-}
-
-function getEscaleraOutlineForMaster(master: MasterModel): EscaleraOutline | null {
-  const sku = escaleraBaseSku(master);
-  if (!sku) return null;
-  const outline = (ESCALERA_OUTLINES_BY_SKU as Record<string, EscaleraOutline>)[sku];
-  return outline ?? null;
-}
-
-/**
- * Proyecta un `MeasuredEdge` del outline (plano XZ, ala en Y) a un centro 3D
- * (x, y, z) aplicando factores por eje. La ala se centra en Y: midpoint.y =
- * ala / 2 (los puertos están en el plano medio del extruido).
- *
- * `factorX` escala X del polígono (longitud para TRES; ancho/300 en la
- * hipótesis uniform-xz para el resto). `factorZ` escala Z del polígono. No
- * aplicamos escala a la NORMAL — la outward_normal es ortonormal por
- * construcción y una escala no uniforme la distorsionaría; la mantenemos
- * literal porque una boca queda perpendicular a su arista también después
- * del escalado (las aristas candidatas están alineadas con x_min/x_max/
- * z_min/z_max, i.e. ejes puros).
- */
-function projectEscaleraEdge(
-  edge: MeasuredEdge,
-  factorX: number,
-  factorZ: number,
-  targetAla: number,
-): { center: Vec3Readonly; normal: Vec3Readonly } {
-  const cxLocal = edge.midpoint[0] * factorX;
-  const czLocal = edge.midpoint[1] * factorZ;
-  // Marco del maestro escalera: polígono en XZ local, Y = ala. Para que la
-  // boca quede centrada en la altura del ala, Y = ala/2.
-  const centerY = targetAla / 2;
-  return {
-    center: [cxLocal, centerY, czLocal] as const,
-    normal: [edge.outward_normal[0], 0, edge.outward_normal[1]] as const,
-  };
-}
-
-function projectPortsFromEscaleraOutline(
-  master: MasterModel,
-  targetAncho: number,
-  targetAla: number,
-  targetLongitud: number | null,
-  _targetAngulo: number | null,
-): { ports: ProjectedPort[]; bbox: MasterVariant['bbox'] } | null {
-  const outline = getEscaleraOutlineForMaster(master);
-  if (!outline) return null;
-
-  const baseAncho = master.baseParams.ancho_mm;
-  const baseLong = master.baseParams.longitud_mm ?? null;
-
-  // Determinar escala por eje según el tipo de maestro.
-  let factorX = 1;
-  let factorZ = 1;
-  if (master.pieceKind === 'tramo_recto') {
-    // TRES: longitud escala X; ancho escala Z (regla ala-independent medida).
-    if (baseLong !== null && targetLongitud !== null && baseLong > 0) {
-      factorX = targetLongitud / baseLong;
-    }
-    if (baseAncho > 0) {
-      factorZ = targetAncho / baseAncho;
-    }
-  } else {
-    // Curvas, T, cruz: hipótesis visual uniform-xz (explícita).
-    if (baseAncho > 0) {
-      factorX = targetAncho / baseAncho;
-      factorZ = targetAncho / baseAncho;
-    }
-  }
-
-  // Cada puerto del maestro se proyecta desde la boca del contorno con su
-  // mismo nombre (declarado en tools/step_parametric/escalera_bocas.json).
-  // Antes se emparejaba por posición y por la etiqueta de borde de bbox
-  // (x_min, …): las bocas que no caen sobre un borde (cara diagonal de la
-  // CS-45) quedaban sin proyectar, y en la T P2/P3 salían intercambiadas
-  // respecto del maestro (P2 = tronco z_max, P3 = derivación x_max).
-  const bocaPorNombre = new Map(outline.boundary_edges.map((e) => [e.nombre, e]));
-  const projected: ProjectedPort[] = master.ports.map((mp) => {
-    const boca = bocaPorNombre.get(mp.recipePortName);
-    const geom = boca ? projectEscaleraEdge(boca, factorX, factorZ, targetAla) : null;
-    return {
-      recipePortName: mp.recipePortName,
-      catalogPortName: mp.catalogPortName,
-      physicalLabel: mp.physicalLabel,
-      centerMm: geom ? geom.center : null,
-      normal: geom ? geom.normal : null,
-    };
-  });
-
-  const bboxMax: Vec3Readonly = [
-    outline.bbox_local.x_max * factorX,
-    targetAla,
-    outline.bbox_local.z_max * factorZ,
-  ] as const;
-  return {
-    ports: projected,
-    bbox: { min: [0, 0, 0] as const, max: bboxMax },
-  };
-}
-
 // ─── Clasificación por variante ──────────────────────────────────────────────
 
 function classifyOrigin(
@@ -477,9 +313,29 @@ export function enumerateVariantsForMaster(
       continue;
     }
 
-    const effectiveAla = ala ?? baseAla;
+    // Sin ala declarada no se toma la del maestro (B-1.1): se lista sin bocas.
+    if (ala === null) {
+      variants.push({
+        productId: product.producto_id,
+        sku: product.sku,
+        product,
+        origin: 'requires-master',
+        ancho_mm: ancho,
+        ala_mm: null,
+        longitud_mm: longitud,
+        angulo_deg: angulo,
+        deltaFromMaster: { ancho_mm: ancho - baseAncho, ala_mm: 0, longitud_mm: 0, angulo_deg: 0 },
+        scale: { x: 1, y: 1, z: 1 },
+        ports: [],
+        bbox: null,
+        rationale: 'El snapshot no declara ala_nominal_mm — no se puede derivar variante por regla.',
+        warnings: ['Falta ala_nominal_mm en el catálogo.'],
+      });
+      continue;
+    }
+    const effectiveAla = ala;
     const deltaAncho = ancho - baseAncho;
-    const deltaAla = (ala ?? baseAla) - baseAla;
+    const deltaAla = ala - baseAla;
     const deltaLong = (longitud ?? baseLong) - baseLong;
     const deltaAng = (angulo ?? baseAng) - baseAng;
 
@@ -522,14 +378,16 @@ export function enumerateVariantsForMaster(
       rationale = `Diferencia respecto al maestro (Δancho=${deltaAncho}, Δala=${deltaAla}) fuera del alcance de la regla "${master.variationRule.kind}". Necesita STEP propio.`;
     } else if (origin === 'base') {
       rationale = 'Dimensionales iguales al maestro — la variante es la geometría base.';
-      const proj = projectPortsViaRecipe(master, ancho, effectiveAla, longitud, angulo);
-      if (proj) {
+      const proj = proyeccionDesdeDefinicion(master, product);
+      if ('motivo' in proj) warnings.push(`Sin definición efectiva: ${proj.motivo}`);
+      else {
         ports = proj.ports;
         bbox = proj.bbox;
       }
     } else {
-      const proj = projectPortsViaRecipe(master, ancho, effectiveAla, longitud, angulo);
-      if (proj) {
+      const proj = proyeccionDesdeDefinicion(master, product);
+      if ('motivo' in proj) warnings.push(`Sin definición efectiva: ${proj.motivo}`);
+      else {
         ports = proj.ports;
         bbox = proj.bbox;
       }

@@ -5,11 +5,15 @@
  * (colocación guardada): mismo cálculo de geometría y misma matriz. La matriz
  * del objeto es la pose (rotación + traslación) pasada a metros del visor; la
  * mano y la calibración del modelo van horneadas en la geometría.
+ *
+ * `estilo='escalera'`: largueros + planta desde la misma definición (B-2), en
+ * lugar del prisma macizo. Misma matriz, mismas bocas.
  */
 import { useLayoutEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import type { ThreeEvent } from '@react-three/fiber';
 import { buildDefinitionGeometry, poseMatrix, worldPorts, type Mano, type Pose, type StoredDefinition } from './placementCore';
+import { buildLadderDefinitionGeometry } from './ladderDefinitionGeometry';
 
 /** mm (Z arriba) → visor m (Y arriba). */
 export const MM_TO_VIEWER = new THREE.Matrix4().set(
@@ -24,7 +28,7 @@ export function placedMeshMatrix(pose: Pose): THREE.Matrix4 {
 }
 
 export function PlacedMesh({
-  def, huella, mano, pose, userData, color, opacity, onClick, depthWrite = true,
+  def, huella, mano, pose, userData, color, opacity, onClick, depthWrite = true, estilo = 'macizo',
 }: {
   def: StoredDefinition;
   huella: string;
@@ -35,8 +39,12 @@ export function PlacedMesh({
   opacity: number;
   onClick?: () => void;
   depthWrite?: boolean;
+  estilo?: 'macizo' | 'escalera';
 }) {
-  const geom = useMemo(() => buildDefinitionGeometry(def, mano), [huella, mano]); // eslint-disable-line react-hooks/exhaustive-deps
+  const geom = useMemo(
+    () => (estilo === 'escalera' ? buildLadderDefinitionGeometry(def, mano) : buildDefinitionGeometry(def, mano)),
+    [huella, mano, estilo], // eslint-disable-line react-hooks/exhaustive-deps
+  );
   const matrix = useMemo(() => placedMeshMatrix(pose), [pose]);
   const ref = useRef<THREE.Mesh | null>(null);
   useLayoutEffect(() => {
@@ -65,7 +73,7 @@ export function PlacedMesh({
       onClick={onClick ? (e: ThreeEvent<MouseEvent>) => { e.stopPropagation(); onClick(); } : undefined}
     >
       <primitive object={geom} attach="geometry" />
-      <meshStandardMaterial color={color} transparent opacity={opacity} depthWrite={depthWrite} side={THREE.FrontSide} />
+      <meshStandardMaterial color={color} transparent opacity={opacity} depthWrite={depthWrite} side={estilo === 'escalera' ? THREE.DoubleSide : THREE.FrontSide} />
     </mesh>
   );
 }

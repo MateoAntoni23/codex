@@ -27,7 +27,8 @@
  * continuaciones desde las bocas P2_vertical libres (ruta usual del workspace).
  */
 import { planAddAccessory } from './workspaceOperation';
-import { placeRecipe, resolveRecipe } from './parametricBridge';
+import { definicionEfectiva } from './placement/definitions';
+import { placeDefinition, type WorldPort } from './placement/placementCore';
 import type { TrayInput, Product, Piece } from '../tray/model';
 import type { StartPort, DirectCompatResult } from './routingRules';
 
@@ -113,6 +114,23 @@ function compatOk(portName: string): DirectCompatResult {
  * de la CUPS como `startPort`. El resultado es un árbol operativo sin cálculo
  * del motor — basta para demostrar preview/confirmed/recovery.
  */
+/**
+ * Coloca un tramo de 3000 mm desde su definición efectiva (B-2: el mismo
+ * camino que el resto del espacio de trabajo), entrando por P1.
+ */
+function colocarTramo(trps: Product, startPos: readonly number[], entryDir: readonly number[], sectionUp?: readonly number[]): { p1: WorldPort; p2: WorldPort } {
+  const d = definicionEfectiva(trps, { longitud_mm: 3000 });
+  if (!d.ok) throw new Error(`cupsTestChain: ${trps.sku}: ${d.motivo}`);
+  const { ports } = placeDefinition({
+    def: d.def, huella: d.huella, mano: 'nativa', entryPortName: 'P1',
+    startPos: startPos as [number, number, number], entryDir: entryDir as [number, number, number],
+    ...(sectionUp ? { sectionUp: sectionUp as [number, number, number] } : {}),
+  });
+  return { p1: ports.find((p) => p.name === 'P1')!, p2: ports.find((p) => p.name === 'P2')! };
+}
+
+const v3 = (v: readonly number[]) => [v[0], v[1], v[2]] as [number, number, number];
+
 function buildChain(
   trps: Product,
   cups: Product,
@@ -125,25 +143,22 @@ function buildChain(
   },
   yOffsetMm: number,
 ): { piezas: Piece[]; conexiones: TrayInput['conexiones'] } {
-  const trpsRecipe = resolveRecipe(trps)!;
-  const cupsRecipe = resolveRecipe(cups)!;
-
   // Primer recto entrante.
-  const trps1Placed = placeRecipe(trps, trpsRecipe, [0, yOffsetMm, 25], [1, 0, 0], 'native');
+  const trps1Placed = colocarTramo(trps, [0, yOffsetMm, 25], [1, 0, 0]);
   const trps1: Piece = {
     instancia_id: ids.trps1,
     producto_id: trps.producto_id,
     longitud_mm: 3000,
     puertos: {
       P1: {
-        posicion_mm: trps1Placed.p1.pos as [number, number, number],
-        direccion: trps1Placed.p1.outwardNormal as [number, number, number],
-        orientacion_seccion_ws: trps1Placed.p1.vDir as [number, number, number],
+        posicion_mm: v3(trps1Placed.p1.pos),
+        direccion: v3(trps1Placed.p1.normal),
+        orientacion_seccion_ws: v3(trps1Placed.p1.vDir),
       },
       P2: {
-        posicion_mm: trps1Placed.p2.pos as [number, number, number],
-        direccion: trps1Placed.p2.outwardNormal as [number, number, number],
-        orientacion_seccion_ws: trps1Placed.p2.vDir as [number, number, number],
+        posicion_mm: v3(trps1Placed.p2.pos),
+        direccion: v3(trps1Placed.p2.normal),
+        orientacion_seccion_ws: v3(trps1Placed.p2.vDir),
       },
     },
   };
@@ -152,9 +167,9 @@ function buildChain(
   const startFromTrps1P2: StartPort = {
     pieceId: ids.trps1,
     portName: 'P2',
-    pos: trps1Placed.p2.pos as [number, number, number],
-    dir: trps1Placed.p2.outwardNormal as [number, number, number],
-    sectionUp: trps1Placed.p2.vDir as [number, number, number],
+    pos: v3(trps1Placed.p2.pos),
+    dir: v3(trps1Placed.p2.normal),
+    sectionUp: v3(trps1Placed.p2.vDir),
   };
   const initialInput: TrayInput = {
     version_contrato: 'trazado/1',
@@ -183,33 +198,24 @@ function buildChain(
     b: [ids.cups, planCups.newConnection.b[1]] as [string, string],
   };
 
-  // Segundo recto desde P2_vertical de la CUPS. Usamos placeRecipe directamente
-  // con la boca P2_vertical como startPort — así el tercer tramo hereda el v_dir
-  // de la salida CUPS y queda alineado 100%.
+  // Segundo recto desde P2_vertical de la CUPS, con la boca P2_vertical como
+  // inicio: el tercer tramo hereda el v_dir de la salida CUPS.
   const cupsP2v = cupsPieceWithScenarioId.puertos.P2_vertical;
-  const trps2Placed = placeRecipe(
-    trps,
-    trpsRecipe,
-    cupsP2v.posicion_mm as [number, number, number],
-    cupsP2v.direccion as [number, number, number],
-    'native',
-    undefined,
-    { sectionUp: cupsP2v.orientacion_seccion_ws as [number, number, number] | undefined },
-  );
+  const trps2Placed = colocarTramo(trps, cupsP2v.posicion_mm, cupsP2v.direccion, cupsP2v.orientacion_seccion_ws);
   const trps2: Piece = {
     instancia_id: ids.trps2,
     producto_id: trps.producto_id,
     longitud_mm: 3000,
     puertos: {
       P1: {
-        posicion_mm: trps2Placed.p1.pos as [number, number, number],
-        direccion: trps2Placed.p1.outwardNormal as [number, number, number],
-        orientacion_seccion_ws: trps2Placed.p1.vDir as [number, number, number],
+        posicion_mm: v3(trps2Placed.p1.pos),
+        direccion: v3(trps2Placed.p1.normal),
+        orientacion_seccion_ws: v3(trps2Placed.p1.vDir),
       },
       P2: {
-        posicion_mm: trps2Placed.p2.pos as [number, number, number],
-        direccion: trps2Placed.p2.outwardNormal as [number, number, number],
-        orientacion_seccion_ws: trps2Placed.p2.vDir as [number, number, number],
+        posicion_mm: v3(trps2Placed.p2.pos),
+        direccion: v3(trps2Placed.p2.normal),
+        orientacion_seccion_ws: v3(trps2Placed.p2.vDir),
       },
     },
   };
@@ -218,10 +224,6 @@ function buildChain(
     a: [ids.cups, 'P2_vertical'] as [string, string],
     b: [ids.trps2, 'P1'] as [string, string],
   };
-
-  // Nota: referenciamos cupsRecipe para evitar advertencias de variable unused
-  // en caso de que la receta de CUPS incluya overrides futuros.
-  void cupsRecipe;
 
   return {
     piezas: [trps1, cupsPieceWithScenarioId, trps2],

@@ -5,9 +5,10 @@
  * Carga `e2e/fixtures/user-report-20261107.workspace.json` tal cual exportó el
  * usuario, usando el mismo flujo del botón "Importar JSON" (importWorkspace →
  * loadFile + trayStore.importEdit). Verifica, sin modificar el fixture:
- *   1. Las 7 piezas se renderizan por el generador de escalera
- *      (ladder-straight / ladder-curve / ladder-tee) y no por los fallbacks
- *      box/line.
+ *   1. Las 7 piezas se renderizan como escalera: desde su definición
+ *      (ladder-definition) las resueltas, por el esquema de largueros
+ *      (ladder-straight / ladder-curve / ladder-tee) las sin resolver; nunca por
+ *      los fallbacks box/line.
  *   2. Los puertos renderizados (los que usa la geometría escalera) coinciden
  *      con los puertos almacenados (ε < 0.1 mm). Es decir, la malla se ajusta
  *      a los puertos: no se mueve ningún puerto.
@@ -204,11 +205,10 @@ test.describe('Reporte del usuario — escalera Z', () => {
       const pz = parsed.trayInput.piezas.find((p) => p.instancia_id === id)!;
       console.log(`  ${id} (${pz.producto_id}) → ${m?.kind ?? 'MISSING'}  (width=${m?.widthMm ?? '∅'} ala=${m?.alaMm ?? '∅'} len/radius/tronco=${m?.lenMm ?? m?.radiusMm ?? m?.troncoLenMm ?? '∅'})`);
       expect(m, `${id} debe tener root-tag de escalera`).toBeTruthy();
-      // El dispatcher prioriza el render medido (`ladder-measured`) cuando
-      // existe outline STEP para el SKU; si falla la alineación cae al
-      // generador por puertos (`ladder-straight|curve|tee`). Ambos son
-      // rutas válidas para la familia escalera.
-      expect(m!.kind, `${id} ruta de render`).toMatch(/^ladder-(straight|curve|tee|measured)$/);
+      // B-2: una pieza de escalera con definición guardada se dibuja desde
+      // ella (`ladder-definition`); sin definición (sin resolver: T1, CS1) por
+      // el esquema de largueros a partir de sus bocas (`ladder-straight|curve|tee`).
+      expect(m!.kind, `${id} ruta de render`).toMatch(/^ladder-(straight|curve|tee|definition)$/);
     }
 
     // 2 — Puertos renderizados coinciden con puertos almacenados (no se moviero).

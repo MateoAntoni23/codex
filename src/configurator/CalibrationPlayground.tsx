@@ -40,12 +40,20 @@ import { Canvas, useThree } from '@react-three/fiber';
 import { Line, OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
 import type { Product } from '../tray/model';
+import { definicionEfectiva, modeloDeProducto } from '../workspace/placement/definitions';
 import {
-  buildLocalMesh,
-  placeRecipe,
-  resolveParametricEntry,
-  type PlacedRecipe,
-} from '../workspace/parametricBridge';
+  buildDefinitionRawGeometry,
+  definitionPreTransform,
+  placeDefinition,
+  poseMatrix,
+  worldPorts,
+} from '../workspace/placement/placementCore';
+
+/** Colocación capturada: matriz cruda→mundo (pose · calibración) y bocas en mundo. */
+interface PlacedSnapshot {
+  readonly matrix: THREE.Matrix4;
+  readonly ports: readonly { readonly name: string; readonly pos: V3; readonly outwardNormal: V3 }[];
+}
 import { useCatalogConfigStore } from './catalogConfigStore';
 
 // Igual que ConfiguratorViewer: convierte mm → sistema de coordenadas R3F.
@@ -61,7 +69,7 @@ type V3 = readonly [number, number, number];
 type Role = 'preview' | 'confirmed';
 
 interface Snapshot {
-  readonly placed: PlacedRecipe;
+  readonly placed: PlacedSnapshot;
   readonly localGeom: THREE.BufferGeometry;
   /** Matriz world (mm) × MM_TO_VIEWER para que el mesh renderice en metros. */
   readonly viewerMatrix: THREE.Matrix4;
@@ -73,7 +81,7 @@ function toViewerPoint(mm: V3): [number, number, number] {
   return [mm[0] / 1000, mm[2] / 1000, -mm[1] / 1000];
 }
 
-function PortMarkers({ placed, color, role }: { placed: PlacedRecipe; color: string; role: Role }) {
+function PortMarkers({ placed, color, role }: { placed: PlacedSnapshot; color: string; role: Role }) {
   // Cada puerto: una esfera en su centro + segmento siguiendo la normal exterior.
   // Las coordenadas vienen ya en mm en el mundo (post-placeRecipe).
   return (
@@ -228,18 +236,21 @@ function CalibrationSceneBridge({
 }
 
 function buildSnapshot(product: Product): Snapshot | { error: string } {
-  const entry = resolveParametricEntry(product);
-  if (!entry) return { error: 'Este producto no tiene receta paramétrica disponible.' };
+  // B-2: la misma definición efectiva y la misma colocación que el espacio de trabajo.
+  const d = definicionEfectiva(product);
+  if (!d.ok) return { error: d.motivo };
   try {
-    const placed = placeRecipe(
-      product,
-      entry,
-      [0, 0, 0],
-      [1, 0, 0],
-      'native',
-    );
-    const localGeom = buildLocalMesh(placed.recipe);
-    const viewerMatrix = new THREE.Matrix4().multiplyMatrices(MM_TO_VIEWER, placed.matrix);
+    const entryPortName = d.def.ports.find((p) => p.name === 'P1')?.name ?? d.def.ports[0]?.name ?? 'P1';
+    const { colocacion } = placeDefinition({
+      def: d.def, huella: d.huella, mano: 'nativa', entryPortName, startPos: [0, 0, 0], entryDir: [1, 0, 0],
+    });
+    const matrix = poseMatrix(colocacion.pose).multiply(definitionPreTransform(d.def));
+    const placed: PlacedSnapshot = {
+      matrix,
+      ports: worldPorts(d.def, 'nativa', colocacion.pose).map((p) => ({ name: p.name, pos: p.pos as V3, outwardNormal: p.normal as V3 })),
+    };
+    const localGeom = buildDefinitionRawGeometry(d.def);
+    const viewerMatrix = new THREE.Matrix4().multiplyMatrices(MM_TO_VIEWER, matrix);
     return { placed, localGeom, viewerMatrix, takenAt: new Date().toISOString() };
   } catch (err) {
     return { error: (err as Error).message };
@@ -268,7 +279,7 @@ export function CalibrationPlayground({ product }: { product: Product }) {
     setError(null);
   }, [productId]);
 
-  const hasRecipe = useMemo(() => !!resolveParametricEntry(product), [product]);
+  const hasRecipe = useMemo(() => !!modeloDeProducto(product), [product]);
 
   const handleInsertPreview = useCallback(() => {
     const snap = buildSnapshot(product);

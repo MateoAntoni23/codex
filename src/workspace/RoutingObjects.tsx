@@ -19,11 +19,10 @@ import {
 import type { Point3 } from './routingRules';
 import { computeTurnPerp } from './addCurvePiece';
 import { isHorizontalCurve } from './pieceClassification';
-import { resolveRecipe, type Vec3 as BridgeVec3 } from './parametricBridge';
+import { tieneDefinicion } from './placement/definitions';
 import { isPortDiagEnabled } from './portFrameDiag';
 import { PlacedMesh } from './placement/PlacedMesh';
-import { puertosFromWorld } from './placement/placementCore';
-import { LadderPiece, isLadderFamily } from './ladderGeometry';
+import { isLadderFamily } from './ladderGeometry';
 import { routingPlacementFromState } from './placement/routingPlacementState';
 
 function toViewer(mm: Point3): Point3 {
@@ -176,48 +175,17 @@ export function RoutingObjects() {
     [context, entrada, startPort, selectedProductId, entryPortName, turnDirection, previewLengthMm, snapToAxis, step],
   );
 
-  // (Previo al hito 2) datos del preview paramétrico — ya no se usan.
-  const parametricPreview = useMemo(() => {
-    if (!startPort || step === 'selectingPort' || !selectedProduct) return null;
-    const entry = resolveRecipe(selectedProduct);
-    if (!entry) return null;
-    // La dirección de avance que recibe el puente es la dirección "hacia la
-    // nueva pieza", opuesta a la normal saliente del P1 origen (pieza previa).
-    const entryDir: BridgeVec3 = [
-      startPort.dir[0],
-      startPort.dir[1],
-      startPort.dir[2],
-    ];
-    const startPos: BridgeVec3 = [
-      startPort.pos[0],
-      startPort.pos[1],
-      startPort.pos[2],
-    ];
-    const sectionUp: BridgeVec3 | null = startPort.sectionUp
-      ? [startPort.sectionUp[0], startPort.sectionUp[1], startPort.sectionUp[2]]
-      : null;
-    // Para rectos, usar previewLengthMm si se configuró; si no, longitud catalogo.
-    const overrideLengthMm = entry.piece_kind === 'tramo_recto' && previewLengthMm > 0
-      ? previewLengthMm
-      : null;
-    return {
-      product: selectedProduct,
-      startPos,
-      entryDir,
-      sectionUp,
-      overrideLengthMm,
-    };
-  }, [startPort, step, selectedProduct, previewLengthMm]);
-
   const previewData = useMemo(() => {
     if (!startPort || step === 'selectingPort') return null;
-    // Si hay modelo (colocación calculada), el fallback no se calcula.
-    if (parametricPreview || placement) return null;
+    // Si hay modelo (colocación calculada), el esquema de reserva no se calcula.
+    if (placement || tieneDefinicion(selectedProduct)) return null;
 
     if (selectedProduct && isHorizontalCurve(selectedProduct)) {
       const angleDeg = (selectedProduct as Record<string, unknown>).angulo_grados as number | undefined;
-      const radioInterior = (selectedProduct as Record<string, unknown>).radio_mm as number | undefined ?? 300;
-      if (!angleDeg || angleDeg <= 0) return null;
+      // Sin modelo: esquema con el radio del catálogo; sin radio declarado no
+      // hay esquema (no se inventa uno; la confirmación también lo rechaza).
+      const radioInterior = (selectedProduct as Record<string, unknown>).radio_mm as number | undefined;
+      if (!angleDeg || angleDeg <= 0 || typeof radioInterior !== 'number') return null;
       const radiusMm = radioInterior + (selectedProduct.ancho_nominal_mm ?? 150) / 2;
       const entryDir = startPort.dir;
       const turnPerp = computeTurnPerp(entryDir, turnDirection);
@@ -256,7 +224,7 @@ export function RoutingObjects() {
       (endV[2] - startV[2]) / len,
     ];
     return { type: 'straight' as const, center, dirV, len };
-  }, [startPort, step, previewLengthMm, snapToAxis, selectedProduct, turnDirection, parametricPreview, placement]);
+  }, [startPort, step, previewLengthMm, snapToAxis, selectedProduct, turnDirection, placement]);
 
   if (!active || !entrada) return null;
 
@@ -298,17 +266,9 @@ export function RoutingObjects() {
       )}
 
       {/* Preview paramétrico (receta medida) — tiene prioridad sobre el fallback */}
-      {placement?.ok && selectedProduct && isLadderFamily(selectedProduct) && (
-        // Escalera: mismo generador que la pieza confirmada, desde las mismas bocas.
-        <LadderPiece
-          piece={{ instancia_id: '__preview__', producto_id: selectedProduct.producto_id, puertos: puertosFromWorld(placement.ports) }}
-          product={selectedProduct}
-          selected={false}
-          onClick={() => undefined}
-        />
-      )}
-      {placement?.ok && selectedProduct && !isLadderFamily(selectedProduct) && (
+      {placement?.ok && selectedProduct && (
         <PlacedMesh
+          estilo={isLadderFamily(selectedProduct) ? 'escalera' : 'macizo'}
           def={placement.def}
           huella={placement.huella}
           mano={placement.colocacion.mano}
