@@ -1,12 +1,23 @@
 /**
  * outlines.ts — polígonos canónicos por tipo de pieza STP-Z 300.
  *
- * Los polígonos están medidos directamente sobre los GLB de REFERENCIA
- * aportados al proyecto (vértices por cara extraídos de los accessor min/max),
- * trasladados al marco canónico (centro del bbox GLB → centro del bbox
- * canónico). La procedencia de los GLB (originales del fabricante vs
- * reconstruidos por el usuario) no está confirmada; se usan como referencia
- * geométrica, no como fuente oficial de cotas comerciales.
+ * Procedencia (cadena completa):
+ *   1. STEP de SolidWorks aportado por el usuario (análisis y sha256 en
+ *      `tools/step_parametric/report/<pieza>.json`). Si el STEP es original
+ *      del fabricante o un modelo hecho por el usuario no está confirmado: se
+ *      usa como referencia geométrica, no como fuente oficial de cotas.
+ *   2. `tools/step_parametric/build_all.py` (`_export_originals_glb`) lo
+ *      convierte con CadQuery a `public/parametric/originals_glb/<pieza>.glb`,
+ *      una primitiva por cara del sólido.
+ *   3. Los vértices de cada polígono se tomaron de ese GLB (min/max de los
+ *      accessor de cada cara), se trasladaron al marco canónico (centro del
+ *      bbox GLB → centro del bbox canónico) y se copiaron aquí como literales
+ *      redondeados a 0,01 mm (`4236323`). Ese paso no quedó versionado como
+ *      herramienta: no hay `__outline.json` para perforada.
+ * Por eso "medido del GLB" (comentarios) y "medido del STEP de referencia"
+ * (notas de cada receta, visibles en la interfaz) dicen lo mismo: el GLB es el
+ * STEP convertido. `perforadaOutlinesVsGlb.test.ts` contrasta CPS-45 y CPS-90
+ * con su GLB.
  *
  * Son la fuente de verdad del contorno 2D que reemplaza la revolución suave
  * de CadQuery, que no reflejaba las secciones rectas con quiebres reales.
@@ -149,8 +160,9 @@ export function buildTRPSRecipe(params: {
 
 // -----------------------------------------------------------------------------
 // CPS-45 — codo plano 45°.
-// Polígono medido (ancho=300) del GLB CPS-300-45-Z, trasladado al marco
-// canónico. Para variantes se aplica escala uniforme desde el origen.
+// Polígono (ancho=300) del STEP CPS-300-45-Z vía su GLB original (cadena en
+// el encabezado), trasladado al marco canónico. Para variantes se aplica
+// escala uniforme desde el origen.
 // -----------------------------------------------------------------------------
 
 const CPS45_OUTLINE_300: readonly V2[] = [
@@ -200,7 +212,8 @@ export function buildCPS45Recipe(params: {
 
 // -----------------------------------------------------------------------------
 // CPS-90 — codo plano 90°.
-// Polígono medido (ancho=300) del GLB CPS-300-90-Z.
+// Polígono (ancho=300) del STEP CPS-300-90-Z vía su GLB original (cadena en
+// el encabezado).
 // -----------------------------------------------------------------------------
 
 const CPS90_OUTLINE_300: readonly V2[] = [
@@ -251,7 +264,7 @@ export function buildCPS90Recipe(params: {
 
 // -----------------------------------------------------------------------------
 // DCPS — derivación T lateral (identificación en revisión).
-// Polígono medido (ancho=300) del archivo `DCPS-300-Z.STEP` con chaflanes
+// Polígono (ancho=300) del STEP `DCPS-300-Z.STEP` vía su GLB original, con chaflanes
 // interiores. Las tres bocas son 300 mm (el modelo previo truncaba las del
 // tronco a 75).
 //
@@ -321,7 +334,7 @@ export function buildDCPSRecipe(params: {
 
 // -----------------------------------------------------------------------------
 // XPS — cruz plana.
-// Polígono medido (ancho=300) del GLB XPS-300-Z. 16 vértices: 4 chaflanes
+// Polígono (ancho=300) del STEP XPS-300-Z vía su GLB original. 16 vértices: 4 chaflanes
 // 45° en las esquinas interiores.
 // -----------------------------------------------------------------------------
 
@@ -403,7 +416,7 @@ export function buildXPSRecipe(params: {
 // son (0,−1,0) y (−1,0,0) — la pieza transiciona de horizontal a vertical.
 // -----------------------------------------------------------------------------
 
-/** Perfil medido sobre el GLB original (marco XY del STEP, pre-rotación). */
+/** Perfil del STEP CUPS-300-A-Z vía su GLB original (marco XY del STEP, pre-rotación). */
 const CUPS_OUTLINE_300_XY_STEP: readonly V2[] = [
   [-54.63, 25.85],
   [-28.78, 0],
