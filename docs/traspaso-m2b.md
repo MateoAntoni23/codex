@@ -1,6 +1,7 @@
 # Traspaso — Hito 2, fase B (rama `feat/m2b-definicion-unica`)
 
-Estado al 2026-11-11. **B-2 cerrada y verificada** (`8242769`). Alcance recortado por el operador: ver
+Estado al 2026-11-11. **B-2, B-3 (reducida) y B-4 cerradas.** Verify final sobre `8e3702e` en un worktree
+nuevo: tipos OK, Vitest 1686/1686, motor 190 OK (2 omitidas), Playwright 90/90. Alcance recortado por el operador: ver
 "Recorte de alcance" al final.
 Base: `a7794b8`. Encargo completo: ver el mensaje del operador "ENCARGO: HITO 2, FASE B".
 
