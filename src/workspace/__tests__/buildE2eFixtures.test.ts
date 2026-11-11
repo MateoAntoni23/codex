@@ -1,13 +1,19 @@
 /**
- * Fixture-generator: escribe en e2e/fixtures/*.json el TrayInput post-construcción
- * para los escenarios TRPS → CPS-90 (left/right) → TRPS. Lo consume el test e2e
- * (Playwright) para inyectar estado real sin tener que reproducir la secuencia
- * de clicks del RoutingPanel.
+ * Fixture-generator: construye el TrayInput post-construcción para los
+ * escenarios TRPS → CPS-90 (left/right) → TRPS que consume la E2E
+ * `trpsCpsAlignment` (Playwright) desde e2e/fixtures/tray-{left,right}.json.
  *
- * Correr con: npx vitest run e2e/fixtures/buildFixtures.test.ts
+ * En una corrida normal NO toca los fixtures versionados: escribe lo generado
+ * en test-results/ (ignorado por git) y comprueba que coincide con el fixture
+ * versionado, salvo las marcas de tiempo (`fecha_iso`). Antes los reescribía en
+ * cada `npm test`, lo que ensuciaba el árbol y llegó a colarse en un commit.
+ *
+ * Para regenerar los versionados a propósito (p. ej. tras cambiar la
+ * construcción), en PowerShell:
+ *   $env:CODEX_UPDATE_E2E_FIXTURES='1'; npx vitest run src/workspace/__tests__/buildE2eFixtures.test.ts
  */
-import { describe, it } from 'vitest';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { describe, expect, it } from 'vitest';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { checkDirectCompatibility } from '../routingRules';
 import {
@@ -25,6 +31,7 @@ const SNAPSHOT_PATH = resolve(
   '../../../vendor/motor_bandejas/datos/catalogo/catalogo_bandejas_snapshot.json',
 );
 const FIXTURE_DIR = resolve(__dirname, '../../../e2e/fixtures');
+const GENERATED_DIR = resolve(__dirname, '../../../test-results/e2e-fixtures-generados');
 
 interface Snapshot {
   PRODUCTOS: Product[];
@@ -76,11 +83,29 @@ function buildScenario(turn: 'left' | 'right'): TrayInput {
   return tray;
 }
 
+/** Copia sin marcas de tiempo: lo único que cambia entre corridas. */
+function sinFechas(value: unknown): unknown {
+  return JSON.parse(JSON.stringify(value, (k, v) => (k === 'fecha_iso' ? undefined : v)));
+}
+
 describe('fixtures/buildFixtures', () => {
-  it('write right/left scenarios', () => {
-    const right = buildScenario('right');
-    const left = buildScenario('left');
-    writeFileSync(resolve(FIXTURE_DIR, 'tray-right.json'), JSON.stringify(right, null, 2));
-    writeFileSync(resolve(FIXTURE_DIR, 'tray-left.json'), JSON.stringify(left, null, 2));
+  it('right/left: lo generado coincide con el fixture versionado (sin reescribirlo)', () => {
+    const update = process.env.CODEX_UPDATE_E2E_FIXTURES === '1';
+    mkdirSync(GENERATED_DIR, { recursive: true });
+    for (const turn of ['right', 'left'] as const) {
+      const name = `tray-${turn}.json`;
+      const generated = buildScenario(turn);
+      const text = JSON.stringify(generated, null, 2);
+      writeFileSync(resolve(GENERATED_DIR, name), text);
+      if (update) {
+        writeFileSync(resolve(FIXTURE_DIR, name), text);
+        continue;
+      }
+      const versioned = JSON.parse(readFileSync(resolve(FIXTURE_DIR, name), 'utf-8'));
+      expect(
+        sinFechas(generated),
+        `${name} desactualizado: regenerar con CODEX_UPDATE_E2E_FIXTURES=1 (ver cabecera)`,
+      ).toEqual(sinFechas(versioned));
+    }
   });
 });
