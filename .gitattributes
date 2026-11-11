@@ -4,3 +4,9 @@
 # test_respuestas_reproducibles x2). Forzar LF mantiene los bytes idénticos al
 # índice en cualquier SO. No modifica el contenido versionado de vendor/.
 vendor/motor_bandejas/** text=auto eol=lf
+
+# Generadores de contornos (B-1): llevan shebang y se importan como módulos ES
+# desde Vitest (outlinesGenerated.test.ts). Con core.autocrlf=true una copia
+# nueva los dejaba en CRLF y Vitest fallaba con "SyntaxError: Invalid or
+# unexpected token". Forzar LF.
+tools/step_parametric/*.mjs text eol=lf
