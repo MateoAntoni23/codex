@@ -39,6 +39,48 @@ function lengthFromPiece(piece: Piece): number | null {
 
 const unresolved = (motivo: string): ColocacionSinResolver => ({ version: 1, estado: 'sin_resolver', motivo });
 
+/** Tolerancia de posición del motor (D-14). */
+const NOMINAL_TOL_MM = 1;
+
+export const MOTIVO_NOMINAL_CATALOGO =
+  'proyecto creado con geometría nominal del catálogo; los modelos actuales provienen de medición y difieren ~5 mm';
+
+/** Distancia del punto `p` a la recta que pasa por `o` con dirección `d`. */
+function distToAxis(p: readonly number[], o: readonly number[], d: readonly number[]): number {
+  const v = [p[0] - o[0], p[1] - o[1], p[2] - o[2]];
+  const c = [v[1] * d[2] - v[2] * d[1], v[2] * d[0] - v[0] * d[2], v[0] * d[1] - v[1] * d[0]];
+  return Math.hypot(c[0], c[1], c[2]) / Math.hypot(d[0], d[1], d[2]);
+}
+
+/**
+ * ¿Las bocas guardadas reproducen la geometría nominal que se deduce del
+ * catálogo? Para curvas horizontales de 90°, T y X con radio interior R y
+ * ancho W publicados, el brazo nominal es R + W: la distancia de cada boca al
+ * eje de una boca perpendicular. No usa medidas que el catálogo no publique
+ * (45° u otros ángulos, radios no declarados → `false`). Solo explica el
+ * motivo de una pieza sin resolver; no interviene en la colocación.
+ */
+export function matchesCatalogNominal(product: Product, piece: Piece): boolean {
+  const p = product as unknown as Record<string, unknown>;
+  const R = p.radio_mm;
+  const W = p.ancho_nominal_mm;
+  if (typeof R !== 'number' || typeof W !== 'number' || p.referencia_radio !== 'interior') return false;
+  const tipo = product.tipo_pieza;
+  const isCurve90 = tipo === 'curva horizontal' && p.angulo_grados === 90;
+  if (!isCurve90 && tipo !== 'T' && tipo !== 'X') return false;
+  const ports = Object.values(piece.puertos);
+  if (ports.length < 2) return false;
+  const brazo = R + W;
+  for (const a of ports) {
+    const perp = ports.filter((b) => b !== a && Math.abs(angleDeg(a.direccion, b.direccion) - 90) <= 1);
+    if (perp.length === 0) return false;
+    for (const b of perp) {
+      if (Math.abs(distToAxis(a.posicion_mm, b.posicion_mm, b.direccion) - brazo) > NOMINAL_TOL_MM) return false;
+    }
+  }
+  return true;
+}
+
 /** `true` si alguna pieza no tiene colocación (proyecto anterior o pieza heredada). */
 export function needsMigration(entrada: TrayInput | null | undefined): boolean {
   return !!entrada?.piezas.some((p) => !p.colocacion);
@@ -69,7 +111,12 @@ export function migrateTray(
     const fit = verifyGeometricFit(product, piece);
     if (!fit) return fail('las bocas guardadas no corresponden a las del modelo');
     if (!fit.matches) {
-      return fail(`no encaja con el modelo vigente (desvío ${fit.posErrorMm.toFixed(1)} mm / ${fit.dirErrorDeg.toFixed(1)}°, tolerancia 2 mm / 1,5°)`);
+      const desvio = `desvío ${fit.posErrorMm.toFixed(1)} mm / ${fit.dirErrorDeg.toFixed(1)}°, tolerancia 2 mm / 1,5°`;
+      // Una pieza que reproduce la geometría nominal del catálogo no tiene datos
+      // incorrectos: difiere del modelo medido. Todo proyecto anterior lo muestra.
+      return fail(matchesCatalogNominal(product, piece)
+        ? `${MOTIVO_NOMINAL_CATALOGO} (${desvio})`
+        : `no encaja con el modelo vigente (${desvio})`);
     }
     const entry = piece.puertos[fit.entryPortName] as TrayPort | undefined;
     if (!entry) return fail(`falta la boca de entrada ${fit.entryPortName}`);

@@ -13,11 +13,11 @@ import {
   setMasterResolver,
   setPortMappingOverrides,
 } from '../../catalogPortMapping';
-import { migrateTray } from '../migration';
+import { matchesCatalogNominal, migrateTray, MOTIVO_NOMINAL_CATALOGO } from '../migration';
 import { outdatedPieces, placedOf, resolveDefinition, updateOutdatedPieces, withDefinition } from '../definitions';
 import { placeDefinition, puertosFromWorld, worldPorts } from '../placementCore';
 import { invalidConnections } from '../joins';
-import type { Product, TrayInput } from '../../../tray/model';
+import type { Point, Product, TrayInput, TrayPort } from '../../../tray/model';
 
 let cat: StaticCatalog;
 let products: Map<string, Product>;
@@ -56,6 +56,13 @@ describe('PA6 — migración del fixture user-report-20261107', () => {
       const b = entrada.piezas.find((p) => p.instancia_id === u.id)!;
       expect(b.puertos).toEqual(a.puertos);
     }
+    // CS1 reproduce la geometría nominal del catálogo (brazos R+W = 600): su
+    // motivo dice que el modelo medido difiere, no que el archivo esté mal.
+    // T1 no es nominal (semibrazos 300, derivación a 450 del eje del tronco,
+    // contra 600 nominal): conserva el motivo general con su desvío.
+    const motivo = (id: string) => report.sinResolver.find((u) => u.id === id)?.motivo;
+    expect(motivo('CS1')).toBe(`${MOTIVO_NOMINAL_CATALOGO} (desvío 5.2 mm / 0.2°, tolerancia 2 mm / 1,5°)`);
+    expect(motivo('T1')).toBe('no encaja con el modelo vigente (desvío 330.8 mm / 0.0°, tolerancia 2 mm / 1,5°)');
     // Una segunda pasada no hace nada (la pose se deduce una sola vez).
     expect(migrateTray(entrada, products).report.total).toBe(0);
     // Informe para el PR.
@@ -66,6 +73,36 @@ describe('PA6 — migración del fixture user-report-20261107', () => {
       sinResolver: report.sinResolver,
       unionesInvalidasTrasMigrar: invalidConnections(entrada),
     }));
+  });
+});
+
+describe('matchesCatalogNominal — geometría nominal deducida del catálogo', () => {
+  const port = (posicion_mm: Point, direccion: Point): TrayPort => ({ posicion_mm, direccion });
+  it('curva 90° R300 interior W300: brazos 600 → nominal; 597 → no', () => {
+    const cs = products.get('SAM_CS-300-90-065-18-Z')!;
+    const mk = (b: number) => ({
+      instancia_id: 'C', producto_id: cs.producto_id,
+      puertos: { P1: port([0, -b, 0], [0, -1, 0]), P2: port([b, 0, 0], [1, 0, 0]) },
+    });
+    expect(matchesCatalogNominal(cs, mk(600))).toBe(true);
+    expect(matchesCatalogNominal(cs, mk(600.9))).toBe(true);
+    expect(matchesCatalogNominal(cs, mk(597))).toBe(false);
+  });
+  it('T: semibrazos y derivación a 600 → nominal; la T1 del fixture (300/450) no', () => {
+    const ts = products.get('SAM_TS-300-065-18-Z')!;
+    const mk = (semi: number, der: number) => ({
+      instancia_id: 'T', producto_id: ts.producto_id,
+      puertos: { P1: port([-semi, 0, 0], [-1, 0, 0]), P2: port([semi, 0, 0], [1, 0, 0]), P3: port([0, der, 0], [0, 1, 0]) },
+    });
+    expect(matchesCatalogNominal(ts, mk(600, 600))).toBe(true);
+    expect(matchesCatalogNominal(ts, mk(300, 450))).toBe(false);
+  });
+  it('sin radio publicado o curva de 45°: no se deduce nominal', () => {
+    const cps = products.get('SAM_CPS-300-90-Z')!; // perforada: radio no declarado
+    const cs45 = products.get('SAM_CS-300-45-065-18-Z')!;
+    const piece = { instancia_id: 'X', producto_id: '', puertos: { P1: port([0, -600, 0], [0, -1, 0]), P2: port([600, 0, 0], [1, 0, 0]) } };
+    expect(matchesCatalogNominal(cps, piece)).toBe(false);
+    expect(matchesCatalogNominal(cs45, piece)).toBe(false);
   });
 });
 
