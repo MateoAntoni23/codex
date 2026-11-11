@@ -15,6 +15,7 @@ import { Empty, Section } from './shared';
 const FUENTE: Record<FuenteLongitud, string> = {
   longitud_mm: 'largo del tramo',
   longitud_eje_mm: 'longitud de eje guardada',
+  longitudes_eje: 'regla guardada al colocar',
   bocas_en_linea: 'entre bocas en línea',
 };
 
@@ -100,6 +101,7 @@ export function RecorridoSection() {
                 {etiquetaPieza(c.pieza)} · {etiquetaBoca(c.pieza, c.entrada)} → {etiquetaBoca(c.pieza, c.salida)}
                 {' · '}
                 {c.longitudMm !== null ? `${mm(c.longitudMm)} (${FUENTE[c.fuente!]})` : `sin longitud: ${c.motivo}`}
+                {c.procedencia && <div className="stage-row-sub" style={{ whiteSpace: 'normal' }} data-testid="recorrido-procedencia">{c.procedencia}</div>}
               </li>
             ))}
           </ol>

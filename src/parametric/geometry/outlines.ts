@@ -400,6 +400,24 @@ function rotatePolygonZ(poly: readonly V2[], deg: number): V2[] {
  */
 export const CUPS_NATURAL_FRAME_ROTATION_Z_DEG = 45;
 
+/**
+ * Línea media del canal del perfil CUPS medido, en el marco natural (el mismo
+ * de las bocas de `buildCUPSRecipe`). Regla declarada: promedio de los vértices
+ * homólogos de la pared exterior y la interior del perfil —
+ *   boca horizontal (V4,V5) → (V3,V6) → (V2,V7) → boca vertical (V1,V0).
+ * Sus extremos son los centros de las dos bocas. El perfil no escala con el
+ * ancho (sólo la extrusión), así que la longitud vale para todas las variantes
+ * del patrón. Procedencia: STEP CUPS-300-A-Z (perfil de 8 vértices, ver arriba).
+ */
+export function lineaMediaPerfilCUPS(): { puntos: V2[]; longitud_mm: number } {
+  const p = rotatePolygonZ(CUPS_OUTLINE_300_XY_STEP, CUPS_NATURAL_FRAME_ROTATION_Z_DEG);
+  const medio = (a: number, b: number): V2 => [(p[a][0] + p[b][0]) / 2, (p[a][1] + p[b][1]) / 2];
+  const puntos = [medio(4, 5), medio(3, 6), medio(2, 7), medio(1, 0)];
+  let longitud_mm = 0;
+  for (let i = 1; i < puntos.length; i++) longitud_mm += Math.hypot(puntos[i][0] - puntos[i - 1][0], puntos[i][1] - puntos[i - 1][1]);
+  return { puntos, longitud_mm };
+}
+
 export function buildCUPSRecipe(params: {
   ancho_mm: number;
   ala_mm: number;

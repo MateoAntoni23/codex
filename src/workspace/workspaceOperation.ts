@@ -18,6 +18,7 @@ import { buildCurvePiece, generateCurveId, computeTurnPerp } from './addCurvePie
 import { computeEndpoint, generateConnectionId } from './routingRules';
 import { tieneDefinicion } from './placement/definitions';
 import { computeRoutingPlacement, type RoutingPlacement } from './placement/routingPlacement';
+import { conLongitudesEje } from './placement/longitudesEje';
 import { puertosFromWorld, type StoredDefinition } from './placement/placementCore';
 import { withDefinition } from './placement/definitions';
 import { checkConnection, type JoinCheck } from './placement/joins';
@@ -46,20 +47,28 @@ export function unionRecord(estado: UnionRecord['estado'], check: JoinCheck, mot
   };
 }
 
-/** Pieza a partir de la colocación calculada (preview = confirmado). */
+/**
+ * Pieza a partir de la colocación calculada (preview = confirmado).
+ *
+ * Al colocar se persisten las longitudes de eje que tengan regla declarada
+ * (`longitudesDeEje`: curva vertical, T, X) en `colocacion.longitudes_eje`,
+ * con su procedencia. En una pieza de dos bocas (curva vertical) también se
+ * guarda `longitud_eje_mm` (campo del contrato; el motor la usa para el PE).
+ * Sin regla no se guarda nada: el recorrido por esa pieza queda incompleto.
+ */
 function pieceFromPlacement(
   newId: string,
   product: Product,
   placement: Extract<RoutingPlacement, { ok: true }>,
   extra: Partial<Piece> = {},
 ): Piece {
-  return {
+  return conLongitudesEje<Piece>({
     instancia_id: newId,
     producto_id: product.producto_id,
     ...extra,
     puertos: puertosFromWorld(placement.ports),
     colocacion: placement.colocacion,
-  };
+  }, placement.def);
 }
 
 // ─── PE extension ─────────────────────────────────────────────────────────────

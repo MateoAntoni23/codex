@@ -9,6 +9,7 @@ import { resolve } from 'node:path';
 import { seedStaticCatalog } from '../../../catalog/staticCatalog';
 import { clearCatalogPortIndex, clearPortMappingOverrides, clearProductCatalogIndex, setMasterResolver } from '../../catalogPortMapping';
 import { definicionEfectiva, withDefinition } from '../../placement/definitions';
+import { conLongitudesEje } from '../../placement/longitudesEje';
 import { placeDefinition, puertosFromWorld, type V3, type WorldPort } from '../../placement/placementCore';
 import { caminoEntreBocas } from '../caminoEntreBocas';
 import type { Product, TrayInput } from '../../../tray/model';
@@ -87,7 +88,7 @@ describe('recorrido entre dos bocas', () => {
     expect(r.sumaMm).toBeCloseTo(1000 + 1500 + 2000 + tee.longitudMm!, 9);
   });
 
-  it('desvío por la derivación de una T sin longitud de eje guardada: incompleto, con motivo (no un número cerrado)', () => {
+  it('control negativo — T colocada SIN la regla aplicada: el desvío por la derivación queda incompleto, con motivo', () => {
     const r = caminoEntreBocas(t, { pieza: 'R1', boca: 'P1' }, { pieza: 'R4', boca: 'P2' });
     expect(r.ok).toBe(true);
     if (!r.ok) return;
@@ -96,6 +97,23 @@ describe('recorrido entre dos bocas', () => {
     expect(tee.longitudMm).toBeNull();
     expect(tee.motivo).toBe('desvío de tronco_P1 a boca_derivacion: la pieza no tiene guardada su longitud de eje');
     expect(r.sumaMm).toBe(1000 + 1500 + 800);
+  });
+
+  it('T colocada CON la regla (como al colocar en el espacio de trabajo): la derivación da completa, con su procedencia', () => {
+    const d = definicionEfectiva(productos.get('SAM_TPS-300-Z')!);
+    if (!d.ok) throw new Error(d.motivo);
+    const conRegla = structuredClone(t);
+    const i = conRegla.piezas.findIndex((p) => p.instancia_id === 'T');
+    conRegla.piezas[i] = conLongitudesEje(conRegla.piezas[i], d.def);
+    const r = caminoEntreBocas(conRegla, { pieza: 'R1', boca: 'P1' }, { pieza: 'R4', boca: 'P2' });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.completa).toBe(true);
+    const tee = r.cruces.find((c) => c.pieza === 'T')!;
+    expect(tee.fuente).toBe('longitudes_eje');
+    expect(tee.longitudMm).toBeCloseTo(449.44, 2);
+    expect(tee.procedencia).toMatch(/^modelo medido \(patrón master:perforada:tee_simetrica\): centro = punto común a los ejes de las 3 bocas/);
+    expect(r.sumaMm).toBeCloseTo(1000 + 1500 + tee.longitudMm! + 800, 9);
   });
 
   it('pieza de dos bocas con longitud_eje_mm guardada (curva): se usa esa longitud', () => {

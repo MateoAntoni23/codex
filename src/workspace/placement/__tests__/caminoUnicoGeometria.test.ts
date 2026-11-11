@@ -47,6 +47,10 @@ const EXCEPCIONES: Record<string, { motivo: string; modulos?: boolean; funciones
     funciones: ['resolveRecipe', 'resolveParametricEntry', 'buildRecipeFromProduct', 'buildNominalRecipe'],
   },
   'workspace/placement/migration.ts': { motivo: 'A-10: deduce la pose de un proyecto anterior', funciones: ['verifyGeometricFit'] },
+  'workspace/placement/longitudesEje.ts': {
+    motivo: 'regla de longitud de eje de la curva vertical: lee la línea media del perfil medido (lineaMediaPerfilCUPS) y la contrasta con las bocas de la definición antes de guardarla; no coloca ni dibuja',
+    modulos: true,
+  },
   'configurator/migracionCalibracion.ts': {
     motivo: 'B-2.6: reproduce la resolución por SKU anterior para migrarla a corrección por patrón',
     funciones: ['buildRecipeFromProduct', 'resolveParametricEntry', 'resolveRecipeWith', 'resolveRecipeForProduct'],

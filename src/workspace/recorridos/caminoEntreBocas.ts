@@ -9,6 +9,9 @@
  *   - suma la longitud de cada pieza cruzada SOLO con lo persistido en el
  *     trazado (no se vuelve a inferir geometría del catálogo ni del modelo):
  *       · tramo recto: `longitud_mm`;
+ *       · longitud de eje guardada AL COLOCAR para ese par de bocas
+ *         (`colocacion.longitudes_eje`, regla declarada con su procedencia:
+ *         curva vertical, T y X por la derivación — `placement/longitudesEje.ts`);
  *       · pieza de dos bocas con `longitud_eje_mm` guardada: esa longitud;
  *       · cruce en línea recta (las bocas de entrada y salida opuestas y
  *         alineadas, p. ej. el tronco de una T o una X): distancia entre los
@@ -23,10 +26,11 @@
  */
 import type { Piece, TrayInput } from '../../tray/model';
 import { checkConnection } from '../placement/joins';
+import { claveTramo } from '../placement/longitudesEje';
 
 export interface Boca { readonly pieza: string; readonly boca: string }
 
-export type FuenteLongitud = 'longitud_mm' | 'longitud_eje_mm' | 'bocas_en_linea';
+export type FuenteLongitud = 'longitud_mm' | 'longitud_eje_mm' | 'longitudes_eje' | 'bocas_en_linea';
 
 export interface Cruce {
   readonly pieza: string;
@@ -36,6 +40,8 @@ export interface Cruce {
   readonly fuente: FuenteLongitud | null;
   /** Por qué no hay longitud (si longitudMm es null). */
   readonly motivo?: string;
+  /** Regla y procedencia guardadas al colocar (fuente 'longitudes_eje'). */
+  readonly procedencia?: string;
 }
 
 export interface UnionCortada { readonly conexion_id: string; readonly motivos: readonly string[] }
@@ -61,9 +67,12 @@ const dot = (a: readonly number[], b: readonly number[]) => a[0] * b[0] + a[1] *
 const norm = (a: readonly number[]) => Math.hypot(a[0], a[1], a[2]);
 
 /** Longitud de la pieza entre las bocas `e` y `s`, sólo con lo persistido. */
-export function longitudDeCruce(piece: Piece, e: string, s: string): Pick<Cruce, 'longitudMm' | 'fuente' | 'motivo'> {
+export function longitudDeCruce(piece: Piece, e: string, s: string): Pick<Cruce, 'longitudMm' | 'fuente' | 'motivo' | 'procedencia'> {
   const n = Object.keys(piece.puertos).length;
   if (n === 2 && typeof piece.longitud_mm === 'number') return { longitudMm: piece.longitud_mm, fuente: 'longitud_mm' };
+  const col = piece.colocacion;
+  const guardada = col?.estado === 'resuelta' ? col.longitudes_eje?.[claveTramo(e, s)] : undefined;
+  if (guardada) return { longitudMm: guardada.mm, fuente: 'longitudes_eje', procedencia: guardada.procedencia };
   if (n === 2 && typeof piece.longitud_eje_mm === 'number') return { longitudMm: piece.longitud_eje_mm, fuente: 'longitud_eje_mm' };
   const pe = piece.puertos[e];
   const ps = piece.puertos[s];

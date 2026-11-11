@@ -23,6 +23,7 @@ import { compararConGuardada } from './geometriaEquivalente';
 import { bibliotecaVersion } from '../calibracionPatron';
 import { findMasterForProduct, MASTER_MODELS } from '../../configurator/masterModels';
 import { angleMismatch } from './angleCheck';
+import { conLongitudesEje } from './longitudesEje';
 import {
   definitionFromRecipe,
   definitionHash,
@@ -322,16 +323,18 @@ export function updateOutdatedPieces(
     const idx = next.piezas.findIndex((p) => p.instancia_id === o.id);
     const piece = next.piezas[idx];
     const c = piece.colocacion as ColocacionResuelta;
+    // Las longitudes de eje guardadas eran de la definición anterior: se
+    // recalculan con la vigente (misma función que al colocar).
+    const { longitudes_eje: anteriores, ...sinLongitudes } = c;
     const colocacion: ColocacionResuelta = {
-      ...c,
+      ...sinLongitudes,
       definicion: { huella: o.current.huella, patron: o.current.def.patron, revision: o.current.def.revision, params: { ...o.current.def.params } },
     };
     next = withDefinition(next, o.current.huella, o.current.def);
-    next.piezas[idx] = {
-      ...piece,
-      colocacion,
-      puertos: puertosFromWorld(worldPorts(o.current.def, c.mano, c.pose)),
-    };
+    const base: Piece = { ...piece, colocacion, puertos: puertosFromWorld(worldPorts(o.current.def, c.mano, c.pose)) };
+    // En una curva de dos bocas, longitud_eje_mm venía de la misma regla.
+    if (anteriores && Object.keys(piece.puertos).length === 2) delete base.longitud_eje_mm;
+    next.piezas[idx] = conLongitudesEje(base, o.current.def);
     updated.push(o.id);
   }
   return { entrada: next, updated };

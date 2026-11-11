@@ -92,6 +92,13 @@ export interface ColocacionResuelta {
   readonly pose: Pose;
   /** Boca por la que se colocó (informativo; las bocas se derivan de la pose). */
   readonly boca_entrada?: string;
+  /**
+   * Longitudes de eje entre pares de bocas, calculadas AL COLOCAR con una regla
+   * declarada sobre el modelo medido (`longitudesEje.ts`), con su procedencia.
+   * Sólo las piezas con regla (curva vertical, T, X) la llevan; las colocadas
+   * antes de existir la regla no (su recorrido queda incompleto).
+   */
+  readonly longitudes_eje?: import('./longitudesEje').LongitudesEje;
 }
 
 export interface ColocacionSinResolver {
