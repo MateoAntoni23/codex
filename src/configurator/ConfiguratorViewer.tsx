@@ -228,6 +228,10 @@ function AxisHelpers() {
 
 export function ConfiguratorViewer({ product }: { product: Product | null }) {
   const hasRecipe = !!product && !!modeloDeProducto(product);
+  // B-2.5: la definición dice si la calibración es heredada (sin verificar en este ancho) o una excepción.
+  useCatalogConfigStore((s) => s.calibracion);
+  const d = product ? definicionEfectiva(product) : null;
+  const cal = d?.ok ? d.def.calibracion : undefined;
   return (
     <section className="cfg-viewer" data-testid="cfg-viewer">
       {product ? (
@@ -237,6 +241,18 @@ export function ConfiguratorViewer({ product }: { product: Product | null }) {
             {product.producto_id} · {product.tipo_pieza} ·
             {' '}ancho: {product.ancho_nominal_mm ?? 'n/d'} mm
           </div>
+          {cal && (
+            <div
+              className={cal.heredada ? 'cfg-tab-note cfg-tab-note-warn' : 'cfg-tab-note'}
+              data-testid="cfg-viewer-calibracion"
+            >
+              {cal.heredada
+                ? `Calibración del patrón: ${cal.nota}.`
+                : cal.origen === 'excepcion'
+                  ? `Calibración propia de esta variante (${cal.nota}).`
+                  : 'Calibración del patrón, verificada en este ancho.'}
+            </div>
+          )}
         </div>
       ) : (
         <div className="cfg-viewer-head"><h2>Seleccioná un producto</h2></div>

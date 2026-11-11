@@ -19,6 +19,8 @@
  *   - Autoguardado con debounce corto; una sola escritura en vuelo (si hubo cambios
  *     durante la escritura se vuelve a escribir al terminar).
  */
+import { loadStaticCatalog } from '../catalog/staticCatalog';
+import { migrarBibliotecaPorSku } from '../configurator/migracionCalibracion';
 import { create } from 'zustand';
 import { useWorkspaceStore } from '../workspace/useWorkspaceStore';
 import { useRoutingStore } from '../workspace/useRoutingStore';
@@ -389,6 +391,7 @@ export function localLibrary(): LibrarySnapshot {
     overrides: c.overrides as LibrarySnapshot['overrides'],
     approvals: c.approvals as LibrarySnapshot['approvals'],
     aporteOverrides: c.aporteOverrides as LibrarySnapshot['aporteOverrides'],
+    calibracion: c.calibracion,
   };
 }
 
@@ -403,7 +406,7 @@ export function buildProjectCopy(): { json: string; name: string } {
     useTrayStore.getState().entrada ?? emptyTrayInput(),
     lib.overrides,
     w.importedCatalog,
-    { approvals: lib.approvals, aporteOverrides: lib.aporteOverrides },
+    { approvals: lib.approvals, aporteOverrides: lib.aporteOverrides, calibracion: lib.calibracion },
   );
   return { json, name: `workspace-${new Date().toISOString().slice(0, 10)}.json` };
 }
@@ -456,7 +459,14 @@ export async function openProjectText(
           error: 'No se pudo guardar la copia de la biblioteca anterior; no se adoptó la del archivo.',
         };
       }
-      const ok = useCatalogConfigStore.getState().replaceLibrary(fileLib, { partial: fileLib.partial });
+      // Biblioteca por SKU (formato anterior): se migra a calibración por patrón (B-2.6).
+      let aAdoptar: FileLibrary = fileLib;
+      if (fileLib.porSku) {
+        const cat = await loadStaticCatalog();
+        const r = migrarBibliotecaPorSku(fileLib.overrides, cat.productos);
+        aAdoptar = { ...fileLib, overrides: r.overridesNombres, calibracion: r.biblioteca };
+      }
+      const ok = useCatalogConfigStore.getState().replaceLibrary(aAdoptar, { partial: fileLib.partial });
       if (!ok) {
         return { status: 'error', error: 'No se pudo escribir la biblioteca adoptada en este equipo.' };
       }

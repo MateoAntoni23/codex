@@ -20,19 +20,27 @@ import type { ProductPortMapping } from '../workspace/catalogPortMapping';
 import type { PatternApproval } from './patternApprovals';
 import { isAporteRule, type AporteRule } from './aporteTrazado';
 
-export const LIBRARY_BLOCK_VERSION = 'codex:library/1';
-export const LIBRARY_STORAGE_KEY = 'codex:catalogConfig:v1';
+/** B-2.5: el bloque lleva la calibración por patrón. Se sigue leyendo el /1. */
+import type { BibliotecaMigrada } from './migracionCalibracion';
+export const LIBRARY_BLOCK_VERSION = 'codex:library/2';
+export const LIBRARY_BLOCK_VERSION_V1 = 'codex:library/1';
+/** Autoridad local desde B-2.5 (v2); la v1 queda como copia del original. */
+export const LIBRARY_STORAGE_KEY = 'codex:catalogConfig:v2';
+export const LIBRARY_STORAGE_KEY_V1 = 'codex:catalogConfig:v1';
 export const LIBRARY_BACKUP_PREFIX = 'codex:catalogConfig:v1:backup:';
 
 export interface LibrarySnapshot {
   overrides: Record<string, ProductPortMapping>;
   approvals: Record<string, PatternApproval>;
   aporteOverrides: Record<string, AporteRule>;
+  /** Calibración por patrón y excepciones (B-2.5). Ausente: vacía. */
+  calibracion?: BibliotecaMigrada;
 }
 
 /** Bloque de biblioteca tal como viaja en el archivo de proyecto (fileVersion 2). */
 export interface LibraryBlock extends LibrarySnapshot {
   version: typeof LIBRARY_BLOCK_VERSION;
+  calibracion: BibliotecaMigrada;
 }
 
 /** Biblioteca leída de un archivo: completa (v2) o sólo overrides (v1). */
@@ -42,6 +50,13 @@ export interface FileLibrary {
   overrides: Record<string, ProductPortMapping>;
   approvals?: Record<string, PatternApproval>;
   aporteOverrides?: Record<string, AporteRule>;
+  /** Calibración por patrón (bloque /2). */
+  calibracion?: BibliotecaMigrada;
+  /**
+   * `true` si la geometría viene por SKU (bloque /1 o `catalogConfig` de un
+   * archivo fileVersion 1): al adoptarla se migra a calibración por patrón.
+   */
+  porSku?: boolean;
 }
 
 export const emptyLibrary = (): LibrarySnapshot => ({
@@ -51,12 +66,17 @@ export const emptyLibrary = (): LibrarySnapshot => ({
 });
 
 export function isLibraryEmpty(l: LibrarySnapshot): boolean {
+  const c = l.calibracion;
   return (
     Object.keys(l.overrides).length === 0 &&
     Object.keys(l.approvals).length === 0 &&
-    Object.keys(l.aporteOverrides).length === 0
+    Object.keys(l.aporteOverrides).length === 0 &&
+    (!c || (Object.keys(c.patrones).length === 0 && Object.keys(c.excepciones).length === 0 && Object.keys(c.pendientes ?? {}).length === 0))
   );
 }
+
+const calibracionComparable = (c: BibliotecaMigrada | undefined) =>
+  c ? { patrones: c.patrones, excepciones: c.excepciones, pendientes: c.pendientes ?? {} } : { patrones: {}, excepciones: {}, pendientes: {} };
 
 /** JSON con claves ordenadas: igualdad estructural independiente del orden. */
 export function canonicalJson(v: unknown): string {
@@ -75,6 +95,7 @@ export function canonicalJson(v: unknown): string {
 /** ¿La biblioteca del archivo difiere de la local? (parcial: sólo overrides). */
 export function libraryDiffers(local: LibrarySnapshot, file: FileLibrary): boolean {
   if (canonicalJson(local.overrides) !== canonicalJson(file.overrides)) return true;
+  if (!file.porSku && canonicalJson(calibracionComparable(local.calibracion)) !== canonicalJson(calibracionComparable(file.calibracion))) return true;
   if (file.partial) return false;
   return (
     canonicalJson(local.approvals) !== canonicalJson(file.approvals ?? {}) ||
@@ -97,6 +118,14 @@ export function describeLibraryDiff(local: LibrarySnapshot, file: FileLibrary): 
     );
   };
   cmp('Calibraciones (overrides)', local.overrides, file.overrides);
+  if (!file.porSku) {
+    const a = calibracionComparable(local.calibracion);
+    const b = calibracionComparable(file.calibracion);
+    cmp('Calibración por patrón', a.patrones, b.patrones);
+    cmp('Excepciones por variante', a.excepciones, b.excepciones);
+  } else {
+    lines.push('La biblioteca del archivo es por SKU (formato anterior): si se adopta, se migra a calibración por patrón.');
+  }
   if (!file.partial) {
     cmp('Aprobaciones', local.approvals, file.approvals ?? {});
     cmp('Aporte al trazado', local.aporteOverrides, file.aporteOverrides ?? {});
@@ -153,20 +182,23 @@ function parseAporte(raw: unknown): Record<string, AporteRule> {
 export function parseLibraryBlock(raw: unknown): FileLibrary | null {
   if (raw === undefined || raw === null) return null;
   if (!isObj(raw)) throw new Error('library: bloque inválido');
-  if (raw.version !== LIBRARY_BLOCK_VERSION) {
+  if (raw.version !== LIBRARY_BLOCK_VERSION && raw.version !== LIBRARY_BLOCK_VERSION_V1) {
     throw new Error(`library: versión no soportada (${String(raw.version)})`);
   }
+  const v1 = raw.version === LIBRARY_BLOCK_VERSION_V1;
+  if (!v1 && !isObj(raw.calibracion)) throw new Error('library: calibracion debe ser un objeto');
   return {
     partial: false,
     overrides: parseOverrides(raw.overrides, 'library'),
     approvals: parseApprovals(raw.approvals),
     aporteOverrides: parseAporte(raw.aporteOverrides),
+    ...(v1 ? { porSku: true } : { calibracion: raw.calibracion as unknown as BibliotecaMigrada }),
   };
 }
 
 /** Bloque parcial a partir del `catalogConfig` de un archivo fileVersion 1. */
 export function libraryFromCatalogConfig(overrides: Record<string, ProductPortMapping>): FileLibrary {
-  return { partial: true, overrides };
+  return { partial: true, overrides, porSku: true };
 }
 
 /** Arma el bloque de archivo; `null` si la biblioteca está vacía (no se escribe). */
@@ -177,6 +209,7 @@ export function toLibraryBlock(l: LibrarySnapshot): LibraryBlock | null {
     overrides: l.overrides,
     approvals: l.approvals,
     aporteOverrides: l.aporteOverrides,
+    calibracion: l.calibracion ?? ({ version: 'codex:calibracion/2', patrones: {}, excepciones: {}, pendientes: {} } as BibliotecaMigrada),
   };
 }
 
@@ -191,8 +224,9 @@ export function backupLocalLibrary(current: LibrarySnapshot): string | null {
     const key = `${LIBRARY_BACKUP_PREFIX}${new Date().toISOString()}`;
     const raw =
       localStorage.getItem(LIBRARY_STORAGE_KEY) ??
+      localStorage.getItem(LIBRARY_STORAGE_KEY_V1) ??
       JSON.stringify({
-        version: 'codex:catalogConfig/1',
+        version: 'codex:catalogConfig/2',
         ...current,
         savedAt: new Date().toISOString(),
       });

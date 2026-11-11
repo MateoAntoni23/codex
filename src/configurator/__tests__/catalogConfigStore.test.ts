@@ -61,12 +61,13 @@ describe('catalogConfigStore', () => {
     expect(useCatalogConfigStore.getState().overrides['SAM_TPS-300-Z']).toBeDefined();
   });
 
-  it('serialize produce JSON con firma codex:catalogConfig/1', () => {
+  it('serialize produce JSON con firma codex:catalogConfig/2 (B-2.5) y la calibración', () => {
     useCatalogConfigStore.getState().upsertOverride('SAM_TPS-300-Z', makeOverride('SAM_TPS-300-Z'));
     const raw = useCatalogConfigStore.getState().serialize();
     const parsed = JSON.parse(raw);
-    expect(parsed.version).toBe('codex:catalogConfig/1');
+    expect(parsed.version).toBe('codex:catalogConfig/2');
     expect(parsed.overrides['SAM_TPS-300-Z'].source).toBe('override');
+    expect(parsed.calibracion.version).toBe('codex:calibracion/2');
   });
 
   it('replaceAll reemplaza todos los overrides y persiste', () => {

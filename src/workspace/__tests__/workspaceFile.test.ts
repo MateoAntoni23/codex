@@ -244,7 +244,7 @@ describe('exportWorkspace + importWorkspace — catalogConfig', () => {
     const json = exportWorkspace([ELEMENT], EVIDENCE, DEFAULT_PROJECT_META, TRAY_INPUT, SAMPLE_OVERRIDES);
     const parsed = JSON.parse(json) as Record<string, unknown>;
     const lib = parsed.library as Record<string, unknown>;
-    expect(lib.version).toBe('codex:library/1');
+    expect(lib.version).toBe('codex:library/2');
     expect((lib.overrides as Record<string, unknown>)['SAM_TPS-300-Z']).toBeDefined();
     expect(lib.approvals).toEqual({});
     expect(lib.aporteOverrides).toEqual({});

@@ -119,6 +119,8 @@ export function exportWorkspace(
   library?: {
     approvals?: Record<string, PatternApproval>;
     aporteOverrides?: Record<string, AporteRule>;
+    /** B-2.5: calibración por patrón. */
+    calibracion?: LibrarySnapshot['calibracion'];
   },
 ): string {
   const projectV2: ProjectDataV2 = {
@@ -139,6 +141,7 @@ export function exportWorkspace(
     overrides: catalogOverrides ?? {},
     approvals: library?.approvals ?? {},
     aporteOverrides: library?.aporteOverrides ?? {},
+    ...(library?.calibracion ? { calibracion: library.calibracion } : {}),
   };
   const block = toLibraryBlock(snapshot);
   if (block) file.library = block;

@@ -33,6 +33,8 @@ import {
   type ProductPortMapping,
 } from '../workspace/catalogPortMapping';
 import { modeloDeProducto } from '../workspace/placement/definitions';
+import { loadStaticCatalog } from '../catalog/staticCatalog';
+import { migrarBibliotecaPorSku } from './migracionCalibracion';
 import { useCatalogConfigStore } from './catalogConfigStore';
 import { InspectorTabContent, TABS, type TabId } from './ConfiguratorInspectorTabs';
 import { ConfiguratorViewer } from './ConfiguratorViewer';
@@ -696,6 +698,7 @@ function PatternBanner({
 function ConfigIO() {
   const serialize = useCatalogConfigStore((s) => s.serialize);
   const replaceAll = useCatalogConfigStore((s) => s.replaceAll);
+  const replaceCalibracion = useCatalogConfigStore((s) => s.replaceCalibracion);
   const replaceApprovals = useCatalogConfigStore((s) => s.replaceApprovals);
   const replaceAporteOverrides = useCatalogConfigStore((s) => s.replaceAporteOverrides);
   const overrides = useCatalogConfigStore((s) => s.overrides);
@@ -723,7 +726,7 @@ function ConfigIO() {
         const parsed = JSON.parse(String(reader.result)) as unknown;
         if (!parsed || typeof parsed !== 'object') throw new Error('No es un objeto JSON');
         const obj = parsed as Record<string, unknown>;
-        if (obj.version !== 'codex:catalogConfig/1') {
+        if (obj.version !== 'codex:catalogConfig/1' && obj.version !== 'codex:catalogConfig/2') {
           throw new Error(`Versión no soportada: ${String(obj.version)}`);
         }
         if (!obj.overrides || typeof obj.overrides !== 'object' || Array.isArray(obj.overrides)) {
@@ -746,9 +749,30 @@ function ConfigIO() {
           e.target.value = '';
           return;
         }
-        replaceAll(importedOverrides);
-        replaceApprovals(importedApprovals);
-        replaceAporteOverrides(importedAporte);
+        if (obj.version === 'codex:catalogConfig/2') {
+          replaceAll(importedOverrides);
+          replaceCalibracion(obj.calibracion as Parameters<typeof replaceCalibracion>[0]);
+          replaceApprovals(importedApprovals);
+          replaceAporteOverrides(importedAporte);
+        } else {
+          // v1 (por SKU): se migra a calibración por patrón antes de reemplazar (B-2.6).
+          void loadStaticCatalog().then((cat) => {
+            const r = migrarBibliotecaPorSku(importedOverrides, cat.productos);
+            replaceAll(r.overridesNombres);
+            replaceCalibracion(r.biblioteca);
+            replaceApprovals(importedApprovals);
+            replaceAporteOverrides(importedAporte);
+            const i = r.informe;
+            if (i.conflictos.length || i.pendientes.length || i.modelFramesDescartados.length) {
+              alert([
+                'Biblioteca por SKU migrada a calibración por patrón.',
+                ...i.conflictos.map((c) => `Patrón ${c.patron}: calibraciones distintas en ${c.productos.join(', ')} → cada una quedó como excepción.`),
+                ...i.pendientes.map((x) => `${x.productoId}: sin aplicar (${x.motivo}); se conserva.`),
+                ...i.modelFramesDescartados.map((x) => `${x.productoId}: modelFrame rígido descartado (no cambia la pieza colocada).`),
+              ].join('\n'));
+            }
+          });
+        }
       } catch (err) {
         alert(`Error al importar: ${String(err)}`);
       }

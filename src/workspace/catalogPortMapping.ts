@@ -318,6 +318,11 @@ export function clearPortMappingOverrides(): void {
  * maestro → variantes. Idempotente: la última llamada gana. El store de
  * workspace lo llama al cargar `context.productos`.
  */
+/** Entrada del índice de productos (datos de catálogo que identifican la variante). */
+export function getProductIndexEntry(productId: string): Readonly<Record<string, unknown>> | null {
+  return (_productIndex[productId] as unknown as Record<string, unknown>) ?? null;
+}
+
 export function setProductCatalogIndex(products: readonly ProductIndexEntry[]): void {
   _version++;
   const idx: Record<string, ProductIndexEntry> = {};

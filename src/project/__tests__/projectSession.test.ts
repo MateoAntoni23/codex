@@ -315,11 +315,41 @@ describe('biblioteca protegida', () => {
     useCatalogConfigStore.getState().replaceAporteOverrides({ 'SAM_TPS-300-Z': APORTE });
   }
 
+  it('B-2.6: adoptar un proyecto con biblioteca por SKU (codex:library/1) la migra a calibración por patrón', async () => {
+    const { json } = buildProjectCopy();
+    const file = JSON.parse(json);
+    file.library = {
+      version: 'codex:library/1',
+      overrides: {
+        'SAM_TPS-300-Z': {
+          productId: 'SAM_TPS-300-Z',
+          source: 'override',
+          entries: [
+            { recipePortName: 'tronco_P1', catalogPortName: 'P1', physicalLabel: 'P1', justification: 'x', geometry: { installRotationDeg: 10 } },
+            { recipePortName: 'tronco_P2', catalogPortName: 'P2', physicalLabel: 'P2', justification: 'x' },
+            { recipePortName: 'boca_derivacion', catalogPortName: 'P3', physicalLabel: 'P3', justification: 'x' },
+          ],
+        },
+      },
+      approvals: {},
+      aporteOverrides: {},
+    };
+    const r = await openProjectText(JSON.stringify(file), 'viejo.json', choose('adopt'));
+    expect(r).toMatchObject({ status: 'opened', libraryAdopted: true });
+    const st = useCatalogConfigStore.getState();
+    // Los nombres se conservan, sin geometría…
+    expect(st.overrides['SAM_TPS-300-Z'].entries.map((e) => e.catalogPortName)).toEqual(['P1', 'P2', 'P3']);
+    expect(st.overrides['SAM_TPS-300-Z'].entries.every((e) => !e.geometry)).toBe(true);
+    // …y la geometría pasó a ser la corrección del patrón (giro axial de 10° en tronco_P1).
+    const patron = Object.values(st.calibracion.patrones)[0];
+    expect(patron.bocas.tronco_P1.giro_deg.axial).toBeCloseTo(10, 9);
+  });
+
   it('A4: guardar copia contiene overrides + approvals + aporteOverrides; vaciar y adoptar los restaura', async () => {
     withLibrary();
     const { json } = buildProjectCopy();
     const lib = JSON.parse(json).library;
-    expect(lib.version).toBe('codex:library/1');
+    expect(lib.version).toBe('codex:library/2');
     expect(Object.keys(lib.overrides)).toEqual(['SAM_TPS-300-Z']);
     expect(Object.keys(lib.approvals)).toEqual(['SAM_TPS-300-Z']);
     expect(Object.keys(lib.aporteOverrides)).toEqual(['SAM_TPS-300-Z']);

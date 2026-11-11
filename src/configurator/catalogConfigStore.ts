@@ -28,10 +28,24 @@
  * Diseño de API: inmutable por fuera, dos únicas mutaciones:
  *   - `upsertOverride(productId, mapping)` — reemplaza un override completo.
  *   - `removeOverride(productId)` — vuelve al default declarado.
+ *
+ * B-2.5/B-2.6 — CALIBRACIÓN POR PATRÓN (formato v2):
+ *   - La geometría de las bocas ya no vive en los overrides por SKU: es una
+ *     corrección por boca del PATRÓN (`calibracion.patrones`) o una excepción
+ *     explícita de una variante (`calibracion.excepciones`), ver
+ *     `workspace/calibracionPatron.ts`. Los overrides quedan sólo con nombres.
+ *   - Persistencia v2 en `codex:catalogConfig:v2` (`codex:catalogConfig/2`).
+ *     Si sólo existe la v1, se carga tal cual y se MIGRA en segundo plano
+ *     (necesita el catálogo); la clave v1 no se vuelve a escribir (es la copia
+ *     del original) y además se guarda una copia fechada en
+ *     `codex:catalogConfig:v1:backup:migracion-v2:<ISO>`.
+ *   - `upsertOverride` con geometría (la API anterior) calibra el PATRÓN del
+ *     producto: la corrección se deduce como en la migración.
  */
 import { create } from 'zustand';
 import {
   getEffectiveMapping,
+  getProductIndexEntry,
   setPortMappingOverrides,
   type ProductPortMapping,
 } from '../workspace/catalogPortMapping';
@@ -48,8 +62,41 @@ import {
 } from './aporteTrazado';
 import { findMasterForProduct, type MasterModel } from './masterModels';
 import { cloneMapping } from './mappingDiff';
+import type { Product } from '../tray/model';
+import { loadStaticCatalog } from '../catalog/staticCatalog';
+import { esVarianteMedida } from '../workspace/placement/calibrarReceta';
+import {
+  bibliotecaVacia,
+  calibracionPara,
+  esCorreccionNula,
+  getBibliotecaCalibracion,
+  setBibliotecaCalibracion,
+  type CalibracionAplicable,
+  type CorreccionBoca,
+  type ExcepcionVariante,
+} from '../workspace/calibracionPatron';
+import {
+  correccionesDeOverride,
+  migrarBibliotecaPorSku,
+  type BibliotecaMigrada,
+  type InformeMigracion,
+} from './migracionCalibracion';
 
 const STORAGE_KEY = 'codex:catalogConfig:v1';
+export const STORAGE_KEY_V2 = 'codex:catalogConfig:v2';
+export const BACKUP_MIGRACION_PREFIX = 'codex:catalogConfig:v1:backup:migracion-v2:';
+
+interface PersistedV2 {
+  version: 'codex:catalogConfig/2';
+  /** Overrides por SKU, SÓLO nombres de boca (la geometría está en `calibracion`). */
+  overrides: Record<string, ProductPortMapping>;
+  approvals?: Record<string, PatternApproval>;
+  aporteOverrides?: Record<string, AporteRule>;
+  calibracion: BibliotecaMigrada;
+  /** Si vino de una v1: cuándo y dónde quedó la copia del original. */
+  migradoDesdeV1?: { fecha: string; copia: string; informe: InformeMigracion };
+  savedAt: string;
+}
 
 interface Persisted {
   version: 'codex:catalogConfig/1';
@@ -80,6 +127,18 @@ function sanitizeAporteOverrides(raw: unknown): Record<string, AporteRule> {
   return out;
 }
 
+function readStorageV2(): PersistedV2 | null {
+  if (typeof localStorage === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_V2);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as PersistedV2;
+    return parsed?.version === 'codex:catalogConfig/2' ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
 function readStorage(): PersistedRead {
   if (typeof localStorage === 'undefined') {
     return { overrides: {}, approvals: {}, aporteOverrides: {} };
@@ -107,15 +166,19 @@ function writeStorage(
   aporteOverrides: Record<string, AporteRule>,
 ): boolean {
   if (typeof localStorage === 'undefined') return false;
-  const payload: Persisted = {
-    version: 'codex:catalogConfig/1',
+  // v2: la clave v1 no se vuelve a escribir (queda como copia del original).
+  const prev = readStorageV2();
+  const payload: PersistedV2 = {
+    version: 'codex:catalogConfig/2',
     overrides,
     approvals,
     aporteOverrides,
+    calibracion: getBibliotecaCalibracion() as BibliotecaMigrada,
+    ...(prev?.migradoDesdeV1 ? { migradoDesdeV1: prev.migradoDesdeV1 } : {}),
     savedAt: new Date().toISOString(),
   };
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+    localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(payload));
     return true;
   } catch {
     // quota exceeded or unavailable — not fatal; next export/save captures it
@@ -136,6 +199,16 @@ export interface EffectiveAporte {
 
 interface State {
   overrides: Readonly<Record<string, ProductPortMapping>>;
+  /** Calibración por patrón y excepciones por variante (B-2.5). */
+  calibracion: BibliotecaMigrada;
+  /** Informe de la última migración desde la biblioteca por SKU (v1), si hubo. */
+  informeMigracion: InformeMigracion | null;
+  /** Define (o borra, con null) la corrección de una boca del patrón. */
+  setCorreccionPatron: (patron: string, boca: string, correccion: CorreccionBoca | null, motivo?: string) => void;
+  /** Declara (o borra, con null) la excepción de una variante; el motivo es obligatorio. */
+  setExcepcion: (productoId: string, excepcion: ExcepcionVariante | null) => void;
+  /** Reemplaza la biblioteca de calibración completa (import, adopción). */
+  replaceCalibracion: (b: BibliotecaMigrada) => void;
   approvals: Readonly<Record<string, PatternApproval>>;
   aporteOverrides: Readonly<Record<string, AporteRule>>;
   hydrated: boolean;
@@ -170,6 +243,8 @@ interface State {
       overrides: Record<string, ProductPortMapping>;
       approvals?: Record<string, PatternApproval>;
       aporteOverrides?: Record<string, AporteRule>;
+      /** B-2.5: si viene, reemplaza la calibración por patrón. */
+      calibracion?: BibliotecaMigrada;
     },
     opts?: { partial?: boolean },
   ) => boolean;
@@ -202,19 +277,177 @@ interface State {
   serialize: () => string;
 }
 
+const vaciaMigrada = (): BibliotecaMigrada => ({ ...bibliotecaVacia(), pendientes: {} });
+
+/** Calibración de bocas que aplica hoy al producto (patrón o excepción). */
+export function calibracionDelProducto(productId: string): CalibracionAplicable {
+  const product = productoDelIndice(productId);
+  const master = product ? findMasterForProduct(product as Record<string, unknown>) : null;
+  if (!product || !master) return { origen: 'ninguna' };
+  return calibracionPara(productId, master.id, esVarianteMedida(product, master));
+}
+
+/**
+ * Huella de la calibración de un producto para las aprobaciones: nombres de
+ * boca (mapping) + calibración de bocas que le aplica. B-2.5: la geometría ya
+ * no está en el mapping, así que se suma la del patrón/excepción.
+ */
+export function huellaCalibracionProducto(productId: string, mapping: ProductPortMapping | null): string {
+  const cal = calibracionDelProducto(productId);
+  return `${calibrationHash(mapping)}:${calibrationHash({ productId, source: 'override', entries: [], overrideReason: JSON.stringify(cal) })}`;
+}
+
+/** Producto (datos de catálogo) para deducir una corrección: índice sembrado. */
+function productoDelIndice(productId: string): Product | null {
+  const e = getProductIndexEntry(productId);
+  return e ? ({ sku: productId.replace(/^SAM_/, ''), ...e, producto_id: productId } as unknown as Product) : null;
+}
+
+/**
+ * Migra una biblioteca v1 (por SKU) a v2: deja la copia del original, escribe
+ * la v2 y devuelve el resultado. Necesita el catálogo (asíncrono).
+ */
+export async function migrarBibliotecaV1(v1: {
+  overrides: Record<string, ProductPortMapping>;
+  approvals: Record<string, PatternApproval>;
+  aporteOverrides: Record<string, AporteRule>;
+}): Promise<{ biblioteca: BibliotecaMigrada; overrides: Record<string, ProductPortMapping>; informe: InformeMigracion }> {
+  const cat = await loadStaticCatalog();
+  const fecha = new Date().toISOString();
+  const r = migrarBibliotecaPorSku(v1.overrides, cat.productos, fecha);
+  if (typeof localStorage !== 'undefined') {
+    try {
+      const original = localStorage.getItem(STORAGE_KEY);
+      const copia = `${BACKUP_MIGRACION_PREFIX}${fecha}`;
+      if (original) localStorage.setItem(copia, original);
+      const payload: PersistedV2 = {
+        version: 'codex:catalogConfig/2',
+        overrides: r.overridesNombres,
+        approvals: v1.approvals,
+        aporteOverrides: v1.aporteOverrides,
+        calibracion: r.biblioteca,
+        migradoDesdeV1: { fecha, copia, informe: r.informe },
+        savedAt: fecha,
+      };
+      localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(payload));
+    } catch {
+      /* sin almacenamiento: queda en memoria */
+    }
+  }
+  return { biblioteca: r.biblioteca, overrides: r.overridesNombres, informe: r.informe };
+}
+
 export const useCatalogConfigStore = create<State>((set, get) => ({
   overrides: {},
+  calibracion: vaciaMigrada(),
+  informeMigracion: null,
   approvals: {},
   aporteOverrides: {},
   hydrated: false,
   hydrate: () => {
     if (get().hydrated) return;
-    const { overrides, approvals, aporteOverrides } = readStorage();
-    setPortMappingOverrides(overrides);
-    set({ overrides, approvals, aporteOverrides, hydrated: true });
+    const v2 = readStorageV2();
+    if (v2) {
+      const calibracion = { ...vaciaMigrada(), ...v2.calibracion };
+      setBibliotecaCalibracion(calibracion);
+      setPortMappingOverrides(v2.overrides ?? {});
+      set({
+        overrides: v2.overrides ?? {},
+        approvals: v2.approvals ?? {},
+        aporteOverrides: sanitizeAporteOverrides(v2.aporteOverrides),
+        calibracion,
+        informeMigracion: v2.migradoDesdeV1?.informe ?? null,
+        hydrated: true,
+      });
+      return;
+    }
+    const v1 = readStorage();
+    setPortMappingOverrides(v1.overrides);
+    set({ ...v1, hydrated: true });
+    const conGeometria = Object.values(v1.overrides).some((o) => o.modelFrame || o.entries.some((e) => e.geometry));
+    if (!conGeometria) return;
+    // Biblioteca por SKU con geometría: se migra en segundo plano (necesita el catálogo).
+    void migrarBibliotecaV1(v1).then((r) => {
+      setBibliotecaCalibracion(r.biblioteca);
+      setPortMappingOverrides(r.overrides);
+      set({ overrides: r.overrides, calibracion: r.biblioteca, informeMigracion: r.informe });
+    });
+  },
+  setCorreccionPatron: (patron, boca, correccion, motivo) => {
+    const cal = get().calibracion;
+    const prev = cal.patrones[patron] ?? { patron, bocas: {} };
+    const bocas = { ...prev.bocas };
+    if (correccion && !esCorreccionNula(correccion)) bocas[boca] = correccion;
+    else delete bocas[boca];
+    const patrones = { ...cal.patrones };
+    if (Object.keys(bocas).length) patrones[patron] = { ...prev, bocas, ...(motivo ? { motivo } : {}), fecha: new Date().toISOString() };
+    else delete patrones[patron];
+    const next: BibliotecaMigrada = { ...cal, patrones };
+    setBibliotecaCalibracion(next);
+    set({ calibracion: next });
+    writeStorage(get().overrides, get().approvals, get().aporteOverrides);
+  },
+  setExcepcion: (productoId, excepcion) => {
+    if (excepcion && !excepcion.motivo.trim()) throw new Error('setExcepcion: la excepción de una variante necesita motivo');
+    const cal = get().calibracion;
+    const excepciones = { ...cal.excepciones };
+    if (excepcion) excepciones[productoId] = excepcion;
+    else delete excepciones[productoId];
+    const next: BibliotecaMigrada = { ...cal, excepciones };
+    setBibliotecaCalibracion(next);
+    set({ calibracion: next });
+    writeStorage(get().overrides, get().approvals, get().aporteOverrides);
+  },
+  replaceCalibracion: (b) => {
+    const next = { ...vaciaMigrada(), ...b };
+    setBibliotecaCalibracion(next);
+    set({ calibracion: next });
+    writeStorage(get().overrides, get().approvals, get().aporteOverrides);
   },
   upsertOverride: (productId, mapping) => {
-    const next = { ...get().overrides, [productId]: mapping };
+    // API anterior: si trae geometría, calibra el PATRÓN del producto (B-2.5).
+    const tieneGeo = !!mapping.modelFrame || mapping.entries.some((e) => e.geometry);
+    let nombres = mapping;
+    if (tieneGeo) {
+      // La geometría sólo se quita del override si se convirtió a corrección del
+      // patrón. Si no se puede, el override queda INTACTO y se registra como
+      // pendiente con su motivo: nunca se descarta una calibración en silencio.
+      const product = productoDelIndice(productId);
+      const master = product ? findMasterForProduct(product as Record<string, unknown>) : null;
+      const corr = product && master ? correccionesDeOverride(product, mapping) : null;
+      if (!corr || 'motivo' in corr) {
+        const motivo = !product
+          ? 'el producto no está en el índice de catálogo sembrado'
+          : !master ? 'el producto no corresponde a ningún patrón' : String((corr as { motivo: string }).motivo);
+        const cal = get().calibracion;
+        const next: BibliotecaMigrada = { ...cal, pendientes: { ...cal.pendientes, [productId]: { productoId: productId, motivo, original: mapping } } };
+        setBibliotecaCalibracion(next);
+        set({ calibracion: next });
+        console.warn(`[catalogConfigStore] calibración de ${productId} sin convertir a patrón: ${motivo}. Se conserva el override tal cual.`);
+      } else if (master) {
+        {
+          const cal = get().calibracion;
+          const bocas = corr as Record<string, CorreccionBoca>;
+          const patrones = { ...cal.patrones };
+          if (Object.keys(bocas).length) {
+            patrones[master.id] = {
+              patron: master.id,
+              bocas,
+              ...(mapping.overrideReason ? { motivo: mapping.overrideReason } : {}),
+              fecha: new Date().toISOString(),
+            };
+          } else delete patrones[master.id];
+          const pendientes = { ...cal.pendientes };
+          delete pendientes[productId];
+          const next: BibliotecaMigrada = { ...cal, patrones, pendientes };
+          setBibliotecaCalibracion(next);
+          set({ calibracion: next });
+        }
+        const { modelFrame: _mf, ...rest } = mapping;
+        nombres = { ...rest, entries: mapping.entries.map(({ geometry: _g, ...e }) => e) };
+      }
+    }
+    const next = { ...get().overrides, [productId]: nombres };
     setPortMappingOverrides(next);
     writeStorage(next, get().approvals, get().aporteOverrides);
     set({ overrides: next });
@@ -240,7 +473,8 @@ export const useCatalogConfigStore = create<State>((set, get) => ({
     const approvedMapping = mapping ? cloneMapping(mapping) : undefined;
     const approval: PatternApproval = {
       approvedAtRevision: masterRevision,
-      approvedAtCalibrationHash: calibrationHash(mapping),
+      approvedAtCalibrationHash: huellaCalibracionProducto(productId, mapping),
+      approvedCalibracion: JSON.parse(JSON.stringify(calibracionDelProducto(productId))),
       approvedAt: new Date().toISOString(),
       approvedMapping,
     };
@@ -265,9 +499,14 @@ export const useCatalogConfigStore = create<State>((set, get) => ({
     const aporteOverrides = opts?.partial
       ? get().aporteOverrides
       : sanitizeAporteOverrides(lib.aporteOverrides ?? {});
-    if (!writeStorage(overrides, approvals, aporteOverrides)) return false;
+    const prevCal = get().calibracion;
+    if (lib.calibracion) setBibliotecaCalibracion({ ...vaciaMigrada(), ...lib.calibracion });
+    if (!writeStorage(overrides, approvals, aporteOverrides)) {
+      setBibliotecaCalibracion(prevCal);
+      return false;
+    }
     setPortMappingOverrides(overrides);
-    set({ overrides, approvals, aporteOverrides });
+    set({ overrides, approvals, aporteOverrides, ...(lib.calibracion ? { calibracion: { ...vaciaMigrada(), ...lib.calibracion } } : {}) });
     return true;
   },
   getApprovalInfo: (productId, masterRevision) => {
@@ -278,7 +517,7 @@ export const useCatalogConfigStore = create<State>((set, get) => ({
     // bocas + marco iguales ⇒ aprobar uno vale para todos. Se recorren
     // alfabéticamente para que el resultado sea estable entre sesiones.
     const mapping = getEffectiveMapping(productId);
-    const currentHash = calibrationHash(mapping);
+    const currentHash = huellaCalibracionProducto(productId, mapping);
     if (!stored) {
       const candidateIds = Object.keys(approvals).sort();
       for (const id of candidateIds) {
@@ -317,11 +556,12 @@ export const useCatalogConfigStore = create<State>((set, get) => ({
     return { rule: defaultAporteForMaster(master), source: 'default' };
   },
   serialize: () => {
-    const payload: Persisted = {
-      version: 'codex:catalogConfig/1',
+    const payload: PersistedV2 = {
+      version: 'codex:catalogConfig/2',
       overrides: get().overrides,
       approvals: get().approvals,
       aporteOverrides: get().aporteOverrides,
+      calibracion: get().calibracion,
       savedAt: new Date().toISOString(),
     };
     return JSON.stringify(payload, null, 2);

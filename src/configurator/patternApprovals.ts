@@ -45,6 +45,11 @@ export interface PatternApproval {
    * posteriores del store no muten la referencia.
    */
   readonly approvedMapping?: ProductPortMapping;
+  /**
+   * B-2.5: calibración de bocas que aplicaba al producto al aprobar (corrección
+   * del patrón o excepción de la variante). Ausente en aprobaciones anteriores.
+   */
+  readonly approvedCalibracion?: unknown;
 }
 
 /**
