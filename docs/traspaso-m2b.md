@@ -22,8 +22,7 @@ Base: `a7794b8`. Encargo completo: ver el mensaje del operador "ENCARGO: HITO 2,
 Hallazgos de B-1:
 - **CAS (40 curvas ajustables):** tomaban por desempate silencioso el maestro **CS-45** (el primero de
   la lista) y la receta les ponía **90°** por defecto. Ahora quedan sin definición, con un motivo de
-  ángulo ajustable. Pendiente en B-3 (8b): ángulo por instancia, y el motivo "sin modelo geométrico;
-  falta el STEP de la pieza".
+  ángulo ajustable.
 - 8 curvas FAMIQ "3007": el ángulo falta de verdad (no son ajustables) y no tienen modelo.
 - `extract_outlines.py` ya no omitía en silencio (eso se corrigió en la fase A).
   `masterVariants` emparejaba bocas por posición: en la T, P2 y P3 salían intercambiadas.
@@ -166,8 +165,8 @@ Playwright 87/87. La primera corrida en un worktree nuevo encontró un defecto l
 - **Uniones:** si un giro deja uniones fuera de tolerancia (las cuatro condiciones), se pide confirmación
   con el mismo aviso que al mover ("Mover o rotar el tramo desconectará N unión(es)"). Cancelar restaura y
   aceptar descarta esas uniones, así que nunca quedan uniones inválidas registradas.
-- **Alternativa no hecha, queda pendiente:** mover el grupo unido. Se tomó el camino más chico
-  (confirmación).
+- **Mover el grupo unido al rotar:** no se hizo (se tomó el camino más chico, la confirmación); es uno
+  de los dos pendientes vigentes (ver `traspaso-recorridos.md`).
 - **Lógica pura** (`trayRotation.ts`): conversión visor → trazado (rotación propia: el eje se transforma y
   el ángulo se conserva), pivote, paso y resolución. Pruebas en `trayRotation.test.ts`.
 - **PB8** (`e2e/rotarGizmo.visual.spec.ts`, 3 pruebas, estables en 3 corridas):
@@ -180,17 +179,10 @@ Playwright 87/87. La primera corrida en un worktree nuevo encontró un defecto l
   Capturas en `e2e/output/rotar-0*.png`.
 
 ## Recorte de alcance (operador, 2026-11-11)
-- **Descartado:** reglas nominales para T y X (aunque 40 T y 40 X declaran `radio_mm`); reducciones (les
-  falta el largo y el segundo ancho está solo en la descripción); tapas y finales de tramo. Tema de
-  modelado para después: tapas y finales no son piezas de recorrido, deberían ser material asociado a una
-  pieza.
-- **B-3 se reduce a la cuarta condición de unión** (ancho de boca y aviso de ala de las CUPS).
-- **POSPUESTOS, no cancelados (no se tocan en esta fase):**
-  - **Anclaje de la DCPS (8):** el patrón declara una sola boca (P1). La pieza guarda tramo anfitrión,
-    distancia a lo largo del eje y lado; la pose se deriva del anclaje. El anfitrión conserva sus extremos
-    y su largo, y mover o rotar el anfitrión arrastra a la DCPS (PB7).
-  - **Ángulo por instancia de las CAS (8b):** solo código. Sin rango inventado, se registra quién lo
-    declaró y el ángulo entra en la huella. Sin modelo, el motivo es "curva de ángulo ajustable sin modelo
-    geométrico; falta el STEP de la pieza"; no se construye desde la curva de 90°. Incluye listar los
-    productos que toman prestado un maestro que no es suyo.
+- **Descartado:** reglas nominales para T y X; reducciones; tapas y finales de tramo.
+- **B-3 se reduce a la cuarta condición de unión** (ancho de boca y aviso de ala de las CUPS). El anclaje
+  de la DCPS y el ángulo por instancia de las CAS no se hicieron y quedaron fuera de la lista de
+  pendientes (operador, 2026-11-12).
 - **B-4 (gizmo de rotación) se mantiene completa.**
+
+Los únicos pendientes vigentes están en `traspaso-recorridos.md`.

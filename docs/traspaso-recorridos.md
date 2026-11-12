@@ -63,8 +63,7 @@ persistido, ahora también desde esa nueva fuente.
   recorrido) y en `updateOutdatedPieces` (al actualizar se recalcula con la definición vigente), siempre
   con la misma función, `conLongitudesEje`.
 - **PB3:** excepción declarada para `longitudesEje.ts`, porque lee el perfil de la CUPS por fuera de la
-  definición. Alternativa no hecha: llevar la línea media dentro de la definición, lo que cambiaría
-  huellas.
+  definición. Se queda así (operador, 2026-11-12).
 - **Pruebas:**
   - `longitudesEje.test.ts`, sobre todo el catálogo:
     - T y X (115 piezas, más de 400 pares): tronco igual a la distancia entre bocas opuestas; derivación
@@ -83,11 +82,51 @@ persistido, ahora también desde esa nueva fuente.
     - control negativo: borrar las longitudes guardadas de la T vuelve a dar incompleto;
     - una unión inválida corta el camino.
 
-## Pendiente (anotado, no hecho)
-- **Proyectos anteriores:** las piezas colocadas antes de esta regla (o resueltas por la migración A-10)
-  no tienen longitudes guardadas y siguen dando incompleto. Hoy solo se recalculan con "Actualizar piezas"
-  si además están desactualizadas. Falta una acción explícita para guardarles la longitud.
-- Elegir origen y destino haciendo clic en la escena, y resaltar el camino en 3D.
-- Si hay varios caminos, hoy se toma el de menos piezas. Elegir el más corto en mm o listarlos queda
-  pendiente.
-- El recorrido no se guarda como circuito (`circuitos[].recorrido`): no entraba en este encargo.
+## Circuitos guardados y longitudes de proyectos anteriores (tercer encargo)
+- **Guardar el recorrido como circuito** (`recorridos/circuitosGuardados.ts`). Desde el recorrido en
+  Conexiones, con nombre (obligatorio y único). Se guarda en el proyecto, clave workspace-only
+  `circuitos_ws` del trazado, que se quita antes de ir al motor (`tray/store.ts`, `WS_ONLY`); los
+  `circuitos` del contrato exigen cable y cantidad y no se tocan. Guarda:
+  - origen y destino;
+  - por pieza atravesada: bocas de entrada y salida, longitud y fuente, y la posición, dirección y
+    orientación de sección de esas dos bocas;
+  - uniones cruzadas y la longitud total.
+- **Desactualizado, nunca recalculado solo.** `estadoCircuito` compara lo guardado con el trazado y da
+  los motivos:
+  - pieza borrada;
+  - pieza movida o rotada, incluso girada sobre su propio eje, que solo cambia la orientación de la
+    sección;
+  - longitud cambiada;
+  - unión borrada o que ya no cumple.
+
+  Recalcular es un botón; si no hay camino, lo dice y deja lo guardado como estaba.
+- **Resultados:** tabla "Circuitos" con nombre, origen, destino, longitud (mm), piezas y estado.
+  - "Copiar tabla" copia texto separado por tabulaciones con CRLF, coma decimal y sin separador de
+    miles, para pegar en una planilla.
+- **Proyectos anteriores** (`recorridos/longitudesAnteriores.ts`): en Conexiones aparece "N pieza(s) sin
+  longitud de eje guardada" con el botón "Guardar longitudes con las reglas vigentes".
+  - Aplica las reglas sobre la definición guardada de cada pieza, que es su geometría tal como quedó
+    colocada.
+  - Dice cuántas actualizó y cuáles no pudo, con el motivo: sin colocación resuelta, falta la definición
+    guardada, o el motivo de la regla.
+  - Es una edición más: se puede deshacer.
+- **Pruebas:**
+  - `circuitosGuardados.test.ts` (6): guardar, ida y vuelta por JSON, nombre obligatorio y único;
+    desactualizado por mover, rotar sobre el propio eje, borrar, cambiar largo o unión; recalcular
+    explícito; longitudes anteriores (actualiza T y CUPS; no pudo, con motivo).
+  - E2E `circuitosGuardados` (2, gestos reales):
+    - guardar con nombre y ver la fila en Resultados (9.110,5 mm, 7 piezas);
+    - copiar y leer el portapapeles;
+    - sobrevive a recargar la página y a guardar copia, Nuevo y abrir el archivo;
+    - rotar una pieza con la herramienta Rotar y borrar otra: desactualizado con motivo; recalcular sin
+      camino no toca lo guardado;
+    - longitudes anteriores: 2 actualizadas y recorrido completo. Con el fixture real del operador:
+      0 actualizadas, 1 no pudo (la T, "sin colocación resuelta: no encaja con el modelo vigente").
+- **Defecto encontrado y corregido:** al abrir otro proyecto, las listas de origen y destino conservaban
+  la elección anterior y mostraban un falso "sin camino". Ahora una elección que no está en el trazado
+  cuenta como "sin elegir".
+
+## Pendientes (los únicos)
+1. Elegir origen y destino haciendo clic en la escena, con el recorrido resaltado en 3D.
+2. Mover el grupo unido al rotar una pieza (hoy se pide confirmación y se descartan las uniones que dejan
+   de cumplir).

@@ -14,6 +14,7 @@ import { useWorkspaceStore } from '../useWorkspaceStore';
 import { TrayResults } from '../TrayResults';
 import { summarizeResult } from './resultPresentation';
 import { Section } from './shared';
+import { CircuitosTabla } from './CircuitosTabla';
 import { unionsOf } from '../workspaceOperation';
 import { indexProducts, pieceLabelById } from './displayNames';
 import { placedOf } from '../placement/definitions';
@@ -200,6 +201,7 @@ export function ResultadosPanel() {
       </Section>
 
       <ExceptionsList />
+      <CircuitosTabla />
       <NominalList />
       <AvisosModeloList />
 

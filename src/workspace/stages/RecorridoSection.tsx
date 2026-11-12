@@ -5,10 +5,18 @@
  * Sin camino → el motivo (nunca un cero). Uniones inválidas → no se atraviesan
  * y se dice cuál y por qué. Longitud incompleta → se dice qué pieza falta.
  * El cálculo está en `recorridos/caminoEntreBocas.ts`.
+ *
+ * El recorrido mostrado se puede guardar como circuito con nombre
+ * (`recorridos/circuitosGuardados.ts`; la tabla está en Resultados). Para
+ * proyectos guardados antes de que las piezas guardaran su longitud de eje hay
+ * una acción explícita (`recorridos/longitudesAnteriores.ts`).
  */
 import { useMemo, useState } from 'react';
 import { useTrayStore } from '../../tray/store';
+import { useWorkspaceStore } from '../useWorkspaceStore';
 import { caminoEntreBocas, type Boca, type FuenteLongitud } from '../recorridos/caminoEntreBocas';
+import { guardarCircuito } from '../recorridos/circuitosGuardados';
+import { guardarLongitudesAnteriores, necesitaLongitudes } from '../recorridos/longitudesAnteriores';
 import { indexProducts, pieceLabelById, portLabel } from './displayNames';
 import { Empty, Section } from './shared';
 
@@ -33,7 +41,13 @@ export function RecorridoSection() {
   const idx = useMemo(() => indexProducts(context?.productos), [context]);
   const [origen, setOrigen] = useState('');
   const [destino, setDestino] = useState('');
+  const [nombre, setNombre] = useState('');
+  const [msgGuardar, setMsgGuardar] = useState<{ ok: boolean; texto: string } | null>(null);
+  const [msgLongitudes, setMsgLongitudes] = useState<{ actualizadas: string[]; noPudo: Array<{ pieza: string; motivo: string }> } | null>(null);
+  const trayEdit = useTrayStore((s) => s.edit);
+  const markDirty = useWorkspaceStore((s) => s.markDirty);
   const piezas = entrada?.piezas ?? [];
+  const sinLongitud = piezas.filter(necesitaLongitudes).length;
 
   const opciones = useMemo(
     () => piezas.flatMap((p) => Object.keys(p.puertos).map((b) => ({
@@ -48,25 +62,70 @@ export function RecorridoSection() {
     return p ? portLabel(p.producto_id, boca, idx) : boca;
   };
 
-  const o = deClave(origen);
-  const d = deClave(destino);
-  const r = useMemo(() => (entrada && o && d ? caminoEntreBocas(entrada, o, d) : null), [entrada, origen, destino]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Una elección que ya no está en el trazado (se abrió otro proyecto, se borró
+  // la pieza) cuenta como "sin elegir": no es un recorrido sin camino.
+  const validas = new Set(opciones.map((x) => x.k));
+  const origenSel = validas.has(origen) ? origen : '';
+  const destinoSel = validas.has(destino) ? destino : '';
+  const o = deClave(origenSel);
+  const d = deClave(destinoSel);
+  const r = useMemo(() => (entrada && o && d ? caminoEntreBocas(entrada, o, d) : null), [entrada, origenSel, destinoSel]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const guardar = () => {
+    if (!entrada || !o || !d) return;
+    const g = guardarCircuito(entrada, nombre, o, d);
+    if (!g.ok) { setMsgGuardar({ ok: false, texto: g.motivo }); return; }
+    trayEdit(g.entrada);
+    markDirty();
+    setNombre('');
+    setMsgGuardar({ ok: true, texto: `Circuito "${g.circuito.nombre}" guardado. Está en Resultados.` });
+  };
+
+  const guardarLongitudes = () => {
+    if (!entrada) return;
+    const res = guardarLongitudesAnteriores(entrada);
+    if (res.actualizadas.length) { trayEdit(res.entrada); markDirty(); }
+    setMsgLongitudes({ actualizadas: res.actualizadas, noPudo: res.noPudo });
+  };
 
   return (
     <Section title="Recorrido entre dos bocas" testid="recorrido">
       {piezas.length === 0 && <Empty>Sin piezas colocadas.</Empty>}
+      {(sinLongitud > 0 || msgLongitudes) && (
+        <div className="stage-card" data-testid="longitudes-anteriores">
+          {sinLongitud > 0 && (
+            <>
+              <div className="tone-warn">{sinLongitud} pieza(s) sin longitud de eje guardada (proyecto anterior a la regla).</div>
+              <button type="button" data-testid="longitudes-anteriores-aplicar" onClick={guardarLongitudes}>
+                Guardar longitudes con las reglas vigentes
+              </button>
+            </>
+          )}
+          {msgLongitudes && (
+            <div role="status" data-testid="longitudes-anteriores-resultado">
+              <div>{msgLongitudes.actualizadas.length} pieza(s) actualizada(s){msgLongitudes.actualizadas.length ? `: ${msgLongitudes.actualizadas.map(etiquetaPieza).join(', ')}` : ''}.</div>
+              {msgLongitudes.noPudo.length > 0 && <div className="tone-warn">No se pudo en {msgLongitudes.noPudo.length}:</div>}
+              {msgLongitudes.noPudo.map((x) => (
+                <div key={x.pieza} className="stage-row-sub" style={{ whiteSpace: 'normal' }} data-testid="longitudes-anteriores-no-pudo">
+                  {etiquetaPieza(x.pieza)}: {x.motivo}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
       {piezas.length > 0 && (
         <>
           <label className="stage-field">
             Origen
-            <select className="inspector-input" data-testid="recorrido-origen" value={origen} onChange={(e) => setOrigen(e.target.value)}>
+            <select className="inspector-input" data-testid="recorrido-origen" value={origenSel} onChange={(e) => setOrigen(e.target.value)}>
               <option value="">Elegí una boca…</option>
               {opciones.map((x) => <option key={x.k} value={x.k}>{x.label}</option>)}
             </select>
           </label>
           <label className="stage-field">
             Destino
-            <select className="inspector-input" data-testid="recorrido-destino" value={destino} onChange={(e) => setDestino(e.target.value)}>
+            <select className="inspector-input" data-testid="recorrido-destino" value={destinoSel} onChange={(e) => setDestino(e.target.value)}>
               <option value="">Elegí una boca…</option>
               {opciones.map((x) => <option key={x.k} value={x.k}>{x.label}</option>)}
             </select>
@@ -105,7 +164,23 @@ export function RecorridoSection() {
               </li>
             ))}
           </ol>
+          <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+            <input
+              type="text"
+              className="inspector-input"
+              placeholder="Nombre del circuito"
+              aria-label="Nombre del circuito"
+              data-testid="recorrido-nombre"
+              value={nombre}
+              onChange={(e) => setNombre(e.target.value)}
+              style={{ flex: 1 }}
+            />
+            <button type="button" data-testid="recorrido-guardar" onClick={guardar}>Guardar como circuito</button>
+          </div>
         </div>
+      )}
+      {msgGuardar && (
+        <p className={`stage-note${msgGuardar.ok ? '' : ' tone-warn'}`} role="status" data-testid="recorrido-guardado-msg">{msgGuardar.texto}</p>
       )}
     </Section>
   );
