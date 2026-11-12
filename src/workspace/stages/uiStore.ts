@@ -26,7 +26,7 @@ function initialStage(): StageId {
 }
 
 export type EquiposTool = 'seleccionar' | 'ubicar' | 'mover' | 'rotar';
-export type BandejasTool = 'seleccionar' | 'continuar' | 'tramo' | 'unir' | 'soporte';
+export type BandejasTool = 'seleccionar' | 'continuar' | 'tramo' | 'unir' | 'soporte' | 'derivacion';
 
 interface UiState {
   stage: StageId;

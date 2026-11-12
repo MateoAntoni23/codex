@@ -3,6 +3,7 @@
  * la etapa activa; sin selección muestra el resumen de la etapa y el siguiente
  * paso sugerido (reemplaza a la guía de trabajo y a la leyenda fijas).
  */
+import { bocasOcupadasPorEnganches } from '../derivacion/enganche';
 import { useTrayStore } from '../../tray/store';
 import { useWorkspaceStore } from '../useWorkspaceStore';
 import { useRoutingStore } from '../useRoutingStore';
@@ -55,7 +56,7 @@ function PlantaSummary() {
 function BandejasSummary() {
   const entrada = useTrayStore((s) => s.entrada);
   const piezas = entrada?.piezas ?? [];
-  const free = getFreePorts(piezas, entrada?.conexiones ?? []).length;
+  const free = getFreePorts(piezas, entrada?.conexiones ?? [], bocasOcupadasPorEnganches(entrada)).length;
   const next = piezas.length === 0
     ? 'Usá Tramo nuevo para crear la primera pieza.'
     : `Continuá el trazado desde un extremo libre (${free}) o pasá a Resultados para calcular.`;

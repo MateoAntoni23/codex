@@ -10,7 +10,7 @@ const manager=createManager();
 let callSequence=0;
 
 /** Workspace-only fields that must not be sent to the Python motor (additionalProperties:false). */
-const WS_ONLY: ReadonlySet<string> = new Set(['excepciones_conexion', 'definiciones_ws', 'uniones_ws', 'circuitos_ws']);
+const WS_ONLY: ReadonlySet<string> = new Set(['excepciones_conexion', 'definiciones_ws', 'uniones_ws', 'circuitos_ws', 'enganches_ws']);
 
 /**
  * Strips workspace-only fields from TrayInput before submitting to the motor AND

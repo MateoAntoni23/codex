@@ -81,16 +81,17 @@ test.describe('m1c — bocas de accesorios', () => {
     expect(opts['SAM_TRPS-450-20-ZB']?.startsWith('◆'), `«${opts['SAM_TRPS-450-20-ZB']}»`).toBe(true);
   });
 
-  test('C4 — un producto sin calibración de bocas se informa como tal, no como 0 compatibles', async ({ page }) => {
+  // Hasta la derivación en un tramo, la DCPS era el ejemplo de producto "sin calibración de
+  // bocas" (su maestro declaraba 3 bocas y el catálogo publica sólo P1). La DCPS lateral
+  // medida declara exactamente esa boca: hoy no queda ningún producto sin calibrar
+  // (portMappingAudit.test.ts). Continuar con una DCPS la une por su única boca — la unión
+  // directa documentada DCPS-P1 ↔ TRPS-P1 —, sin aviso y sin bocas de tronco sueltas.
+  test('C4 — la DCPS se une por su única boca (la documentada); no hay aviso de calibración', async ({ page }) => {
     await openBandejas(page);
     await newStraight(page, 'SAM_TRPS-300-22-Z');
     await continueFrom(page, /Boca x_max/, 'SAM_DCPS-300-Z');
-    // tronco_P2 → P2, que el catálogo no publica para DCPS (sólo P1, "boca derivación").
-    await page.getByTestId('free-end').filter({ hasText: /DCPS-300-Z · Tronco \(salida\)/ }).click();
-    const msg = page.getByTestId('routing-uncalibrated');
-    await expect(msg).toBeVisible();
-    await expect(msg).toContainText('Sin calibración de bocas');
-    await expect(msg).toContainText('DCPS-300-Z');
-    await expect(page.locator('label', { hasText: /0 compatibles/ })).toHaveCount(0);
+    await expect(page.getByTestId('routing-uncalibrated')).toHaveCount(0);
+    await expect(page.getByTestId('free-end').filter({ hasText: /DCPS-300-Z/ })).toHaveCount(0);
+    await expect(page.getByTestId('join-row')).toHaveAttribute('data-join-ok', 'true');
   });
 });

@@ -78,8 +78,10 @@ function findHorizontalPortPos(piece: Piece): Point3 | null {
 }
 
 /** Returns all ports that are not part of any existing connection. */
-export function getFreePorts(pieces: Piece[], conexiones: Connection[]): FreePort[] {
-  const occupied = getOccupiedPorts(conexiones);
+export function getFreePorts(pieces: Piece[], conexiones: Connection[], ocupadasPorEnganche: Iterable<string> = []): FreePort[] {
+  // Derivación en un tramo: la boca del ramal enganchada al flanco (escalera) no es
+  // una `conexion`, pero tampoco es un extremo libre ("pieza:boca").
+  const occupied = new Set([...getOccupiedPorts(conexiones), ...ocupadasPorEnganche]);
   const free: FreePort[] = [];
   for (const piece of pieces) {
     const horizontalPairPos = findHorizontalPortPos(piece);

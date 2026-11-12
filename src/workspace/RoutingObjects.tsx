@@ -6,6 +6,7 @@
  *
  * Coordinate transform matches TrayObjects: [x/1000, z/1000, -y/1000]
  */
+import { bocasOcupadasPorEnganches } from './derivacion/enganche';
 import { useMemo } from 'react';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three';
@@ -159,7 +160,7 @@ export function RoutingObjects() {
 
   const freePorts = useMemo(() => {
     if (!entrada || !active) return [];
-    return getFreePorts(entrada.piezas, entrada.conexiones);
+    return getFreePorts(entrada.piezas, entrada.conexiones, bocasOcupadasPorEnganches(entrada));
   }, [entrada, active, entrada?.conexiones, entrada?.piezas]);
 
   const selectedProduct = useMemo(

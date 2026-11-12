@@ -20,6 +20,13 @@
  *         guardada): longitud desconocida, con motivo. El total queda
  *         incompleto y se informa como tal, nunca como un número cerrado.
  *
+ * Derivación en un tramo (extensión): el tronco tiene una pseudo-boca por cada
+ * enganche (`enganche:<id>`) y el camino puede salir por ella hacia el ramal
+ * (en perforada, a la DCPS por su pseudo-boca `apoyo`; en escalera, directo al
+ * ramal). Sólo se atraviesa un enganche vigente. El tronco aporta la distancia
+ * guardada desde la boca por la que se entró hasta el enganche; la DCPS, su
+ * profundidad guardada al colocarla.
+ *
  * Por qué en el frontend: el motor no busca caminos (los recorridos de los
  * circuitos le llegan explícitos) y sólo suma longitudes de eje por pieza para
  * los conductores PE (D-27), sin distinguir por qué bocas se cruza una T.
@@ -27,10 +34,11 @@
 import type { Piece, TrayInput } from '../../tray/model';
 import { checkConnection } from '../placement/joins';
 import { claveTramo } from '../placement/longitudesEje';
+import { bocaEnganche, distanciaBocaAEnganche, enganchesOf, estadoEnganche, idDeBocaEnganche, type Enganche } from '../derivacion/enganche';
 
 export interface Boca { readonly pieza: string; readonly boca: string }
 
-export type FuenteLongitud = 'longitud_mm' | 'longitud_eje_mm' | 'longitudes_eje' | 'bocas_en_linea';
+export type FuenteLongitud = 'longitud_mm' | 'longitud_eje_mm' | 'longitudes_eje' | 'bocas_en_linea' | 'enganche';
 
 export interface Cruce {
   readonly pieza: string;
@@ -44,13 +52,15 @@ export interface Cruce {
   readonly procedencia?: string;
 }
 
-export interface UnionCortada { readonly conexion_id: string; readonly motivos: readonly string[] }
+export interface UnionCortada { readonly conexion_id: string; readonly motivos: readonly string[]; readonly enganche?: true }
 
 export type ResultadoCamino =
   | {
       readonly ok: true;
       readonly cruces: readonly Cruce[];
       readonly uniones: readonly string[];
+      /** Enganches (derivación en un tramo) que atraviesa. */
+      readonly enganches: readonly string[];
       /** Suma de las longitudes conocidas (mm). */
       readonly sumaMm: number;
       /** true si todas las piezas tienen longitud: sólo entonces sumaMm es la longitud total. */
@@ -67,7 +77,26 @@ const dot = (a: readonly number[], b: readonly number[]) => a[0] * b[0] + a[1] *
 const norm = (a: readonly number[]) => Math.hypot(a[0], a[1], a[2]);
 
 /** Longitud de la pieza entre las bocas `e` y `s`, sólo con lo persistido. */
-export function longitudDeCruce(piece: Piece, e: string, s: string): Pick<Cruce, 'longitudMm' | 'fuente' | 'motivo' | 'procedencia'> {
+export function longitudDeCruce(piece: Piece, e: string, s: string, enganches: readonly Enganche[] = []): Pick<Cruce, 'longitudMm' | 'fuente' | 'motivo' | 'procedencia'> {
+  // Tronco con enganche: distancia guardada en el enganche (y largo guardado del tronco).
+  const ide = idDeBocaEnganche(e);
+  const ids = idDeBocaEnganche(s);
+  if (ide || ids) {
+    const eng = (id: string) => enganches.find((x) => x.id === id);
+    if (ide && ids) {
+      const [a, b] = [eng(ide), eng(ids)];
+      const pa = a && distanciaBocaAEnganche(piece, 'P1', a);
+      const pb = b && distanciaBocaAEnganche(piece, 'P1', b);
+      if (typeof pa !== 'number' || typeof pb !== 'number') return { longitudMm: null, fuente: null, motivo: 'falta el enganche o el largo del tronco' };
+      return { longitudMm: Math.abs(pa - pb), fuente: 'enganche', procedencia: `entre los enganches ${ide} y ${ids}: distancias guardadas` };
+    }
+    const id = (ide ?? ids)!;
+    const boca = ide ? s : e;
+    const x = eng(id);
+    const L = x ? distanciaBocaAEnganche(piece, boca, x) : null;
+    if (L === null) return { longitudMm: null, fuente: null, motivo: `falta el enganche ${id} o el largo del tronco` };
+    return { longitudMm: L, fuente: 'enganche', procedencia: `distancia guardada en el enganche ${id} (desde ${x!.desde_boca}; largo del tronco ${piece.longitud_mm} mm)` };
+  }
   const n = Object.keys(piece.puertos).length;
   if (n === 2 && typeof piece.longitud_mm === 'number') return { longitudMm: piece.longitud_mm, fuente: 'longitud_mm' };
   const col = piece.colocacion;
@@ -88,12 +117,26 @@ export function longitudDeCruce(piece: Piece, e: string, s: string): Pick<Cruce,
   return { longitudMm: null, fuente: null, motivo: `desvío de ${e} a ${s}: la pieza no tiene guardada su longitud de eje` };
 }
 
-/** Uniones del trazado que salen de la boca (pieza, boca). */
+/** Uniones del trazado que salen de la boca (pieza, boca); también los enlaces de un enganche. */
 function unionesDe(entrada: TrayInput, b: Boca) {
-  const out: Array<{ conexion_id: string; otra: Boca }> = [];
+  const out: Array<{ conexion_id: string; otra: Boca; enganche?: Enganche }> = [];
   for (const c of entrada.conexiones) {
     if (c.a[0] === b.pieza && c.a[1] === b.boca) out.push({ conexion_id: c.conexion_id, otra: { pieza: c.b[0], boca: c.b[1] } });
     else if (c.b[0] === b.pieza && c.b[1] === b.boca) out.push({ conexion_id: c.conexion_id, otra: { pieza: c.a[0], boca: c.a[1] } });
+  }
+  for (const e of enganchesOf(entrada)) {
+    if (b.pieza === e.tronco && b.boca === bocaEnganche(e.id)) out.push({ conexion_id: e.id, otra: { pieza: e.salida[0], boca: e.salida[1] }, enganche: e });
+    else if (b.pieza === e.salida[0] && b.boca === e.salida[1]) out.push({ conexion_id: e.id, otra: { pieza: e.tronco, boca: bocaEnganche(e.id) }, enganche: e });
+  }
+  return out;
+}
+
+/** Bocas por las que se puede salir de una pieza: las suyas y las pseudo-bocas de enganche. */
+function salidasDe(entrada: TrayInput, pieza: Piece): string[] {
+  const out = Object.keys(pieza.puertos);
+  for (const e of enganchesOf(entrada)) {
+    if (e.tronco === pieza.instancia_id) out.push(bocaEnganche(e.id));
+    if (e.salida[0] === pieza.instancia_id && !out.includes(e.salida[1])) out.push(e.salida[1]);
   }
   return out;
 }
@@ -124,6 +167,12 @@ function buscar(entrada: TrayInput, origen: Boca, destino: Boca, atravesarInvali
   };
   /** Uniones atravesables desde una boca (registra las que no cumplen). */
   const salidasPorUnion = (desde: Boca) => unionesDe(entrada, desde).filter((u) => {
+    if (u.enganche) {
+      const est = estadoEnganche(entrada, null, u.enganche);
+      if (est.vigente) return true;
+      cortadas.set(u.conexion_id, { conexion_id: u.conexion_id, motivos: est.motivos, enganche: true });
+      return atravesarInvalidas;
+    }
     const chk = checkConnection(entrada, { a: [desde.pieza, desde.boca], b: [u.otra.pieza, u.otra.boca] });
     if (chk && chk.ok) return true;
     cortadas.set(u.conexion_id, { conexion_id: u.conexion_id, motivos: chk ? chk.motivos : ['falta una de las bocas de la unión'] });
@@ -142,7 +191,7 @@ function buscar(entrada: TrayInput, origen: Boca, destino: Boca, atravesarInvali
     const actual = cola.shift()!;
     const pieza = piezas.get(actual.pieza);
     if (!pieza) continue;
-    for (const salida of Object.keys(pieza.puertos)) {
+    for (const salida of salidasDe(entrada, pieza)) {
       if (salida === actual.entrada) continue;
       if (esDestino({ pieza: actual.pieza, boca: salida })) return reconstruir(actual, salida, null);
       for (const u of salidasPorUnion({ pieza: actual.pieza, boca: salida })) {
@@ -172,15 +221,28 @@ export function caminoEntreBocas(entrada: TrayInput, origen: Boca, destino: Boca
     const conInvalidas = buscar(entrada, origen, destino, true, new Map());
     if (conInvalidas) {
       const enElCamino = conInvalidas.uniones.filter((u) => cortadas.has(u)).map((u) => cortadas.get(u)!);
+      const uniones = enElCamino.filter((u) => !u.enganche);
+      const engs = enElCamino.filter((u) => u.enganche);
+      const partes = [
+        ...(uniones.length ? [`${uniones.length === 1 ? 'la unión' : 'las uniones'} ${uniones.map((u) => u.conexion_id).join(', ')} no ${uniones.length === 1 ? 'cumple' : 'cumplen'} la verificación y no se atraviesa${uniones.length === 1 ? '' : 'n'}`] : []),
+        ...(engs.length ? [`${engs.length === 1 ? 'el enganche' : 'los enganches'} ${engs.map((u) => u.conexion_id).join(', ')} ${engs.length === 1 ? 'está desactualizado y no se atraviesa' : 'están desactualizados y no se atraviesan'}`] : []),
+      ];
       return {
         ok: false,
-        motivo: `no hay camino por uniones válidas: ${enElCamino.length === 1 ? 'la unión' : 'las uniones'} ${enElCamino.map((u) => u.conexion_id).join(', ')} no ${enElCamino.length === 1 ? 'cumple' : 'cumplen'} la verificación y no se atraviesa${enElCamino.length === 1 ? '' : 'n'}`,
+        motivo: `no hay camino por uniones válidas: ${partes.join('; ')}`,
         unionesCortadas: enElCamino,
       };
     }
     return { ok: false, motivo: 'no hay camino: origen y destino no están unidos por piezas del trazado', unionesCortadas: [] };
   }
-  const cruces: Cruce[] = r.pasos.map((p) => ({ ...p, ...longitudDeCruce(piezas.get(p.pieza)!, p.entrada, p.salida) }));
+  const engs = enganchesOf(entrada);
+  const idsEng = new Set(engs.map((e) => e.id));
+  const cruces: Cruce[] = r.pasos.map((p) => ({ ...p, ...longitudDeCruce(piezas.get(p.pieza)!, p.entrada, p.salida, engs) }));
   const sumaMm = cruces.reduce((acc, c) => acc + (c.longitudMm ?? 0), 0);
-  return { ok: true, cruces, uniones: r.uniones, sumaMm, completa: cruces.every((c) => c.longitudMm !== null) };
+  return {
+    ok: true, cruces,
+    uniones: r.uniones.filter((u) => !idsEng.has(u)),
+    enganches: r.uniones.filter((u) => idsEng.has(u)),
+    sumaMm, completa: cruces.every((c) => c.longitudMm !== null),
+  };
 }

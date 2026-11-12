@@ -13,6 +13,7 @@
 import type { TrayInput } from '../../tray/model';
 import { checkConnection } from '../placement/joins';
 import { caminoEntreBocas, longitudDeCruce, type Boca, type FuenteLongitud } from './caminoEntreBocas';
+import { enganchesOf, estadoEnganche, firmaEnganche } from '../derivacion/enganche';
 
 export const CIRCUITOS_KEY = 'circuitos_ws';
 
@@ -35,6 +36,12 @@ export interface CircuitoGuardado {
   readonly destino: Boca;
   readonly cruces: readonly CruceGuardado[];
   readonly uniones: readonly string[];
+  /**
+   * Derivación en un tramo (extensión): enganches que atraviesa, con su firma al
+   * guardar. Si el enganche cambia, se borra o queda desactualizado, el circuito
+   * también. Ausente en circuitos guardados antes de la extensión.
+   */
+  readonly enganches?: ReadonlyArray<{ readonly id: string; readonly firma: string }>;
   readonly sumaMm: number;
   readonly completa: boolean;
   readonly guardado_iso: string;
@@ -62,6 +69,7 @@ function construir(entrada: TrayInput, id: string, nombre: string, origen: Boca,
     const bocas: Record<string, BocaGuardada> = {};
     for (const b of [c.entrada, c.salida]) {
       const q = p.puertos[b];
+      if (!q) continue; // pseudo-boca de enganche o cara de apoyo: la cubre la firma del enganche
       bocas[b] = {
         posicion_mm: [...q.posicion_mm] as V3,
         direccion: [...q.direccion] as V3,
@@ -73,7 +81,11 @@ function construir(entrada: TrayInput, id: string, nombre: string, origen: Boca,
   });
   return {
     ok: true,
-    circuito: { id, nombre, origen, destino, cruces, uniones: [...r.uniones], sumaMm: r.sumaMm, completa: r.completa, guardado_iso: new Date().toISOString() },
+    circuito: {
+      id, nombre, origen, destino, cruces, uniones: [...r.uniones],
+      ...(r.enganches.length ? { enganches: r.enganches.map((eid) => ({ id: eid, firma: firmaEnganche(enganchesOf(entrada).find((x) => x.id === eid)!) })) } : {}),
+      sumaMm: r.sumaMm, completa: r.completa, guardado_iso: new Date().toISOString(),
+    },
   };
 }
 
@@ -143,11 +155,18 @@ export function estadoCircuito(
       }
     }
     if (movida) continue;
-    const ahora = longitudDeCruce(p, cr.entrada, cr.salida).longitudMm;
+    const ahora = longitudDeCruce(p, cr.entrada, cr.salida, enganchesOf(entrada)).longitudMm;
     if (ahora !== cr.longitudMm && !(ahora !== null && cr.longitudMm !== null && Math.abs(ahora - cr.longitudMm) <= TOL_MOV_MM)) {
       const t = (x: number | null) => (x === null ? 'sin longitud' : `${fmt(x)} mm`);
       motivos.push(`la longitud de la pieza ${etiqueta(cr.pieza)} cambió (${t(cr.longitudMm)} → ${t(ahora)})`);
     }
+  }
+  for (const g of c.enganches ?? []) {
+    const e = enganchesOf(entrada).find((x) => x.id === g.id);
+    if (!e) { motivos.push(`el enganche ${g.id} ya no existe`); continue; }
+    if (firmaEnganche(e) !== g.firma) { motivos.push(`el enganche ${g.id} cambió`); continue; }
+    const est = estadoEnganche(entrada, null, e);
+    if (!est.vigente) motivos.push(`el enganche ${g.id} quedó desactualizado: ${est.motivos.join('; ')}`);
   }
   for (const u of c.uniones) {
     const con = entrada.conexiones.find((x) => x.conexion_id === u);

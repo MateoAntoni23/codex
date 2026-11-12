@@ -34,7 +34,7 @@ const TOL_POS_MM = Number((decisiones as Record<string, unknown>)['D-14_toleranc
 export interface LongitudTramo {
   /** Longitud de eje entre las dos bocas (mm). */
   readonly mm: number;
-  readonly regla: 'linea_media_perfil' | 'semiejes_centro';
+  readonly regla: 'linea_media_perfil' | 'semiejes_centro' | 'profundidad_derivacion';
   /** De dónde sale: modelo/patrón y cómo se obtuvo el centro o el eje. */
   readonly procedencia: string;
 }

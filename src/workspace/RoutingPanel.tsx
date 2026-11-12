@@ -11,6 +11,7 @@
  *
  * Undo/redo: exposed in the panel header; both invalidate motor results.
  */
+import { bocasOcupadasPorEnganches } from './derivacion/enganche';
 import { useEffect, useMemo, useState } from 'react';
 import { useTrayStore } from '../tray/store';
 import { useWorkspaceStore } from './useWorkspaceStore';
@@ -155,7 +156,7 @@ function StepSelectingPort() {
   const entrada = useTrayStore((s) => s.entrada);
   const freePorts = useMemo(() => {
     if (!entrada) return [];
-    return getFreePorts(entrada.piezas, entrada.conexiones);
+    return getFreePorts(entrada.piezas, entrada.conexiones, bocasOcupadasPorEnganches(entrada));
   }, [entrada]);
 
   return (

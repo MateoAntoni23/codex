@@ -7,6 +7,7 @@
  * (AddTraySegmentForm, AddSupportForm) y el panel de continuación (RoutingPanel,
  * en el inspector).
  */
+import { bocasOcupadasPorEnganches } from '../derivacion/enganche';
 import { useMemo, useState } from 'react';
 import { useWorkspaceStore, type LayerKey } from '../useWorkspaceStore';
 import { useTrayStore } from '../../tray/store';
@@ -17,6 +18,7 @@ import { AddSupportForm } from '../AddSupportForm';
 import { RoutingStatusBadge } from '../RoutingPanel';
 import { useUiStore, type BandejasTool } from './uiStore';
 import { indexProducts, pieceLabel, pieceLabelById, portLabel, productLabel } from './displayNames';
+import { DerivacionForm, EnganchesSection } from './DerivacionSection';
 import { Empty, Section, ToolBar, useRevealSelected } from './shared';
 import { useCatalogConfigStore } from '../../configurator/catalogConfigStore';
 import { outdatedPieces, updateOutdatedPieces } from '../placement/definitions';
@@ -52,7 +54,7 @@ export function BandejasPanel() {
   const piezas = entrada?.piezas ?? [];
   const conexiones = entrada?.conexiones ?? [];
   const pIdx = useMemo(() => indexProducts(context?.productos), [context]);
-  const freeEnds = useMemo(() => getFreePorts(piezas, conexiones), [piezas, conexiones]);
+  const freeEnds = useMemo(() => getFreePorts(piezas, conexiones, bocasOcupadasPorEnganches(entrada)), [piezas, conexiones, entrada]);
   useRevealSelected(listEl, selectedTrayId ? `piece:${selectedTrayId}` : null);
 
   const activeTool: BandejasTool = routingActive
@@ -135,6 +137,7 @@ export function BandejasPanel() {
           { id: 'tramo', label: 'Tramo nuevo', disabled: !context, title: !context ? 'Catálogo cargando…' : 'Crear un tramo recto por coordenadas' },
           { id: 'unir', label: 'Unir extremos', disabled: piezas.length < 2, title: piezas.length < 2 ? 'Hacen falta dos piezas' : 'Unir dos extremos libres' },
           { id: 'soporte', label: 'Soporte', disabled: !context || noPieces, title: noPieces ? 'Agregá una pieza primero' : 'Agregar un soporte' },
+          { id: 'derivacion', label: 'Derivación en tramo', disabled: !context || noPieces, title: noPieces ? 'Agregá un tramo primero' : 'Enganchar un ramal al flanco de un tramo recto, sin cortarlo' },
         ]}
       />
 
@@ -155,6 +158,11 @@ export function BandejasPanel() {
       {activeTool === 'tramo' && (
         <Section title="Pieza nueva" testid="new-piece">
           <AddTraySegmentForm onClose={() => setFormTool('seleccionar')} />
+        </Section>
+      )}
+      {activeTool === 'derivacion' && (
+        <Section title="Derivación en un tramo" testid="new-derivacion">
+          <DerivacionForm onClose={() => setFormTool('seleccionar')} />
         </Section>
       )}
       {activeTool === 'soporte' && (
@@ -215,6 +223,8 @@ export function BandejasPanel() {
           );
         })}
       </Section>
+
+      <EnganchesSection />
 
       <Section title={`Uniones (${conexiones.length})`} testid="joins">
         {conexiones.length === 0 && <Empty>Sin uniones.</Empty>}

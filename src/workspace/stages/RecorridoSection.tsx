@@ -25,6 +25,7 @@ const FUENTE: Record<FuenteLongitud, string> = {
   longitud_eje_mm: 'longitud de eje guardada',
   longitudes_eje: 'regla guardada al colocar',
   bocas_en_linea: 'entre bocas en línea',
+  enganche: 'hasta el enganche, guardada',
 };
 
 const mm = (x: number) => `${x.toLocaleString('es-AR', { maximumFractionDigits: 1, minimumFractionDigits: 1 })} mm`;
