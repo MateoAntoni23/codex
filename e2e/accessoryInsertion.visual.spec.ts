@@ -72,7 +72,7 @@ async function bootstrap(page: import('@playwright/test').Page) {
   }, FIXTURE_TRAY_WITH_FREE_P2);
 
   const productSelect = page.locator('[data-codex-routing-product-select]');
-  await productSelect.waitFor({ state: 'visible', timeout: 10_000 });
+  await productSelect.waitFor({ state: 'visible', timeout: 20_000 }); // 10 s se quedaba corto en corridas completas lentas
   return productSelect;
 }
 
