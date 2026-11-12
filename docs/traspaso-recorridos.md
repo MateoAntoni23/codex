@@ -130,3 +130,11 @@ persistido, ahora también desde esa nueva fuente.
 1. Elegir origen y destino haciendo clic en la escena, con el recorrido resaltado en 3D.
 2. Mover el grupo unido al rotar una pieza (hoy se pide confirmación y se descartan las uniones que dejan
    de cumplir).
+3. **Ángulo por instancia de las CAS — CONGELADO, no descartado.** Las 40 CAS (curvas de ángulo ajustable)
+   se usan y hoy quedan sin definición, así que no se pueden colocar. Se destraba cuando el operador
+   exporte **dos STEP de la misma CAS a ángulos distintos**. Lo que hay que hacer entonces (solo código):
+   - ángulo declarado al colocar, sin rango inventado, registrando quién lo declaró;
+   - el ángulo entra en la huella;
+   - sin modelo, el motivo es "curva de ángulo ajustable sin modelo geométrico; falta el STEP de la
+     pieza";
+   - no construir la CAS desde la curva de 90°.

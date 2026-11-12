@@ -22,8 +22,16 @@ const vite = (port: number) => `node node_modules/vite/bin/vite.js --host localh
 export default defineConfig({
   testDir: './e2e',
   timeout: 60_000,
-  // En serie: la línea base mostró que con 2 workers 11 pruebas fallan por concurrencia
-  // (descargas, WebGL, estado compartido); en serie pasan.
+  // En serie. Medido el 2026-11-12 con 2 workers (93 pruebas, equipo de 8 GB):
+  //   - 6 fallan, todas por vencer esperas de carga (selector de producto a 10 s,
+  //     catálogo a 20 s): escaleraVerticalChain (2), verticalCupsChain (2),
+  //     fullRoutingChain (perforada 300) y etapas B1. Ninguna por descargas, clave de
+  //     proyecto ni puertos: cada prueba usa su propio contexto de navegador (storage
+  //     aislado), el motor no guarda estado entre pedidos y los archivos escritos tienen
+  //     nombre por archivo de prueba (las de un mismo archivo corren en un solo worker).
+  //   - La corrida tardó 22,7 min contra 11–18 min en serie: dos navegadores con WebGL
+  //     por software se disputan CPU y memoria. Subir las esperas las haría pasar, pero no
+  //     ahorra tiempo y duplica la memoria, que es lo que corta las corridas en este equipo.
   workers: 1,
   fullyParallel: false,
   reporter: [['list']],
