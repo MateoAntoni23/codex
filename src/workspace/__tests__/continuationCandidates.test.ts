@@ -135,7 +135,9 @@ describe('buildContinuationCandidates', () => {
     expect(tps!.insertionSupported).toBe(true);
   });
 
-  it('producto paramétrico del mismo ancho SIN compat catálogo entra en other con compat_no_documentada', () => {
+  it('control negativo: lo que no está entre los compatibles (regla física) NO se ofrece, ni con excepción', () => {
+    // Antes se ofrecía como "compat. no documentada" con excepción. Con la regla física
+    // como puerta (compatibilidadFisica.ts), lo que no la cumple no es una continuación.
     const compat = new Set<string>(['SAM_TRPS-300-22-Z']);
     const res = buildContinuationCandidates({
       existingProduct: TRPS_300,
@@ -143,11 +145,8 @@ describe('buildContinuationCandidates', () => {
       catalogProducts: CATALOG,
       compatibleIds: compat,
     });
-    const xps = res.find((c) => c.product.producto_id === 'SAM_XPS-300-Z');
-    expect(xps).toBeDefined();
-    expect(xps!.category).toBe('other');
-    expect(xps!.reasonCode).toBe('compat_no_documentada');
-    expect(xps!.requiresException).toBe(true);
+    expect(res.find((c) => c.product.producto_id === 'SAM_XPS-300-Z')).toBeUndefined();
+    expect(res.every((c) => !c.requiresException)).toBe(true);
   });
 
   it('compartir ancho no basta: producto NO paramétrico y sin compat no aparece', () => {
@@ -193,7 +192,7 @@ describe('buildContinuationCandidates', () => {
     expect(recommended[0].product.producto_id).toBe('SAM_TRPS-300-22-Z');
   });
 
-  it('CUPS con compat catálogo + piece_kind habilitado: cae en recommended; sin compat cae en other con excepción', () => {
+  it('CUPS compatible + piece_kind habilitado: cae en recommended; sin compat NO se ofrece', () => {
     const compatWith = new Set(['SAM_CUPS-300-A-Z']);
     const resWith = buildContinuationCandidates({
       existingProduct: TRPS_300,
@@ -212,8 +211,6 @@ describe('buildContinuationCandidates', () => {
       catalogProducts: CATALOG,
       compatibleIds: compatWithout,
     });
-    const cupsWithout = resWithout.find((c) => c.product.producto_id === 'SAM_CUPS-300-A-Z');
-    expect(cupsWithout!.category).toBe('other');
-    expect(cupsWithout!.requiresException).toBe(true);
+    expect(resWithout.find((c) => c.product.producto_id === 'SAM_CUPS-300-A-Z')).toBeUndefined();
   });
 });

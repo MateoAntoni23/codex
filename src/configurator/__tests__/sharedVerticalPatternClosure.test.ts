@@ -111,7 +111,7 @@ describe('sharedVerticalPatternClosure — perforada CUPS A/D', () => {
 
   it('SV5. boca útil de la receta = ancho_mm objetivo para los 7 anchos (convención de escala)', () => {
     for (const ancho of CUPS_ANCHOS) {
-      const recipe = buildCUPSRecipe({ ancho_mm: ancho, ala_mm: 50 });
+      const recipe = buildCUPSRecipe({ ancho_mm: ancho, ala_mm: 50, sentido: 'baja' });
       // Ambos puertos de CUPS: P1_horizontal (boca bandeja) y P2_vertical
       // (boca tramo). El polígono es cuadrado — ambos deben tener ancho_mm
       // exacto, no multiplicado por 298.9/300.
@@ -128,13 +128,13 @@ describe('sharedVerticalPatternClosure — perforada CUPS A/D', () => {
     // debe producir la misma geometría XY para ambos. (El "sentido" asc/desc
     // es orientación en escena, no polígono.)
     for (const ancho of CUPS_ANCHOS) {
-      const recipe = buildCUPSRecipe({ ancho_mm: ancho, ala_mm: 50 });
+      const recipe = buildCUPSRecipe({ ancho_mm: ancho, ala_mm: 50, sentido: 'baja' });
       // height = ancho (profundidad del canal en Z).
       expect(recipe.height).toBe(ancho);
       // translate.z = -ancho (CUPS se apoya en z=0).
       expect(recipe.translate[2]).toBe(-ancho);
       // XY del polígono: independiente del ancho (perfil XY fijo).
-      const recipe300 = buildCUPSRecipe({ ancho_mm: 300, ala_mm: 50 });
+      const recipe300 = buildCUPSRecipe({ ancho_mm: 300, ala_mm: 50, sentido: 'baja' });
       expect(recipe.polygon.length).toBe(recipe300.polygon.length);
       for (let i = 0; i < recipe.polygon.length; i++) {
         expect(recipe.polygon[i][0]).toBeCloseTo(recipe300.polygon[i][0], 6);
@@ -203,7 +203,7 @@ describe('sharedVerticalPatternClosure — perforada CUPS A/D', () => {
     // 298.9/300 (ese factor sólo aplica a escaleraRecipes). Verificamos para
     // los 4 anchos del catálogo CUS.
     for (const ancho of [150, 300, 450, 600] as const) {
-      const recipe = buildCUPSRecipe({ ancho_mm: ancho, ala_mm: 65 });
+      const recipe = buildCUPSRecipe({ ancho_mm: ancho, ala_mm: 65, sentido: 'baja' });
       for (const portName of ['P1_horizontal', 'P2_vertical']) {
         const port = recipe.ports.find((p) => p.name === portName);
         expect(port, `${portName} @ CUS ancho=${ancho}`).toBeTruthy();

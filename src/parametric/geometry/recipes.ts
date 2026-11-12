@@ -86,7 +86,7 @@ export function buildRecipeFor(
         : buildCPS90Recipe({ ancho_mm, ala_mm });
     }
     case 'curva_vertical':
-      return buildCUPSRecipe({ ancho_mm, ala_mm });
+      return buildCUPSRecipe({ ancho_mm, ala_mm, sentido: sentidoDe(params, piece_kind) });
     case 'derivacion_lateral':
       return buildDCPSRecipe({ ancho_mm, ala_mm });
     case 'cruz':
@@ -125,6 +125,18 @@ export function buildRecipeFor(
  *   - 'escalera:cruz'                → `buildXSRecipe`
  *   - 'escalera:reduccion_lateral'   → `buildRISRecipe`
  */
+/**
+ * Sentido de una curva vertical: parámetro `sentido_vertical` (+1 sube, −1 baja).
+ * Sin valor por defecto: lo fija el producto (CUPS-A sube, CUPS-D baja) o la
+ * colocación (CUS articulada); ver `buildRecipeFromProduct`.
+ */
+function sentidoDe(params: RawParams, quien: string): 'sube' | 'baja' {
+  const v = requireNumber(params, 'sentido_vertical', quien);
+  if (v === 1) return 'sube';
+  if (v === -1) return 'baja';
+  throw new Error(`${quien}: sentido_vertical ${v} inválido (1 sube, −1 baja)`);
+}
+
 export function buildRecipeByKey(recipeKey: string, params: RawParams): GeometryRecipe {
   const ancho_mm = requireNumber(params, 'ancho_mm', recipeKey);
   const ala_mm = requireNumber(params, 'ala_mm', recipeKey);
@@ -143,7 +155,7 @@ export function buildRecipeByKey(recipeKey: string, params: RawParams): Geometry
       // polígono y bocas vienen de `buildCUPSRecipe` — sin copias. El ala
       // comercial (65/90/115/150) NO afecta el polígono (CUPS no la usa);
       // queda sólo como etiqueta para catalogación.
-      return buildCUPSRecipe({ ancho_mm, ala_mm });
+      return buildCUPSRecipe({ ancho_mm, ala_mm, sentido: sentidoDe(params, recipeKey) });
     case 'escalera:derivacion_lateral':
       return buildTSRecipe({ ancho_mm, ala_mm });
     case 'escalera:cruz':

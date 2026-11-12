@@ -39,12 +39,16 @@ import {
 } from '../catalogPortMapping';
 import type { Piece, Product } from '../../tray/model';
 
+// La migración (verifyGeometricFit) usa la ruta vieja de colocación, que no alinea
+// el marco de la boca de entrada con la vertical del tramo. La CUPS-D (desciende)
+// conserva el marco de esa ruta; la CUPS-A (sube) lo gira a propósito. Estas
+// pruebas son sobre resolver bocas, no sobre el sentido: usan la D.
 const CUPS_300: Product = {
-  producto_id: 'SAM_CUPS-300-A-Z',
-  descripcion_original: 'CUPS-300-A-Z',
-  tipo_pieza: 'curva vertical interior',
+  producto_id: 'SAM_CUPS-300-D-Z',
+  descripcion_original: 'CUPS-300-D-Z',
+  tipo_pieza: 'curva vertical exterior',
   ancho_nominal_mm: 300,
-  sku: 'CUPS-300-A-Z',
+  sku: 'CUPS-300-D-Z',
   ala_nominal_mm: 50,
   familia_id: 'SAM-STP-Z',
 } as unknown as Product;

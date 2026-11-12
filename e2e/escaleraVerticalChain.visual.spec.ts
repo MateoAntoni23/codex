@@ -107,6 +107,9 @@ async function insertCus(page: Page): Promise<void> {
     return !!sel && Array.from(sel.options).some((o) => o.value === 'SAM_CUS-300-5-065-18-Z');
   }, { timeout: 15_000 });
   await productSelect.selectOption('SAM_CUS-300-5-065-18-Z');
+  // CUS articulada: hay que elegir el sentido (sin elección no hay previa ni confirmación).
+  // Esta cadena se escribió con la curva bajando (orientación de referencia del perfil).
+  await page.locator('[data-codex-routing-vertical="baja"]').click();
   await page.waitForTimeout(300);
   // Receta vertical: entrada por P1_horizontal, salida por P2_vertical.
   const motive = page.locator('[data-codex-routing-exception-motive]');

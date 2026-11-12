@@ -137,8 +137,8 @@ describe('routing integration with real motor catalog', () => {
 
     const zProd = catalogCompat
       .flatMap((c) => [
-        c.producto_a_id === PRODUCT_Z ? { producto_id: PRODUCT_Z, tipo_pieza: 'recta', ancho_nominal_mm: 300, sku: PRODUCT_Z, descripcion_original: PRODUCT_Z } : null,
-        c.producto_b_id === PRODUCT_Z ? { producto_id: PRODUCT_Z, tipo_pieza: 'recta', ancho_nominal_mm: 300, sku: PRODUCT_Z, descripcion_original: PRODUCT_Z } : null,
+        c.producto_a_id === PRODUCT_Z ? { producto_id: PRODUCT_Z, tipo_pieza: 'recta', ancho_nominal_mm: 300, familia_id: 'SAM-STE-Z', ala_nominal_mm: 65, sku: PRODUCT_Z, descripcion_original: PRODUCT_Z } : null,
+        c.producto_b_id === PRODUCT_Z ? { producto_id: PRODUCT_Z, tipo_pieza: 'recta', ancho_nominal_mm: 300, familia_id: 'SAM-STE-Z', ala_nominal_mm: 65, sku: PRODUCT_Z, descripcion_original: PRODUCT_Z } : null,
       ])
       .find((p) => p !== null);
 
@@ -164,7 +164,7 @@ describe('routing integration with real motor catalog', () => {
   it('checkDirectCompatibility resolves Z-product P2↔P1 via real catalog (direct match)', () => {
     if (!motorAvailable || catalogCompat.length === 0) return;
 
-    const zProd = { producto_id: PRODUCT_Z, tipo_pieza: 'recta', ancho_nominal_mm: 300, sku: PRODUCT_Z, descripcion_original: PRODUCT_Z };
+    const zProd = { producto_id: PRODUCT_Z, tipo_pieza: 'recta', ancho_nominal_mm: 300, familia_id: 'SAM-STE-Z', ala_nominal_mm: 65, sku: PRODUCT_Z, descripcion_original: PRODUCT_Z };
 
     const r = checkDirectCompatibility(
       { compatibilidades: catalogCompat, componentesUnion: [] },

@@ -15,7 +15,7 @@
  */
 import * as THREE from 'three';
 import type { Piece, Product, TrayInput } from '../../tray/model';
-import { buildNominalRecipe, buildRecipeFromProduct, datosFaltantesParaMaestro, NOTA_NOMINAL, resolveParametricEntry, resolveRecipe, tieneReglaNominal } from '../parametricBridge';
+import { buildNominalRecipe, buildRecipeFromProduct, datosFaltantesParaMaestro, NOTA_NOMINAL, resolveParametricEntry, resolveRecipe, sentidoVerticalDe, tieneReglaNominal } from '../parametricBridge';
 import { calibracionVersion } from '../catalogPortMapping';
 import type { PieceKind } from '../../parametric/geometry/recipes';
 import { calibrarReceta } from './calibrarReceta';
@@ -108,11 +108,21 @@ export function esTramoRecto(m: ModeloInfo | null | undefined): boolean {
 const MEMO = new Map<string, DefinicionEfectiva>();
 const MEMO_MAX = 2000;
 
-function claveMemo(product: Product, longitud: number | null | undefined): string {
+/**
+ * Opciones de la definición que dependen de la colocación, no del producto:
+ * el largo de un tramo recto y el sentido de una curva vertical articulada (CUS).
+ */
+export interface OpcionesDefinicion {
+  readonly longitud_mm?: number | null;
+  /** Sólo curvas verticales articuladas (CUS): se elige al colocar. */
+  readonly sentido_vertical?: 'sube' | 'baja';
+}
+
+function claveMemo(product: Product, longitud: number | null | undefined, sentido?: 'sube' | 'baja'): string {
   const r = product as unknown as Record<string, unknown>;
   return JSON.stringify([
     calibracionVersion(), bibliotecaVersion(), product.producto_id, product.sku, r.familia_id, product.tipo_pieza, product.ancho_nominal_mm,
-    r.ala_nominal_mm, r.longitud_comercial_mm, r.angulo_grados, r.descripcion_original, r.observaciones, longitud ?? null,
+    r.ala_nominal_mm, r.longitud_comercial_mm, r.angulo_grados, r.descripcion_original, r.observaciones, longitud ?? null, sentido ?? null,
   ]);
 }
 
@@ -125,8 +135,8 @@ function claveMemo(product: Product, longitud: number | null | undefined): strin
  *
  * `longitud_mm` sólo aplica a tramos rectos (largo editable).
  */
-export function definicionEfectiva(product: Product, opts?: { longitud_mm?: number | null }): DefinicionEfectiva {
-  const key = claveMemo(product, opts?.longitud_mm);
+export function definicionEfectiva(product: Product, opts?: OpcionesDefinicion): DefinicionEfectiva {
+  const key = claveMemo(product, opts?.longitud_mm, opts?.sentido_vertical);
   const hit = MEMO.get(key);
   if (hit) return hit;
   const modelo = modeloDeProducto(product);
@@ -154,7 +164,7 @@ export function tieneDefinicion(product: Product | null | undefined): boolean {
  * `definicionEfectiva`). Error con motivo si el producto no tiene modelo o si
  * su contorno gira otro ángulo que el declarado (modelo no resuelto).
  */
-export function resolveDefinition(product: Product, opts?: { longitud_mm?: number | null }): DefinitionResult {
+export function resolveDefinition(product: Product, opts?: OpcionesDefinicion): DefinitionResult {
   const d = definicionEfectiva(product, opts);
   return d.ok ? { ok: true, def: d.def, huella: d.huella } : { ok: false, motivo: d.motivo };
 }
@@ -163,7 +173,7 @@ export function resolveDefinition(product: Product, opts?: { longitud_mm?: numbe
  * Definición construida SIN verificar el ángulo. Sólo para medir y diagnosticar
  * (p. ej. la prueba de ángulos); para colocar se usa `resolveDefinition`.
  */
-export function buildDefinition(product: Product, opts?: { longitud_mm?: number | null }): DefinitionResult {
+export function buildDefinition(product: Product, opts?: OpcionesDefinicion): DefinitionResult {
   const entry = resolveRecipe(product);
   if (!entry) {
     // Sin modelo medido: geometría nominal del catálogo, si alcanza (decisión 2).
@@ -199,7 +209,10 @@ export function buildDefinition(product: Product, opts?: { longitud_mm?: number 
   const longitud = takesLength && opts?.longitud_mm && opts.longitud_mm > 0 ? opts.longitud_mm : null;
   let raw;
   try {
-    raw = buildRecipeFromProduct(product, entry, longitud ? { longitud_mm: longitud } : undefined);
+    raw = buildRecipeFromProduct(product, entry, {
+      ...(longitud ? { longitud_mm: longitud } : {}),
+      ...(opts?.sentido_vertical ? { sentido_vertical: opts.sentido_vertical } : {}),
+    });
   } catch (e) {
     return { ok: false, motivo: `no se pudo construir la receta: ${e instanceof Error ? e.message : String(e)}` };
   }
@@ -213,6 +226,11 @@ export function buildDefinition(product: Product, opts?: { longitud_mm?: number 
   if (takesLength) {
     const L = longitud ?? (typeof r.longitud_comercial_mm === 'number' ? (r.longitud_comercial_mm as number) : null);
     if (L) params.longitud_mm = L;
+  }
+  // Curva vertical que SUBE: queda registrado en la definición (entra en la huella).
+  // La que baja es la pose del modelo de siempre y no agrega parámetro.
+  if (sentidoVerticalDe(product, entry, opts?.sentido_vertical) === 1) {
+    params.sentido_vertical = 1;
   }
   if (typeof r.angulo_grados === 'number') params.angulo_deg = r.angulo_grados as number;
   const def = definitionFromRecipe({

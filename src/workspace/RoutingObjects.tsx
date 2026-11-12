@@ -153,6 +153,7 @@ export function RoutingObjects() {
   const previewLengthMm = useRoutingStore((s) => s.previewLengthMm);
   const snapToAxis      = useRoutingStore((s) => s.snapToAxis);
   const turnDirection   = useRoutingStore((s) => s.turnDirection);
+  const sentidoVertical = useRoutingStore((s) => s.sentidoVertical);
   const selectedProductId = useRoutingStore((s) => s.selectedProductId);
   const entryPortName   = useRoutingStore((s) => s.entryPortName);
   const hoverPiece      = useRoutingStore((s) => s.hoverPiece);
@@ -171,9 +172,9 @@ export function RoutingObjects() {
   // A-1: la colocación del preview es EL cálculo (el mismo que guarda confirmar).
   const placement = useMemo(
     () => routingPlacementFromState(context, entrada, {
-      startPort, selectedProductId, entryPortName, turnDirection, previewLengthMm, snapToAxis, step,
+      startPort, selectedProductId, entryPortName, turnDirection, previewLengthMm, snapToAxis, step, sentidoVertical,
     }),
-    [context, entrada, startPort, selectedProductId, entryPortName, turnDirection, previewLengthMm, snapToAxis, step],
+    [context, entrada, startPort, selectedProductId, entryPortName, turnDirection, previewLengthMm, snapToAxis, step, sentidoVertical],
   );
 
   const previewData = useMemo(() => {

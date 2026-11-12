@@ -39,7 +39,10 @@ const makeProduct = (
   tipo_pieza: tipo,
   ancho_nominal_mm: ancho,
   sku: id,
-  ...(familia ? { familia_id: familia } : {}),
+  // La regla física de unión directa necesita familia y ala declaradas
+  // (compatibilidadFisica.ts); sin familia explícita, una común de prueba.
+  familia_id: familia ?? 'FAM-PRUEBA',
+  ala_nominal_mm: 50,
 });
 
 const makeCompat = (
@@ -236,7 +239,9 @@ describe('checkDirectCompatibility (empty catalog — heuristic fallback)', () =
 
 describe('checkDirectCompatibility with catalog data', () => {
   const prodA = makeProduct('TRES-300', 300, 'FAM-1', 'recta');
-  const prodB = makeProduct('TRES-150', 150, 'FAM-1', 'recta');
+  // Mismo ancho que prodA: con la regla física (compatibilidadFisica.ts) sólo pares de
+  // igual familia, ancho y ala son unión directa; la tabla confirma y resuelve la boca.
+  const prodB = makeProduct('TRES-150', 300, 'FAM-1', 'recta');
   const prodC = makeProduct('TRES-200', 200, 'FAM-1', 'recta');
   const prodD = makeProduct('OTRO', 300, 'FAM-2', 'recta');
 
@@ -253,12 +258,14 @@ describe('checkDirectCompatibility with catalog data', () => {
     expect(r.compatibilidadId).toBe('CMP-001');
   });
 
-  it('blocks when port names do not match catalog entry (port-level validation)', () => {
-    // CMP-001 documents P1↔P1; asking for P2↔P1 should NOT match
+  it('bocas que no coinciden con la fila de la tabla: compatible por la regla física, sin id de la tabla', () => {
+    // CMP-001 documenta P1↔P1; P2↔P1 no está enumerado, pero el par cumple la regla
+    // del sistema (misma familia, ancho y ala): la tabla es confirmación, no puerta.
     const ctx = { compatibilidades: [compatDirecta], componentesUnion: [] };
     const r = checkDirectCompatibility(ctx, prodA, 'P2', prodB, 'P1');
-    expect(r.ok).toBe(false);
+    expect(r.ok).toBe(true);
     expect(r.compatibilidadId).toBeNull();
+    expect(r.reason).toMatch(/regla del sistema/);
   });
 
   it('accepts when catalog entry has null ports (product-level match sufficient)', () => {
@@ -342,14 +349,13 @@ describe('checkDirectCompatibility — D-13 and alternate-port resolution', () =
     expect(r.newPiecePort).toBe('P1'); // exact match (reverse orientation of P1↔P2)
   });
 
-  it('non-D-13: different widths → catalog P1↔P2 → newPiecePort=P2', () => {
-    // TRES-300-Z.P1 → TRES-150-Z.P1: catalog only has P1↔P2 and D-13 does not apply (different widths)
+  it('anchos distintos: aunque la tabla enumere el par, NO hay unión directa (regla física) — pide reducción', () => {
+    // TRES-300-Z.P1 → TRES-150-Z.P1: la tabla lo enumera como "directa", pero la regla
+    // del sistema exige el mismo ancho. La tabla es confirmación, no puerta.
     const ctx = { compatibilidades: [cmpNarrow], componentesUnion: [] };
     const r = checkDirectCompatibility(ctx, sameProd, 'P1', prodNarrow, 'P1');
-    expect(r.ok).toBe(true);
-    expect(r.compatibilidadId).toBe('CMP-AUX');
-    expect(r.newPiecePort).toBe('P2'); // must use documented port
-    expect(r.reason).not.toMatch(/D-13/i);
+    expect(r.ok).toBe(false);
+    expect(r.needsReduction).toBe(true);
   });
 
   it('non-D-13: accessory → catalog P1↔P2 → newPiecePort=P2', () => {
@@ -737,7 +743,9 @@ describe('checkDirectCompatibility — symmetric port fallback (curva horizontal
     // which never matches the catalog. The predicate must require 'curva horizontal' exactly.
     const aliased = makeProduct('CURVE', 150, 'FAM-A', 'curva');
     const r = checkDirectCompatibility(context, aliased, 'P2', straight, 'P1');
-    expect(r.ok).toBe(false);
+    // La compatibilidad la decide la regla física; lo que se protege es que la fila de
+    // la tabla NO se use como confirmación por el alias (no hay simetría para "curva").
+    expect(r.compatibilidadId).toBeNull();
   });
 });
 

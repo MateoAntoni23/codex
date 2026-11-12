@@ -5,7 +5,7 @@
  * (TRPS-300→CUPS-300→TRPS-300) y en la variante (TRPS-450→CUPS-450→TRPS-450),
  * el vector v_dir (orientacion_seccion_ws) DEBE ser idéntico en tres estados:
  *
- *   1. preview   — `placeRecipe(...).ports[i].vDir`
+ *   1. preview   — `computeRoutingPlacement(...).ports[i].vDir` (la previa de la app)
  *   2. confirmed — `planAddAccessory(...).newPiece.puertos.X.orientacion_seccion_ws`
  *   3. recovery  — exportWorkspace → JSON.parse → importWorkspace (round-trip
  *                  completo incluyendo assertInput + perpendicularidad).
@@ -18,6 +18,7 @@
 import { describe, expect, it } from 'vitest';
 import { planAddAccessory } from '../workspaceOperation';
 import { placeRecipe, resolveRecipe } from '../parametricBridge';
+import { computeRoutingPlacement } from '../placement/routingPlacement';
 import { exportWorkspace, importWorkspace } from '../workspaceFile';
 import type { TrayInput, Product } from '../../tray/model';
 import type { StartPort, DirectCompatResult } from '../routingRules';
@@ -121,17 +122,10 @@ function runChain(trps: Product, cups: Product) {
     sectionUp: trpsPlaced.p2.vDir as [number, number, number],
   };
 
-  // 2. Preview — placeRecipe para la CUPS con el mismo startPort.
-  const cupsEntry = resolveRecipe(cups)!;
-  const previewPlaced = placeRecipe(
-    cups,
-    cupsEntry,
-    startPort.pos,
-    startPort.dir,
-    'native',
-    undefined,
-    { entryPortName: 'P1_horizontal', sectionUp: startPort.sectionUp },
-  );
+  // 2. Preview — la MISMA función que usa la previa de la app (computeRoutingPlacement).
+  const preview = computeRoutingPlacement({ product: cups, startPort, entryPortName: 'P1_horizontal', side: 'right' });
+  if (!preview.ok) throw new Error(preview.motivo);
+  const previewPlaced = { ports: preview.ports.map((p) => ({ name: p.name, pos: p.pos, outwardNormal: p.normal, vDir: p.vDir })) };
 
   // 3. Confirmed — planAddAccessory persiste la CUPS en la entrada.
   const plan = planAddAccessory(
@@ -166,7 +160,7 @@ function runChain(trps: Product, cups: Product) {
 
 function assertThreeWayAgreement(
   label: string,
-  previewPlaced: ReturnType<typeof placeRecipe>,
+  previewPlaced: { ports: ReadonlyArray<{ name: string; vDir: readonly number[] }> },
   plan: { newPiece: { puertos: Record<string, { orientacion_seccion_ws?: [number, number, number]; direccion: [number, number, number] }> } },
   cupsRestored: { puertos: Record<string, { orientacion_seccion_ws?: [number, number, number]; direccion: [number, number, number] }> },
 ): void {

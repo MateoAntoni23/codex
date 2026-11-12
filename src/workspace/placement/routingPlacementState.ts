@@ -8,6 +8,7 @@ import type { StartPort } from '../routingRules';
 import { checkDirectCompatibility, snapDirectionToAxis } from '../routingRules';
 import { definicionEfectiva, esTramoRecto, modeloDeProducto } from './definitions';
 import { computeRoutingPlacement, type RoutingPlacement } from './routingPlacement';
+import { esVerticalArticulada } from '../parametricBridge';
 
 export interface RoutingStateSlice {
   readonly startPort: StartPort | null;
@@ -17,6 +18,8 @@ export interface RoutingStateSlice {
   readonly previewLengthMm: number;
   readonly snapToAxis: boolean;
   readonly step: string;
+  /** Curva vertical articulada (CUS): sentido elegido; null = sin elegir. */
+  readonly sentidoVertical?: 'sube' | 'baja' | null;
 }
 
 /** Piece kinds que eligen boca de entrada (3+ bocas o curva vertical). */
@@ -37,6 +40,8 @@ export function routingPlacementFromState(
   if (!context || !entrada || !r.startPort || r.step === 'selectingPort' || !r.selectedProductId) return null;
   const product = context.productos.find((p) => p.producto_id === r.selectedProductId);
   if (!product || !modeloDeProducto(product)?.colocable) return null;
+  // CUS articulada: sin sentido elegido no hay colocación (ni previa ni confirmación).
+  if (esVerticalArticulada(product) && !r.sentidoVertical) return null;
   const startPort = r.startPort;
   let entryPortName: string;
   let entryDir: readonly number[] | undefined;
@@ -70,5 +75,6 @@ export function routingPlacementFromState(
     side: r.turnDirection,
     lengthMm,
     ...(entryDir ? { entryDir } : {}),
+    ...(esVerticalArticulada(product) && r.sentidoVertical ? { sentidoVertical: r.sentidoVertical } : {}),
   });
 }

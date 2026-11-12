@@ -24,7 +24,7 @@ import { worldPorts } from './placement/placementCore';
 import { angleMismatch } from './placement/angleCheck';
 import { PlacedMesh } from './placement/PlacedMesh';
 import { bocaConSeccion, checkJoin, formatJoin } from './placement/joins';
-import { getCompatibleProductIds } from './routingRules';
+import { compatibilidadDirecta } from './compatibilidadFisica';
 import { UNIONS_KEY, unionRecord, unionsOf } from './workspaceOperation';
 import { LadderPiece, isLadderFamily } from './ladderGeometry';
 
@@ -387,7 +387,10 @@ export function TrayObjects() {
       const B = pb ? bocaConSeccion(entrada, pb, puertoId) : null;
       if (!pa || !pb || !A || !B) { deactivateConnectionTool(); return; }
       const check = checkJoin(A, B);
-      const documented = getCompatibleProductIds(context?.compatibilidades ?? [], pa.producto_id, aPort).has(pb.producto_id);
+      // Regla física de unión directa (compatibilidadFisica.ts); la tabla sólo confirma o bloquea.
+      const prodA = context?.productos.find((p) => p.producto_id === pa.producto_id);
+      const prodB = context?.productos.find((p) => p.producto_id === pb.producto_id);
+      const documented = !!prodA && !!prodB && compatibilidadDirecta(prodA, prodB, context?.compatibilidades ?? []).ok;
       const head = `Unir ${aInst}.${aPort} ↔ ${instanciaId}.${puertoId}
 ${formatJoin(check)}`;
       const body = (check.ok

@@ -113,27 +113,6 @@ function describeKindPendiente(product: Product): string {
   }
 }
 
-function describeOtherReason(isParametric: boolean): {
-  code: OtherReasonCode;
-  text: string;
-} {
-  if (!isParametric) {
-    return {
-      code: 'sin_modelo_geometrico',
-      text:
-        'Compatibilidad no documentada en el catálogo SAMET y sin modelo paramétrico cargado — ' +
-        'no puede ofrecerse como continuación directa.',
-    };
-  }
-  // Producto paramétrico pero no catálogo-compat.
-  return {
-    code: 'compat_no_documentada',
-    text:
-      'Compartir ancho geométrico no convierte la conexión en compatible: ' +
-      'el catálogo SAMET no publica compatibilidad para esta combinación de puerto. ' +
-      'Requiere aceptar una excepción con motivo para continuar.',
-  };
-}
 
 /**
  * Categoriza y ordena los productos candidatos para continuar desde
@@ -150,8 +129,6 @@ export function buildContinuationCandidates(
 
   const result: ContinuationCandidate[] = [];
   const seen = new Set<string>();
-
-  const existingAncho = existingProduct.ancho_nominal_mm;
 
   for (const p of catalogProducts) {
     if (seen.has(p.producto_id)) continue;
@@ -191,27 +168,9 @@ export function buildContinuationCandidates(
       continue;
     }
 
-    // No catálogo-compat. Sólo entra en 'other' si hay señal geométrica que
-    // justifique ofrecerlo — en la práctica, si es paramétrico del mismo ancho.
-    if (!isParametric) continue;
-    if (
-      typeof existingAncho === 'number' &&
-      typeof p.ancho_nominal_mm === 'number' &&
-      existingAncho !== p.ancho_nominal_mm
-    ) {
-      continue;
-    }
-    const { code, text } = describeOtherReason(isParametric);
-    result.push({
-      product: p,
-      category: 'other',
-      requiresException: true,
-      insertionSupported: kindSupported,
-      hasParametricModel: isParametric,
-      reasonCode: code,
-      reasonText: text,
-    });
-    seen.add(p.producto_id);
+    // No cumple la regla física de unión directa (compatibilidadFisica.ts): NO se
+    // ofrece. Antes se ofrecía como "compat. no documentada" con excepción; con la
+    // regla como puerta, lo que no la cumple no es una continuación posible.
   }
 
   // Orden intra-grupo: priorizar el mismo producto desde recto, y recto desde

@@ -87,6 +87,10 @@ describe('ruta única de colocación', () => {
       for (const product of products) {
         const d = resolveDefinition(product);
         if (!d.ok) continue;
+        // La curva vertical ASCENDENTE (CUPS-A, sentido_vertical = +1) cambió a propósito:
+        // su boca horizontal usa el marco medido del STEP y la vertical sale hacia arriba.
+        // La ruta vieja no alinea el marco de la boca, así que ya no la reproduce.
+        if (d.def.params.sentido_vertical === 1) continue;
         const entry = resolveRecipe(product)!;
         for (const port of d.def.ports) {
           if (Math.abs(port.normal[1]) > 1e-3) continue; // la ruta vieja no admitía estas entradas en horizontal

@@ -112,6 +112,12 @@ export interface MasterBaseParams {
   readonly ala_mm: number;
   readonly longitud_mm?: number;
   readonly angulo_deg?: number;
+  /**
+   * Curvas verticales: sentido del modelo (+1 sube, −1 baja). Interior (A) sube,
+   * exterior (D) baja; la articulada (CUS) declara −1 como pose de referencia y
+   * el sentido real se elige al colocar.
+   */
+  readonly sentido_vertical?: 1 | -1;
 }
 
 export interface MasterSource {
@@ -420,7 +426,7 @@ const MASTER_PERFORADA: readonly MasterModel[] = [
       glbUrl: '/parametric/originals_glb/CUPS-300-A-Z.glb',
     },
     recipeKey: 'curva_vertical',
-    baseParams: { ancho_mm: 300, ala_mm: 50 },
+    baseParams: { ancho_mm: 300, ala_mm: 50, sentido_vertical: 1 },
     canonicalRotationZDeg: 45,
     catalogMatch: {
       familiaIds: PERFORADA_FAMILIAS,
@@ -489,7 +495,7 @@ const MASTER_PERFORADA: readonly MasterModel[] = [
       glbUrl: '/parametric/originals_glb/CUPS-300-A-Z.glb',
     },
     recipeKey: 'curva_vertical',
-    baseParams: { ancho_mm: 300, ala_mm: 50 },
+    baseParams: { ancho_mm: 300, ala_mm: 50, sentido_vertical: -1 },
     canonicalRotationZDeg: 45,
     catalogMatch: {
       familiaIds: PERFORADA_FAMILIAS,
@@ -516,10 +522,13 @@ const MASTER_PERFORADA: readonly MasterModel[] = [
     ],
     closure: {
       continuity: {
-        status: 'pending',
-        regressionSpecs: [],
+        status: 'validated',
+        regressionSpecs: [
+          'src/workspace/placement/__tests__/curvaVerticalSentido.test.ts',
+          'e2e/curvaVerticalSentido.visual.spec.ts',
+        ],
         limitations: [
-          'Sin regresión end-to-end: el placement vertical interior vs exterior depende de la boca fuente (ascendente vs descendente); se requiere escenario de cadena H→CUPS-D→V-descendente para validar continuidad.',
+          'Cerrado con la cadena H → CUPS-D → V-descendente (y la A ascendente) con gestos reales: uniones que cumplen y el tramo siguiente arranca hacia abajo (hacia arriba en la A). El sentido sale del marco de la boca horizontal: la D usa el de §D6, la A el medido del STEP.',
         ],
       },
       fidelity: {
@@ -901,7 +910,7 @@ const MASTER_ESCALERA: readonly MasterModel[] = [
       glbUrl: '/parametric/originals_glb/CUPS-300-A-Z.glb',
     },
     recipeKey: 'escalera:curva_vertical',
-    baseParams: { ancho_mm: 300, ala_mm: 65 },
+    baseParams: { ancho_mm: 300, ala_mm: 65, sentido_vertical: -1 },
     canonicalRotationZDeg: 45,
     catalogMatch: {
       familiaIds: ESCALERA_FAMILIAS,
@@ -976,7 +985,7 @@ const MASTER_ESCALERA: readonly MasterModel[] = [
         regressionSpecs: [CUPS_PORT_FRAME_SPEC, CUPS_CHAIN_SPEC, CUPS_SECTION_UP_PERSISTENCE_SPEC],
         limitations: [
           'Continuidad heredada del patrón CUPS perforada: flush horizontal→vertical cubierto por la regresión compartida. El recorrido inverso (vertical→horizontal) y el encadenamiento de dos verticales consecutivas no están regresionados.',
-          'SAMET no publica un SKU "CDS" descendente para escalera — la orientación descendente se resuelve por colocación en escena (boca fuente), compartiendo el mismo polígono CUS. No hay master disjunto A/D en escalera (contrasta con perforada CUPS A/D).',
+          'SAMET no publica un SKU "CDS" descendente para escalera: la CUS es una sola pieza articulada y el operador elige al colocar si SUBE o BAJA (sin valor por defecto; ver curvaVerticalSentido). Mismo polígono que la CUPS.',
           'Sin STEP CUS medido: la curvatura y la articulación (5 eslabones) no se representan. El polígono renderizado es el perfil CUPS, no una cadena articulada.',
         ],
       },

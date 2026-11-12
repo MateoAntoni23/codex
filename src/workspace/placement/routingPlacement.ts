@@ -33,6 +33,8 @@ export interface RoutingPlacementInput {
   readonly lengthMm?: number | null;
   /** Dirección de avance (por defecto, la normal de la boca existente). */
   readonly entryDir?: readonly number[];
+  /** Curva vertical articulada (CUS): si sube o baja. Las CUPS lo traen fijo (A sube, D baja). */
+  readonly sentidoVertical?: 'sube' | 'baja';
 }
 
 export type RoutingPlacement =
@@ -57,7 +59,7 @@ function key(i: RoutingPlacementInput): string {
   return JSON.stringify([
     i.product.producto_id,
     i.startPort.pieceId, i.startPort.portName, i.startPort.pos, i.startPort.dir, i.startPort.sectionUp ?? null,
-    i.entryPortName, i.side, i.lengthMm ?? null, i.entryDir ?? null,
+    i.entryPortName, i.side, i.lengthMm ?? null, i.entryDir ?? null, i.sentidoVertical ?? null,
   ]);
 }
 
@@ -73,7 +75,10 @@ function handForSide(sides: Record<Mano, 'izquierda' | 'derecha' | null>, side: 
 export function computeRoutingPlacement(input: RoutingPlacementInput): RoutingPlacement {
   // La clave incluye la huella de la definición vigente: si cambia la biblioteca,
   // cambia la huella y se recalcula.
-  const d = resolveDefinition(input.product, { longitud_mm: input.lengthMm ?? null });
+  const d = resolveDefinition(input.product, {
+    longitud_mm: input.lengthMm ?? null,
+    ...(input.sentidoVertical ? { sentido_vertical: input.sentidoVertical } : {}),
+  });
   if (!d.ok) return { ok: false, motivo: d.motivo };
   const k = `${key(input)}|${d.huella}`;
   const hit = cache.get(k);

@@ -43,8 +43,8 @@ import { findMasterById, findMasterForProduct } from '../masterModels';
 
 const BASE_ID = 'SAM_CUPS-300-A-Z';
 const VARIANT_ID = 'SAM_CUPS-450-A-Z';
-const BASE_RECIPE = () => buildCUPSRecipe({ ancho_mm: 300, ala_mm: 50 });
-const VARIANT_RECIPE = () => buildCUPSRecipe({ ancho_mm: 450, ala_mm: 50 });
+const BASE_RECIPE = () => buildCUPSRecipe({ ancho_mm: 300, ala_mm: 50, sentido: 'baja' });
+const VARIANT_RECIPE = () => buildCUPSRecipe({ ancho_mm: 450, ala_mm: 50, sentido: 'baja' });
 
 const EPS = 1e-6;
 

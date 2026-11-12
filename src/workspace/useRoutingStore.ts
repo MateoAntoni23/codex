@@ -43,6 +43,13 @@ export interface RoutingState {
    */
   entryPortName: string | null;
 
+  /**
+   * Curva vertical articulada (CUS): si sube o baja. null hasta que el operador
+   * elige — no hay valor por defecto (sin elección no hay previa ni confirmación).
+   */
+  sentidoVertical: 'sube' | 'baja' | null;
+  setSentidoVertical(s: 'sube' | 'baja' | null): void;
+
   activate(): void;
   deactivate(): void;
   hoverPiece(id: string | null): void;
@@ -71,6 +78,8 @@ export const useRoutingStore = create<RoutingState>((set) => ({
   reductionLengthMm: 300,
   reductionPortToExisting: '',
   turnDirection: 'left',
+  sentidoVertical: null,
+  setSentidoVertical: (s) => set({ sentidoVertical: s }),
   entryPortName: null,
 
   activate: () =>
@@ -96,7 +105,7 @@ export const useRoutingStore = create<RoutingState>((set) => ({
   // mostraba otro SKU: ver fix stale-preview y routingPreviewSwap spec).
   selectStartPort: (port) => set({ startPort: port, step: 'configuringSegment', selectedProductId: '', entryPortName: null }),
 
-  setProduct: (id) => set({ selectedProductId: id, entryPortName: null }),
+  setProduct: (id) => set({ selectedProductId: id, entryPortName: null, sentidoVertical: null }),
 
   setLength: (mm) => set({ previewLengthMm: mm }),
 

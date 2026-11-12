@@ -18,6 +18,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { planAddAccessory } from '../workspaceOperation';
+import { computeRoutingPlacement } from '../placement/routingPlacement';
 import { getFreePorts } from '../routingRules';
 import {
   placeRecipe,
@@ -127,18 +128,10 @@ describe('CUPS sectionUp — persistencia + round-trip + consumo canónico', () 
 
     const cupsPiece = plan.newPiece;
 
-    // Independientemente, computamos el vDir canónico del puente con los mismos
-    // parámetros para contrastar.
-    const cupsEntry = resolveRecipe(CUPS_300)!;
-    const cupsPlaced = placeRecipe(
-      CUPS_300,
-      cupsEntry,
-      startPort.pos,
-      startPort.dir,
-      'native',
-      undefined,
-      { entryPortName: 'P1_horizontal', sectionUp: startPort.sectionUp },
-    );
+    // Independientemente, la colocación de la app (la misma de la previa) con los
+    // mismos parámetros, para contrastar.
+    const cupsPlaced = computeRoutingPlacement({ product: CUPS_300, startPort, entryPortName: 'P1_horizontal', side: 'right' });
+    if (!cupsPlaced.ok) throw new Error(cupsPlaced.motivo);
 
     for (const port of cupsPlaced.ports) {
       const persisted = cupsPiece.puertos[port.name]?.orientacion_seccion_ws;

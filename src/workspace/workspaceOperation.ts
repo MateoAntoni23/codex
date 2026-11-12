@@ -19,6 +19,7 @@ import { computeEndpoint, generateConnectionId } from './routingRules';
 import { tieneDefinicion } from './placement/definitions';
 import { computeRoutingPlacement, type RoutingPlacement } from './placement/routingPlacement';
 import { conLongitudesEje } from './placement/longitudesEje';
+import { esVerticalArticulada } from './parametricBridge';
 import { puertosFromWorld, type StoredDefinition } from './placement/placementCore';
 import { withDefinition } from './placement/definitions';
 import { checkConnection, type JoinCheck } from './placement/joins';
@@ -430,6 +431,9 @@ export function planAddAccessory(
 ): PendingSegmentAddition {
   if (!compat.ok) throw new Error('planAddAccessory: compat.ok must be true');
   // Sin colocación del llamador, la misma función que preview y confirmación.
+  // CUS articulada: el sentido (sube/baja) lo elige el operador; sin colocación del
+  // llamador no hay sentido y no se inventa uno.
+  if (!placement && esVerticalArticulada(newProduct)) throw new Error(`planAddAccessory: ${newProduct.sku ?? newProduct.producto_id} es una curva vertical articulada: elegí si sube o baja`);
   if (!placement) placement = computeRoutingPlacement({ product: newProduct, startPort, entryPortName, side: turnDirection });
 
   const pieceIds = new Set(entrada.piezas.map((p) => p.instancia_id));

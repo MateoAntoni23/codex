@@ -1186,6 +1186,41 @@
       "antes": "def-08e7b9d9e4fad1",
       "despues": "def-076bc54a9dd441",
       "motivo": "B-2: DCPS generado desde el STEP (report/perforada/DCPS-300-Z__outline.json); los literales tenían dos vértices enderezados al bbox (0,051 mm) y el resto redondeado a 0,01 mm. TPS usa la misma receta."
+    },
+    "SAM_CUPS-050-A-Z": {
+      "antes": "def-1bff8e967a9a9c",
+      "despues": "def-040d862eb65ebb",
+      "motivo": "Defecto de orientación: la curva vertical ASCENDENTE (CUPS-A, interior) salía hacia abajo, como la descendente. Mismo perfil medido; la boca horizontal toma el marco medido del STEP (u=−Z, v≈−Y) y la definición registra sentido_vertical=+1. La D (descendente) no cambia."
+    },
+    "SAM_CUPS-100-A-Z": {
+      "antes": "def-1b9ef8641de24c",
+      "despues": "def-128e04a3a9e007",
+      "motivo": "Defecto de orientación: la curva vertical ASCENDENTE (CUPS-A, interior) salía hacia abajo, como la descendente. Mismo perfil medido; la boca horizontal toma el marco medido del STEP (u=−Z, v≈−Y) y la definición registra sentido_vertical=+1. La D (descendente) no cambia."
+    },
+    "SAM_CUPS-150-A-Z": {
+      "antes": "def-0553a6f9a8001d",
+      "despues": "def-162ae618561ebc",
+      "motivo": "Defecto de orientación: la curva vertical ASCENDENTE (CUPS-A, interior) salía hacia abajo, como la descendente. Mismo perfil medido; la boca horizontal toma el marco medido del STEP (u=−Z, v≈−Y) y la definición registra sentido_vertical=+1. La D (descendente) no cambia."
+    },
+    "SAM_CUPS-200-A-Z": {
+      "antes": "def-1ec83d9fcd6267",
+      "despues": "def-1fa598c4855c5a",
+      "motivo": "Defecto de orientación: la curva vertical ASCENDENTE (CUPS-A, interior) salía hacia abajo, como la descendente. Mismo perfil medido; la boca horizontal toma el marco medido del STEP (u=−Z, v≈−Y) y la definición registra sentido_vertical=+1. La D (descendente) no cambia."
+    },
+    "SAM_CUPS-300-A-Z": {
+      "antes": "def-1a757ad7f9472e",
+      "despues": "def-1774e52998bf79",
+      "motivo": "Defecto de orientación: la curva vertical ASCENDENTE (CUPS-A, interior) salía hacia abajo, como la descendente. Mismo perfil medido; la boca horizontal toma el marco medido del STEP (u=−Z, v≈−Y) y la definición registra sentido_vertical=+1. La D (descendente) no cambia."
+    },
+    "SAM_CUPS-450-A-Z": {
+      "antes": "def-1e7c568b40f05a",
+      "despues": "def-03eb83446e3ade",
+      "motivo": "Defecto de orientación: la curva vertical ASCENDENTE (CUPS-A, interior) salía hacia abajo, como la descendente. Mismo perfil medido; la boca horizontal toma el marco medido del STEP (u=−Z, v≈−Y) y la definición registra sentido_vertical=+1. La D (descendente) no cambia."
+    },
+    "SAM_CUPS-600-A-Z": {
+      "antes": "def-0b9aaad44155da",
+      "despues": "def-0b8607726c6df2",
+      "motivo": "Defecto de orientación: la curva vertical ASCENDENTE (CUPS-A, interior) salía hacia abajo, como la descendente. Mismo perfil medido; la boca horizontal toma el marco medido del STEP (u=−Z, v≈−Y) y la definición registra sentido_vertical=+1. La D (descendente) no cambia."
     }
   }
 }

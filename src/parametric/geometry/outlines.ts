@@ -479,9 +479,21 @@ export function lineaMediaPerfilCUPS(): { puntos: V2[]; longitud_mm: number } {
   return { puntos, longitud_mm };
 }
 
+/**
+ * Sentido de la curva vertical. Un solo perfil medido (STEP CUPS-300-A-Z); lo
+ * que cambia entre ascendente y descendente es la posición inicial: el marco de
+ * la boca horizontal (P1_horizontal) gira 180° alrededor de su normal, así que al
+ * colocarla alineando su "arriba" de sección con el del tramo entrante la boca
+ * vertical sale hacia ARRIBA ('sube') o hacia ABAJO ('baja').
+ *   - 'sube': el marco tal como se midió en el STEP (v = arista V4→V5 ≈ (0,−1,0)).
+ *   - 'baja': el marco girado (v = (0,+1,0); ver §D6).
+ */
+export type SentidoVertical = 'sube' | 'baja';
+
 export function buildCUPSRecipe(params: {
   ancho_mm: number;
   ala_mm: number;
+  sentido: SentidoVertical;
 }): GeometryRecipe {
   // ala_mm llega por compatibilidad con la firma común, pero CUPS no la usa:
   // la "altura" interna del canal se deriva del polígono XY medido.
@@ -555,14 +567,19 @@ export function buildCUPSRecipe(params: {
   // asignar v_dir para alinear con la convención TRPS (v = +Y local).
   const p1EdgeDx = (v5[0] - v4[0]) / p1EdgeLen; // 0 esperado
   const p1EdgeDy = (v5[1] - v4[1]) / p1EdgeLen; // −1 esperado
+  //
+  // Sentido (ver SentidoVertical): 'baja' usa la convención anterior (v = +Y);
+  // 'sube' usa el marco medido (v = arista V4→V5 ≈ −Y, u = −Z). Con 'baja' la boca
+  // vertical queda hacia abajo del tramo entrante; con 'sube', hacia arriba.
+  const sube = params.sentido === 'sube';
   const bocaHorizontal: PortDef = {
     name: 'P1_horizontal',
     center: [(v4[0] + v5[0]) / 2, (v4[1] + v5[1]) / 2, centerZ],
     normal: [-1, 0, 0],
     ancho_mm,
     ala_mm: p1EdgeLen,
-    u_dir: [0, 0, 1],
-    v_dir: [-p1EdgeDx, -p1EdgeDy, 0],
+    u_dir: sube ? [0, 0, -1] : [0, 0, 1],
+    v_dir: sube ? [p1EdgeDx, p1EdgeDy, 0] : [-p1EdgeDx, -p1EdgeDy, 0],
     kind: 'operational',
   };
 
@@ -577,7 +594,7 @@ export function buildCUPSRecipe(params: {
     notes: [
       'Perfil XY medido del STEP (8 vértices) rotado +45° al marco de instalación natural donde las bocas quedan axis-aligned.',
       `Bocas MEDIDAS sobre las chaflanas exteriores del STEP: 300 × ${p1EdgeLen.toFixed(2)} mm. Longitud de conexión (~${p1EdgeLen.toFixed(0)} mm) difiere del ala del tramo recto (50 mm por catálogo SAM-STP-Z): compatibilidad mecánica pendiente de dato SAMET.`,
-      'Variante ascendente/descendente: SAMET publica sólo CUPS-A; la ascendente se asumiría espejo (pendiente de confirmación).',
+      `Sentido: ${sube ? 'ascendente (la boca vertical sale hacia arriba)' : 'descendente (la boca vertical sale hacia abajo)'}. Mismo perfil medido; cambia sólo la posición inicial (marco de la boca horizontal).`,
       ancho_mm === 300
         ? 'Ancho=300 mm: profundidad del canal fiel al STEP.'
         : `Variante ancho=${ancho_mm}: sólo escala la profundidad Z. El perfil XY queda fijo (sin regla pública).`,

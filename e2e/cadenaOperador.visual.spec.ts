@@ -4,8 +4,10 @@
  *   recto → curva ascendente → recto → curva plana 90 → recto → curva plana 45 →
  *   T → un recto por cada salida → uno termina en curva descendente → otra T.
  * Todas las uniones cumplen A-7 (hueco ≤ 1 mm, ángulo ≤ 1°, giro ≤ 1°). Las uniones
- * curva 45–T y curva descendente–T quedan como excepción con motivo; las demás,
- * documentadas. El motor calcula la cadena y todas sus uniones dan COHERENTE.
+ * Con la compatibilidad por la regla física del sistema (misma familia, ancho y ala),
+ * todas son uniones directas documentadas — incluidas curva 45–T y curva descendente–T,
+ * que antes (tabla enumerada como puerta) pedían excepción con motivo. El motor calcula
+ * la cadena y todas sus uniones dan COHERENTE.
  */
 import { test, expect, type Page } from '@playwright/test';
 
@@ -42,7 +44,7 @@ async function continueFrom(page: Page, freeEnd: RegExp, productoId: string, opt
 test.describe('PA4 / PA8 — cadena del operador', () => {
   test.setTimeout(240_000);
 
-  test('todas las uniones cumplen A-7; dos excepciones con motivo; el motor da COHERENTE', async ({ page }) => {
+  test('todas las uniones cumplen A-7; ninguna excepción (regla física); el motor da COHERENTE', async ({ page }) => {
     await openBandejas(page);
     // 1. recto
     await page.getByTestId('tool-bandejas-tramo').click();
@@ -64,26 +66,26 @@ test.describe('PA4 / PA8 — cadena del operador', () => {
     await step('curva 90–recto', /^↗ 4\. CPS-300-90-Z/, 'SAM_TRPS-300-22-Z', { length: 2000 });
     // 6. curva plana 45
     await step('recto–curva 45', /^↗ 5\. TRPS-300-22-Z/, 'SAM_CPS-300-45-Z', { side: 'left' });
-    // 7. T (curva 45 – T: excepción con motivo)
+    // 7. T (curva 45 – T: unión directa por la regla del sistema)
     await step('curva 45–T', /^↗ 6\. CPS-300-45-Z/, 'SAM_TPS-300-Z', { entryPort: 'tronco_P1', side: 'right' });
     // 8. un recto por cada salida de la T
     await step('T–recto (tronco)', /^↗ 7\. TPS-300-Z · Tronco \(salida\)/, 'SAM_TRPS-300-22-Z', { length: 1500 });
     await step('T–recto (derivación)', /^↗ 7\. TPS-300-Z · Boca de derivación/, 'SAM_TRPS-300-22-Z', { length: 1500 });
     // 9. uno de ellos termina en curva descendente
     await step('recto–curva descendente', /^↗ 9\. TRPS-300-22-Z/, 'SAM_CUPS-300-D-Z', { entryPort: 'P1_horizontal' });
-    // 10. otra T (curva descendente – T: excepción con motivo)
+    // 10. otra T (curva descendente – T: unión directa por la regla del sistema)
     await step('curva descendente–T', /^↗ 10\. CUPS-300-D-Z · Boca vertical/, 'SAM_TPS-300-Z', { entryPort: 'tronco_P1' });
 
     expect(await count(page)).toBe(11);
-    expect(exc.sort()).toEqual(['curva 45–T', 'curva descendente–T']);
+    expect(exc, 'ninguna continuación pidió excepción').toEqual([]);
 
     // A-7: todas las uniones cumplen, verificadas por el panel (hueco, ángulo y giro).
     const rows = page.getByTestId('join-row');
     await expect(rows).toHaveCount(10);
     const states = await rows.evaluateAll((els) => els.map((e) => ({ ok: e.getAttribute('data-join-ok'), estado: e.getAttribute('data-join-estado') })));
     expect(states.every((s) => s.ok === 'true'), JSON.stringify(states)).toBe(true);
-    expect(states.filter((s) => s.estado === 'excepcion')).toHaveLength(2);
-    expect(states.filter((s) => s.estado === 'documentada')).toHaveLength(8);
+    expect(states.filter((s) => s.estado === 'excepcion')).toHaveLength(0);
+    expect(states.filter((s) => s.estado === 'documentada')).toHaveLength(10);
     // Y con la misma función, recalculada desde las bocas guardadas.
     const joins = await page.evaluate(async () => {
       const mod = await import('/src/workspace/placement/joins.ts');
@@ -115,11 +117,11 @@ test.describe('PA4 / PA8 — cadena del operador', () => {
     await expect(page.getByTestId('piece-aviso-modelo')).toHaveCount(2);
     await expect(page.getByTestId('piece-aviso-modelo').first()).toContainText('mide 36.56 mm de ala y el catálogo declara 50 mm');
 
-    // Excepciones listadas en Resultados con su motivo.
+    // Resultados: ninguna unión por excepción.
     await page.getByTestId('stage-tab-resultados').click();
     await expect(page.getByTestId('aviso-modelo-row')).toHaveCount(2);
-    await expect(page.getByTestId('exception-row')).toHaveCount(2);
-    await expect(page.getByTestId('exceptions-list')).toContainText('Motivo:');
+    await expect(page.getByTestId('exception-row')).toHaveCount(0);
+    await expect(page.getByTestId('exceptions-list')).toContainText('Ninguna');
 
     // PA8 — el motor calcula la cadena; todas las uniones dan COHERENTE.
     await page.getByTestId('reserva-input').fill('20');

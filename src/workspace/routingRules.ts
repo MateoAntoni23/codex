@@ -2,6 +2,7 @@
  * Pure functions for interactive tray routing.
  * No side effects — all functions are deterministic and testable.
  */
+import { compatibilidadDirecta } from './compatibilidadFisica';
 import type { Piece, Product, Context, CatalogCompatibility, CatalogUnionComponent } from '../tray/model';
 import { isHorizontalCurve, isStraight } from './pieceClassification';
 import { recipePortToCatalogPort, resolveCatalogPort } from './catalogPortMapping';
@@ -318,6 +319,30 @@ export function checkDirectCompatibility(
     };
   }
 
+  // Regla física de unión directa (compatibilidadFisica.ts): bloqueo explícito
+  // primero; si no cumple la regla, no hay unión directa (las reducciones siguen
+  // su propio camino). La tabla sólo resuelve boca y bulonería cuando confirma.
+  const fisica = compatibilidadDirecta(existingProduct, newProduct, compatibilidades);
+  if (!fisica.ok) {
+    const sameFam = (existingProduct as Record<string, unknown>).familia_id === (newProduct as Record<string, unknown>).familia_id;
+    const wA0 = existingProduct.ancho_nominal_mm;
+    const wB0 = newProduct.ancho_nominal_mm;
+    const reduccion = !fisica.bloqueo && sameFam && wA0 != null && wB0 != null && wA0 !== wB0;
+    return {
+      ok: false,
+      needsReduction: reduccion,
+      reason: fisica.bloqueo
+        ? `Incompatibles según catálogo (${fisica.bloqueo}).`
+        : reduccion
+          ? `Sin unión directa: anchos distintos (${wA0} ≠ ${wB0} mm) — puede requerir reducción.`
+          : `Sin unión directa por la regla del sistema: ${fisica.motivo}.`,
+      compatibilidadId: fisica.bloqueo ?? null,
+      requiredUnion: [],
+      evidence: '',
+      newPiecePort: newPortName,
+    };
+  }
+
   // Try exact port match first
   const entry = findCompatEntryPortLevel(
     compatibilidades,
@@ -414,64 +439,15 @@ export function checkDirectCompatibility(
     }
   }
 
-  // No compatible entry found — check for explicit 'no compatible' entry
-  const noComp = compatibilidades.find(
-    (c) =>
-      c.estado_compatibilidad === 'no compatible' &&
-      (
-        (c.producto_a_id === existingProduct.producto_id && c.producto_b_id === newProduct.producto_id) ||
-        (c.producto_a_id === newProduct.producto_id && c.producto_b_id === existingProduct.producto_id)
-      ),
-  );
-  if (noComp) {
-    return {
-      ok: false,
-      needsReduction: false,
-      reason: `Incompatibles según catálogo (${noComp.compatibilidad_id}).`,
-      compatibilidadId: noComp.compatibilidad_id,
-      requiredUnion: [],
-      evidence: noComp.estado_evidencia ?? '',
-      newPiecePort: newPortName,
-    };
-  }
-
-  // No entry at all — might need reduction or simply not documented
-  const famA = (existingProduct as Record<string, unknown>).familia_id as string | undefined;
-  const famB = (newProduct as Record<string, unknown>).familia_id as string | undefined;
-  const wA = existingProduct.ancho_nominal_mm;
-  const wB = newProduct.ancho_nominal_mm;
-
-  if (famA && famB && famA !== famB) {
-    return {
-      ok: false,
-      needsReduction: false,
-      reason: `Sin evidencia de compatibilidad en el catálogo. Familias distintas (${famA} ≠ ${famB}).`,
-      compatibilidadId: null,
-      requiredUnion: [],
-      evidence: '',
-      newPiecePort: newPortName,
-    };
-  }
-
-  if (wA != null && wB != null && wA !== wB) {
-    return {
-      ok: false,
-      needsReduction: true,
-      reason: `Sin conexión directa en el catálogo. Anchos distintos (${wA} ≠ ${wB} mm) — puede requerir reducción.`,
-      compatibilidadId: null,
-      requiredUnion: [],
-      evidence: '',
-      newPiecePort: newPortName,
-    };
-  }
-
+  // Cumple la regla física y la tabla no enumera el par: compatible igual (la
+  // tabla es confirmación, no puerta). Se conecta por la boca pedida.
   return {
-    ok: false,
+    ok: true,
     needsReduction: false,
-    reason: `Sin evidencia de compatibilidad directa en el catálogo para estos productos.`,
+    reason: `Compatible por la regla del sistema SAMET (${fisica.regla}); la tabla del catálogo no enumera el par.`,
     compatibilidadId: null,
     requiredUnion: [],
-    evidence: '',
+    evidence: 'regla de sistema (CMP-00001)',
     newPiecePort: newPortName,
   };
 }

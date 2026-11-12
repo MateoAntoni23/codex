@@ -62,9 +62,11 @@ test.describe('m1c — bocas de accesorios', () => {
     expect(opts['SAM_TRPS-300-22-Z'], 'TRPS-300-22-Z ofrecido').toBeDefined();
     expect(opts['SAM_TRPS-300-22-Z'].startsWith('◆'), `documentado, no excepción: «${opts['SAM_TRPS-300-22-Z']}»`).toBe(true);
     expect(opts['SAM_TRPS-300-22-Z']).not.toMatch(/compat\. no documentada/);
-    // No se inventa accesorio ↔ accesorio: una curva vertical sigue siendo excepción.
+    // Compatibilidad por la regla física: otra curva vertical de la misma familia, ancho y
+    // ala es una unión directa (antes, sin fila en la tabla, se ofrecía como excepción ⚠).
+    // Nada se ofrece con cartel de excepción.
     for (const [id, text] of Object.entries(opts)) {
-      if (/^SAM_CUPS-/.test(id)) expect(text.startsWith('⚠'), `${id} debe seguir como excepción: «${text}»`).toBe(true);
+      expect(text.startsWith('⚠'), `${id} no debe ofrecerse como excepción: «${text}»`).toBe(false);
     }
     await expect(page.locator('label', { hasText: /Continuación \(\d+ compatibles?\)/ })).toBeVisible();
   });
@@ -93,5 +95,23 @@ test.describe('m1c — bocas de accesorios', () => {
     const opts = await options(page);
     expect(Object.keys(opts).filter((id) => id.startsWith('SAM_DCPS-'))).toEqual([]);
     expect(opts['SAM_TRPS-300-22-Z'], 'el recto sí se ofrece').toBeDefined();
+  });
+
+  // Control negativo (compatibilidad por la regla física): continuando desde una CPS-300-45-Z
+  // (perforada zincada) no se ofrece NINGUNA escalera — antes aparecía CS-300-45-065-14-G
+  // (escalera galvanizada) como "compat. no documentada". Sólo perforada de 300 y ala 50.
+  test('C5 — desde una CPS-300-45-Z no se ofrece escalera; sólo perforada del mismo ancho y ala', async ({ page }) => {
+    await openBandejas(page);
+    await newStraight(page, 'SAM_TRPS-300-22-Z');
+    await continueFrom(page, /Boca x_max/, 'SAM_CPS-300-45-Z');
+    await page.getByTestId('free-end').filter({ hasText: /CPS-300-45-Z/ }).first().click();
+    await expect(page.locator('[data-codex-routing-product-select]')).toBeVisible();
+    const opts = await options(page);
+    const ids = Object.keys(opts);
+    expect(ids.length).toBeGreaterThan(0);
+    expect(ids, 'la escalera galvanizada del defecto no se ofrece').not.toContain('SAM_CS-300-45-065-14-G');
+    expect(ids.filter((id) => /^SAM_(TRES|CS|TS|XS|CUS|RCS|RIS)-/.test(id)), 'ninguna escalera').toEqual([]);
+    expect(Object.values(opts).filter((t) => /compat\. no documentada/.test(t)), 'nada con cartel de excepción').toEqual([]);
+    expect(ids).toContain('SAM_TRPS-300-22-Z');
   });
 });

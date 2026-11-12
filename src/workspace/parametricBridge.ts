@@ -216,7 +216,19 @@ function paramsForMaster(master: MasterModel, product: SyntheticProductLike): Ra
   if (master.baseParams.angulo_deg !== undefined) {
     params.angulo_deg = numOrNull(product.angulo_grados);
   }
+  if (master.pieceKind === 'curva_vertical') params.sentido_vertical = sentidoPorTipo(String(product.tipo_pieza));
   return params as RawParams;
+}
+
+/**
+ * Sentido de una curva vertical según el tipo de pieza del catálogo (+1 sube,
+ * −1 baja): interior (A) sube, exterior (D) baja; la articulada (CUS) lo elige
+ * la colocación — sin elección, 'baja' como pose de REFERENCIA del modelo.
+ */
+export function sentidoPorTipo(tipo: string, elegido?: 'sube' | 'baja'): 1 | -1 {
+  if (tipo === 'curva vertical interior') return 1;
+  if (tipo === 'curva vertical exterior') return -1;
+  return elegido === 'sube' ? 1 : -1;
 }
 
 function syntheticVariantView(
@@ -397,6 +409,28 @@ export function isParametricInsertable(
 interface BuildRecipeOverrides {
   /** Longitud comercial en mm (sólo aplicable a tramo_recto). */
   readonly longitud_mm?: number | null;
+  /**
+   * Sentido de una curva vertical ARTICULADA (CUS), elegido al colocar. Las
+   * CUPS lo traen fijo por producto (A sube, D baja) y lo ignoran.
+   */
+  readonly sentido_vertical?: 'sube' | 'baja';
+}
+
+/**
+ * Sentido de una curva vertical (+1 sube, −1 baja), o null si no es una.
+ *   - CUPS interior (A, ascendente) → sube; exterior (D, descendente) → baja.
+ *   - CUS articulada → el elegido al colocar; sin elección, 'baja' como pose de
+ *     REFERENCIA del modelo (vistas de catálogo). Al colocar se exige elegir.
+ */
+export function sentidoVerticalDe(product: Product, entry: ParametricEntry, elegido?: 'sube' | 'baja'): 1 | -1 | null {
+  const esVertical = entry.piece_kind === 'curva_vertical' || entry.recipe === 'escalera:curva_vertical';
+  if (!esVertical) return null;
+  return sentidoPorTipo(String(product.tipo_pieza), elegido);
+}
+
+/** Curva vertical articulada (CUS): el sentido se elige al colocar. */
+export function esVerticalArticulada(product: Product | null | undefined): boolean {
+  return product?.tipo_pieza === 'curva vertical articulada';
 }
 
 /**
@@ -450,6 +484,9 @@ export function buildRecipeFromProduct(
       }
     }
   }
+
+  const sentido = sentidoVerticalDe(product, entry, overrides?.sentido_vertical);
+  if (sentido !== null) params.sentido_vertical = sentido;
 
   const takesAngulo =
     entry.piece_kind === 'curva_horizontal' || entry.recipe === 'escalera:curva_horizontal';

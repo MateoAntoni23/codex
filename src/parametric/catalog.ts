@@ -100,6 +100,17 @@ function spanOf(min: Vec3, max: Vec3): Vec3 {
   return [max[0] - min[0], max[1] - min[1], max[2] - min[2]];
 }
 
+/**
+ * Catálogo paramétrico legado (visor de originales): las curvas verticales toman
+ * su sentido de la designación comercial del SKU (CUPS-…-A- sube, CUPS-…-D- baja).
+ */
+function conSentidoLegado(piece_kind: PieceKind, sku: string, params: RawParams): RawParams {
+  if (piece_kind !== 'curva_vertical' || (params as Record<string, unknown>).sentido_vertical !== undefined) return params;
+  if (/-A-/.test(sku)) return { ...params, sentido_vertical: 1 } as RawParams;
+  if (/-D-/.test(sku)) return { ...params, sentido_vertical: -1 } as RawParams;
+  throw new Error(`catálogo legado: no se puede deducir el sentido de la curva vertical ${sku}`);
+}
+
 function makeView(
   label: string,
   sku: string,
@@ -108,12 +119,13 @@ function makeView(
   params: RawParams,
   notes: readonly string[],
 ): ParametricVariantView {
-  const recipe = buildRecipeFor(piece_kind, params);
+  const conSentido = conSentidoLegado(piece_kind, sku, params);
+  const recipe = buildRecipeFor(piece_kind, conSentido);
   return {
     label,
     sku,
     glb_url,
-    params,
+    params: conSentido,
     ports: recipe.ports,
     notes,
     bbox_span_mm: spanOf(recipe.bboxMin, recipe.bboxMax),
@@ -352,7 +364,7 @@ function buildEntry(raw: (typeof RAW_ENTRIES)[number]): ParametricEntry {
   );
   // Marco canónico = bbox de la reconstrucción (ancho=300), que coincide con
   // el bbox del STEP original tras neutralizar la rotación −90°X.
-  const reconRecipe = buildRecipeFor(raw.piece_kind, raw.recon.params);
+  const reconRecipe = buildRecipeFor(raw.piece_kind, conSentidoLegado(raw.piece_kind, raw.variant.sku, raw.recon.params));
   const canonical_bbox_mm = {
     min: reconRecipe.bboxMin,
     max: reconRecipe.bboxMax,

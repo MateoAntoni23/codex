@@ -30,7 +30,8 @@ import {
   type PortMappingEntry,
   type ProductPortMapping,
 } from '../workspace/catalogPortMapping';
-import { getCompatibleProductIds, getPortCompatibility } from '../workspace/routingRules';
+import { getPortCompatibility } from '../workspace/routingRules';
+import { compatiblesDirectos } from '../workspace/compatibilidadFisica';
 import { useCatalogConfigStore } from './catalogConfigStore';
 import { enumerateVariantsForMaster, findMasterAndVariantForProduct, type MasterVariant } from './masterVariants';
 import { findMasterForProduct, type DimensionStatus, type ClosureDimension } from './masterModels';
@@ -638,13 +639,11 @@ function ContinuacionesTab({
   const ancho = product.ancho_nominal_mm;
   const perPort = useMemo(() => {
     return entries.map((e) => {
-      const compat = getCompatibleProductIds(
-        compatibilidades as CatalogCompatibility[],
-        product.producto_id,
-        e.recipePortName,
-      );
+      // Compatibles para unión directa: la regla física (compatibilidadFisica.ts),
+      // no la tabla enumerada. Una boca sin calibrar no ofrece nada.
       const calib = getPortCompatibility(compatibilidades as CatalogCompatibility[], product.producto_id, e.recipePortName);
       const uncalibrated = calib.status === 'uncalibrated' ? calib.reason : null;
+      const compat = uncalibrated ? new Set<string>() : compatiblesDirectos(product, productos, compatibilidades as CatalogCompatibility[]);
       const compatProducts = productos.filter((p) => compat.has(p.producto_id));
       const sameAnchoNoCompat = productos.filter((p) =>
         !compat.has(p.producto_id) &&

@@ -26,6 +26,7 @@ describe('normales de boca exteriores', () => {
       const params: Record<string, number> = { ancho_mm: m.baseParams.ancho_mm, ala_mm: m.baseParams.ala_mm };
       if (m.baseParams.longitud_mm !== undefined) params.longitud_mm = m.baseParams.longitud_mm;
       if (m.baseParams.angulo_deg !== undefined) params.angulo_deg = m.baseParams.angulo_deg;
+      if (m.baseParams.sentido_vertical !== undefined) params.sentido_vertical = m.baseParams.sentido_vertical;
       const r = buildRecipeByKey(m.recipeKey, params as never);
       if (!r.extrudeAlongY) return; // contorno en XY (curvas verticales): bocas en caras de extrusión
       for (const p of r.ports) {

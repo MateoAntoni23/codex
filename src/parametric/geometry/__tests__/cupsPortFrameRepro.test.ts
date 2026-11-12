@@ -40,7 +40,7 @@ function cross(a: Vec3, b: Vec3): Vec3 {
 describe('CUPS port frame — convención unificada', () => {
   it('snapshot: marcos locales de TRPS.P1 y CUPS.P1_horizontal/P2_vertical', () => {
     const trps = buildTRPSRecipe({ ancho_mm: 300, ala_mm: 50, longitud_mm: 3000 });
-    const cups = buildCUPSRecipe({ ancho_mm: 300, ala_mm: 50 });
+    const cups = buildCUPSRecipe({ ancho_mm: 300, ala_mm: 50, sentido: 'baja' });
 
     const trpsP1 = trps.ports.find((p) => p.name === 'P1')!;
     const cupsP1h = cups.ports.find((p) => p.name === 'P1_horizontal')!;
@@ -66,7 +66,7 @@ describe('CUPS port frame — convención unificada', () => {
 
   it('TRPS.P1 y CUPS.P1_horizontal comparten normal, u_dir y v_dir (marco local idéntico)', () => {
     const trps = buildTRPSRecipe({ ancho_mm: 300, ala_mm: 50, longitud_mm: 3000 });
-    const cups = buildCUPSRecipe({ ancho_mm: 300, ala_mm: 50 });
+    const cups = buildCUPSRecipe({ ancho_mm: 300, ala_mm: 50, sentido: 'baja' });
 
     const trpsP1 = trps.ports.find((p) => p.name === 'P1')!;
     const cupsP1h = cups.ports.find((p) => p.name === 'P1_horizontal')!;
@@ -77,7 +77,7 @@ describe('CUPS port frame — convención unificada', () => {
   });
 
   it('CUPS tiene exactamente dos bocas operativas y cada una cumple u×v=n (orto-normalidad)', () => {
-    const cups = buildCUPSRecipe({ ancho_mm: 300, ala_mm: 50 });
+    const cups = buildCUPSRecipe({ ancho_mm: 300, ala_mm: 50, sentido: 'baja' });
     const names = cups.ports.map((p) => p.name).sort();
     expect(names).toEqual(['P1_horizontal', 'P2_vertical']);
     for (const port of cups.ports) {

@@ -18,7 +18,6 @@ import { useWorkspaceStore } from './useWorkspaceStore';
 import { useRoutingStore } from './useRoutingStore';
 import {
   getFreePorts,
-  getCompatibleProductIds,
   getPortCompatibility,
   checkDirectCompatibility,
   findReductionCandidates,
@@ -28,8 +27,8 @@ import {
   angleBetweenDirs,
   verifyStartPortValid,
   generateConnectionId,
-  hasSelfPortEquivalence,
 } from './routingRules';
+import { compatiblesDirectos } from './compatibilidadFisica';
 import { buildSegmentPiece, generateSegmentId } from './addTraySegment';
 import { planAddSegment, planAddCurve, planAddAccessory, applyOperation, type PeExtensionProposal } from './workspaceOperation';
 import {
@@ -39,7 +38,7 @@ import {
   getLimitationReason,
   formatProductOption,
 } from './pieceClassification';
-import { chiralityForTurn } from './parametricBridge';
+import { chiralityForTurn, esVerticalArticulada } from './parametricBridge';
 import { definicionEfectiva, tieneDefinicion, modeloDeProducto } from './placement/definitions';
 import { placeDefinition, worldPorts } from './placement/placementCore';
 import { buildContinuationCandidates, esDerivacionLateral, type ContinuationCandidate } from './continuationCandidates';
@@ -202,6 +201,8 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
   const previewLengthMm   = useRoutingStore((s) => s.previewLengthMm);
   const snapToAxis        = useRoutingStore((s) => s.snapToAxis);
   const turnDirection     = useRoutingStore((s) => s.turnDirection);
+  const sentidoVertical   = useRoutingStore((s) => s.sentidoVertical);
+  const setSentidoVertical = useRoutingStore((s) => s.setSentidoVertical);
   const entryPortName     = useRoutingStore((s) => s.entryPortName);
   const setProduct        = useRoutingStore((s) => s.setProduct);
   const setLength         = useRoutingStore((s) => s.setLength);
@@ -248,16 +249,15 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
   // When the catalog declares the existing product's two ports as interchangeable
   // (self-compat P1↔P2 entry, or horizontal curve by construction), union both
   // port queries — the catalog typically documents one port only.
+  // Compatibles para UNIÓN DIRECTA: la regla física del sistema (misma familia,
+  // ancho y ala; accesorios SAM-SMT-ACC contra cualquiera), no la tabla enumerada,
+  // que sólo confirma o bloquea (compatibilidadFisica.ts). Una boca sin calibrar
+  // se informa aparte (uncalibrated) y no ofrece nada.
   const compatibleIds = useMemo(() => {
-    if (!existingProduct || !startPort || !context?.compatibilidades) return new Set<string>();
-    const ids = getCompatibleProductIds(context.compatibilidades, existingProduct.producto_id, startPort.portName);
-    if (hasSelfPortEquivalence(context.compatibilidades, existingProduct)) {
-      const altPort = startPort.portName === 'P1' ? 'P2' : 'P1';
-      const altIds = getCompatibleProductIds(context.compatibilidades, existingProduct.producto_id, altPort);
-      for (const id of altIds) ids.add(id);
-    }
-    return ids;
-  }, [context?.compatibilidades, existingProduct, startPort]);
+    if (!existingProduct || !startPort || !context?.productos) return new Set<string>();
+    if (portCalibration) return new Set<string>();
+    return compatiblesDirectos(existingProduct, context.productos, context.compatibilidades ?? []);
+  }, [context?.productos, context?.compatibilidades, existingProduct, startPort, portCalibration]);
 
   // All catalog products declared compatible with this port, regardless of whether
   // the current flow can insert them. Non-insertable ones are shown as disabled
@@ -469,9 +469,9 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
   const step = useRoutingStore((s) => s.step);
   const placement = useMemo(
     () => routingPlacementFromState(context, entrada, {
-      startPort, selectedProductId, entryPortName, turnDirection, previewLengthMm, snapToAxis, step,
+      startPort, selectedProductId, entryPortName, turnDirection, previewLengthMm, snapToAxis, step, sentidoVertical,
     }),
-    [context, entrada, startPort, selectedProductId, entryPortName, turnDirection, previewLengthMm, snapToAxis, step],
+    [context, entrada, startPort, selectedProductId, entryPortName, turnDirection, previewLengthMm, snapToAxis, step, sentidoVertical],
   );
 
   const snapWarnAngle = useMemo(() => {
@@ -812,6 +812,35 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
                 : ' Se representará como arco esquemático con el radio interior del catálogo; no es geometría medida.'}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Curva vertical articulada (CUS): sube o baja. Sin elección no hay previa
+          ni confirmación (no hay valor por defecto). Las CUPS lo traen fijo por
+          producto: A (interior) sube, D (exterior) baja. */}
+      {selectedProduct && esVerticalArticulada(selectedProduct) && (
+        <div style={{ marginBottom: 10 }} data-codex-routing-vertical-choice>
+          <div style={{ color: '#8888aa', marginBottom: 4 }}>Sentido de la curva vertical</div>
+          <div style={{ display: 'flex', gap: 6 }}>
+            {(['sube', 'baja'] as const).map((s) => (
+              <button
+                key={s}
+                type="button"
+                data-codex-routing-vertical={s}
+                aria-pressed={sentidoVertical === s}
+                onClick={() => setSentidoVertical(s)}
+                style={{
+                  flex: 1, padding: '4px 8px', fontSize: 11, borderRadius: 3,
+                  background: sentidoVertical === s ? '#1a2235' : '#222233',
+                  color: sentidoVertical === s ? '#99ccff' : '#aaaabb',
+                  border: `1px solid ${sentidoVertical === s ? '#3355aa' : '#334455'}`,
+                }}
+              >
+                {s === 'sube' ? '↑ Sube' : '↓ Baja'}
+              </button>
+            ))}
+          </div>
+          {!sentidoVertical && <div style={{ color: '#cc8844', fontSize: 10, marginTop: 4 }}>Elegí si la curva sube o baja para ver la pieza.</div>}
         </div>
       )}
 
