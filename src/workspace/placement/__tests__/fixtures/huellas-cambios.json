@@ -1089,18 +1089,18 @@
     },
     "SAM_DCPS-100-Z": {
       "antes": "def-0ec986dba2a2c6",
-      "despues": "def-12e66091a79f7e",
-      "motivo": "Derivación en un tramo: la DCPS deja de usar el contorno de la TPS (STEP legado \"DCPS-300-Z\", que es la tee) y pasa a la derivación lateral medida en los STEP del operador (2026-11-12, ala 50): una sola boca (el ramal), generada por la ley de escala de los dos STEP (mitad derecha corrida)."
+      "despues": "def-003111e27e2cbb",
+      "motivo": "Derivación en un tramo: la DCPS deja de usar el contorno de la TPS (STEP legado \"DCPS-300-Z\", que es la tee) y pasa a la derivación lateral (ala 50, una sola boca). Sin STEP propio: planta de la DCPS-50 medida (STEP del operador, 2026-11-12) con la mitad derecha trasladada; cota de boca no confirmada."
     },
     "SAM_DCPS-150-Z": {
       "antes": "def-0889b0c8801d79",
-      "despues": "def-033573cb4ac165",
-      "motivo": "Derivación en un tramo: la DCPS deja de usar el contorno de la TPS (STEP legado \"DCPS-300-Z\", que es la tee) y pasa a la derivación lateral medida en los STEP del operador (2026-11-12, ala 50): una sola boca (el ramal), generada por la ley de escala de los dos STEP (mitad derecha corrida)."
+      "despues": "def-16082a265bde07",
+      "motivo": "Derivación en un tramo: la DCPS deja de usar el contorno de la TPS (STEP legado \"DCPS-300-Z\", que es la tee) y pasa a la derivación lateral (ala 50, una sola boca). Sin STEP propio: planta de la DCPS-50 medida (STEP del operador, 2026-11-12) con la mitad derecha trasladada; cota de boca no confirmada."
     },
     "SAM_DCPS-200-Z": {
       "antes": "def-0c905ee3083661",
       "despues": "def-02fe2a88cf3ee5",
-      "motivo": "Derivación en un tramo: la DCPS deja de usar el contorno de la TPS (STEP legado \"DCPS-300-Z\", que es la tee) y pasa a la derivación lateral medida en los STEP del operador (2026-11-12, ala 50): una sola boca (el ramal), generada por la ley de escala de los dos STEP (mitad derecha corrida)."
+      "motivo": "Derivación en un tramo: la DCPS deja de usar el contorno de la TPS (STEP legado \"DCPS-300-Z\", que es la tee) y pasa a la derivación lateral (ala 50, una sola boca). Sin STEP propio: planta de la DCPS-300 medida (STEP del operador, 2026-11-12) con la mitad derecha trasladada; cota de boca no confirmada."
     },
     "SAM_DCPS-300-Z": {
       "antes": "def-13707a4795cba2",
@@ -1110,12 +1110,12 @@
     "SAM_DCPS-450-Z": {
       "antes": "def-04a41ec3741e3d",
       "despues": "def-176c7a24fd32eb",
-      "motivo": "Derivación en un tramo: la DCPS deja de usar el contorno de la TPS (STEP legado \"DCPS-300-Z\", que es la tee) y pasa a la derivación lateral medida en los STEP del operador (2026-11-12, ala 50): una sola boca (el ramal), generada por la ley de escala de los dos STEP (mitad derecha corrida)."
+      "motivo": "Derivación en un tramo: la DCPS deja de usar el contorno de la TPS (STEP legado \"DCPS-300-Z\", que es la tee) y pasa a la derivación lateral (ala 50, una sola boca). Sin STEP propio: planta de la DCPS-300 medida (STEP del operador, 2026-11-12) con la mitad derecha trasladada; cota de boca no confirmada."
     },
     "SAM_DCPS-600-Z": {
       "antes": "def-0608d5c8d4d29e",
       "despues": "def-1fa883abbd4f83",
-      "motivo": "Derivación en un tramo: la DCPS deja de usar el contorno de la TPS (STEP legado \"DCPS-300-Z\", que es la tee) y pasa a la derivación lateral medida en los STEP del operador (2026-11-12, ala 50): una sola boca (el ramal), generada por la ley de escala de los dos STEP (mitad derecha corrida)."
+      "motivo": "Derivación en un tramo: la DCPS deja de usar el contorno de la TPS (STEP legado \"DCPS-300-Z\", que es la tee) y pasa a la derivación lateral (ala 50, una sola boca). Sin STEP propio: planta de la DCPS-300 medida (STEP del operador, 2026-11-12) con la mitad derecha trasladada; cota de boca no confirmada."
     },
     "SAM_TPS-050-ZN": {
       "antes": "def-1078275f93fefd",

@@ -19,33 +19,65 @@ de 10 vértices extruida 50 mm (ala 50).
 
 - **Geometría de la cara que apoya contra el tronco:** un rectángulo plano de huella × 50, sobre el plano
   z = 0, con normal hacia el tronco.
-- **Ley:** la mitad izquierda de la planta (vértices 0–4) es idéntica en 50 y 300 (±0,001 mm), y la
-  derecha (5–9) es la misma corrida exactamente 250 mm.
-  - Con dos puntos esto supone que cada cota es lineal en el ancho: las que coinciden en 50 y 300 quedan
-    constantes.
-  - 100, 150 y 200 quedan dentro del rango medido. 450 y 600 lo extrapolan y se fabrican en chapa 0,89.
+- **La 50 y la 300 son la misma planta:** la mitad izquierda (vértices 0–4) es idéntica (±0,001 mm) y la
+  derecha (5–9) es la misma, trasladada 250 mm.
 - **Pequeñas inclinaciones del modelo:** la pestaña inclina 0,09° (4,811 → 4,747 en 39,7 mm) y el cuello
   otro tanto.
 - **Catálogo:** no hay contradicción. Las 7 filas DCPS declaran ancho de boca 50–600 y ala 50, el puerto
   P1 «boca derivación» y la observación «se fija al costado de un tramo principal de cualquier ancho».
-  Lo medido coincide.
 - **El modelo DCPS anterior no era una DCPS:** salía de otro STEP (7/11, ala 65) con la forma de la TPS, e
   incluía la sección del tronco. Se deja intacto para la TPS (`DCPS_OUTLINE_300`).
-- **Consecuencia en B-3:** la boca DCPS mide nominal + 1,315 en 50 y en 300, un sobreancho fijo. La
-  tolerancia de ancho pasó a desvío por boca = max(0,379 % del ancho; 1,32 mm). Sigue distinguiendo anchos
-  vecinos: en el par más justo, 44 → 50, quedan 3,36 mm de separación contra 2,64 mm de tolerancia.
 
-## Parte 4 — modelos
-- `buildDCPSLateralRecipe` (`outlines.ts`): 50 y 300 son el contorno medido; 100, 150, 200, 450 y 600 se
-  generan por la ley. La procedencia queda en las notas de la receta y en el maestro
-  `master:perforada:derivacion_lateral` (regla `mitad-corrida`, procedencia `measured`). Una sola boca, P1.
+### DCPS-450 (STEP del operador, 2026-11-12, chapa 0,89) — medida y NO incorporada
+- **Boca medida: 451,584** (sobreancho 1,584). No coincidió con ninguna predicción: constante 451,315,
+  sigue a la chapa 451,648, dos espesores 451,780.
+- **Ala:** venía extruida con **ala 65**, un error del operador. La perforada se fabrica en un solo ala
+  (50) y la fila del catálogo está bien. Se va a reexportar con ala 50; hasta entonces no se mide nada más
+  de ese archivo.
+- **Es un dibujo distinto, no la misma planta escalada:** todas sus cotas se corren una o dos décimas
+  (profundidad 80,654; escalón de pestaña 5,001; huella N + 179,426) y ninguna corrida es múltiplo del
+  cambio de chapa.
+- **Decisión del operador: no hay ley.** El sobreancho se declara por modelo medido, como dato, no por
+  fórmula.
+
+## Parte 4 — modelos (sin ley)
+- `buildDCPSLateralRecipe` (`outlines.ts`):
+  - **con STEP propio** (`DCPS_LATERAL_MEDIDOS`: 50 y 300): la planta medida;
+  - **sin STEP** (100, 150, 200, 450, 600): la planta del medido **más cercano** con la mitad derecha
+    trasladada. 100 y 150 salen de la 50; 200, 450 y 600 de la 300. Es una cota **no confirmada**.
+- El maestro `master:perforada:derivacion_lateral` declara la regla `mitad-corrida` con procedencia
+  `derived`. Una sola boca, P1.
+- **Sobreancho de boca, por modelo medido** (`sobreanchoBoca.porModeloMedido` en el maestro: 50 → 1,315 y
+  300 → 1,315, cada uno con su STEP). Un ancho sin STEP toma el de su medido más cercano. No hay fórmula por
+  ancho ni por espesor; más STEP se agregan como datos.
+- **Aviso al colocar:** una DCPS sin STEP propio deja en el enganche, a la vista en el mensaje de creación
+  y en la fila de la derivación: «cota de boca NO CONFIRMADA — no hay STEP propio de este ancho; se generó
+  con la planta y el sobreancho (1.315 mm) de la DCPS-N medida».
 - `dcpsLateral.test.ts`:
   - los 7 productos son colocables;
   - los 2 medidos coinciden con su STEP;
-  - la ley aplicada desde la 300 reproduce el STEP de 50 (±0,002 mm);
-  - los 5 generados siguen la ley;
+  - la 50 y la 300 son la misma planta;
+  - cada generado tiene la planta de su medido más cercano;
+  - las dos tablas de anchos medidos (planta y sobreancho) coinciden;
   - cotas por ancho.
 - PB1: las 7 huellas DCPS quedan declaradas. La auditoría de bocas queda sin huecos.
+
+## Tolerancia de ancho (B-3)
+La regla general vuelve a ser **sólo** `DESVIO_ANCHO_RELATIVO` (2 × 0,379 % × ancho), idéntica a la de
+antes del hito; el piso absoluto de 1,32 mm se quitó.
+- **Sobreancho de familia:** una familia cuyas bocas miden sistemáticamente más que el nominal lo declara
+  en su maestro. La comparación descuenta ese corrimiento antes de aplicar la regla general.
+- **Hoy solo lo declara la DCPS lateral.**
+- **Control:** sin descontarlo, la DCPS-50 (51,315) no uniría con su tramo de 50, cuya tolerancia es
+  0,39 mm.
+
+## DCPS huérfana (bloqueada)
+- **No se ofrece como continuación:** no figura en la continuación de un recorrido (`esDerivacionLateral`
+  en `continuationCandidates.ts` y `RoutingPanel.tsx`). Solo se coloca con la herramienta «Derivación en
+  tramo».
+- **Proyectos anteriores:** una DCPS sin enganche se marca inválida, con motivo, en «Derivaciones en
+  tramo» (`dcpsHuerfanas`).
+- **Controles negativos:** en `enganche.test.ts` y en la E2E `mappingBocas` C4.
 
 ## Partes 2 y 3 — la unión y el accesorio (`workspace/derivacion/enganche.ts`)
 - **Enganche** (clave workspace-only `enganches_ws`, que no viaja al motor):

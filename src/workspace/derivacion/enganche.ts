@@ -25,6 +25,7 @@
 import type { Piece, Product, TrayInput } from '../../tray/model';
 import { definicionEfectiva, placedOf, withDefinition } from '../placement/definitions';
 import { placeDefinition, puertosFromWorld, type StoredDefinition, type V3 } from '../placement/placementCore';
+import { avisoCotaNoConfirmada, findMasterById, sobreanchoDeBoca } from '../../configurator/masterModels';
 
 export const ENGANCHES_KEY = 'enganches_ws';
 /** Pseudo-boca del tronco por la que sale/entra un recorrido hacia el ramal. */
@@ -68,6 +69,11 @@ export interface Enganche {
   readonly salida: readonly [string, string];
   /** Foto del tronco al crear el enganche (para avisar si cambia). */
   readonly ref_tronco: { readonly longitud_mm: number; readonly bocas: Readonly<Record<string, BocaFoto>> };
+  /**
+   * Incertidumbres que el operador tiene que ver al colocar (p. ej. la cota de
+   * boca de la DCPS-450/600, extrapolada y pendiente de confirmar).
+   */
+  readonly advertencias?: readonly string[];
   readonly creado_iso: string;
 }
 
@@ -174,7 +180,7 @@ export function crearEnganche(entrada: TrayInput, productos: ReadonlyMap<string,
     const medidas = medidasDCPS(d.def);
     dcps = { prod, def: d.def, huella: d.huella, medidas };
     huella_mm = medidas.huella_mm;
-    huella_procedencia = `cara de apoyo de la ${prod.sku} (modelo medido / ley de escala, patrón ${d.def.patron})`;
+    huella_procedencia = `cara de apoyo de la ${prod.sku} (patrón ${d.def.patron})`;
   } else {
     huella_mm = ancho;
     huella_procedencia = 'escalera: el corte en obra ocupa el ancho del ramal';
@@ -258,10 +264,13 @@ export function crearEnganche(entrada: TrayInput, productos: ReadonlyMap<string,
       ...(q.orientacion_seccion_ws ? { orientacion_seccion_ws: [...q.orientacion_seccion_ws] as V3 } : {}),
     };
   }
+  const sob = dcps ? sobreanchoDeBoca(findMasterById(dcps.def.patron), ancho) : null;
+  const advertencias = sob && !sob.confirmado ? [avisoCotaNoConfirmada(String(dcps!.prod.sku), sob)] : [];
   const enganche: Enganche = {
     id: engId, tronco: p.tronco, desde_boca: p.desde_boca, distancia_mm: p.distancia_mm, lado: p.lado,
     familia, ramal_ancho_mm: ancho, huella_mm, huella_procedencia, accesorio, salida,
     ref_tronco: { longitud_mm: L, bocas: fotos },
+    ...(advertencias.length ? { advertencias } : {}),
     creado_iso: new Date().toISOString(),
   };
   next = { ...next, [ENGANCHES_KEY]: [...enganchesOf(entrada), enganche] } as TrayInput;
@@ -314,6 +323,20 @@ export function estadoEnganche(entrada: TrayInput, productos: ReadonlyMap<string
   }
   const unicos = [...new Set(motivos)];
   return unicos.length ? { vigente: false, motivos: unicos } : { vigente: true };
+}
+
+/**
+ * DCPS en el trazado que no son el accesorio de ningún enganche (p. ej. de un
+ * proyecto anterior, colocadas como continuación de un recto): no derivan de
+ * ningún tramo, así que no son válidas.
+ */
+export const MOTIVO_DCPS_HUERFANA = 'DCPS sin tronco anfitrión: no deriva de ningún tramo, no es válida. Borrala y creá la derivación con la herramienta "Derivación en tramo".';
+export function dcpsHuerfanas(entrada: TrayInput | null | undefined): Array<{ pieza: string; motivo: string }> {
+  if (!entrada) return [];
+  const usadas = new Set(enganchesOf(entrada).flatMap((e) => (e.accesorio.tipo === 'producto' ? [e.accesorio.pieza] : [])));
+  return entrada.piezas
+    .filter((p) => !usadas.has(p.instancia_id) && placedOf(entrada, p)?.def.patron === 'master:perforada:derivacion_lateral')
+    .map((p) => ({ pieza: p.instancia_id, motivo: MOTIVO_DCPS_HUERFANA }));
 }
 
 /** Bocas reales ocupadas por enganches ("pieza:boca"): no son extremos libres. */

@@ -16,7 +16,8 @@ import { resolve } from 'node:path';
 import { seedStaticCatalog } from '../../../catalog/staticCatalog';
 import { clearCatalogPortIndex, clearPortMappingOverrides, clearProductCatalogIndex, setMasterResolver } from '../../catalogPortMapping';
 import { definicionEfectiva, withDefinition } from '../definitions';
-import { avisosDeModelo, checkConnection, desvioAnchoMm, DESVIO_ANCHO_ABSOLUTO_MM, DESVIO_ANCHO_RELATIVO, tolAnchoMm } from '../joins';
+import { avisosDeModelo, checkConnection, DESVIO_ANCHO_RELATIVO, tolAnchoMm } from '../joins';
+import { findMasterById, MASTER_MODELS, sobreanchoDeBoca } from '../../../configurator/masterModels';
 import { placeDefinition, puertosFromWorld, type V3, type WorldPort } from '../placementCore';
 import type { Product, TrayInput } from '../../../tray/model';
 
@@ -117,32 +118,50 @@ describe('B-3 — sección en las uniones', () => {
     ]);
   });
 
-  it('derivación: ninguna boca medida se aparta del nominal más que max(0,379 %, 1,32 mm), y la tolerancia discrimina anchos vecinos', () => {
-    let peorRel = 0;
-    let peorAbsNoProporcional = 0;
+  it('derivación: descontado el sobreancho que declara cada familia, ninguna boca se aparta del nominal más que DESVIO_ANCHO_RELATIVO; la tolerancia discrimina anchos vecinos', () => {
+    let peor = 0;
     let con = 0;
     for (const p of snapshot.PRODUCTOS) {
       const d = definicionEfectiva(p, { longitud_mm: 1000 });
       if (!d.ok || typeof p.ancho_nominal_mm !== 'number') continue;
       con++;
+      const sob = sobreanchoDeBoca(findMasterById(d.def.patron), p.ancho_nominal_mm)?.mm ?? 0;
       for (const q of d.def.ports) {
-        const dev = Math.abs(q.ancho_mm - p.ancho_nominal_mm);
-        expect(dev, `${p.producto_id} ${q.name}: ${q.ancho_mm} vs ${p.ancho_nominal_mm}`).toBeLessThanOrEqual(desvioAnchoMm(p.ancho_nominal_mm));
-        peorRel = Math.max(peorRel, dev / p.ancho_nominal_mm);
-        if (dev > DESVIO_ANCHO_RELATIVO * p.ancho_nominal_mm) peorAbsNoProporcional = Math.max(peorAbsNoProporcional, dev);
+        const dev = Math.abs(q.ancho_mm - sob - p.ancho_nominal_mm) / p.ancho_nominal_mm;
+        expect(dev, `${p.producto_id} ${q.name}: ${q.ancho_mm} (sobreancho ${sob}) vs ${p.ancho_nominal_mm}`).toBeLessThanOrEqual(DESVIO_ANCHO_RELATIVO);
+        peor = Math.max(peor, dev);
       }
     }
     expect(con).toBeGreaterThan(300);
-    // Los desvíos reales que fijan las constantes — si cambian, revisarlas.
-    expect(peorAbsNoProporcional).toBeCloseTo(1.315, 3); // boca DCPS lateral (sobreancho fijo)
-    expect(peorAbsNoProporcional).toBeLessThanOrEqual(DESVIO_ANCHO_ABSOLUTO_MM);
-    expect(peorRel).toBeGreaterThan(0.0037);
+    expect(peor).toBeGreaterThan(0.0037); // el desvío real (CPS-45) — si cambia, revisar la constante
     const anchos = [...new Set(snapshot.PRODUCTOS.map((p) => p.ancho_nominal_mm).filter((x): x is number => typeof x === 'number'))].sort((a, b) => a - b);
     for (let i = 1; i < anchos.length; i++) {
       const [a, b] = [anchos[i - 1], anchos[i]];
       // Peor caso: la boca de a medida hacia arriba y la de b hacia abajo.
-      const separacion = (b - desvioAnchoMm(b)) - (a + desvioAnchoMm(a));
+      const separacion = b * (1 - DESVIO_ANCHO_RELATIVO) - a * (1 + DESVIO_ANCHO_RELATIVO);
       expect(separacion, `${a} → ${b}`).toBeGreaterThan(tolAnchoMm(a, b));
     }
+  });
+
+  it('el sobreancho se declara POR MODELO MEDIDO, con procedencia: hoy sólo la DCPS lateral (1,315 en la 50 y en la 300)', () => {
+    const conSobreancho = MASTER_MODELS.filter((m) => m.sobreanchoBoca);
+    expect(conSobreancho.map((m) => m.id)).toEqual(['master:perforada:derivacion_lateral']);
+    const tabla = conSobreancho[0].sobreanchoBoca!.porModeloMedido;
+    expect(Object.keys(tabla).map(Number)).toEqual([50, 300]);
+    for (const n of [50, 300]) {
+      expect(tabla[n].mm).toBe(1.315);
+      expect(tabla[n].procedencia).toMatch(new RegExp(`^medido: .*DCPS-${n}-Z`));
+    }
+    // Los anchos sin STEP toman el de su medido más cercano y quedan NO confirmados.
+    const m = conSobreancho[0];
+    expect([50, 100, 150, 200, 300, 450, 600].map((n) => [n, sobreanchoDeBoca(m, n)!.confirmado, sobreanchoDeBoca(m, n)!.medidoDe])).toEqual([
+      [50, true, 50], [100, false, 50], [150, false, 50], [200, false, 300], [300, true, 300], [450, false, 300], [600, false, 300],
+    ]);
+  });
+
+  it('control: sin descontar el sobreancho declarado, la DCPS-50 no uniría con su tramo de 50 (la regla general no se aflojó)', () => {
+    // 51,315 contra 50 con la regla general: tolerancia 2 × 0,379 % × 51,3 = 0,39 mm.
+    expect(Math.abs(51.315 - 50)).toBeGreaterThan(tolAnchoMm(51.315, 50));
+    expect(tolAnchoMm(50, 50)).toBeCloseTo(0.379, 3);
   });
 });

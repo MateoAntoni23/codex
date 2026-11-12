@@ -42,7 +42,7 @@ import {
 import { chiralityForTurn } from './parametricBridge';
 import { definicionEfectiva, tieneDefinicion, modeloDeProducto } from './placement/definitions';
 import { placeDefinition, worldPorts } from './placement/placementCore';
-import { buildContinuationCandidates, type ContinuationCandidate } from './continuationCandidates';
+import { buildContinuationCandidates, esDerivacionLateral, type ContinuationCandidate } from './continuationCandidates';
 import { routingPlacementFromState } from './placement/routingPlacementState';
 import { UNIONS_KEY, unionsOf, type UnionRecord } from './workspaceOperation';
 import { indexProducts, pieceLabelById, portLabel } from './stages/displayNames';
@@ -271,8 +271,10 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
   // Un producto es seleccionable si el flujo clásico lo admite o si hay una
   // receta paramétrica que resuelve la geometría (p.ej. curvas con radio_mm
   // nulo en catálogo pero medidas en el STEP paramétrico).
+  // La DCPS no se ofrece como continuación: sin tronco anfitrión sería una
+  // derivación huérfana (se coloca con la herramienta "Derivación en tramo").
   const compatibleProducts = useMemo(
-    () => compatibleWalkable.filter((p) => isInteractivelyInsertable(p) || tieneDefinicion(p)),
+    () => compatibleWalkable.filter((p) => !esDerivacionLateral(p) && (isInteractivelyInsertable(p) || tieneDefinicion(p))),
     [compatibleWalkable],
   );
   const nonInsertableCompatible = useMemo(

@@ -1,18 +1,22 @@
 /**
- * DCPS lateral — geometría medida (50 y 300) y ley de escala (100, 150, 200, 450, 600).
+ * DCPS lateral — geometría medida (50 y 300) y anchos sin STEP propio
+ * (100, 150, 200, 450, 600) generados con la planta de su medido más cercano.
+ * NO hay ley de escala (operador, 2026-11-12): los anchos sin STEP son cotas no
+ * confirmadas.
  *
  *   - Los 7 productos DCPS del catálogo tienen definición (son colocables).
  *   - Los 2 medidos coinciden con el contorno extraído de su STEP
  *     (report/perforada/derivacion/*__outline.json, llevado al marco declarado).
- *   - La ley, aplicada a 50 desde la 300, reproduce el STEP de 50 (la evidencia
- *     de la ley: dos STEP independientes).
- *   - Los 5 generados siguen la ley; sus cotas: boca = ancho + 1,315; huella sobre
+ *   - La 50 y la 300 son la misma planta trasladada (±0,002 mm): eso respalda
+ *     trasladar la mitad derecha, no una ley para otros anchos.
+ *   - Cada generado = planta de su medido más cercano; cotas: boca = ancho + 1,315; huella sobre
  *     el flanco = ancho + 179,323 (= boca + 178,008); profundidad apoyo→boca = 80,542; ala 50.
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { DCPS_LATERAL_MEDIDOS, dcpsLateralPorLey } from '../outlines';
+import { DCPS_LATERAL_MEDIDOS, dcpsLateralDesdeMedido, dcpsMedidoMasCercano } from '../outlines';
+import { findMasterById } from '../../../configurator/masterModels';
 import { seedStaticCatalog } from '../../../catalog/staticCatalog';
 import { clearCatalogPortIndex, clearPortMappingOverrides, clearProductCatalogIndex, setMasterResolver } from '../../../workspace/catalogPortMapping';
 import { definicionEfectiva } from '../../../workspace/placement/definitions';
@@ -60,11 +64,21 @@ describe('DCPS lateral', () => {
     expect(maxDif(DCPS_LATERAL_MEDIDOS[300], delStep(300))).toBe(0);
   });
 
-  it('la ley (mitad derecha corrida) aplicada desde la 300 reproduce el STEP de 50 (±0,002 mm, redondeo del extractor)', () => {
-    expect(maxDif(dcpsLateralPorLey(50), delStep(50))).toBeLessThanOrEqual(0.002);
+  it('la 50 y la 300 son la misma planta: la 300 con la mitad derecha trasladada −250 reproduce el STEP de 50 (±0,002 mm)', () => {
+    const desde300 = DCPS_LATERAL_MEDIDOS[300].map(([x, z], i) => [i >= 5 ? x - 250 : x, z] as const);
+    expect(maxDif(desde300, delStep(50))).toBeLessThanOrEqual(0.002);
   });
 
-  it('los 7 productos son colocables; medidos = su STEP, generados = la ley; cotas por ancho', () => {
+  it('los anchos con planta medida y con sobreancho medido son los mismos datos (outlines ↔ maestro)', () => {
+    const tabla = findMasterById('master:perforada:derivacion_lateral')!.sobreanchoBoca!.porModeloMedido;
+    expect(Object.keys(tabla).map(Number)).toEqual(Object.keys(DCPS_LATERAL_MEDIDOS).map(Number));
+  });
+
+  it('cada ancho sin STEP toma la planta de su medido más cercano (no una fórmula)', () => {
+    expect([100, 150, 200, 450, 600].map((n) => dcpsMedidoMasCercano(n))).toEqual([50, 50, 300, 300, 300]);
+  });
+
+  it('los 7 productos son colocables; medidos = su STEP, generados = planta del medido más cercano; cotas por ancho', () => {
     const dcps = snapshot.PRODUCTOS.filter((p) => String(p.sku).startsWith('DCPS-'));
     expect(dcps.map((p) => p.ancho_nominal_mm)).toEqual([50, 100, 150, 200, 300, 450, 600]);
     for (const p of dcps) {
@@ -74,7 +88,7 @@ describe('DCPS lateral', () => {
       if (!d.ok) continue;
       expect(d.def.patron).toBe('master:perforada:derivacion_lateral');
       const poly = d.def.mesh.polygon;
-      const esperado = N === 50 || N === 300 ? DCPS_LATERAL_MEDIDOS[N] : dcpsLateralPorLey(N);
+      const esperado = N === 50 || N === 300 ? DCPS_LATERAL_MEDIDOS[N] : dcpsLateralDesdeMedido(N).polygon;
       expect(maxDif(poly, esperado), p.producto_id).toBe(0);
       const c = cotas(poly);
       expect(c.boca, `${p.producto_id} boca`).toBeCloseTo(N + 1.315, 2);

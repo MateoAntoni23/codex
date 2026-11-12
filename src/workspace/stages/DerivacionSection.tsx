@@ -7,7 +7,7 @@ import { useMemo, useState } from 'react';
 import { useTrayStore } from '../../tray/store';
 import { useWorkspaceStore } from '../useWorkspaceStore';
 import type { Product } from '../../tray/model';
-import { crearEnganche, enganchesOf, estadoEnganche, type Lado } from '../derivacion/enganche';
+import { crearEnganche, dcpsHuerfanas, enganchesOf, estadoEnganche, type Lado } from '../derivacion/enganche';
 import { indexProducts, pieceLabelById, portLabel } from './displayNames';
 import { Empty, Section } from './shared';
 
@@ -28,7 +28,7 @@ export function DerivacionForm({ onClose }: { onClose: () => void }) {
   const [lado, setLado] = useState<Lado>('izquierda');
   const [ramal, setRamal] = useState('');
   const [largo, setLargo] = useState('1000');
-  const [msg, setMsg] = useState<{ ok: boolean; texto: string } | null>(null);
+  const [msg, setMsg] = useState<{ ok: boolean; texto: string; advertencias?: readonly string[] } | null>(null);
 
   const t = troncos.find((p) => p.instancia_id === tronco);
   const crear = () => {
@@ -40,7 +40,7 @@ export function DerivacionForm({ onClose }: { onClose: () => void }) {
     trayEdit(r.entrada);
     markDirty();
     const acc = r.enganche.accesorio.tipo === 'producto' ? `con ${productos.get(r.enganche.accesorio.producto_id)?.sku}` : 'sin accesorio (escalera)';
-    setMsg({ ok: true, texto: `Derivación ${r.enganche.id} creada ${acc}.` });
+    setMsg({ ok: true, texto: `Derivación ${r.enganche.id} creada ${acc}.`, advertencias: r.enganche.advertencias ?? [] });
   };
 
   return (
@@ -84,6 +84,9 @@ export function DerivacionForm({ onClose }: { onClose: () => void }) {
         <button type="button" onClick={onClose}>Cerrar</button>
       </div>
       {msg && <p className={`stage-note${msg.ok ? '' : ' tone-warn'}`} role="status" data-testid="der-msg">{msg.texto}</p>}
+      {msg?.advertencias?.map((a) => (
+        <p key={a} className="stage-note tone-warn" style={{ whiteSpace: 'normal' }} role="alert" data-testid="der-advertencia">⚠ {a}</p>
+      ))}
     </div>
   );
 }
@@ -95,11 +98,17 @@ export function EnganchesSection() {
   const idx = useMemo(() => indexProducts(context?.productos), [context]);
   const piezas = entrada?.piezas ?? [];
   const engs = enganchesOf(entrada);
-  if (!engs.length) return null;
+  const huerfanas = dcpsHuerfanas(entrada);
+  if (!engs.length && !huerfanas.length) return null;
   const etiqueta = (id: string) => (piezas.some((p) => p.instancia_id === id) ? pieceLabelById(id, piezas, idx) : id);
   return (
     <Section title={`Derivaciones en tramo (${engs.length})`} testid="enganches">
       {engs.length === 0 && <Empty>Sin derivaciones.</Empty>}
+      {huerfanas.map((h) => (
+        <div key={h.pieza} className="stage-card tone-warn" style={{ whiteSpace: 'normal' }} data-testid="dcps-huerfana">
+          {etiqueta(h.pieza)}: {h.motivo}
+        </div>
+      ))}
       {engs.map((e) => {
         const est = entrada ? estadoEnganche(entrada, productos, e) : { vigente: true as const };
         const acc = e.accesorio.tipo === 'producto'
@@ -109,6 +118,9 @@ export function EnganchesSection() {
           <div key={e.id} className="stage-card" data-testid="enganche-row" data-vigente={est.vigente ? 'true' : 'false'}>
             <div><strong>{e.id}</strong> · {etiqueta(e.tronco)} · {e.distancia_mm} mm desde {e.desde_boca} · {e.lado} · ramal {e.ramal_ancho_mm} mm</div>
             <div className="stage-row-sub" style={{ whiteSpace: 'normal' }} data-testid="enganche-accesorio">Accesorio: {acc}</div>
+            {(e.advertencias ?? []).map((a) => (
+              <div key={a} className="tone-warn" style={{ whiteSpace: 'normal' }} data-testid="enganche-advertencia">⚠ {a}</div>
+            ))}
             {!est.vigente && (
               <div className="tone-warn" style={{ whiteSpace: 'normal' }} data-testid="enganche-estado">Desactualizado: {est.motivos.join('; ')}.</div>
             )}

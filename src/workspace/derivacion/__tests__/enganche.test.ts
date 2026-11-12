@@ -14,8 +14,9 @@ import { translatePiece } from '../../trayMovement';
 import { caminoEntreBocas } from '../../recorridos/caminoEntreBocas';
 import { circuitosOf, estadoCircuito, guardarCircuito } from '../../recorridos/circuitosGuardados';
 import {
-  crearEnganche, enganchesOf, estadoEnganche, MOTIVO_SIN_ACCESORIO_ESCALERA, validarEnganche, ENGANCHES_KEY, type Enganche,
+  crearEnganche, dcpsHuerfanas, enganchesOf, estadoEnganche, MOTIVO_DCPS_HUERFANA, MOTIVO_SIN_ACCESORIO_ESCALERA, validarEnganche, ENGANCHES_KEY, type Enganche,
 } from '../enganche';
+import { buildContinuationCandidates, esDerivacionLateral } from '../../continuationCandidates';
 import type { Product, TrayInput } from '../../../tray/model';
 
 const snapshot = JSON.parse(readFileSync(resolve(__dirname, '../../../../vendor/motor_bandejas/datos/catalogo/catalogo_bandejas_snapshot.json'), 'utf8')) as { PRODUCTOS: Product[] };
@@ -173,6 +174,41 @@ describe('derivación en un tramo — perforada', () => {
     const e3 = estadoCircuito(sin, c);
     expect(e3.vigente).toBe(false);
     if (!e3.vigente) expect(e3.motivos).toContain('el enganche ENG-1 ya no existe');
+  });
+});
+
+describe('DCPS huérfana y cota no confirmada', () => {
+  it('control negativo: la continuación de un recorrido NUNCA ofrece una DCPS (aunque el catálogo documente la unión directa)', () => {
+    const recto = productos.get('SAM_TRPS-100-22-Z')!;
+    const dcps = productos.get('SAM_DCPS-100-Z')!;
+    const cands = buildContinuationCandidates({
+      existingProduct: recto, existingPortName: 'P2',
+      catalogProducts: [...productos.values()],
+      compatibleIds: new Set([dcps.producto_id, recto.producto_id]),
+    });
+    expect(cands.some((c) => c.product.producto_id === dcps.producto_id)).toBe(false);
+    expect(cands.some((c) => c.product.producto_id === recto.producto_id)).toBe(true);
+    expect(esDerivacionLateral(dcps)).toBe(true);
+  });
+
+  it('control negativo: una DCPS en el trazado sin enganche que la use es inválida, con motivo; la del enganche no', () => {
+    const { entrada } = perforada();
+    expect(dcpsHuerfanas(entrada)).toEqual([]);
+    const sinEnganche = { ...entrada, [ENGANCHES_KEY]: [] } as TrayInput;
+    expect(dcpsHuerfanas(sinEnganche)).toEqual([{ pieza: 'DER-1', motivo: MOTIVO_DCPS_HUERFANA }]);
+  });
+
+  it('al colocar una DCPS sin STEP propio, el enganche avisa cota de boca NO CONFIRMADA; con STEP propio, no', () => {
+    const { enganche } = perforada(); // ramal 100 → DCPS-100 sin STEP, planta de la 50
+    expect(enganche.advertencias).toEqual([
+      'DCPS-100-Z: cota de boca NO CONFIRMADA — no hay STEP propio de este ancho; se generó con la planta y el sobreancho (1.315 mm) de la DCPS-50 medida.',
+    ]);
+    const r300 = crearEnganche(conTronco('SAM_TRPS-300-22-Z', 3000), productos, { ...PERF, ramal_producto_id: 'SAM_TRPS-300-22-Z' });
+    expect(r300.ok && r300.enganche.advertencias).toBeUndefined();
+    const r450 = crearEnganche(conTronco('SAM_TRPS-600-20-Z', 3000), productos, { ...PERF, ramal_producto_id: 'SAM_TRPS-450-20-Z' });
+    expect(r450.ok && r450.enganche.advertencias).toEqual([
+      'DCPS-450-Z: cota de boca NO CONFIRMADA — no hay STEP propio de este ancho; se generó con la planta y el sobreancho (1.315 mm) de la DCPS-300 medida.',
+    ]);
   });
 });
 

@@ -24,6 +24,7 @@ import decisiones from '../../../vendor/motor_bandejas/datos/decisiones_producto
 import type { Piece, TrayInput } from '../../tray/model';
 import { angleDeg, type V3 } from './placementCore';
 import { placedOf } from './definitions';
+import { findMasterById, sobreanchoDeBoca } from '../../configurator/masterModels';
 
 const dec = decisiones as Record<string, unknown>;
 export const TOL_POS_MM = Number(dec['D-14_tolerancia_posicion_mm']);
@@ -39,27 +40,18 @@ export const TOL_ANG_DEG = Number(dec['D-14_tolerancia_angulo_grados']);
 export const DESVIO_ANCHO_RELATIVO = 0.00379;
 
 /**
- * Desvío absoluto máximo que NO crece con el ancho: la boca de la DCPS lateral
- * (STEP del operador, 2026-11-12) mide nominal + 1,315 mm en 50 y en 300 (un
- * sobreancho fijo, no proporcional). Redondeado hacia arriba.
- */
-export const DESVIO_ANCHO_ABSOLUTO_MM = 1.32;
-
-/** Desvío admisible de UNA boca de ancho nominal ~L respecto del nominal. */
-export function desvioAnchoMm(L: number): number {
-  return Math.max(DESVIO_ANCHO_RELATIVO * L, DESVIO_ANCHO_ABSOLUTO_MM);
-}
-
-/**
  * Tolerancia de ancho entre dos bocas: cada una puede apartarse del nominal
- * hasta desvioAnchoMm, en sentidos opuestos → 2 × max(r × max(La, Lb), 1,32)
- * (≈ 2,27 mm en 300; 2,64 mm por debajo de ~348). Discrimina: el paso más chico
- * entre anchos nominales del catálogo es 6 mm (44 → 50) y en el peor caso quedan
- * 6 − 2 × 1,32 = 3,36 mm > 2,64 (la prueba lo verifica para cada par de anchos
- * consecutivos).
+ * hasta DESVIO_ANCHO_RELATIVO, en sentidos opuestos → 2 × r × max(La, Lb)
+ * (≈ 2,27 mm en 300). Discrimina: el paso más chico entre anchos nominales
+ * del catálogo es 6 mm (44 → 50), y 2 × r × 50 = 0,38 mm (la prueba lo
+ * verifica para cada par de anchos consecutivos).
+ *
+ * Es la ÚNICA regla general. Una familia cuyas bocas miden sistemáticamente más
+ * que el nominal (la DCPS lateral: + 1,315 mm) lo declara en su maestro
+ * (`sobreanchoBoca`) y se compara contra nominal + ese corrimiento.
  */
 export function tolAnchoMm(a: number, b: number): number {
-  return 2 * desvioAnchoMm(Math.max(a, b));
+  return 2 * DESVIO_ANCHO_RELATIVO * Math.max(a, b);
 }
 
 /**
@@ -95,6 +87,8 @@ export interface PortLike {
   ala_mm?: number;
   /** Ala que declara el catálogo para el producto (al colocar la pieza). */
   ala_catalogo_mm?: number;
+  /** Sobreancho de boca declarado por la familia (maestro): se descuenta al comparar anchos. */
+  sobreancho_mm?: number;
 }
 
 const fmt = (x: number) => x.toFixed(2).replace(/\.?0+$/, '');
@@ -126,9 +120,13 @@ export function checkJoin(a: PortLike, b: PortLike): JoinCheck {
   const anchosMm = typeof a.ancho_mm === 'number' && typeof b.ancho_mm === 'number' ? [a.ancho_mm, b.ancho_mm] as const : null;
   if (anchosMm === null) avisos.push('ancho no verificable: una de las bocas no tiene definición');
   else {
-    const tol = tolAnchoMm(anchosMm[0], anchosMm[1]);
-    if (Math.abs(anchosMm[0] - anchosMm[1]) > tol) {
-      motivos.push(`ancho de boca ${fmt(anchosMm[0])} mm ≠ ${fmt(anchosMm[1])} mm (tolerancia ${fmt(tol)} mm)`);
+    // Se descuenta el sobreancho que declara la familia (si lo declara) antes de la regla general.
+    const ea = anchosMm[0] - (a.sobreancho_mm ?? 0);
+    const eb = anchosMm[1] - (b.sobreancho_mm ?? 0);
+    const tol = tolAnchoMm(ea, eb);
+    if (Math.abs(ea - eb) > tol) {
+      const desc = (L: number, s?: number) => (s ? `${fmt(L)} (− sobreancho ${fmt(s)} de la familia = ${fmt(L - s)})` : fmt(L));
+      motivos.push(`ancho de boca ${desc(anchosMm[0], a.sobreancho_mm)} mm ≠ ${desc(anchosMm[1], b.sobreancho_mm)} mm (tolerancia ${fmt(tol)} mm)`);
     }
   }
   // Cuarta condición — ala.
@@ -148,14 +146,17 @@ export function checkJoin(a: PortLike, b: PortLike): JoinCheck {
 }
 
 /** Sección de una boca: la del modelo (definición guardada) y el ala declarada al colocar. */
-export function seccionDeBoca(entrada: TrayInput, piece: Piece, puerto: string): { ancho_mm?: number; ala_mm?: number; ala_catalogo_mm?: number } | null {
+export function seccionDeBoca(entrada: TrayInput, piece: Piece, puerto: string): { ancho_mm?: number; ala_mm?: number; ala_catalogo_mm?: number; sobreancho_mm?: number } | null {
   const placed = placedOf(entrada, piece);
   if (!placed) return null;
   const p = placed.def.ports.find((q) => q.name === puerto);
   const cat = placed.colocacion.definicion.params.ala_mm;
+  const anchoProd = placed.def.params.ancho_mm;
+  const sob = typeof anchoProd === 'number' ? sobreanchoDeBoca(findMasterById(placed.def.patron), anchoProd)?.mm : undefined;
   return {
     ...(p ? { ancho_mm: p.ancho_mm, ala_mm: p.ala_mm } : {}),
     ...(typeof cat === 'number' ? { ala_catalogo_mm: cat } : {}),
+    ...(typeof sob === 'number' ? { sobreancho_mm: sob } : {}),
   };
 }
 

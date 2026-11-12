@@ -45,7 +45,7 @@ export type VariationRuleKind =
   | 'uniform-xz'        // CPS/TPS/XPS/escalera: escala uniforme en X,Z por ancho/300.
   | 'depth-only'        // CUPS: perfil XY fijo, sólo profundidad Z escala por ancho.
   | 'ala-independent'   // Escalera: ancho escala X,Z; ala escala Y independiente.
-  | 'mitad-corrida'     // DCPS lateral: la mitad derecha de la planta se corre (ancho − 300); nada escala.
+  | 'mitad-corrida'     // DCPS lateral: planta del medido más cercano con la mitad derecha trasladada; NO es una ley.
   | 'none';             // Sin regla codificada; solo ancho base.
 
 /**
@@ -211,6 +211,21 @@ export interface MasterModel {
     readonly catalogPortName: string;
   }[];
   readonly variationRule: MasterVariationRule;
+  /**
+   * Sobreancho de las bocas de la familia respecto del ancho nominal: una
+   * CARACTERÍSTICA DE LA FAMILIA, con su procedencia. La cuarta condición de
+   * unión (B-3) descuenta este corrimiento antes de aplicar la regla general
+   * (DESVIO_ANCHO_RELATIVO), que no se toca. Si otra familia lo necesita, se le
+   * declara igual.
+   */
+  readonly sobreanchoBoca?: {
+    /**
+     * POR MODELO MEDIDO (datos, no fórmula): ancho con STEP propio → sobreancho
+     * de su boca. Los anchos sin STEP toman el de su medido más cercano y quedan
+     * como cota no confirmada (ver `sobreanchoDeBoca`).
+     */
+    readonly porModeloMedido: Readonly<Record<number, { readonly mm: number; readonly procedencia: string }>>;
+  };
   /** Variantes YA declaradas con polígono medido (no estimadas). */
   readonly declaredVariantSkus: readonly string[];
   /**
@@ -586,7 +601,7 @@ const MASTER_PERFORADA: readonly MasterModel[] = [
     // DCPS = derivación lateral: se fija al flanco de un tramo recto, que NO se corta.
     // Geometría medida en dos STEP del operador (2026-11-12, ala 50): DCPS-50-Z y
     // DCPS-300-Z. Una sola boca (el ramal); la cara de apoyo no es boca. Ver
-    // buildDCPSLateralRecipe (outlines.ts) para la ley de escala.
+    // buildDCPSLateralRecipe (outlines.ts): anchos sin STEP = planta del medido más cercano.
     id: 'master:perforada:derivacion_lateral',
     label: 'Perforada — derivación lateral (DCPS)',
     sistema: 'perforada',
@@ -598,6 +613,12 @@ const MASTER_PERFORADA: readonly MasterModel[] = [
     },
     recipeKey: 'derivacion_dcps',
     baseParams: { ancho_mm: 300, ala_mm: 50 },
+    sobreanchoBoca: {
+      porModeloMedido: {
+        50: { mm: 1.315, procedencia: 'medido: boca del ramal 51,315 en el STEP DCPS-50-Z (operador, 2026-11-12)' },
+        300: { mm: 1.315, procedencia: 'medido: boca del ramal 301,315 en el STEP DCPS-300-Z (operador, 2026-11-12)' },
+      },
+    },
     canonicalRotationZDeg: 0,
     catalogMatch: {
       familiaIds: PERFORADA_FAMILIAS,
@@ -610,9 +631,9 @@ const MASTER_PERFORADA: readonly MasterModel[] = [
     ],
     variationRule: {
       kind: 'mitad-corrida',
-      provenance: 'measured',
+      provenance: 'derived',
       varies: ['ancho'],
-      rationale: 'Dos STEP medidos (50 y 300): la mitad izquierda de la planta es idéntica y la derecha se corre exactamente la diferencia de ancho; profundidad, pestaña, chaflanes, cuello y sobreancho de boca (+1,315) no cambian. 100, 150 y 200 quedan dentro del rango medido; 450 y 600 fuera (y en chapa 0,89).',
+      rationale: 'Sin ley de escala (operador, 2026-11-12). Medidas: 50 y 300 (STEP propios). Los anchos sin STEP se generan con la planta de su medido más cercano (100 y 150 desde la 50; 200, 450 y 600 desde la 300) con la mitad derecha trasladada, y su cota de boca queda NO CONFIRMADA (se avisa al colocar). Más STEP se agregan como datos.',
     },
     declaredVariantSkus: [],
     closure: {
@@ -625,7 +646,7 @@ const MASTER_PERFORADA: readonly MasterModel[] = [
       variants: {
         status: 'partial',
         regressionSpecs: ['src/parametric/geometry/__tests__/dcpsLateral.test.ts'],
-        limitations: ['450 y 600 extrapolan la ley fuera del rango medido (50–300).'],
+        limitations: ['100, 150, 200, 450 y 600 sin STEP propio: cota de boca no confirmada. La DCPS-450 se reexporta con ala 50 (la primera vino con ala 65).'],
       },
     },
     revision: 1,
@@ -1195,6 +1216,28 @@ export function findMasterForProduct(product: {
   const angulo = typeof product.angulo_grados === 'number' ? product.angulo_grados : null;
   if (angulo === null) return null;
   return effective.find((m) => m.baseParams.angulo_deg === angulo) ?? null;
+}
+
+/**
+ * Sobreancho de boca de una pieza de la familia, por modelo medido: el de su
+ * propio STEP si lo tiene (confirmado) o el de su medido más cercano (NO
+ * confirmado). Es una búsqueda en datos; no hay fórmula por ancho ni por espesor.
+ */
+export function sobreanchoDeBoca(master: MasterModel | null | undefined, ancho_mm: number):
+  { mm: number; procedencia: string; confirmado: boolean; medidoDe: number } | null {
+  const tabla = master?.sobreanchoBoca?.porModeloMedido;
+  if (!tabla) return null;
+  const propio = tabla[ancho_mm];
+  if (propio) return { ...propio, confirmado: true, medidoDe: ancho_mm };
+  // El medido más cercano (a igual distancia, el menor) — mismos anchos que DCPS_LATERAL_MEDIDOS (outlines.ts; lo exige dcpsLateral.test.ts).
+  const cercano = Object.keys(tabla).map(Number).sort((a, b) => Math.abs(a - ancho_mm) - Math.abs(b - ancho_mm) || a - b)[0];
+  const m = tabla[cercano];
+  return m ? { mm: m.mm, procedencia: m.procedencia, confirmado: false, medidoDe: cercano } : null;
+}
+
+/** Aviso al colocar una pieza cuya cota de boca no está confirmada (sin STEP propio). */
+export function avisoCotaNoConfirmada(sku: string, s: { mm: number; medidoDe: number }): string {
+  return `${sku}: cota de boca NO CONFIRMADA — no hay STEP propio de este ancho; se generó con la planta y el sobreancho (${s.mm} mm) de la DCPS-${s.medidoDe} medida.`;
 }
 
 export function findMasterById(id: string): MasterModel | null {

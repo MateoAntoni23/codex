@@ -85,6 +85,8 @@ test.describe('Derivación en un tramo', () => {
 
     await crearDerivacion(page, tronco.instancia_id, 'SAM_TRPS-100-22-Z', 1000);
     await expect(page.getByTestId('der-msg')).toHaveText('Derivación ENG-1 creada con DCPS-100-Z.');
+    // La DCPS-100 no tiene STEP propio: al colocarla se avisa que la cota de boca no está confirmada.
+    await expect(page.getByTestId('der-advertencia')).toContainText('DCPS-100-Z: cota de boca NO CONFIRMADA — no hay STEP propio de este ancho; se generó con la planta y el sobreancho (1.315 mm) de la DCPS-50 medida.');
     const s = await estado(page);
     expect(s.piezas.map((p) => p.producto_id)).toEqual(['SAM_TRPS-300-22-Z', 'SAM_DCPS-100-Z', 'SAM_TRPS-100-22-Z']);
     // El tronco no se cortó ni cambió.
@@ -96,6 +98,7 @@ test.describe('Derivación en un tramo', () => {
     await expect(fila).toHaveAttribute('data-join-ok', 'true');
     await expect(page.getByTestId('enganche-row')).toHaveAttribute('data-vigente', 'true');
     await expect(page.getByTestId('enganche-accesorio')).toHaveText('Accesorio: DCPS-100-Z (se computa)');
+    await expect(page.getByTestId('enganche-advertencia')).toContainText('cota de boca NO CONFIRMADA');
     await expect(page.getByTestId('free-end')).toHaveCount(3);
     await page.screenshot({ path: resolve(OUT_DIR, 'derivacion-01-perforada.png') });
 

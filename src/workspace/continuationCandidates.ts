@@ -56,6 +56,18 @@ function hasParametricModel(product: Product | null | undefined): boolean {
   return modeloDeProducto(product) !== null;
 }
 
+/** Patrón de la derivación lateral (DCPS): sólo se coloca con un enganche sobre un tronco. */
+export const PATRON_DERIVACION_LATERAL = 'master:perforada:derivacion_lateral';
+
+/**
+ * Una DCPS no se ofrece como continuación de un recorrido: colocada así no tiene
+ * tronco anfitrión y se computaría una derivación que no deriva de nada. Se
+ * coloca sólo con la herramienta "Derivación en tramo".
+ */
+export function esDerivacionLateral(product: Product | null | undefined): boolean {
+  return modeloDeProducto(product)?.patron === PATRON_DERIVACION_LATERAL;
+}
+
 export type CandidateCategory = 'recommended' | 'other';
 
 export type OtherReasonCode =
@@ -143,6 +155,7 @@ export function buildContinuationCandidates(
 
   for (const p of catalogProducts) {
     if (seen.has(p.producto_id)) continue;
+    if (esDerivacionLateral(p)) continue; // DCPS: sólo con un enganche (ver esDerivacionLateral)
     const isCompat = compatibleIds.has(p.producto_id);
     const isParametric = hasParametricModel(p);
     const kindSupported = isParametric ? modeloDeProducto(p)?.colocable === true : false;

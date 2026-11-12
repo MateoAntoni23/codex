@@ -96,7 +96,7 @@ describe('MASTER_MODELS inventory', () => {
     expect(dcps.closure.continuity.status).toBe('validated');
     expect(dcps.closure.fidelity.status).toBe('validated');
     expect(dcps.closure.variants.status).toBe('partial');
-    expect(dcps.closure.variants.limitations.join('\n')).toMatch(/450 y 600/);
+    expect(dcps.closure.variants.limitations.join('\n')).toMatch(/cota de boca no confirmada/);
   });
 
   it('maestros escalera con regla "none" marcan variants=n/a (sin extrapolación posible)', () => {
@@ -144,12 +144,12 @@ describe('MASTER_MODELS inventory', () => {
     expect(dcps).toBeTruthy();
     expect(tps!.pieceKind).toBe('tee_simetrica');
     expect(dcps!.pieceKind).toBe('derivacion_lateral');
-    // DCPS medida en dos STEP del operador (50 y 300): una sola boca, ley de escala validada.
+    // DCPS medida en dos STEP del operador (50 y 300): una sola boca; los demás anchos, sin ley (derivados).
     expect(dcps!.source.stepHashShort).toBe('487afc33');
     expect(dcps!.recipeKey).toBe('derivacion_dcps');
     expect(dcps!.ports.map((p) => p.recipePortName)).toEqual(['P1']);
     expect(dcps!.variationRule.kind).toBe('mitad-corrida');
-    expect(dcps!.variationRule.provenance).toBe('measured');
+    expect(dcps!.variationRule.provenance).toBe('derived');
   });
 });
 
@@ -358,7 +358,7 @@ describe('DCPS → master de derivación lateral (no la TPS)', () => {
     expect(m?.id).toBe('master:perforada:tee_simetrica');
   });
 
-  it('DCPS-450 se proyecta por la regla medida (mitad corrida), no requiere STEP propio', () => {
+  it('DCPS-450 sin STEP propio se proyecta como derivada (planta de la 300), no como medida', () => {
     const master = findMasterById('master:perforada:derivacion_lateral')!;
     const productos: Product[] = [
       makeProduct({
@@ -372,7 +372,7 @@ describe('DCPS → master de derivación lateral (no la TPS)', () => {
     ];
     const variants = enumerateVariantsForMaster(master, productos);
     const v = variants.find((v) => v.sku === 'DCPS-450-Z')!;
-    expect(v.origin).toBe('measured');
+    expect(v.origin).toBe('derived');
   });
 });
 
