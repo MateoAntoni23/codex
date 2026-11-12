@@ -91,12 +91,12 @@ describe('MASTER_MODELS inventory', () => {
     expect(cups.closure.variants.regressionSpecs.join('\n')).toMatch(/cupsVariantsClosure/);
   });
 
-  it('DCPS sin STEP queda pending en las 3 dimensiones', () => {
-    const dcps = MASTER_MODELS.find((m) => m.id === 'master:perforada:derivacion_pendiente')!;
-    expect(dcps.closure.continuity.status).toBe('pending');
-    expect(dcps.closure.fidelity.status).toBe('pending');
-    expect(dcps.closure.variants.status).toBe('pending');
-    expect(dcps.closure.continuity.regressionSpecs).toEqual([]);
+  it('DCPS lateral medida (2 STEP del operador): continuidad y fidelidad validadas; variantes parciales (450/600 fuera del rango medido)', () => {
+    const dcps = MASTER_MODELS.find((m) => m.id === 'master:perforada:derivacion_lateral')!;
+    expect(dcps.closure.continuity.status).toBe('validated');
+    expect(dcps.closure.fidelity.status).toBe('validated');
+    expect(dcps.closure.variants.status).toBe('partial');
+    expect(dcps.closure.variants.limitations.join('\n')).toMatch(/450 y 600/);
   });
 
   it('maestros escalera con regla "none" marcan variants=n/a (sin extrapolación posible)', () => {
@@ -137,19 +137,19 @@ describe('MASTER_MODELS inventory', () => {
     }
   });
 
-  it('TPS (tee simétrica) y DCPS (derivación pendiente) son maestros distintos', () => {
+  it('TPS (tee simétrica) y DCPS (derivación lateral) son maestros distintos', () => {
     const tps = MASTER_MODELS.find((m) => m.id === 'master:perforada:tee_simetrica');
-    const dcps = MASTER_MODELS.find((m) => m.id === 'master:perforada:derivacion_pendiente');
+    const dcps = MASTER_MODELS.find((m) => m.id === 'master:perforada:derivacion_lateral');
     expect(tps).toBeTruthy();
     expect(dcps).toBeTruthy();
     expect(tps!.pieceKind).toBe('tee_simetrica');
     expect(dcps!.pieceKind).toBe('derivacion_lateral');
-    // DCPS carece de STEP medido — declaración explícita pendiente.
-    expect(dcps!.source.stepHashShort).toBe('--------');
-    expect(dcps!.variationRule.kind).toBe('none');
-    // Sin STEP ni polígono: no se puede derivar; la asociación queda como
-    // hipótesis explícita → procedencia 'estimated'.
-    expect(dcps!.variationRule.provenance).toBe('estimated');
+    // DCPS medida en dos STEP del operador (50 y 300): una sola boca, ley de escala validada.
+    expect(dcps!.source.stepHashShort).toBe('487afc33');
+    expect(dcps!.recipeKey).toBe('derivacion_dcps');
+    expect(dcps!.ports.map((p) => p.recipePortName)).toEqual(['P1']);
+    expect(dcps!.variationRule.kind).toBe('mitad-corrida');
+    expect(dcps!.variationRule.provenance).toBe('measured');
   });
 });
 
@@ -335,8 +335,8 @@ describe('enumerateVariantsForMaster — TRES (regla ala-independent MEDIDA)', (
   });
 });
 
-describe('DCPS producto sin STEP medido → master pendiente', () => {
-  it('SAM_DCPS-300-Z resuelve al master derivacion_pendiente, no a tee_simetrica', () => {
+describe('DCPS → master de derivación lateral (no la TPS)', () => {
+  it('SAM_DCPS-300-Z resuelve al master derivacion_lateral, no a tee_simetrica', () => {
     const m = findMasterForProduct({
       familia_id: 'SAM-STP-Z',
       tipo_pieza: 'T',
@@ -344,10 +344,10 @@ describe('DCPS producto sin STEP medido → master pendiente', () => {
       sku: 'DCPS-300-Z',
       producto_id: 'SAM_DCPS-300-Z',
     });
-    expect(m?.id).toBe('master:perforada:derivacion_pendiente');
+    expect(m?.id).toBe('master:perforada:derivacion_lateral');
   });
 
-  it('SAM_TPS-300-Z resuelve al master tee_simetrica (no pendiente)', () => {
+  it('SAM_TPS-300-Z resuelve al master tee_simetrica', () => {
     const m = findMasterForProduct({
       familia_id: 'SAM-STP-Z',
       tipo_pieza: 'T',
@@ -358,8 +358,8 @@ describe('DCPS producto sin STEP medido → master pendiente', () => {
     expect(m?.id).toBe('master:perforada:tee_simetrica');
   });
 
-  it('DCPS-450 queda requires-master por regla "none" (sin STEP)', () => {
-    const master = findMasterById('master:perforada:derivacion_pendiente')!;
+  it('DCPS-450 se proyecta por la regla medida (mitad corrida), no requiere STEP propio', () => {
+    const master = findMasterById('master:perforada:derivacion_lateral')!;
     const productos: Product[] = [
       makeProduct({
         producto_id: 'SAM_DCPS-450-Z',
@@ -372,7 +372,7 @@ describe('DCPS producto sin STEP medido → master pendiente', () => {
     ];
     const variants = enumerateVariantsForMaster(master, productos);
     const v = variants.find((v) => v.sku === 'DCPS-450-Z')!;
-    expect(v.origin).toBe('requires-master');
+    expect(v.origin).toBe('measured');
   });
 });
 

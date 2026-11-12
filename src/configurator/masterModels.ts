@@ -45,6 +45,7 @@ export type VariationRuleKind =
   | 'uniform-xz'        // CPS/TPS/XPS/escalera: escala uniforme en X,Z por ancho/300.
   | 'depth-only'        // CUPS: perfil XY fijo, sólo profundidad Z escala por ancho.
   | 'ala-independent'   // Escalera: ancho escala X,Z; ala escala Y independiente.
+  | 'mitad-corrida'     // DCPS lateral: la mitad derecha de la planta se corre (ancho − 300); nada escala.
   | 'none';             // Sin regla codificada; solo ancho base.
 
 /**
@@ -231,12 +232,6 @@ const ESCALERA_VARIANTS_CLOSURE_SPEC =
   'src/configurator/__tests__/escaleraVariantsClosure.test.ts';
 const SHARED_VERTICAL_PATTERN_SPEC =
   'src/configurator/__tests__/sharedVerticalPatternClosure.test.ts';
-const PENDING_DIMENSION: ClosureDimension = Object.freeze({
-  status: 'pending',
-  regressionSpecs: [],
-  limitations: [],
-});
-
 const VALIDATED_FIDELITY_DIMENSION: ClosureDimension = Object.freeze({
   status: 'validated',
   regressionSpecs: Object.freeze([PORT_FIDELITY_SPEC]) as readonly string[],
@@ -588,21 +583,20 @@ const MASTER_PERFORADA: readonly MasterModel[] = [
     revision: 2,
   },
   {
-    // DCPS = derivación lateral (sin corte del tronco principal). GEOMETRÍA
-    // DISTINTA a TPS: el tronco se mantiene entero y la derivación sale por
-    // uno de los flancos. No tenemos STEP ni polígono medido — pendiente. Se
-    // modela para que el Configurador no asocie DCPS al STEP de TPS por
-    // confusión histórica.
-    id: 'master:perforada:derivacion_pendiente',
-    label: 'Perforada — derivación lateral DCPS (pendiente)',
+    // DCPS = derivación lateral: se fija al flanco de un tramo recto, que NO se corta.
+    // Geometría medida en dos STEP del operador (2026-11-12, ala 50): DCPS-50-Z y
+    // DCPS-300-Z. Una sola boca (el ramal); la cara de apoyo no es boca. Ver
+    // buildDCPSLateralRecipe (outlines.ts) para la ley de escala.
+    id: 'master:perforada:derivacion_lateral',
+    label: 'Perforada — derivación lateral (DCPS)',
     sistema: 'perforada',
     pieceKind: 'derivacion_lateral',
     source: {
-      stepFile: '(pendiente — SAMET no publicó STEP para DCPS)',
-      stepHashShort: '--------',
-      reportJsonPath: '(pendiente)',
+      stepFile: 'DCPS-300-Z.STEP (operador, 2026-11-12; también DCPS-50-Z.STEP)',
+      stepHashShort: '487afc33',
+      reportJsonPath: 'tools/step_parametric/report/perforada/derivacion/DCPS-300-Z.json',
     },
-    recipeKey: 'derivacion_lateral',
+    recipeKey: 'derivacion_dcps',
     baseParams: { ancho_mm: 300, ala_mm: 50 },
     canonicalRotationZDeg: 0,
     catalogMatch: {
@@ -612,27 +606,27 @@ const MASTER_PERFORADA: readonly MasterModel[] = [
       catalogSkuPrefixes: ['DCPS-'],
     },
     ports: [
-      { recipePortName: 'tronco_P1', physicalLabel: 'Tronco (entrada)', catalogPortName: 'P1' },
-      { recipePortName: 'tronco_P2', physicalLabel: 'Tronco (salida)', catalogPortName: 'P2' },
-      { recipePortName: 'boca_derivacion', physicalLabel: 'Boca de derivación lateral', catalogPortName: 'P3' },
+      { recipePortName: 'P1', physicalLabel: 'Boca de derivación', catalogPortName: 'P1' },
     ],
     variationRule: {
-      kind: 'none',
-      provenance: 'estimated',
-      varies: [],
-      rationale: 'DCPS geometría distinta de TPS (sin corte del tronco). Sin STEP medido — la asociación de los SKUs SAM_DCPS-*-Z queda explícita como PENDIENTE. No se genera variante hasta disponer del polígono.',
+      kind: 'mitad-corrida',
+      provenance: 'measured',
+      varies: ['ancho'],
+      rationale: 'Dos STEP medidos (50 y 300): la mitad izquierda de la planta es idéntica y la derecha se corre exactamente la diferencia de ancho; profundidad, pestaña, chaflanes, cuello y sobreancho de boca (+1,315) no cambian. 100, 150 y 200 quedan dentro del rango medido; 450 y 600 fuera (y en chapa 0,89).',
     },
     declaredVariantSkus: [],
     closure: {
       continuity: {
-        status: 'pending',
-        regressionSpecs: [],
-        limitations: [
-          'Sin STEP medido para DCPS. No debe exponerse como operativo hasta que SAMET publique el polígono.',
-        ],
+        status: 'validated',
+        regressionSpecs: ['src/workspace/derivacion/__tests__/enganche.test.ts'],
+        limitations: ['La DCPS no se continúa por recorrido: se crea con el enganche lateral sobre un tramo recto.'],
       },
-      fidelity: PENDING_DIMENSION,
-      variants: PENDING_DIMENSION,
+      fidelity: VALIDATED_FIDELITY_DIMENSION,
+      variants: {
+        status: 'partial',
+        regressionSpecs: ['src/parametric/geometry/__tests__/dcpsLateral.test.ts'],
+        limitations: ['450 y 600 extrapolan la ley fuera del rango medido (50–300).'],
+      },
     },
     revision: 1,
   },

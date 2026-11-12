@@ -12,6 +12,7 @@ import {
   buildCPS90Recipe,
   buildCUPSRecipe,
   buildDCPSRecipe,
+  buildDCPSLateralRecipe,
   buildTRPSRecipe,
   buildXPSRecipe,
   type GeometryRecipe,
@@ -156,6 +157,9 @@ export function buildRecipeByKey(recipeKey: string, params: RawParams): Geometry
     case 'derivacion_lateral':
     case 'cruz':
       return buildRecipeFor(recipeKey, params);
+    case 'derivacion_dcps':
+      // DCPS lateral: medida en los STEP del operador (50 y 300) y ley de escala para el resto.
+      return buildDCPSLateralRecipe({ ancho_mm, ala_mm });
     case 'tee_simetrica':
       // El archivo físico DCPS-*.STEP contiene el polígono de la TPS (tee
       // simétrica). Reutilizamos la receta DCPS — la única confusión es el

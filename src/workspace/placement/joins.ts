@@ -39,14 +39,27 @@ export const TOL_ANG_DEG = Number(dec['D-14_tolerancia_angulo_grados']);
 export const DESVIO_ANCHO_RELATIVO = 0.00379;
 
 /**
+ * Desvío absoluto máximo que NO crece con el ancho: la boca de la DCPS lateral
+ * (STEP del operador, 2026-11-12) mide nominal + 1,315 mm en 50 y en 300 (un
+ * sobreancho fijo, no proporcional). Redondeado hacia arriba.
+ */
+export const DESVIO_ANCHO_ABSOLUTO_MM = 1.32;
+
+/** Desvío admisible de UNA boca de ancho nominal ~L respecto del nominal. */
+export function desvioAnchoMm(L: number): number {
+  return Math.max(DESVIO_ANCHO_RELATIVO * L, DESVIO_ANCHO_ABSOLUTO_MM);
+}
+
+/**
  * Tolerancia de ancho entre dos bocas: cada una puede apartarse del nominal
- * hasta DESVIO_ANCHO_RELATIVO, en sentidos opuestos → 2 × r × max(La, Lb)
- * (≈ 2,27 mm en 300). Discrimina: el paso más chico entre anchos nominales
- * del catálogo es 6 mm (44 → 50), y 2 × r × 50 = 0,38 mm (la prueba lo
- * verifica para cada par de anchos consecutivos).
+ * hasta desvioAnchoMm, en sentidos opuestos → 2 × max(r × max(La, Lb), 1,32)
+ * (≈ 2,27 mm en 300; 2,64 mm por debajo de ~348). Discrimina: el paso más chico
+ * entre anchos nominales del catálogo es 6 mm (44 → 50) y en el peor caso quedan
+ * 6 − 2 × 1,32 = 3,36 mm > 2,64 (la prueba lo verifica para cada par de anchos
+ * consecutivos).
  */
 export function tolAnchoMm(a: number, b: number): number {
-  return 2 * DESVIO_ANCHO_RELATIVO * Math.max(a, b);
+  return 2 * desvioAnchoMm(Math.max(a, b));
 }
 
 /**

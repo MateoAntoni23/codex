@@ -26,16 +26,11 @@ let cat: StaticCatalog;
  * Huecos CONOCIDOS, declarados por patrón (no se arreglan en m1c; ver informe).
  * La prueba falla si aparece un patrón nuevo sin calibrar o si este cambia.
  *
- * - derivacion_pendiente (DCPS-050…600, 7 productos): el maestro declara
- *   tronco_P1→P1, tronco_P2→P2, boca_derivacion→P3, pero el catálogo publica un
- *   único puerto, P1, descrito como "boca derivación". tronco_P2 y
- *   boca_derivacion no resuelven a un puerto publicado (y tronco_P1→P1 es
- *   dudoso: el P1 del catálogo es la derivación). Se informan como "sin
- *   calibración de bocas".
+ * Ninguno hoy. (Hasta el hito de derivación en un tramo, las 7 DCPS figuraban acá:
+ * el maestro viejo declaraba 3 bocas y el catálogo publica sólo P1, "boca
+ * derivación". La DCPS lateral medida declara exactamente esa boca.)
  */
-const KNOWN_UNCALIBRATED_MASTERS: Record<string, number> = {
-  'master:perforada:derivacion_pendiente': 7,
-};
+const KNOWN_UNCALIBRATED_MASTERS: Record<string, number> = {};
 
 function recipePorts(p: Product): string[] | null {
   const entry = resolveRecipe(p);

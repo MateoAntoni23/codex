@@ -1084,38 +1084,38 @@
     },
     "SAM_DCPS-050-Z": {
       "antes": "def-0c16bebda4bfcf",
-      "despues": "def-0396026fbae799",
-      "motivo": "B-2: DCPS generado desde el STEP (report/perforada/DCPS-300-Z__outline.json); los literales tenían dos vértices enderezados al bbox (0,051 mm) y el resto redondeado a 0,01 mm. TPS usa la misma receta."
+      "despues": "def-1b8a8d6fdb43ff",
+      "motivo": "Derivación en un tramo: la DCPS deja de usar el contorno de la TPS (STEP legado \"DCPS-300-Z\", que es la tee) y pasa a la derivación lateral medida en los STEP del operador (2026-11-12, ala 50): una sola boca (el ramal), geometría medida."
     },
     "SAM_DCPS-100-Z": {
       "antes": "def-0ec986dba2a2c6",
-      "despues": "def-0b9ab4eecfd656",
-      "motivo": "B-2: DCPS generado desde el STEP (report/perforada/DCPS-300-Z__outline.json); los literales tenían dos vértices enderezados al bbox (0,051 mm) y el resto redondeado a 0,01 mm. TPS usa la misma receta."
+      "despues": "def-12e66091a79f7e",
+      "motivo": "Derivación en un tramo: la DCPS deja de usar el contorno de la TPS (STEP legado \"DCPS-300-Z\", que es la tee) y pasa a la derivación lateral medida en los STEP del operador (2026-11-12, ala 50): una sola boca (el ramal), generada por la ley de escala de los dos STEP (mitad derecha corrida)."
     },
     "SAM_DCPS-150-Z": {
       "antes": "def-0889b0c8801d79",
-      "despues": "def-0cc77fc8d72deb",
-      "motivo": "B-2: DCPS generado desde el STEP (report/perforada/DCPS-300-Z__outline.json); los literales tenían dos vértices enderezados al bbox (0,051 mm) y el resto redondeado a 0,01 mm. TPS usa la misma receta."
+      "despues": "def-033573cb4ac165",
+      "motivo": "Derivación en un tramo: la DCPS deja de usar el contorno de la TPS (STEP legado \"DCPS-300-Z\", que es la tee) y pasa a la derivación lateral medida en los STEP del operador (2026-11-12, ala 50): una sola boca (el ramal), generada por la ley de escala de los dos STEP (mitad derecha corrida)."
     },
     "SAM_DCPS-200-Z": {
       "antes": "def-0c905ee3083661",
-      "despues": "def-197c1df6cc7a56",
-      "motivo": "B-2: DCPS generado desde el STEP (report/perforada/DCPS-300-Z__outline.json); los literales tenían dos vértices enderezados al bbox (0,051 mm) y el resto redondeado a 0,01 mm. TPS usa la misma receta."
+      "despues": "def-02fe2a88cf3ee5",
+      "motivo": "Derivación en un tramo: la DCPS deja de usar el contorno de la TPS (STEP legado \"DCPS-300-Z\", que es la tee) y pasa a la derivación lateral medida en los STEP del operador (2026-11-12, ala 50): una sola boca (el ramal), generada por la ley de escala de los dos STEP (mitad derecha corrida)."
     },
     "SAM_DCPS-300-Z": {
       "antes": "def-13707a4795cba2",
-      "despues": "def-0b08c6fb964980",
-      "motivo": "B-2: DCPS generado desde el STEP (report/perforada/DCPS-300-Z__outline.json); los literales tenían dos vértices enderezados al bbox (0,051 mm) y el resto redondeado a 0,01 mm. TPS usa la misma receta."
+      "despues": "def-04770448a8a682",
+      "motivo": "Derivación en un tramo: la DCPS deja de usar el contorno de la TPS (STEP legado \"DCPS-300-Z\", que es la tee) y pasa a la derivación lateral medida en los STEP del operador (2026-11-12, ala 50): una sola boca (el ramal), geometría medida."
     },
     "SAM_DCPS-450-Z": {
       "antes": "def-04a41ec3741e3d",
-      "despues": "def-1fccfb84ea79de",
-      "motivo": "B-2: DCPS generado desde el STEP (report/perforada/DCPS-300-Z__outline.json); los literales tenían dos vértices enderezados al bbox (0,051 mm) y el resto redondeado a 0,01 mm. TPS usa la misma receta."
+      "despues": "def-176c7a24fd32eb",
+      "motivo": "Derivación en un tramo: la DCPS deja de usar el contorno de la TPS (STEP legado \"DCPS-300-Z\", que es la tee) y pasa a la derivación lateral medida en los STEP del operador (2026-11-12, ala 50): una sola boca (el ramal), generada por la ley de escala de los dos STEP (mitad derecha corrida)."
     },
     "SAM_DCPS-600-Z": {
       "antes": "def-0608d5c8d4d29e",
-      "despues": "def-10348a3b2dca4a",
-      "motivo": "B-2: DCPS generado desde el STEP (report/perforada/DCPS-300-Z__outline.json); los literales tenían dos vértices enderezados al bbox (0,051 mm) y el resto redondeado a 0,01 mm. TPS usa la misma receta."
+      "despues": "def-1fa883abbd4f83",
+      "motivo": "Derivación en un tramo: la DCPS deja de usar el contorno de la TPS (STEP legado \"DCPS-300-Z\", que es la tee) y pasa a la derivación lateral medida en los STEP del operador (2026-11-12, ala 50): una sola boca (el ramal), generada por la ley de escala de los dos STEP (mitad derecha corrida)."
     },
     "SAM_TPS-050-ZN": {
       "antes": "def-1078275f93fefd",

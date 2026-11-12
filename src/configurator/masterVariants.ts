@@ -218,6 +218,9 @@ function scaleOfRule(
       return { x: anchoFactor, y: 1, z: anchoFactor };
     case 'depth-only':
       return { x: 1, y: 1, z: anchoFactor };
+    case 'mitad-corrida':
+      // No es una escala: corre la mitad derecha de la planta (ver buildDCPSLateralRecipe).
+      return { x: 1, y: 1, z: 1 };
     case 'ala-independent':
       if (ctx.master.pieceKind === 'tramo_recto') {
         return { x: longFactor, y: alaFactor, z: anchoFactor };

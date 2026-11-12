@@ -70,6 +70,9 @@ describe('longitudes de eje guardadas al colocar — catálogo completo', () => 
     for (const p of snapshot.PRODUCTOS.filter((x) => x.tipo_pieza === 'T' || x.tipo_pieza === 'X')) {
       const r = colocada(p);
       if (!r) continue;
+      // La DCPS es tipo "T" en el catálogo pero es la derivación lateral de una sola boca:
+      // su longitud la aporta el enganche (profundidad), no el centro de una T.
+      if (r.def.ports.length < 3) continue;
       piezas++;
       const L = r.pieza.colocacion.longitudes_eje;
       expect(L, p.producto_id).toBeDefined();
@@ -100,7 +103,7 @@ describe('longitudes de eje guardadas al colocar — catálogo completo', () => 
         }
       }
     }
-    expect(piezas).toBe(115); // TS 40 + XS 40 + TPS 21 + XPS 7 + DCPS 7 (las T/X sin modelo no se colocan)
+    expect(piezas).toBe(108); // TS 40 + XS 40 + TPS 21 + XPS 7 (las T/X sin modelo no se colocan; la DCPS es derivación lateral de una boca)
     expect(pares).toBeGreaterThan(400);
   });
 

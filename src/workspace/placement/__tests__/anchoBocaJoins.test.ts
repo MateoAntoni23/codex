@@ -16,7 +16,7 @@ import { resolve } from 'node:path';
 import { seedStaticCatalog } from '../../../catalog/staticCatalog';
 import { clearCatalogPortIndex, clearPortMappingOverrides, clearProductCatalogIndex, setMasterResolver } from '../../catalogPortMapping';
 import { definicionEfectiva, withDefinition } from '../definitions';
-import { avisosDeModelo, checkConnection, DESVIO_ANCHO_RELATIVO, tolAnchoMm } from '../joins';
+import { avisosDeModelo, checkConnection, desvioAnchoMm, DESVIO_ANCHO_ABSOLUTO_MM, DESVIO_ANCHO_RELATIVO, tolAnchoMm } from '../joins';
 import { placeDefinition, puertosFromWorld, type V3, type WorldPort } from '../placementCore';
 import type { Product, TrayInput } from '../../../tray/model';
 
@@ -117,23 +117,31 @@ describe('B-3 — sección en las uniones', () => {
     ]);
   });
 
-  it('derivación: ninguna boca medida se aparta del nominal más que DESVIO_ANCHO_RELATIVO, y la tolerancia discrimina anchos vecinos', () => {
-    let peor = 0;
+  it('derivación: ninguna boca medida se aparta del nominal más que max(0,379 %, 1,32 mm), y la tolerancia discrimina anchos vecinos', () => {
+    let peorRel = 0;
+    let peorAbsNoProporcional = 0;
     let con = 0;
     for (const p of snapshot.PRODUCTOS) {
       const d = definicionEfectiva(p, { longitud_mm: 1000 });
       if (!d.ok || typeof p.ancho_nominal_mm !== 'number') continue;
       con++;
-      for (const q of d.def.ports) peor = Math.max(peor, Math.abs(q.ancho_mm - p.ancho_nominal_mm) / p.ancho_nominal_mm);
+      for (const q of d.def.ports) {
+        const dev = Math.abs(q.ancho_mm - p.ancho_nominal_mm);
+        expect(dev, `${p.producto_id} ${q.name}: ${q.ancho_mm} vs ${p.ancho_nominal_mm}`).toBeLessThanOrEqual(desvioAnchoMm(p.ancho_nominal_mm));
+        peorRel = Math.max(peorRel, dev / p.ancho_nominal_mm);
+        if (dev > DESVIO_ANCHO_RELATIVO * p.ancho_nominal_mm) peorAbsNoProporcional = Math.max(peorAbsNoProporcional, dev);
+      }
     }
     expect(con).toBeGreaterThan(300);
-    expect(peor).toBeGreaterThan(0.0037); // el desvío real (CPS-45) — si cambia, revisar la constante
-    expect(peor).toBeLessThanOrEqual(DESVIO_ANCHO_RELATIVO);
+    // Los desvíos reales que fijan las constantes — si cambian, revisarlas.
+    expect(peorAbsNoProporcional).toBeCloseTo(1.315, 3); // boca DCPS lateral (sobreancho fijo)
+    expect(peorAbsNoProporcional).toBeLessThanOrEqual(DESVIO_ANCHO_ABSOLUTO_MM);
+    expect(peorRel).toBeGreaterThan(0.0037);
     const anchos = [...new Set(snapshot.PRODUCTOS.map((p) => p.ancho_nominal_mm).filter((x): x is number => typeof x === 'number'))].sort((a, b) => a - b);
     for (let i = 1; i < anchos.length; i++) {
       const [a, b] = [anchos[i - 1], anchos[i]];
       // Peor caso: la boca de a medida hacia arriba y la de b hacia abajo.
-      const separacion = b * (1 - DESVIO_ANCHO_RELATIVO) - a * (1 + DESVIO_ANCHO_RELATIVO);
+      const separacion = (b - desvioAnchoMm(b)) - (a + desvioAnchoMm(a));
       expect(separacion, `${a} → ${b}`).toBeGreaterThan(tolAnchoMm(a, b));
     }
   });

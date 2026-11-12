@@ -47,6 +47,31 @@
       },
       "invertir": true,
       "inicio": 9
+    },
+    {
+      "outline": "derivacion/DCPS-300-Z",
+      "archivo": "DCPS-300-Z.STEP",
+      "const": "DCPS_LATERAL_OUTLINE_300",
+      "titulo": "derivación lateral DCPS-300 (STEP del operador, 2026-11-12; ala 50)",
+      "marco": {
+        "min_x_mm": 0,
+        "max_z_mm": 0
+      },
+      "invertir": true,
+      "inicio": 0
+    },
+    {
+      "outline": "derivacion/DCPS-50-Z",
+      "archivo": "DCPS-50-Z.STEP",
+      "const": "DCPS_LATERAL_OUTLINE_50",
+      "titulo": "derivación lateral DCPS-50 (STEP del operador, 2026-11-12; ala 50)",
+      "marco": {
+        "min_x_mm": 0,
+        "max_z_mm": 0
+      },
+      "invertir": true,
+      "inicio": 0
     }
-  ]
+  ],
+  "_derivacion": "DCPS_LATERAL_OUTLINE_50/300: STEP modelados por el operador (2026-11-12), extruidos con ala 50 (la perforada se fabrica en un solo ala). polygon[9]→polygon[0] es la cara de apoyo contra el flanco del tronco (z = −profundidad); polygon[4]→polygon[5] es la boca del ramal (z = 0). No reemplazan a DCPS_OUTLINE_300, que es la TPS (STEP legado llamado DCPS-300-Z)."
 }

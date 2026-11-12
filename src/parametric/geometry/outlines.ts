@@ -41,7 +41,7 @@
  */
 
 import type { Vec3 } from '../catalog';
-import { CPS45_OUTLINE_300, CPS90_OUTLINE_300, DCPS_OUTLINE_300, XPS_OUTLINE_300 } from './perforadaOutlines';
+import { CPS45_OUTLINE_300, CPS90_OUTLINE_300, DCPS_LATERAL_OUTLINE_300, DCPS_LATERAL_OUTLINE_50, DCPS_OUTLINE_300, XPS_OUTLINE_300 } from './perforadaOutlines';
 
 type V2 = readonly [number, number];
 type V3 = Vec3;
@@ -351,6 +351,61 @@ export function buildXPSRecipe(params: {
       ancho_mm === 300
         ? 'Ancho=300 mm: geometría medida sobre el STEP de referencia (procedencia en verificación).'
         : `Variante ancho=${ancho_mm}: escala uniforme desde origen por ${(ancho_mm / 300).toFixed(3)}. Mantiene proporciones.`,
+    ],
+  };
+}
+
+// -----------------------------------------------------------------------------
+// DCPS — derivación lateral (se fija al flanco de un tramo recto, que NO se corta).
+//
+// Medida en dos STEP del operador (2026-11-12, ala 50): DCPS-50-Z y DCPS-300-Z.
+// Planta en XZ extruida en Y (ala). polygon[9]→polygon[0]: cara de APOYO contra el
+// flanco del tronco (z = −profundidad); polygon[4]→polygon[5]: BOCA del ramal (z = 0,
+// normal +Z). Entre ambas: pestaña de 4,81 mm, chaflanes a 45° y cuello recto.
+//
+// Ley de escala (de los dos STEP): la mitad izquierda (vértices 0–4) es idéntica en
+// 50 y 300 (±0,001 mm) y la derecha (5–9) es la misma corrida exactamente la
+// diferencia de ancho (250 mm). Todo lo demás —profundidad 80,542, pestaña,
+// chaflanes, cuello, sobreancho de boca +1,315— no cambia. Ley: partir de la 300 y
+// correr los vértices 5–9 en (ancho − 300). Con dos puntos esto supone que cada
+// cota es lineal en el ancho (las que coinciden en 50 y 300 quedan constantes); 450
+// y 600 quedan FUERA del rango medido y se fabrican en otra chapa (0,89).
+// -----------------------------------------------------------------------------
+
+/** Anchos con STEP medido. */
+export const DCPS_LATERAL_MEDIDOS: Readonly<Record<number, readonly V2[]>> = {
+  50: DCPS_LATERAL_OUTLINE_50,
+  300: DCPS_LATERAL_OUTLINE_300,
+};
+
+/** Ley de escala de la DCPS lateral: la 300 medida con los vértices 5–9 corridos en (ancho − 300). */
+export function dcpsLateralPorLey(ancho_mm: number): V2[] {
+  const d = ancho_mm - 300;
+  return DCPS_LATERAL_OUTLINE_300.map(([x, z], i) => (i >= 5 ? [x + d, z] : [x, z]) as V2);
+}
+
+export function buildDCPSLateralRecipe(params: { ancho_mm: number; ala_mm: number }): GeometryRecipe {
+  const { ancho_mm, ala_mm } = params;
+  const medido = DCPS_LATERAL_MEDIDOS[ancho_mm];
+  const polygon: V2[] = medido ? medido.map((p) => [p[0], p[1]] as V2) : dcpsLateralPorLey(ancho_mm);
+  const boca = portOnEdgeXZ('P1', polygon[4], polygon[5], ala_mm);
+  const minX = Math.min(...polygon.map((p) => p[0]));
+  const maxX = Math.max(...polygon.map((p) => p[0]));
+  const minZ = Math.min(...polygon.map((p) => p[1]));
+  const maxZ = Math.max(...polygon.map((p) => p[1]));
+  return {
+    extrudeAlongY: true,
+    polygon,
+    height: ala_mm,
+    translate: [0, 0, 0],
+    ports: [boca],
+    bboxMin: [minX, 0, minZ],
+    bboxMax: [maxX, ala_mm, maxZ],
+    notes: [
+      medido
+        ? `Ancho=${ancho_mm} mm: geometría medida sobre el STEP DCPS-${ancho_mm}-Z del operador (2026-11-12).`
+        : `Ancho=${ancho_mm} mm: generada por ley de escala desde los STEP DCPS-50-Z y DCPS-300-Z (vértices 5–9 de la 300 corridos ${ancho_mm - 300} mm).`,
+      'Una sola boca (el ramal). La cara de apoyo contra el flanco del tronco no es boca: el tronco no se corta.',
     ],
   };
 }

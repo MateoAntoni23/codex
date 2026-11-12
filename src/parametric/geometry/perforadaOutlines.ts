@@ -63,3 +63,31 @@ export const DCPS_OUTLINE_300: readonly (readonly [number, number])[] = [
   [449.5, -375.149],
   [0, -375.149],
 ];
+
+// ─── derivacion/DCPS-300-Z — derivación lateral DCPS-300 (STEP del operador, 2026-11-12; ala 50) (10 vértices)
+export const DCPS_LATERAL_OUTLINE_300: readonly (readonly [number, number])[] = [
+  [0, -80.542],
+  [0.008, -75.731],
+  [39.718, -75.794],
+  [88.961, -26.709],
+  [89.004, 0],
+  [390.319, 0],
+  [390.361, -26.709],
+  [439.604, -75.794],
+  [479.315, -75.731],
+  [479.323, -80.542],
+];
+
+// ─── derivacion/DCPS-50-Z — derivación lateral DCPS-50 (STEP del operador, 2026-11-12; ala 50) (10 vértices)
+export const DCPS_LATERAL_OUTLINE_50: readonly (readonly [number, number])[] = [
+  [0, -80.542],
+  [0.008, -75.731],
+  [39.718, -75.795],
+  [88.961, -26.709],
+  [89.004, 0],
+  [140.319, 0],
+  [140.361, -26.709],
+  [189.605, -75.795],
+  [229.315, -75.731],
+  [229.323, -80.542],
+];

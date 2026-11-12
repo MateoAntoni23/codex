@@ -1,0 +1,273 @@
+{
+  "file": "DCPS-300-Z.STEP",
+  "bbox_local": {
+    "x_max": 479.323,
+    "z_max": 80.542,
+    "y_height_mm": 50.0
+  },
+  "n_vertices": 10,
+  "polygon_xz_mm": [
+    [
+      0.0,
+      0.0
+    ],
+    [
+      479.323,
+      0.0
+    ],
+    [
+      479.315,
+      4.811
+    ],
+    [
+      439.604,
+      4.748
+    ],
+    [
+      390.361,
+      53.833
+    ],
+    [
+      390.319,
+      80.542
+    ],
+    [
+      89.004,
+      80.542
+    ],
+    [
+      88.961,
+      53.833
+    ],
+    [
+      39.718,
+      4.748
+    ],
+    [
+      0.008,
+      4.811
+    ]
+  ],
+  "edges": [
+    {
+      "i": 0,
+      "a": [
+        0.0,
+        0.0
+      ],
+      "b": [
+        479.323,
+        0.0
+      ],
+      "length_mm": 479.323,
+      "midpoint": [
+        239.661,
+        0.0
+      ],
+      "outward_normal": [
+        0.0,
+        -1.0
+      ],
+      "boundary": "z_min",
+      "axis_aligned": true
+    },
+    {
+      "i": 1,
+      "a": [
+        479.323,
+        0.0
+      ],
+      "b": [
+        479.315,
+        4.811
+      ],
+      "length_mm": 4.811,
+      "midpoint": [
+        479.319,
+        2.405
+      ],
+      "outward_normal": [
+        1.0,
+        0.002
+      ],
+      "boundary": "x_max",
+      "axis_aligned": false
+    },
+    {
+      "i": 2,
+      "a": [
+        479.315,
+        4.811
+      ],
+      "b": [
+        439.604,
+        4.748
+      ],
+      "length_mm": 39.711,
+      "midpoint": [
+        459.459,
+        4.78
+      ],
+      "outward_normal": [
+        -0.002,
+        1.0
+      ],
+      "boundary": null,
+      "axis_aligned": false
+    },
+    {
+      "i": 3,
+      "a": [
+        439.604,
+        4.748
+      ],
+      "b": [
+        390.361,
+        53.833
+      ],
+      "length_mm": 69.528,
+      "midpoint": [
+        414.982,
+        29.29
+      ],
+      "outward_normal": [
+        0.706,
+        0.708
+      ],
+      "boundary": null,
+      "axis_aligned": false
+    },
+    {
+      "i": 4,
+      "a": [
+        390.361,
+        53.833
+      ],
+      "b": [
+        390.319,
+        80.542
+      ],
+      "length_mm": 26.709,
+      "midpoint": [
+        390.34,
+        67.188
+      ],
+      "outward_normal": [
+        1.0,
+        0.002
+      ],
+      "boundary": null,
+      "axis_aligned": false
+    },
+    {
+      "i": 5,
+      "a": [
+        390.319,
+        80.542
+      ],
+      "b": [
+        89.004,
+        80.542
+      ],
+      "length_mm": 301.315,
+      "midpoint": [
+        239.662,
+        80.542
+      ],
+      "outward_normal": [
+        0.0,
+        1.0
+      ],
+      "boundary": "z_max",
+      "axis_aligned": true
+    },
+    {
+      "i": 6,
+      "a": [
+        89.004,
+        80.542
+      ],
+      "b": [
+        88.961,
+        53.833
+      ],
+      "length_mm": 26.709,
+      "midpoint": [
+        88.983,
+        67.188
+      ],
+      "outward_normal": [
+        -1.0,
+        0.002
+      ],
+      "boundary": null,
+      "axis_aligned": false
+    },
+    {
+      "i": 7,
+      "a": [
+        88.961,
+        53.833
+      ],
+      "b": [
+        39.718,
+        4.748
+      ],
+      "length_mm": 69.528,
+      "midpoint": [
+        64.34,
+        29.29
+      ],
+      "outward_normal": [
+        -0.706,
+        0.708
+      ],
+      "boundary": null,
+      "axis_aligned": false
+    },
+    {
+      "i": 8,
+      "a": [
+        39.718,
+        4.748
+      ],
+      "b": [
+        0.008,
+        4.811
+      ],
+      "length_mm": 39.71,
+      "midpoint": [
+        19.863,
+        4.78
+      ],
+      "outward_normal": [
+        0.002,
+        1.0
+      ],
+      "boundary": null,
+      "axis_aligned": false
+    },
+    {
+      "i": 9,
+      "a": [
+        0.008,
+        4.811
+      ],
+      "b": [
+        0.0,
+        0.0
+      ],
+      "length_mm": 4.811,
+      "midpoint": [
+        0.004,
+        2.405
+      ],
+      "outward_normal": [
+        -1.0,
+        0.002
+      ],
+      "boundary": "x_min",
+      "axis_aligned": false
+    }
+  ]
+}

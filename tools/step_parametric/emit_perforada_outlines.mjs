@@ -56,7 +56,10 @@ export function generar(decl, leerOutline) {
     const o = leerOutline(c.outline);
     if (!o) { errores.push(`${c.outline}: falta ${c.outline}__outline.json`); continue; }
     if (o.error) { errores.push(`${c.outline}: el __outline.json trae error: ${o.error}`); continue; }
-    if (o.file !== `${c.outline}.STEP`) { errores.push(`${c.outline}: el JSON nombra ${o.file}`); continue; }
+    // `archivo`: cuando el outline vive en una subcarpeta (p. ej. derivacion/) y el STEP se llama
+    // igual que otro (las DCPS del operador, 2026-11-12, vs el STEP "DCPS-300-Z" que es la TPS).
+    const archivo = c.archivo ?? `${c.outline}.STEP`;
+    if (o.file !== archivo) { errores.push(`${c.outline}: el JSON nombra ${o.file}, se esperaba ${archivo}`); continue; }
     let poly;
     try { poly = contornoEnMarco(c, o); } catch (e) { errores.push(String(e.message ?? e)); continue; }
     bloques.push([
