@@ -1,6 +1,6 @@
 {
-  "fileVersion": 1,
-  "exportedAt": "2026-11-07T23:21:39.852Z",
+  "fileVersion": 3,
+  "exportedAt": "2026-11-13T19:55:52.953Z",
   "projectV2": {
     "schemaVersion": 2,
     "elements": [
@@ -23,6 +23,11 @@
           "status": "unknown",
           "evidenceIds": []
         },
+        "geometry": {
+          "kind": "plane",
+          "widthMm": 30000,
+          "depthMm": 30000
+        },
         "physicalLocation": {
           "kind": "unassigned",
           "factoryId": null,
@@ -30,6 +35,7 @@
           "description": null
         },
         "version": 1,
+        "importedRef": null,
         "placementStatus": "placed",
         "transform": {
           "positionMm": {
@@ -45,11 +51,6 @@
           }
         },
         "category": "infrastructure",
-        "geometry": {
-          "kind": "plane",
-          "widthMm": 30000,
-          "depthMm": 30000
-        },
         "technical": {
           "role": {
             "value": "floor",
@@ -79,6 +80,12 @@
           "status": "unknown",
           "evidenceIds": []
         },
+        "geometry": {
+          "kind": "box",
+          "widthMm": 20000,
+          "depthMm": 15000,
+          "heightMm": 8000
+        },
         "physicalLocation": {
           "kind": "unassigned",
           "factoryId": null,
@@ -86,6 +93,7 @@
           "description": null
         },
         "version": 1,
+        "importedRef": null,
         "placementStatus": "placed",
         "transform": {
           "positionMm": {
@@ -101,12 +109,6 @@
           }
         },
         "category": "infrastructure",
-        "geometry": {
-          "kind": "box",
-          "widthMm": 20000,
-          "depthMm": 15000,
-          "heightMm": 8000
-        },
         "technical": {
           "role": {
             "value": "building",
@@ -136,6 +138,12 @@
           "status": "unknown",
           "evidenceIds": []
         },
+        "geometry": {
+          "kind": "box",
+          "widthMm": 800,
+          "depthMm": 400,
+          "heightMm": 2000
+        },
         "physicalLocation": {
           "kind": "unassigned",
           "factoryId": null,
@@ -143,6 +151,7 @@
           "description": null
         },
         "version": 1,
+        "importedRef": null,
         "placementStatus": "placed",
         "transform": {
           "positionMm": {
@@ -158,12 +167,6 @@
           }
         },
         "category": "electrical_panel",
-        "geometry": {
-          "kind": "box",
-          "widthMm": 800,
-          "depthMm": 400,
-          "heightMm": 2000
-        },
         "technical": {
           "ipRating": {
             "value": null,
@@ -196,6 +199,11 @@
           "status": "unknown",
           "evidenceIds": []
         },
+        "geometry": {
+          "kind": "cylinder",
+          "diameterMm": 600,
+          "lengthMm": 800
+        },
         "physicalLocation": {
           "kind": "unassigned",
           "factoryId": null,
@@ -203,6 +211,7 @@
           "description": null
         },
         "version": 1,
+        "importedRef": null,
         "placementStatus": "placed",
         "transform": {
           "positionMm": {
@@ -218,11 +227,6 @@
           }
         },
         "category": "motor",
-        "geometry": {
-          "kind": "cylinder",
-          "diameterMm": 600,
-          "lengthMm": 800
-        },
         "technical": {
           "power": {
             "value": null,
@@ -266,21 +270,9 @@
         "name": "Soporte giratorio",
         "tag": null,
         "aliases": [],
-        "physicalLocation": {
-          "kind": "unassigned",
-          "factoryId": null,
-          "subareaId": null,
-          "description": null
-        },
         "condition": "unknown",
         "lifecycle": "active",
         "parentId": null,
-        "geometry": {
-          "kind": "box",
-          "widthMm": 600,
-          "depthMm": 600,
-          "heightMm": 800
-        },
         "mounting": "floor",
         "manufacturer": {
           "value": null,
@@ -292,7 +284,20 @@
           "status": "unknown",
           "evidenceIds": []
         },
+        "geometry": {
+          "kind": "box",
+          "widthMm": 600,
+          "depthMm": 600,
+          "heightMm": 800
+        },
+        "physicalLocation": {
+          "kind": "unassigned",
+          "factoryId": null,
+          "subareaId": null,
+          "description": null
+        },
         "version": 1,
+        "importedRef": null,
         "placementStatus": "placed",
         "transform": {
           "positionMm": {
@@ -326,20 +331,9 @@
         "name": "Motor en soporte",
         "tag": null,
         "aliases": [],
-        "physicalLocation": {
-          "kind": "unassigned",
-          "factoryId": null,
-          "subareaId": null,
-          "description": null
-        },
         "condition": "unknown",
         "lifecycle": "active",
         "parentId": "support-panel-1",
-        "geometry": {
-          "kind": "cylinder",
-          "diameterMm": 300,
-          "lengthMm": 500
-        },
         "mounting": "panel_mount",
         "manufacturer": {
           "value": null,
@@ -351,7 +345,19 @@
           "status": "unknown",
           "evidenceIds": []
         },
+        "geometry": {
+          "kind": "cylinder",
+          "diameterMm": 300,
+          "lengthMm": 500
+        },
+        "physicalLocation": {
+          "kind": "unassigned",
+          "factoryId": null,
+          "subareaId": null,
+          "description": null
+        },
         "version": 1,
+        "importedRef": null,
         "placementStatus": "placed",
         "transform": {
           "positionMm": {
@@ -410,16 +416,9 @@
         "name": "Sensor de presión (sin dimensiones)",
         "tag": null,
         "aliases": [],
-        "physicalLocation": {
-          "kind": "unassigned",
-          "factoryId": null,
-          "subareaId": null,
-          "description": null
-        },
         "condition": "unknown",
         "lifecycle": "active",
         "parentId": null,
-        "geometry": null,
         "mounting": "unknown",
         "manufacturer": {
           "value": null,
@@ -431,7 +430,15 @@
           "status": "unknown",
           "evidenceIds": []
         },
+        "geometry": null,
+        "physicalLocation": {
+          "kind": "unassigned",
+          "factoryId": null,
+          "subareaId": null,
+          "description": null
+        },
         "version": 1,
+        "importedRef": null,
         "placementStatus": "placed",
         "transform": {
           "positionMm": {
@@ -475,21 +482,9 @@
         "name": "Sensor de temperatura",
         "tag": null,
         "aliases": [],
-        "physicalLocation": {
-          "kind": "unassigned",
-          "factoryId": null,
-          "subareaId": null,
-          "description": null
-        },
         "condition": "unknown",
         "lifecycle": "active",
         "parentId": null,
-        "geometry": {
-          "kind": "box",
-          "widthMm": 50,
-          "depthMm": 50,
-          "heightMm": 100
-        },
         "mounting": "unknown",
         "manufacturer": {
           "value": null,
@@ -501,7 +496,20 @@
           "status": "unknown",
           "evidenceIds": []
         },
+        "geometry": {
+          "kind": "box",
+          "widthMm": 50,
+          "depthMm": 50,
+          "heightMm": 100
+        },
+        "physicalLocation": {
+          "kind": "unassigned",
+          "factoryId": null,
+          "subareaId": null,
+          "description": null
+        },
         "version": 1,
+        "importedRef": null,
         "placementStatus": "unplaced",
         "transform": null,
         "category": "sensor",
@@ -533,21 +541,9 @@
         "name": "[DEMO] Sensor de caudal",
         "tag": "FT-101",
         "aliases": [],
-        "physicalLocation": {
-          "kind": "unassigned",
-          "factoryId": null,
-          "subareaId": null,
-          "description": null
-        },
         "condition": "new",
         "lifecycle": "active",
         "parentId": null,
-        "geometry": {
-          "kind": "box",
-          "widthMm": 80,
-          "depthMm": 60,
-          "heightMm": 120
-        },
         "mounting": "wall",
         "manufacturer": {
           "value": "[demo] Endress+Hauser",
@@ -559,7 +555,20 @@
           "status": "provided",
           "evidenceIds": []
         },
+        "geometry": {
+          "kind": "box",
+          "widthMm": 80,
+          "depthMm": 60,
+          "heightMm": 120
+        },
+        "physicalLocation": {
+          "kind": "unassigned",
+          "factoryId": null,
+          "subareaId": null,
+          "description": null
+        },
         "version": 1,
+        "importedRef": null,
         "placementStatus": "placed",
         "transform": {
           "positionMm": {
@@ -725,14 +734,14 @@
       "y": 0,
       "z": 0
     },
-    "factories": [],
-    "subareas": [],
-    "elementServices": [],
     "ports": [],
     "connections": [],
     "cableCores": [],
     "internalLinks": [],
     "functionalRelations": [],
+    "factories": [],
+    "subareas": [],
+    "elementServices": [],
     "migrationIncidents": []
   },
   "trayInput": {
@@ -764,6 +773,11 @@
               -1,
               0,
               0
+            ],
+            "orientacion_seccion_ws": [
+              0,
+              2.220446049250313e-16,
+              1
             ]
           },
           "P2": {
@@ -776,8 +790,42 @@
               1,
               0,
               0
+            ],
+            "orientacion_seccion_ws": [
+              0,
+              2.220446049250313e-16,
+              1
             ]
           }
+        },
+        "colocacion": {
+          "version": 1,
+          "estado": "resuelta",
+          "definicion": {
+            "huella": "def-142d71550e6ee3",
+            "patron": "master:escalera:tramo_recto",
+            "revision": "2",
+            "params": {
+              "ancho_mm": 300,
+              "ala_mm": 65,
+              "longitud_mm": 3000
+            }
+          },
+          "mano": "nativa",
+          "pose": {
+            "posicion_mm": [
+              0,
+              150,
+              2967.5
+            ],
+            "rotacion": [
+              0.7071067811865475,
+              0,
+              0,
+              0.7071067811865476
+            ]
+          },
+          "boca_entrada": "P1"
         }
       },
       {
@@ -795,6 +843,11 @@
               -1,
               0,
               0
+            ],
+            "orientacion_seccion_ws": [
+              0,
+              2.220446049250313e-16,
+              1
             ]
           },
           "P2": {
@@ -807,8 +860,42 @@
               1,
               0,
               0
+            ],
+            "orientacion_seccion_ws": [
+              0,
+              2.220446049250313e-16,
+              1
             ]
           }
+        },
+        "colocacion": {
+          "version": 1,
+          "estado": "resuelta",
+          "definicion": {
+            "huella": "def-142d71550e6ee3",
+            "patron": "master:escalera:tramo_recto",
+            "revision": "2",
+            "params": {
+              "ancho_mm": 300,
+              "ala_mm": 65,
+              "longitud_mm": 3000
+            }
+          },
+          "mano": "nativa",
+          "pose": {
+            "posicion_mm": [
+              3000,
+              150,
+              2967.5
+            ],
+            "rotacion": [
+              0.7071067811865475,
+              0,
+              0,
+              0.7071067811865476
+            ]
+          },
+          "boca_entrada": "P1"
         }
       },
       {
@@ -852,6 +939,11 @@
               0
             ]
           }
+        },
+        "colocacion": {
+          "version": 1,
+          "estado": "sin_resolver",
+          "motivo": "no encaja con el modelo vigente (desvío 330.8 mm / 0.0°, tolerancia 2 mm / 1,5°)"
         }
       },
       {
@@ -869,6 +961,11 @@
               -1,
               0,
               0
+            ],
+            "orientacion_seccion_ws": [
+              0,
+              2.220446049250313e-16,
+              1
             ]
           },
           "P2": {
@@ -881,8 +978,42 @@
               1,
               0,
               0
+            ],
+            "orientacion_seccion_ws": [
+              0,
+              2.220446049250313e-16,
+              1
             ]
           }
+        },
+        "colocacion": {
+          "version": 1,
+          "estado": "resuelta",
+          "definicion": {
+            "huella": "def-142d71550e6ee3",
+            "patron": "master:escalera:tramo_recto",
+            "revision": "2",
+            "params": {
+              "ancho_mm": 300,
+              "ala_mm": 65,
+              "longitud_mm": 3000
+            }
+          },
+          "mano": "nativa",
+          "pose": {
+            "posicion_mm": [
+              6600,
+              150,
+              2967.5
+            ],
+            "rotacion": [
+              0.7071067811865475,
+              0,
+              0,
+              0.7071067811865476
+            ]
+          },
+          "boca_entrada": "P1"
         }
       },
       {
@@ -900,6 +1031,11 @@
               0,
               -1,
               0
+            ],
+            "orientacion_seccion_ws": [
+              0,
+              0,
+              1
             ]
           },
           "P2": {
@@ -912,8 +1048,42 @@
               0,
               1,
               0
+            ],
+            "orientacion_seccion_ws": [
+              0,
+              0,
+              1
             ]
           }
+        },
+        "colocacion": {
+          "version": 1,
+          "estado": "resuelta",
+          "definicion": {
+            "huella": "def-142d71550e6ee3",
+            "patron": "master:escalera:tramo_recto",
+            "revision": "2",
+            "params": {
+              "ancho_mm": 300,
+              "ala_mm": 65,
+              "longitud_mm": 3000
+            }
+          },
+          "mano": "nativa",
+          "pose": {
+            "posicion_mm": [
+              6150,
+              450,
+              2967.5
+            ],
+            "rotacion": [
+              0.5,
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "boca_entrada": "P1"
         }
       },
       {
@@ -945,6 +1115,11 @@
               0
             ]
           }
+        },
+        "colocacion": {
+          "version": 1,
+          "estado": "sin_resolver",
+          "motivo": "proyecto creado con geometría nominal del catálogo; los modelos actuales provienen de medición y difieren ~5 mm (desvío 5.2 mm / 0.2°, tolerancia 2 mm / 1,5°)"
         }
       },
       {
@@ -962,6 +1137,11 @@
               -1,
               0,
               0
+            ],
+            "orientacion_seccion_ws": [
+              0,
+              2.220446049250313e-16,
+              1
             ]
           },
           "P2": {
@@ -974,8 +1154,42 @@
               1,
               0,
               0
+            ],
+            "orientacion_seccion_ws": [
+              0,
+              2.220446049250313e-16,
+              1
             ]
           }
+        },
+        "colocacion": {
+          "version": 1,
+          "estado": "resuelta",
+          "definicion": {
+            "huella": "def-118c4c12222d1d",
+            "patron": "master:escalera:tramo_recto",
+            "revision": "2",
+            "params": {
+              "ancho_mm": 300,
+              "ala_mm": 65,
+              "longitud_mm": 1500
+            }
+          },
+          "mano": "nativa",
+          "pose": {
+            "posicion_mm": [
+              6900,
+              4200,
+              2967.5
+            ],
+            "rotacion": [
+              0.7071067811865475,
+              0,
+              0,
+              0.7071067811865476
+            ]
+          },
+          "boca_entrada": "P1"
         }
       }
     ],
@@ -1264,6 +1478,202 @@
           ]
         }
       ]
+    },
+    "definiciones_ws": {
+      "def-142d71550e6ee3": {
+        "version": "codex:definicion/1",
+        "patron": "master:escalera:tramo_recto",
+        "revision": "2",
+        "params": {
+          "ancho_mm": 300,
+          "ala_mm": 65,
+          "longitud_mm": 3000
+        },
+        "mesh": {
+          "polygon": [
+            [
+              0,
+              0
+            ],
+            [
+              3000,
+              0
+            ],
+            [
+              3000,
+              300
+            ],
+            [
+              0,
+              300
+            ]
+          ],
+          "height": 65,
+          "extrudeAlongY": true,
+          "translate": [
+            0,
+            0,
+            0
+          ],
+          "preTransform": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ]
+        },
+        "ports": [
+          {
+            "name": "P1",
+            "center": [
+              0,
+              32.5,
+              150
+            ],
+            "normal": [
+              -1,
+              0,
+              0
+            ],
+            "v_dir": [
+              0,
+              1,
+              0
+            ],
+            "ancho_mm": 300,
+            "ala_mm": 65
+          },
+          {
+            "name": "P2",
+            "center": [
+              3000,
+              32.5,
+              150
+            ],
+            "normal": [
+              1,
+              0,
+              0
+            ],
+            "v_dir": [
+              0,
+              1,
+              0
+            ],
+            "ancho_mm": 300,
+            "ala_mm": 65
+          }
+        ]
+      },
+      "def-118c4c12222d1d": {
+        "version": "codex:definicion/1",
+        "patron": "master:escalera:tramo_recto",
+        "revision": "2",
+        "params": {
+          "ancho_mm": 300,
+          "ala_mm": 65,
+          "longitud_mm": 1500
+        },
+        "mesh": {
+          "polygon": [
+            [
+              0,
+              0
+            ],
+            [
+              1500,
+              0
+            ],
+            [
+              1500,
+              300
+            ],
+            [
+              0,
+              300
+            ]
+          ],
+          "height": 65,
+          "extrudeAlongY": true,
+          "translate": [
+            0,
+            0,
+            0
+          ],
+          "preTransform": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ]
+        },
+        "ports": [
+          {
+            "name": "P1",
+            "center": [
+              0,
+              32.5,
+              150
+            ],
+            "normal": [
+              -1,
+              0,
+              0
+            ],
+            "v_dir": [
+              0,
+              1,
+              0
+            ],
+            "ancho_mm": 300,
+            "ala_mm": 65
+          },
+          {
+            "name": "P2",
+            "center": [
+              1500,
+              32.5,
+              150
+            ],
+            "normal": [
+              1,
+              0,
+              0
+            ],
+            "v_dir": [
+              0,
+              1,
+              0
+            ],
+            "ancho_mm": 300,
+            "ala_mm": 65
+          }
+        ]
+      }
     }
   }
 }

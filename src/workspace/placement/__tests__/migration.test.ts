@@ -37,7 +37,7 @@ afterAll(() => {
 
 describe('PA6 — migración del fixture user-report-20261107', () => {
   it('deduce la pose una vez; las que no encajan quedan sin resolver con su motivo y sus bocas', () => {
-    const file = JSON.parse(readFileSync(resolve(__dirname, '../../../../e2e/fixtures/user-report-20261107.workspace.json'), 'utf8'));
+    const file = JSON.parse(readFileSync(resolve(__dirname, '../../../../e2e/fixtures/reference/user-report-20261107.ORIGINAL.workspace.json'), 'utf8'));
     const original: TrayInput = file.trayInput;
     const before = JSON.stringify(original);
     const { entrada, report } = migrateTray(original, products);

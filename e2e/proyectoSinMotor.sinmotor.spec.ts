@@ -10,7 +10,7 @@
  *   2. El estado del servicio de cálculo es "apagado" (informativo, no bloqueante).
  *   3. La lista de productos está disponible (catálogo estático).
  *   4. Se puede crear un tramo recto.
- *   5. Se puede guardar copia (fileVersion 2) y el archivo contiene el tramo.
+ *   5. Se puede guardar copia (fileVersion 3) y el archivo contiene el tramo.
  *   6. Calcular informa que el motor está apagado y no rompe nada.
  *   7. Con el proyecto vacío también se puede guardar copia.
  */
@@ -88,7 +88,7 @@ test.describe('A1 — servicio Python apagado', () => {
     await page.getByRole('button', { name: 'Crear tramo' }).click();
     await expect.poll(async () => (await state(page)).piezas).toBe(1);
 
-    // 5) Guardar copia (sin motor): descarga un fileVersion 2 con el tramo.
+    // 5) Guardar copia (sin motor): descarga un fileVersion 3 con el tramo.
     const [download] = await Promise.all([
       page.waitForEvent('download'),
       page.getByTestId('project-save-copy').click(),
@@ -96,7 +96,7 @@ test.describe('A1 — servicio Python apagado', () => {
     const path = resolve(OUT_DIR, `sin-motor-${Date.now()}.json`);
     await download.saveAs(path);
     const file = JSON.parse(readFileSync(path, 'utf8'));
-    expect(file.fileVersion).toBe(2);
+    expect(file.fileVersion).toBe(3);
     expect(file.trayInput.piezas).toHaveLength(1);
     expect(file.projectV2.elements).toEqual([]);
 
@@ -126,7 +126,7 @@ test.describe('A1 — servicio Python apagado', () => {
     const path = resolve(OUT_DIR, `sin-motor-vacio-${Date.now()}.json`);
     await download.saveAs(path);
     const file = JSON.parse(readFileSync(path, 'utf8'));
-    expect(file.fileVersion).toBe(2);
+    expect(file.fileVersion).toBe(3);
     expect(file.trayInput.piezas).toEqual([]);
     expect(file.trayInput.pe).toMatchObject({ cable_id: '', conductores: [] });
     expect('library' in file).toBe(false);

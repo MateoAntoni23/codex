@@ -27,6 +27,13 @@
  * guardada desde la boca por la que se entró hasta el enganche; la DCPS, su
  * profundidad guardada al colocarla.
  *
+ * Bajada a un equipo (etapa 1): el tramo tiene una pseudo-boca por cada bajada
+ * (`bajada:<id>`, `equipos/bajada.ts`). Es un extremo: no tiene uniones. El
+ * camino entre dos equipos va de la de uno a la del otro; el tramo aporta la
+ * distancia guardada desde la boca por la que se entró (o entre los dos puntos,
+ * si están sobre el mismo tramo). La bajada en sí no es bandeja: su largo lo
+ * suma el circuito (`circuitosGuardados.ts`), no este recorrido.
+ *
  * Por qué en el frontend: el motor no busca caminos (los recorridos de los
  * circuitos le llegan explícitos) y sólo suma longitudes de eje por pieza para
  * los conductores PE (D-27), sin distinguir por qué bocas se cruza una T.
@@ -34,11 +41,12 @@
 import type { Piece, TrayInput } from '../../tray/model';
 import { checkConnection } from '../placement/joins';
 import { claveTramo } from '../placement/longitudesEje';
-import { bocaEnganche, distanciaBocaAEnganche, enganchesOf, estadoEnganche, idDeBocaEnganche, type Enganche } from '../derivacion/enganche';
+import { bocaEnganche, distanciaBocaAPunto, enganchesOf, estadoEnganche, idDeBocaEnganche, type Enganche } from '../derivacion/enganche';
+import { bajadasOf, bocaBajada, idDeBocaBajada, type Bajada } from '../equipos/bajada';
 
 export interface Boca { readonly pieza: string; readonly boca: string }
 
-export type FuenteLongitud = 'longitud_mm' | 'longitud_eje_mm' | 'longitudes_eje' | 'bocas_en_linea' | 'enganche';
+export type FuenteLongitud = 'longitud_mm' | 'longitud_eje_mm' | 'longitudes_eje' | 'bocas_en_linea' | 'enganche' | 'bajada';
 
 export interface Cruce {
   readonly pieza: string;
@@ -76,26 +84,36 @@ const sub = (a: readonly number[], b: readonly number[]) => [a[0] - b[0], a[1] -
 const dot = (a: readonly number[], b: readonly number[]) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 const norm = (a: readonly number[]) => Math.hypot(a[0], a[1], a[2]);
 
+/** Pseudo-boca de un punto sobre el tramo: enganche (derivación) o bajada (equipo). */
+type Pseudo = { readonly tipo: 'enganche' | 'bajada'; readonly id: string; readonly punto: Enganche | Bajada | undefined };
+function pseudoBoca(boca: string, enganches: readonly Enganche[], bajadas: readonly Bajada[]): Pseudo | null {
+  const ie = idDeBocaEnganche(boca);
+  if (ie) return { tipo: 'enganche', id: ie, punto: enganches.find((x) => x.id === ie) };
+  const ib = idDeBocaBajada(boca);
+  if (ib) return { tipo: 'bajada', id: ib, punto: bajadas.find((x) => x.id === ib) };
+  return null;
+}
+const NOMBRE: Record<Pseudo['tipo'], string> = { enganche: 'el enganche', bajada: 'el enlace' };
+
 /** Longitud de la pieza entre las bocas `e` y `s`, sólo con lo persistido. */
-export function longitudDeCruce(piece: Piece, e: string, s: string, enganches: readonly Enganche[] = []): Pick<Cruce, 'longitudMm' | 'fuente' | 'motivo' | 'procedencia'> {
-  // Tronco con enganche: distancia guardada en el enganche (y largo guardado del tronco).
-  const ide = idDeBocaEnganche(e);
-  const ids = idDeBocaEnganche(s);
-  if (ide || ids) {
-    const eng = (id: string) => enganches.find((x) => x.id === id);
-    if (ide && ids) {
-      const [a, b] = [eng(ide), eng(ids)];
-      const pa = a && distanciaBocaAEnganche(piece, 'P1', a);
-      const pb = b && distanciaBocaAEnganche(piece, 'P1', b);
-      if (typeof pa !== 'number' || typeof pb !== 'number') return { longitudMm: null, fuente: null, motivo: 'falta el enganche o el largo del tronco' };
-      return { longitudMm: Math.abs(pa - pb), fuente: 'enganche', procedencia: `entre los enganches ${ide} y ${ids}: distancias guardadas` };
+export function longitudDeCruce(piece: Piece, e: string, s: string, enganches: readonly Enganche[] = [], bajadas: readonly Bajada[] = []): Pick<Cruce, 'longitudMm' | 'fuente' | 'motivo' | 'procedencia'> {
+  // Punto sobre el tramo (enganche o bajada): distancia guardada en el punto (y largo guardado del tramo).
+  const qe = pseudoBoca(e, enganches, bajadas);
+  const qs = pseudoBoca(s, enganches, bajadas);
+  if (qe || qs) {
+    const fuente: FuenteLongitud = qe?.tipo === 'bajada' || qs?.tipo === 'bajada' ? 'bajada' : 'enganche';
+    if (qe && qs) {
+      const pa = qe.punto && distanciaBocaAPunto(piece, 'P1', qe.punto);
+      const pb = qs.punto && distanciaBocaAPunto(piece, 'P1', qs.punto);
+      if (typeof pa !== 'number' || typeof pb !== 'number') return { longitudMm: null, fuente: null, motivo: `falta ${NOMBRE[qe.tipo]} o el largo del tronco` };
+      const quien = qe.tipo === qs.tipo ? `entre ${qe.tipo === 'enganche' ? 'los enganches' : 'los enlaces'} ${qe.id} y ${qs.id}` : `entre ${NOMBRE[qe.tipo]} ${qe.id} y ${NOMBRE[qs.tipo]} ${qs.id}`;
+      return { longitudMm: Math.abs(pa - pb), fuente, procedencia: `${quien}: distancias guardadas` };
     }
-    const id = (ide ?? ids)!;
-    const boca = ide ? s : e;
-    const x = eng(id);
-    const L = x ? distanciaBocaAEnganche(piece, boca, x) : null;
-    if (L === null) return { longitudMm: null, fuente: null, motivo: `falta el enganche ${id} o el largo del tronco` };
-    return { longitudMm: L, fuente: 'enganche', procedencia: `distancia guardada en el enganche ${id} (desde ${x!.desde_boca}; largo del tronco ${piece.longitud_mm} mm)` };
+    const x = (qe ?? qs)!;
+    const boca = qe ? s : e;
+    const L = x.punto ? distanciaBocaAPunto(piece, boca, x.punto) : null;
+    if (L === null) return { longitudMm: null, fuente: null, motivo: `falta ${NOMBRE[x.tipo]} ${x.id} o el largo del tronco` };
+    return { longitudMm: L, fuente, procedencia: `distancia guardada en ${NOMBRE[x.tipo]} ${x.id} (desde ${x.punto!.desde_boca}; largo del tronco ${piece.longitud_mm} mm)` };
   }
   const n = Object.keys(piece.puertos).length;
   if (n === 2 && typeof piece.longitud_mm === 'number') return { longitudMm: piece.longitud_mm, fuente: 'longitud_mm' };
@@ -131,13 +149,14 @@ function unionesDe(entrada: TrayInput, b: Boca) {
   return out;
 }
 
-/** Bocas por las que se puede salir de una pieza: las suyas y las pseudo-bocas de enganche. */
+/** Bocas por las que se puede salir de una pieza: las suyas y las pseudo-bocas de enganche y de bajada. */
 function salidasDe(entrada: TrayInput, pieza: Piece): string[] {
   const out = Object.keys(pieza.puertos);
   for (const e of enganchesOf(entrada)) {
     if (e.tronco === pieza.instancia_id) out.push(bocaEnganche(e.id));
     if (e.salida[0] === pieza.instancia_id && !out.includes(e.salida[1])) out.push(e.salida[1]);
   }
+  for (const b of bajadasOf(entrada)) if (b.tronco === pieza.instancia_id) out.push(bocaBajada(b.id));
   return out;
 }
 
@@ -210,10 +229,13 @@ export function caminoEntreBocas(entrada: TrayInput, origen: Boca, destino: Boca
   for (const [rol, b] of [['origen', origen], ['destino', destino]] as const) {
     const p = piezas.get(b.pieza);
     if (!p) return { ok: false, motivo: `el ${rol} no existe en el trazado (pieza ${b.pieza})`, unionesCortadas: [] };
-    if (!p.puertos[b.boca]) return { ok: false, motivo: `el ${rol} no existe en el trazado (boca ${b.boca} de ${b.pieza})`, unionesCortadas: [] };
+    const ib = idDeBocaBajada(b.boca);
+    if (ib) {
+      if (!bajadasOf(entrada).some((x) => x.id === ib && x.tronco === b.pieza)) return { ok: false, motivo: `el ${rol} no existe en el trazado (enlace ${ib} sobre ${b.pieza})`, unionesCortadas: [] };
+    } else if (!p.puertos[b.boca]) return { ok: false, motivo: `el ${rol} no existe en el trazado (boca ${b.boca} de ${b.pieza})`, unionesCortadas: [] };
   }
   if (origen.pieza === destino.pieza && origen.boca === destino.boca) {
-    return { ok: false, motivo: 'origen y destino son la misma boca', unionesCortadas: [] };
+    return { ok: false, motivo: idDeBocaBajada(origen.boca) ? 'origen y destino salen del mismo punto de la bandeja' : 'origen y destino son la misma boca', unionesCortadas: [] };
   }
   const cortadas = new Map<string, UnionCortada>();
   const r = buscar(entrada, origen, destino, false, cortadas);
@@ -237,7 +259,8 @@ export function caminoEntreBocas(entrada: TrayInput, origen: Boca, destino: Boca
   }
   const engs = enganchesOf(entrada);
   const idsEng = new Set(engs.map((e) => e.id));
-  const cruces: Cruce[] = r.pasos.map((p) => ({ ...p, ...longitudDeCruce(piezas.get(p.pieza)!, p.entrada, p.salida, engs) }));
+  const bajs = bajadasOf(entrada);
+  const cruces: Cruce[] = r.pasos.map((p) => ({ ...p, ...longitudDeCruce(piezas.get(p.pieza)!, p.entrada, p.salida, engs, bajs) }));
   const sumaMm = cruces.reduce((acc, c) => acc + (c.longitudMm ?? 0), 0);
   return {
     ok: true, cruces,

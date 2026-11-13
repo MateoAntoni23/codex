@@ -38,7 +38,10 @@ function sinColocacion<T>(v: T): T {
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const OUT_DIR = resolve(__dirname, 'output');
 const EXCEL = resolve(__dirname, '../src/import/fixtures/ELS-IMP-EQCX_v1.0_Rev0.xlsx');
+// Fixture del operador en el formato vigente (v3): convertido una vez con la app (abrir el v1 → guardar copia), 2026-11-13.
 const USER_REPORT = resolve(__dirname, 'fixtures/user-report-20261107.workspace.json');
+// El archivo original del operador, v1: una versión anterior, que ya no se abre.
+const USER_REPORT_V1 = resolve(__dirname, 'fixtures/reference/user-report-20261107.ORIGINAL.workspace.json');
 // B-2.5: la biblioteca persiste en v2; la v1 queda como copia del original y no se escribe.
 const LIB_KEY = 'codex:catalogConfig:v2';
 
@@ -194,7 +197,7 @@ test.describe('Hito 1 — el proyecto no se pierde', () => {
     await continueFromFirstStraight(page);
     await importExcelAndPlaceEquipment(page);
     const saved = await saveCopy(page, 'a2'); // fija el nombre de archivo del proyecto
-    expect(saved.json.fileVersion).toBe(2);
+    expect(saved.json.fileVersion).toBe(3);
     await waitSaved(page);
 
     const before = await projectSnapshot(page);
@@ -216,7 +219,20 @@ test.describe('Hito 1 — el proyecto no se pierde', () => {
     await expect(page.locator('.workspace-dirty')).toHaveCount(0);
   });
 
-  test('A3 — fixture v1: abrir → guardar copia → abrir de nuevo = idéntico', async ({ page }) => {
+  test('A3b — corte limpio: un archivo de una versión anterior (v1 del operador) no se abre; avisa y no cambia nada', async ({ page }) => {
+    await openApp(page);
+    await addStraightByUi(page);
+    await waitSaved(page);
+    const antes = await projectSnapshot(page);
+    page.on('dialog', (d) => void d.accept());
+    await openFile(page, USER_REPORT_V1);
+    await expect(page.getByTestId('project-message')).toHaveText(
+      'Error al abrir: El archivo es de una versión anterior de la app (versión de archivo 1) y no es compatible con esta (versión 3). No se intenta repararlo.',
+    );
+    expect(await projectSnapshot(page)).toEqual(antes);
+  });
+
+  test('A3 — fixture v3: abrir → guardar copia → abrir de nuevo = idéntico', async ({ page }) => {
     await openApp(page);
     await openFile(page, USER_REPORT);
     await expect.poll(async () => ((await projectSnapshot(page)).piezas as unknown[]).length).toBe(7);
@@ -318,7 +334,7 @@ test.describe('Hito 1 — el proyecto no se pierde', () => {
     const raw = await page.evaluate((k) => localStorage.getItem(k), LIB_KEY);
     expect(raw).not.toBeNull();
     page.on('dialog', (d) => void d.accept());
-    await openFile(page, USER_REPORT); // fileVersion 1, sin catalogConfig
+    await openFile(page, USER_REPORT); // fileVersion 3, sin bloque de biblioteca
     await expect.poll(async () => ((await projectSnapshot(page)).piezas as unknown[]).length).toBe(7);
     await expect(page.getByTestId('library-conflict')).toHaveCount(0);
     expect(await page.evaluate((k) => localStorage.getItem(k), LIB_KEY)).toBe(raw);

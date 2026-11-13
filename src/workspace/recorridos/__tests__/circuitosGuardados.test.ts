@@ -1,5 +1,5 @@
 /**
- * Circuitos guardados y longitudes de proyectos anteriores.
+ * Circuitos guardados (de un equipo a otro, etapa 1) y longitudes de proyectos anteriores.
  * Las piezas se colocan por el camino real (definición efectiva → colocación);
  * `conRegla` aplica las longitudes como al colocar en el espacio de trabajo.
  */
@@ -13,7 +13,10 @@ import { conLongitudesEje } from '../../placement/longitudesEje';
 import { placeDefinition, puertosFromWorld, type V3, type WorldPort } from '../../placement/placementCore';
 import { translatePiece } from '../../trayMovement';
 import { rotarEnTrazado } from '../../trayRotation';
-import { borrarCircuito, circuitosOf, estadoCircuito, guardarCircuito, recalcularCircuito } from '../circuitosGuardados';
+import { borrarCircuito, caminoEntreEquipos, circuitosOf, estadoCircuito, guardarCircuito, recalcularCircuito, validarCircuitosDeArchivo } from '../circuitosGuardados';
+import { borrarBajada, crearBajada } from '../../equipos/bajada';
+import { geometriaPuntoEnTramo } from '../../derivacion/enganche';
+import type { EquipmentElement } from '../../../types/domain-v2';
 import { guardarLongitudesAnteriores } from '../longitudesAnteriores';
 import { caminoEntreBocas } from '../caminoEntreBocas';
 import type { Product, TrayInput } from '../../../tray/model';
@@ -67,74 +70,195 @@ function cadena(conRegla: boolean): TrayInput {
 const O = { pieza: 'R1', boca: 'P1' };
 const D = { pieza: 'R5', boca: 'P2' };
 
-function guardado(t: TrayInput) {
-  const g = guardarCircuito(t, 'Alimentación TG-1', O, D);
+// ─── Equipos (etapa 1): los extremos del circuito ────────────────────────────
+
+function equipo(id: string, name: string, pos: readonly number[], extra: Record<string, unknown> = {}): EquipmentElement {
+  return {
+    id, name, tag: null, aliases: [], category: 'electrical_panel', parentId: null, geometry: null,
+    placementStatus: 'placed', transform: { positionMm: { x: pos[0], y: pos[1], z: pos[2] }, rotation: { x: 0, y: 0, z: 0, w: 1 } },
+    ...extra,
+  } as unknown as EquipmentElement;
+}
+
+const TG = 'eq-tg';
+const B3 = 'eq-b3';
+/** Desplazamiento del centro de Bomba 3 respecto de su punto de salida: bajada de 500 mm. */
+const OFFSET_B3 = [300, 400, 0];
+
+/**
+ * Cadena con un equipo en cada punta:
+ *   Tablero General A ── bajada 1000 mm ── R1 (a 200 mm de P1, izquierda)
+ *   Bomba 3 ── bajada 500 mm ── R5 (a 100 mm de P2, derecha)
+ */
+function proyecto(conRegla = true) {
+  let t = cadena(conRegla);
+  // R1: P1 en el origen, eje +x, flanco izquierdo hacia +y (medio ancho 150 mm) → salida en (200, 150, 0).
+  const elements0 = [equipo(TG, 'Tablero General A', [200, 1150, 0])];
+  const g5 = geometriaPuntoEnTramo(t, productos, { tronco: 'R5', desde_boca: 'P2', distancia_mm: 100, lado: 'derecha' });
+  if (!g5.ok) throw new Error(g5.motivo);
+  const elements = [...elements0, equipo(B3, 'Bomba 3', g5.F.map((x, i) => x + OFFSET_B3[i]))];
+  const b1 = crearBajada(t, productos, elements, { equipo: TG, tronco: 'R1', desde_boca: 'P1', distancia_mm: 200, lado: 'izquierda' });
+  if (!b1.ok) throw new Error(b1.motivo);
+  t = b1.entrada;
+  const b2 = crearBajada(t, productos, elements, { equipo: B3, tronco: 'R5', desde_boca: 'P2', distancia_mm: 100, lado: 'derecha' });
+  if (!b2.ok) throw new Error(b2.motivo);
+  return { t: b2.entrada, elements };
+}
+
+const EO = { equipo: TG };
+const ED = { equipo: B3 };
+/** Bandeja: R1 desde la salida (1000 − 200) + R2 + T (derivación) + R4 + CUPS + R5 hasta la salida (600 − 100). */
+const BANDEJA = 800 + 1500 + 449.44 + 800 + 227.588 + 500;
+
+function guardado(t: TrayInput, elements: readonly EquipmentElement[]) {
+  const g = guardarCircuito(t, elements, 'Alimentación B3', EO, ED);
   if (!g.ok) throw new Error(g.motivo);
   return g;
 }
 
-describe('circuitos guardados', () => {
-  it('se guarda con nombre, origen, destino, piezas, longitud; sobrevive a guardar y abrir (JSON) y sigue vigente', () => {
-    const t = cadena(true);
-    const g = guardado(t);
-    expect(g.circuito).toMatchObject({ id: 'CIR-1', nombre: 'Alimentación TG-1', origen: O, destino: D, completa: true });
+describe('circuitos guardados — de un equipo a otro', () => {
+  it('va de equipo a equipo: bajada → bandeja → bajada; la longitud incluye las dos bajadas y se guarda desglosada', () => {
+    const { t, elements } = proyecto();
+    const g = guardado(t, elements);
+    expect(g.circuito).toMatchObject({ id: 'CIR-1', nombre: 'Alimentación B3', origen: EO, destino: ED, completa: true });
     expect(g.circuito.cruces.map((c) => c.pieza)).toEqual(['R1', 'R2', 'T', 'R4', 'C', 'R5']);
-    expect(g.circuito.sumaMm).toBeCloseTo(1000 + 1500 + 449.44 + 800 + 227.588 + 600, 1);
+    expect(g.circuito.cruces[0]).toMatchObject({ entrada: 'bajada:BAJ-1', salida: 'P2', longitudMm: 800, fuente: 'bajada' });
+    expect(g.circuito.cruces[5]).toMatchObject({ entrada: 'P1', salida: 'bajada:BAJ-2', longitudMm: 500, fuente: 'bajada' });
+    expect(g.circuito.bajadas.origen).toMatchObject({ id: 'BAJ-1', longitud_mm: 1000 });
+    expect(g.circuito.bajadas.destino.longitud_mm).toBeCloseTo(500, 9);
+    expect(g.circuito.bandejaMm).toBeCloseTo(BANDEJA, 1);
+    expect(g.circuito.bajadasMm).toBeCloseTo(1500, 9);
+    expect(g.circuito.sumaMm).toBeCloseTo(BANDEJA + 1500, 1);
+    // Control: la suma es bandeja + bajadas (no sólo bandeja).
+    expect(g.circuito.sumaMm - g.circuito.bandejaMm).toBeCloseTo(1500, 9);
+    // La bajada no es bandeja: no agrega piezas ni conexiones al trazado.
+    expect(g.entrada.piezas.length).toBe(cadena(true).piezas.length);
+    expect(g.entrada.conexiones.length).toBe(cadena(true).conexiones.length);
+
     const reabierto = JSON.parse(JSON.stringify(g.entrada)) as TrayInput;
+    expect(() => validarCircuitosDeArchivo(reabierto)).not.toThrow();
     expect(circuitosOf(reabierto)).toEqual(JSON.parse(JSON.stringify(circuitosOf(g.entrada))));
-    expect(estadoCircuito(reabierto, circuitosOf(reabierto)[0])).toEqual({ vigente: true });
+    expect(estadoCircuito(reabierto, elements, circuitosOf(reabierto)[0])).toEqual({ vigente: true });
   });
 
-  it('nombre obligatorio y único; sin camino no se guarda', () => {
-    const t = cadena(true);
-    expect(guardarCircuito(t, '  ', O, D)).toEqual({ ok: false, motivo: 'el circuito necesita un nombre' });
-    const g = guardado(t);
-    expect(guardarCircuito(g.entrada, 'alimentación tg-1', O, D)).toEqual({ ok: false, motivo: 'ya hay un circuito llamado "alimentación tg-1"' });
-    expect(guardarCircuito(t, 'X', O, O)).toMatchObject({ ok: false, motivo: 'origen y destino son la misma boca' });
+  it('nombre obligatorio y único; sin enlace, mismo equipo o sin camino no se guarda, con el motivo', () => {
+    const { t, elements } = proyecto();
+    expect(guardarCircuito(t, elements, '  ', EO, ED)).toEqual({ ok: false, motivo: 'el circuito necesita un nombre' });
+    const g = guardado(t, elements);
+    expect(guardarCircuito(g.entrada, elements, 'alimentación b3', EO, ED)).toEqual({ ok: false, motivo: 'ya hay un circuito llamado "alimentación b3"' });
+    expect(guardarCircuito(t, elements, 'X', EO, EO)).toMatchObject({ ok: false, motivo: 'origen y destino son el mismo equipo' });
+
+    const conOtro = [...elements, equipo('eq-x', 'Motor X', [0, 0, 0])];
+    expect(guardarCircuito(t, conOtro, 'X', EO, { equipo: 'eq-x' })).toMatchObject({ ok: false, motivo: 'el equipo Motor X no tiene enlace con la bandeja' });
+
+    // Sin camino: el mismo criterio que entre bocas (un tramo suelto, sin uniones).
+    const suelto = structuredClone(t);
+    const r1 = suelto.piezas.find((p) => p.instancia_id === 'R1')!;
+    suelto.piezas.push({ ...structuredClone(r1), instancia_id: 'RX' });
+    const bx = crearBajada(suelto, productos, conOtro, { equipo: 'eq-x', tronco: 'RX', desde_boca: 'P1', distancia_mm: 10, lado: 'derecha' });
+    if (!bx.ok) throw new Error(bx.motivo);
+    expect(guardarCircuito(bx.entrada, conOtro, 'X', EO, { equipo: 'eq-x' })).toMatchObject({
+      ok: false, motivo: 'no hay camino: origen y destino no están unidos por piezas del trazado',
+    });
+    // Una unión que no cumple corta el camino y se dice cuál.
+    const rota = structuredClone(t);
+    const r2 = rota.piezas.find((p) => p.instancia_id === 'R2')!;
+    rota.piezas = rota.piezas.map((p) => (p.instancia_id === 'R2' ? translatePiece({ ...rota, piezas: [r2] } as TrayInput, 'R2', [0, 0, 50]).piezas[0] : p));
+    const sinCamino = caminoEntreEquipos(rota, elements, EO, ED);
+    expect(sinCamino.ok).toBe(false);
+    if (!sinCamino.ok) expect(sinCamino.motivo).toBe('no hay camino por uniones válidas: la unión R1-R2 no cumple la verificación y no se atraviesa');
   });
 
-  it('mover, rotar o borrar una pieza del recorrido lo deja desactualizado con motivo — sin recalcular lo guardado', () => {
-    const g = guardado(cadena(true));
+  it('mover un equipo deja el circuito desactualizado con el motivo — sin recalcular lo guardado', () => {
+    const { t, elements } = proyecto();
+    const g = guardado(t, elements);
+    const c0 = circuitosOf(g.entrada)[0];
+    const movidos = elements.map((e) => (e.id === B3 && e.placementStatus === 'placed'
+      ? { ...e, transform: { ...e.transform, positionMm: { ...e.transform.positionMm, x: e.transform.positionMm.x + 250 } } } as EquipmentElement
+      : e));
+    const e1 = estadoCircuito(g.entrada, movidos, c0);
+    expect(e1).toEqual({ vigente: false, motivos: ['el equipo Bomba 3 se movió (250.0 mm)'] });
+    expect(circuitosOf(g.entrada)[0]).toEqual(c0);
+    // Y no se puede armar uno nuevo con ese enlace hasta rehacerlo.
+    expect(caminoEntreEquipos(g.entrada, movidos, EO, ED)).toMatchObject({ ok: false, motivo: 'el enlace BAJ-2 del equipo Bomba 3 está desactualizado: el equipo Bomba 3 se movió (250.0 mm)' });
+
+    const sinB3 = elements.filter((e) => e.id !== B3);
+    const e2 = estadoCircuito(g.entrada, sinB3, c0);
+    expect(e2).toEqual({ vigente: false, motivos: ['el equipo de destino (eq-b3) ya no existe'] });
+
+    const sinEnlace = borrarBajada(g.entrada, 'BAJ-1');
+    expect(estadoCircuito(sinEnlace, elements, c0)).toEqual({ vigente: false, motivos: ['el enlace BAJ-1 del equipo Tablero General A ya no existe'] });
+  });
+
+  it('mover, rotar o borrar una pieza del recorrido lo deja desactualizado con motivo; la pieza del punto de salida, también el enlace', () => {
+    const { t, elements } = proyecto();
+    const g = guardado(t, elements);
     const c0 = circuitosOf(g.entrada)[0];
 
     const movida = translatePiece(g.entrada, 'R4', [0, 0, 10]);
-    const e1 = estadoCircuito(movida, c0);
+    const e1 = estadoCircuito(movida, elements, c0);
     expect(e1.vigente).toBe(false);
     if (!e1.vigente) expect(e1.motivos).toContain('la pieza R4 se movió o rotó (boca P1: 10.00 mm, 0.00°)');
-    // Lo guardado no cambió.
     expect(circuitosOf(movida)[0]).toEqual(c0);
 
-    // R5 es vertical (sale de la CUPS): girarla 15° sobre Z es girarla sobre su propio
-    // eje — las bocas no se mueven ni cambian de dirección, sólo la sección.
+    // R5 es vertical (sale de la CUPS): girarla 15° sobre Z es girarla sobre su propio eje.
     const r5 = movida.piezas.find((p) => p.instancia_id === 'R5')!;
     const rotada = rotarEnTrazado(g.entrada, 'R5', [0, 0, 1], 15, r5.puertos.P1.posicion_mm);
-    const e2 = estadoCircuito(rotada, c0);
+    const e2 = estadoCircuito(rotada, elements, c0);
     expect(e2.vigente).toBe(false);
-    if (!e2.vigente) expect(e2.motivos[0]).toBe('la pieza R5 se movió o rotó (boca P1: 0.00 mm, 15.00°)');
+    if (!e2.vigente) {
+      expect(e2.motivos).toContain('el tronco se movió o rotó (boca P1: 0.00 mm, 15.00°) (punto de salida de BAJ-2)');
+      expect(e2.motivos).toContain('la pieza R5 se movió o rotó (boca P1: 0.00 mm, 15.00°)');
+    }
 
     const sinT = { ...g.entrada, piezas: g.entrada.piezas.filter((p) => p.instancia_id !== 'T'), conexiones: g.entrada.conexiones.filter((x) => x.a[0] !== 'T' && x.b[0] !== 'T') };
-    const e3 = estadoCircuito(sinT, c0);
-    expect(e3.vigente).toBe(false);
-    if (!e3.vigente) expect(e3.motivos).toEqual(['la pieza T ya no existe', 'la unión R2-T ya no existe', 'la unión T-R4 ya no existe']);
+    const e3 = estadoCircuito(sinT, elements, c0);
+    expect(e3).toEqual({ vigente: false, motivos: ['la pieza T ya no existe', 'la unión R2-T ya no existe', 'la unión T-R4 ya no existe'] });
+
+    const sinR1 = { ...g.entrada, piezas: g.entrada.piezas.filter((p) => p.instancia_id !== 'R1'), conexiones: g.entrada.conexiones.filter((x) => x.a[0] !== 'R1' && x.b[0] !== 'R1') };
+    const e4 = estadoCircuito(sinR1, elements, c0);
+    expect(e4.vigente).toBe(false);
+    if (!e4.vigente) expect(e4.motivos).toEqual(['el tronco R1 ya no existe (punto de salida de BAJ-1)', 'la pieza R1 ya no existe', 'la unión R1-R2 ya no existe']);
   });
 
-  it('cambiar el largo de un tramo o romper una unión también lo deja desactualizado; recalcular es explícito', () => {
-    const g = guardado(cadena(true));
+  it('cambiar el largo de un tramo lo deja desactualizado; recalcular es explícito', () => {
+    const { t, elements } = proyecto();
+    const g = guardado(t, elements);
     const c0 = circuitosOf(g.entrada)[0];
     const otraLongitud = structuredClone(g.entrada);
     otraLongitud.piezas.find((p) => p.instancia_id === 'R2')!.longitud_mm = 1200;
-    const e = estadoCircuito(otraLongitud, c0);
-    expect(e.vigente).toBe(false);
-    if (!e.vigente) expect(e.motivos).toEqual(['la longitud de la pieza R2 cambió (1500.00 mm → 1200.00 mm)']);
+    const e = estadoCircuito(otraLongitud, elements, c0);
+    expect(e).toEqual({ vigente: false, motivos: ['la longitud de la pieza R2 cambió (1500.00 mm → 1200.00 mm)'] });
 
-    const rec = recalcularCircuito(otraLongitud, 'CIR-1');
+    const rec = recalcularCircuito(otraLongitud, elements, 'CIR-1');
     expect(rec.ok).toBe(true);
     if (!rec.ok) return;
     const c1 = circuitosOf(rec.entrada)[0];
-    expect(c1.nombre).toBe('Alimentación TG-1');
+    expect(c1.nombre).toBe('Alimentación B3');
     expect(c1.sumaMm).toBeCloseTo(c0.sumaMm - 300, 6);
-    expect(estadoCircuito(rec.entrada, c1)).toEqual({ vigente: true });
+    expect(c1.bajadasMm).toBeCloseTo(c0.bajadasMm, 9);
+    expect(estadoCircuito(rec.entrada, elements, c1)).toEqual({ vigente: true });
     expect(circuitosOf(borrarCircuito(rec.entrada, 'CIR-1'))).toEqual([]);
+  });
+
+  it('dos equipos sobre el mismo tramo: la bandeja es el trecho entre los dos puntos de salida', () => {
+    const t0 = cadena(true);
+    const elements = [equipo(TG, 'Tablero General A', [200, 1150, 0]), equipo(B3, 'Bomba 3', [900, 650, 0])];
+    const b1 = crearBajada(t0, productos, elements, { equipo: TG, tronco: 'R1', desde_boca: 'P1', distancia_mm: 200, lado: 'izquierda' });
+    if (!b1.ok) throw new Error(b1.motivo);
+    const b2 = crearBajada(b1.entrada, productos, elements, { equipo: B3, tronco: 'R1', desde_boca: 'P2', distancia_mm: 100, lado: 'derecha' });
+    if (!b2.ok) throw new Error(b2.motivo);
+    const r = caminoEntreEquipos(b2.entrada, elements, EO, ED);
+    expect(r).toMatchObject({ ok: true, completa: true });
+    if (!r.ok) return;
+    expect(r.cruces).toEqual([expect.objectContaining({ pieza: 'R1', entrada: 'bajada:BAJ-1', salida: 'bajada:BAJ-2', longitudMm: 700, fuente: 'bajada' })]);
+    expect(r.bajadasMm).toBeCloseTo(1000 + 500, 9);
+    expect(r.sumaMm).toBeCloseTo(700 + 1500, 9);
+  });
+
+  it('un archivo con circuitos de boca a boca (formato anterior) se rechaza sin repararlo', () => {
+    const viejo = { ...cadena(true), circuitos_ws: [{ id: 'CIR-1', nombre: 'Viejo', origen: O, destino: D, cruces: [], uniones: [], sumaMm: 0, completa: true, guardado_iso: '' }] };
+    expect(() => validarCircuitosDeArchivo(viejo)).toThrow('el circuito "Viejo" va de una boca de bandeja a otra (formato anterior): no es compatible con esta versión, que une equipos. No se intenta repararlo.');
   });
 });
 

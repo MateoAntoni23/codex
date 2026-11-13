@@ -71,14 +71,11 @@ Rango del ángulo por instancia: 1° a 180°. El catálogo no declara rango.
 - **Resultados, sección «Curvas eslabonadas»:** los eslabones por curva (ángulo, N y eje) y los códigos a
   comprar, con la cuenta escrita.
 
-## Proyectos anteriores con CUS — leer antes de abrir uno
-- **Qué pasa al abrirlos:** las CUS ya colocadas aparecen **desactualizadas** (A-6, huella distinta; las 40 CUS
-  declaradas en PB1). No cambian solas.
-- **Qué hace «Actualizar»:** adopta la definición nueva **conservando la pose**. Como la geometría y los nombres
-  de boca cambian (P1_horizontal → P1, P2_vertical → P2), esas piezas se mueven y sus uniones quedan marcadas
-  como que no cumplen (no se borran, y se puede deshacer).
-- **Recomendado:** borrar y volver a colocar cada CUS. Una migración automática que renombre bocas y recoloque
-  desde la boca de entrada queda **pendiente**; no la hice.
+## Proyectos anteriores con CUS — sin migración (2026-11-13)
+- **Cancelada la migración automática** que figuraba como pendiente. Decisión del operador: no hay proyectos
+  guardados. En su lugar, la app hace un **corte limpio**: un archivo de proyecto de una versión anterior
+  (fileVersion 1 ó 2, o un autoguardado de esquema anterior) **no se abre**; avisa que no es compatible y no
+  intenta repararlo. Ver `docs/traspaso-equipos-extremos.md`.
 
 ## Pruebas
 - `curvaEslabonada.test.ts` (20):

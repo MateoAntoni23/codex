@@ -38,6 +38,7 @@ import type { PatternApproval } from '../../configurator/patternApprovals';
 import type { AporteRule } from '../../configurator/aporteTrazado';
 
 const FIXTURE = resolve(__dirname, '../../../e2e/fixtures/user-report-20261107.workspace.json');
+const FIXTURE_ORIGINAL_V1 = resolve(__dirname, '../../../e2e/fixtures/reference/user-report-20261107.ORIGINAL.workspace.json');
 
 function resetAll(): void {
   localStorage.clear();
@@ -188,9 +189,23 @@ describe('autoguardado y restauración (IndexedDB propia)', () => {
     stop();
   });
 
-  it('un registro dañado se aparta (no se pisa) y se abre un proyecto vacío con aviso', async () => {
+  it('un registro de una versión anterior se aparta sin repararlo y se abre un proyecto vacío con aviso', async () => {
     await writeCurrentRecord({
       schema: 'codex:workspaceProject/1',
+      savedAt: new Date().toISOString(),
+      project: { projectV2: { schemaVersion: 2, elements: [], evidence: [] }, trayInput: {} },
+    } as unknown as Parameters<typeof writeCurrentRecord>[0]);
+    await bootProject();
+    const s = useProjectStatusStore.getState();
+    expect(s.booted).toBe(true);
+    expect(s.notice).toMatch(/^El proyecto guardado en este equipo es de una versión anterior de la app y no es compatible con esta: no se intentó repararlo\. Se apartó como "/);
+    expect(useWorkspaceStore.getState().elements).toEqual([]);
+    expect(await readCurrentRecord()).toBeNull(); // 'current' liberado, el original apartado
+  });
+
+  it('un registro dañado se aparta (no se pisa) y se abre un proyecto vacío con aviso', async () => {
+    await writeCurrentRecord({
+      schema: 'codex:workspaceProject/2',
       savedAt: new Date().toISOString(),
       project: { projectV2: { schemaVersion: 2, elements: 'roto' }, trayInput: {} },
     });
@@ -237,7 +252,7 @@ describe('autoguardado y restauración (IndexedDB propia)', () => {
       expect(names).toEqual([DB_NAME, WORKSPACE_DB_NAME].sort());
       // El editor inicial nunca recibió una clave del espacio de trabajo.
       const wsRec = (await readCurrentRecord()) as { schema: string };
-      expect(wsRec.schema).toBe('codex:workspaceProject/1');
+      expect(wsRec.schema).toBe('codex:workspaceProject/2');
     } finally {
       _resetIdbFactory();
     }
@@ -248,7 +263,7 @@ describe('acciones de proyecto', () => {
   it('guardar copia funciona con el proyecto vacío y sin motor', () => {
     const { json, name } = buildProjectCopy();
     const f = JSON.parse(json);
-    expect(f.fileVersion).toBe(2);
+    expect(f.fileVersion).toBe(3);
     expect(f.projectV2.elements).toEqual([]);
     expect(f.trayInput.piezas).toEqual([]);
     expect('library' in f).toBe(false); // biblioteca vacía: sin bloque
@@ -425,32 +440,31 @@ describe('biblioteca protegida', () => {
     expect(r.status).toBe('opened');
     expect(chooser).not.toHaveBeenCalled();
     expect(localStorage.getItem(LIBRARY_STORAGE_KEY)).toBe(raw);
-    // También un v2 sin bloque (biblioteca vacía al guardar).
+    // Un v2 (versión anterior) no se abre: no pregunta ni toca la biblioteca.
     const v2 = JSON.parse(readFileSync(FIXTURE, 'utf8'));
     v2.fileVersion = 2;
-    await openProjectText(JSON.stringify(v2), 'v2-sin-library.json', chooser);
+    const r2 = await openProjectText(JSON.stringify(v2), 'v2-sin-library.json', chooser);
+    expect(r2).toEqual({ status: 'error', error: 'El archivo es de una versión anterior de la app (versión de archivo 2) y no es compatible con esta (versión 3). No se intenta repararlo.' });
     expect(chooser).not.toHaveBeenCalled();
     expect(localStorage.getItem(LIBRARY_STORAGE_KEY)).toBe(raw);
   });
 
-  it('archivo v1 con catalogConfig: aviso parcial; adoptar sólo reemplaza overrides', async () => {
+  it('corte limpio: un archivo v1 (aunque traiga catalogConfig) no se abre; no pregunta, no adopta, no cambia el proyecto', async () => {
     withLibrary();
-    const v1 = JSON.parse(readFileSync(FIXTURE, 'utf8'));
+    const antes = structuredClone(projectState());
+    const lib = localStorage.getItem(LIBRARY_STORAGE_KEY);
+    const v1 = JSON.parse(readFileSync(FIXTURE_ORIGINAL_V1, 'utf8'));
+    expect(v1.fileVersion).toBe(1);
     v1.catalogConfig = {
       version: 'codex:catalogConfig/1',
       overrides: { 'SAM_XPS-300-Z': { ...MAPPING, productId: 'SAM_XPS-300-Z' } },
     };
-    const seen: Array<{ partial: boolean }> = [];
-    const r = await openProjectText(JSON.stringify(v1), 'v1.json', async (c) => {
-      seen.push({ partial: c.partial });
-      return 'adopt';
-    });
-    expect(seen).toEqual([{ partial: true }]);
-    expect(r).toMatchObject({ status: 'opened', libraryAdopted: true });
-    const st = useCatalogConfigStore.getState();
-    expect(Object.keys(st.overrides)).toEqual(['SAM_XPS-300-Z']);
-    expect(st.approvals['SAM_TPS-300-Z']).toEqual(APPROVAL); // intactas
-    expect(st.aporteOverrides['SAM_TPS-300-Z']).toEqual(APORTE);
+    const chooser = vi.fn(async () => 'adopt' as const);
+    const r = await openProjectText(JSON.stringify(v1), 'v1.json', chooser);
+    expect(r).toEqual({ status: 'error', error: 'El archivo es de una versión anterior de la app (versión de archivo 1) y no es compatible con esta (versión 3). No se intenta repararlo.' });
+    expect(chooser).not.toHaveBeenCalled();
+    expect(localStorage.getItem(LIBRARY_STORAGE_KEY)).toBe(lib);
+    expect(projectState()).toEqual(antes);
   });
 
   it('si no se puede guardar la copia de respaldo, no se adopta', async () => {

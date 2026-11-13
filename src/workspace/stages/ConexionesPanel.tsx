@@ -4,13 +4,15 @@
  * Reubica lo que ya existe: las conexiones del catálogo importado (Excel), todas
  * con estado "sin recorrido" (asignar recorridos es otro hito), y los circuitos
  * del trazado con su edición actual (cable, cantidad, recorrido por piezas).
- * Arriba, el recorrido entre dos bocas del trazado colocado con su longitud.
+ * Arriba (etapa 1): el enlace de cada equipo con la bandeja y el circuito entre
+ * dos equipos; debajo, la medición entre dos bocas del trazado colocado.
  */
 import { useMemo } from 'react';
 import { useWorkspaceStore } from '../useWorkspaceStore';
 import { useTrayStore } from '../../tray/store';
 import { Empty, Section } from './shared';
 import { RecorridoSection } from './RecorridoSection';
+import { BajadasSection, CircuitoEquiposSection } from './CircuitoEquipos';
 
 export function ConexionesPanel() {
   const catalog = useWorkspaceStore((s) => s.importedCatalog);
@@ -38,6 +40,8 @@ export function ConexionesPanel() {
 
   return (
     <div className="stage-panel" data-testid="panel-conexiones">
+      <BajadasSection />
+      <CircuitoEquiposSection />
       <RecorridoSection />
 
       <Section title={`Conexiones del Excel (${conexiones.length})`} testid="catalog-connections">

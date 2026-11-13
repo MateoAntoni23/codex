@@ -15,6 +15,8 @@ import { placeDefinition, puertosFromWorld } from '../../placement/placementCore
 import { translatePiece } from '../../trayMovement';
 import { caminoEntreBocas } from '../../recorridos/caminoEntreBocas';
 import { circuitosOf, estadoCircuito, guardarCircuito } from '../../recorridos/circuitosGuardados';
+import { crearBajada } from '../../equipos/bajada';
+import type { EquipmentElement } from '../../../types/domain-v2';
 import {
   asentarSalidasDeEnganche, crearEnganche, dcpsHuerfanas, enganchesOf, estadoEnganche, MOTIVO_DCPS_HUERFANA, MOTIVO_SIN_ACCESORIO_ESCALERA,
   origenDeBoca, validarEnganche, ENGANCHES_KEY, type Enganche,
@@ -188,26 +190,37 @@ describe('derivación en un tramo — perforada', () => {
   it('un circuito que pasa por el enganche queda desactualizado si el enganche cambia o queda desactualizado', () => {
     const next = continuarRecto(perforada().entrada, 'DER-1', 'P1', 'SAM_TRPS-100-22-Z', 1000);
     const ram = next.conexiones[0].b[0];
-    const g = guardarCircuito(next, 'Ramal 100', { pieza: 'T', boca: 'P1' }, { pieza: ram, boca: 'P2' });
+    // Un equipo en cada punta (etapa 1): enlazados en la boca P1 del tronco y en la P2 del ramal.
+    const eq = (id: string, pos: number[]) => ({
+      id, name: id, tag: null, category: 'pump', parentId: null, placementStatus: 'placed',
+      transform: { positionMm: { x: pos[0], y: pos[1], z: pos[2] }, rotation: { x: 0, y: 0, z: 0, w: 1 } },
+    }) as unknown as EquipmentElement;
+    const els = [eq('A', [0, 0, 1000]), eq('B', [0, 0, 2000])];
+    const b1 = crearBajada(next, productos, els, { equipo: 'A', tronco: 'T', desde_boca: 'P1', distancia_mm: 0, lado: 'derecha' });
+    if (!b1.ok) throw new Error(b1.motivo);
+    const b2 = crearBajada(b1.entrada, productos, els, { equipo: 'B', tronco: ram, desde_boca: 'P2', distancia_mm: 0, lado: 'derecha' });
+    if (!b2.ok) throw new Error(b2.motivo);
+    const g = guardarCircuito(b2.entrada, els, 'Ramal 100', { equipo: 'A' }, { equipo: 'B' });
     if (!g.ok) throw new Error(g.motivo);
     const c = circuitosOf(g.entrada)[0];
     expect(c.enganches).toEqual([{ id: 'ENG-1', firma: expect.any(String) }]);
-    expect(c.sumaMm).toBeCloseTo(1500 + 80.542 + 1000, 3);
-    expect(estadoCircuito(g.entrada, c)).toEqual({ vigente: true });
-    expect(estadoCircuito(JSON.parse(JSON.stringify(g.entrada)), c)).toEqual({ vigente: true });
+    expect(c.bandejaMm).toBeCloseTo(1500 + 80.542 + 1000, 3);
+    expect(c.sumaMm).toBeCloseTo(c.bandejaMm + b1.bajada.longitud_mm + b2.bajada.longitud_mm, 9);
+    expect(estadoCircuito(g.entrada, els, c)).toEqual({ vigente: true });
+    expect(estadoCircuito(JSON.parse(JSON.stringify(g.entrada)), els, c)).toEqual({ vigente: true });
 
     const movido = translatePiece(g.entrada, 'T', [0, 0, 20]);
-    const e1 = estadoCircuito(movido, c);
+    const e1 = estadoCircuito(movido, els, c);
     expect(e1.vigente).toBe(false);
     if (!e1.vigente) expect(e1.motivos).toContain('el enganche ENG-1 quedó desactualizado: el tronco se movió o rotó (boca P1: 20.00 mm, 0.00°)');
 
     const cambiado = { ...g.entrada, [ENGANCHES_KEY]: [{ ...enganchesOf(g.entrada)[0], distancia_mm: 1600 }] } as TrayInput;
-    const e2 = estadoCircuito(cambiado, c);
+    const e2 = estadoCircuito(cambiado, els, c);
     expect(e2.vigente).toBe(false);
     if (!e2.vigente) expect(e2.motivos).toContain('el enganche ENG-1 cambió');
 
     const sin = { ...g.entrada, [ENGANCHES_KEY]: [] } as TrayInput;
-    const e3 = estadoCircuito(sin, c);
+    const e3 = estadoCircuito(sin, els, c);
     expect(e3.vigente).toBe(false);
     if (!e3.vigente) expect(e3.motivos).toContain('el enganche ENG-1 ya no existe');
   });

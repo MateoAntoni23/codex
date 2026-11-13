@@ -27,6 +27,7 @@ import { bocaConSeccion, checkJoin, formatJoin } from './placement/joins';
 import { compatibilidadDirecta } from './compatibilidadFisica';
 import { UNIONS_KEY, unionRecord, unionsOf } from './workspaceOperation';
 import { LadderPiece, isLadderFamily } from './ladderGeometry';
+import { BajadasEnEscena } from './equipos/BajadasEnEscena';
 
 type V3 = [number, number, number];
 
@@ -539,6 +540,7 @@ ${body}
             color="#b9e539" dashed dashSize={0.1} gapSize={0.08} lineWidth={2} />
         );
       })}
+      <BajadasEnEscena entrada={entrada} />
     </group>
   );
 }
