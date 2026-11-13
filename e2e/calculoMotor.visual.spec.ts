@@ -1,0 +1,166 @@
+/**
+ * E2E — etapa 3, parte A: los circuitos de potencia viajan al motor (2026-11-13).
+ *
+ * Con gestos reales:
+ *   1. Dos equipos, un trazado entre ellos (recto → curva plana 90 → recto) y un enlace en cada punta.
+ *   2. Un circuito de potencia con cable y cantidad (Sintenax tripolar 3 × 50 mm², × 2) y uno de
+ *      maniobra (tetrapolar 4 × 2,5 mm²) entre los mismos equipos.
+ *   3. Calcular con el motor real (reserva 20 %): el motor devuelve ocupación y reserva de cada pieza
+ *      y se ven en pantalla, iguales a lo que devolvió. El PE viaja armado desde el trazado
+ *      (D-20 16 mm², D-21 verde/amarillo) y el motor informa cobertura completa.
+ *   4. El circuito de maniobra aparece con su longitud y con el motivo por el que no se calcula (D-11).
+ */
+import { test, expect, type Page } from '@playwright/test';
+import { mkdirSync } from 'node:fs';
+import { resolve, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const HERE = dirname(fileURLToPath(import.meta.url));
+const OUT_DIR = resolve(HERE, 'output');
+
+type V3 = [number, number, number];
+type Codex = {
+  __codex: {
+    trayStore: { getState: () => { entrada: { piezas: Array<{ instancia_id: string }> }; result: Record<string, unknown> | null; status: string } };
+    workspaceStore: { getState: () => { elements: Array<{ id: string; name: string }> } };
+  };
+};
+const piezas = (page: Page) => page.evaluate(() => (window as unknown as Codex).__codex.trayStore.getState().entrada.piezas);
+const elementos = (page: Page) => page.evaluate(() => (window as unknown as Codex).__codex.workspaceStore.getState().elements);
+const resultado = (page: Page) => page.evaluate(() => (window as unknown as Codex).__codex.trayStore.getState().result);
+
+async function abrir(page: Page) {
+  await page.goto('/?etapa=equipos');
+  await page.getByTestId('stage-bar').waitFor({ timeout: 20_000 });
+  await page.waitForFunction(
+    () => ((window as unknown as { __codex?: { trayStore?: { getState: () => { context: { productos: unknown[] } | null } } } }).__codex?.trayStore?.getState().context?.productos.length ?? 0) > 0,
+    undefined,
+    { timeout: 20_000 },
+  );
+}
+
+async function crearEquipo(page: Page, nombre: string, pos: V3): Promise<string> {
+  const antes = (await elementos(page)).length;
+  await page.getByTestId('new-equipment').click();
+  const form = page.getByTestId('new-equipment-form');
+  await form.locator('#paf-cat').selectOption('electrical_panel');
+  await form.locator('#paf-name').fill(nombre);
+  await form.locator('input[value="placed"]').check();
+  await form.locator('#paf-x').fill(String(pos[0]));
+  await form.locator('#paf-y').fill(String(pos[1]));
+  await form.locator('#paf-z').fill(String(pos[2]));
+  await form.getByRole('button', { name: 'Crear' }).click();
+  await expect.poll(async () => (await elementos(page)).length).toBe(antes + 1);
+  return (await elementos(page)).find((e) => e.name === nombre)!.id;
+}
+
+async function continueFrom(page: Page, freeEnd: RegExp, productoId: string, opts: { side?: 'left' | 'right'; length?: number } = {}) {
+  const before = (await piezas(page)).length;
+  await page.getByTestId('free-end').filter({ hasText: freeEnd }).first().click();
+  const select = page.locator('[data-codex-routing-product-select]');
+  await expect(select).toBeVisible();
+  await select.selectOption(productoId);
+  if (opts.side) await page.locator(`[data-codex-routing-hand="${opts.side}"]`).click();
+  if (opts.length) await page.locator('[data-codex-routing-length-input]').fill(String(opts.length));
+  await page.locator('text=Confirmar continuación').click();
+  await expect.poll(async () => (await piezas(page)).length).toBe(before + 1);
+}
+
+async function enlazar(page: Page, equipoId: string, tronco: string, desde: 'P1' | 'P2', distancia: number, lado: 'izquierda' | 'derecha') {
+  const form = page.getByTestId('baj-form');
+  await form.getByTestId('baj-equipo').selectOption(equipoId);
+  await form.getByTestId('baj-tronco').selectOption(tronco);
+  await form.getByTestId('baj-desde').selectOption(desde);
+  await form.getByTestId('baj-distancia').fill(String(distancia));
+  await form.getByTestId('baj-lado').selectOption(lado);
+  await form.getByTestId('baj-crear').click();
+  await expect(page.getByTestId('baj-msg')).toContainText('creado');
+}
+
+async function guardarCircuito(page: Page, nombre: string, o: string, d: string, cable: { tipo: string; formacion: string; cantidad: number; funcion: string }) {
+  await page.getByTestId('circuito-origen').selectOption(o);
+  await page.getByTestId('circuito-destino').selectOption(d);
+  await page.getByTestId('circuito-cable-linea').selectOption({ label: 'Sintenax Valio' });
+  await page.getByTestId('circuito-cable-tipo').selectOption({ label: cable.tipo });
+  await page.getByTestId('circuito-cable-formacion').selectOption(cable.formacion);
+  await page.getByTestId('circuito-cable-cantidad').fill(String(cable.cantidad));
+  await page.getByTestId('circuito-cable-funcion-select').selectOption(cable.funcion);
+  await page.getByTestId('circuito-nombre-input').fill(nombre);
+  await page.getByTestId('circuito-guardar').click();
+  await expect(page.getByTestId('circuito-guardado-msg')).toContainText(`Circuito "${nombre}" guardado`);
+}
+
+test.describe('Etapa 3 A — cálculo del motor', () => {
+  test.setTimeout(300_000);
+  test.beforeAll(() => mkdirSync(OUT_DIR, { recursive: true }));
+
+  test('potencia al motor: ocupación y reserva en pantalla; maniobra con su longitud y el motivo D-11', async ({ page }) => {
+    await abrir(page);
+    const tg = await crearEquipo(page, 'Tablero General A', [300, 1500, 1200]);
+    const b3 = await crearEquipo(page, 'Bomba 3', [2600, 2800, 500]);
+    await page.getByTestId('stage-tab-bandejas').click();
+    await page.getByTestId('tool-bandejas-tramo').click();
+    await page.getByTestId('add-product-select').selectOption('SAM_TRPS-300-22-Z');
+    await page.getByRole('button', { name: 'Crear tramo' }).click();
+    await expect.poll(async () => (await piezas(page)).length).toBe(1);
+    await continueFrom(page, /^↗ 1\. TRPS-300-22-Z · Boca x_max/, 'SAM_CPS-300-90-Z', { side: 'left' });
+    await continueFrom(page, /^↗ 2\. CPS-300-90-Z/, 'SAM_TRPS-300-22-Z', { length: 2000 });
+    const [r1, curva, r2] = await piezas(page);
+    await page.getByTestId('stage-tab-conexiones').click();
+    await enlazar(page, tg, r1.instancia_id, 'P1', 200, 'izquierda');
+    await enlazar(page, b3, r2.instancia_id, 'P2', 300, 'derecha');
+    await guardarCircuito(page, 'Fuerza B3', tg, b3, { tipo: 'Tripolar · cobre', formacion: 'PRY-SVALIO-CU-3x50', cantidad: 2, funcion: 'potencia' });
+    await guardarCircuito(page, 'Mando B3', b3, tg, { tipo: 'Tetrapolar · cobre', formacion: 'PRY-SVALIO-CU-4x2.5', cantidad: 1, funcion: 'maniobra' });
+
+    // Antes de calcular: qué viaja y qué no, y por qué.
+    await page.getByTestId('stage-tab-resultados').click();
+    await expect(page.getByTestId('circuito-al-motor')).toHaveCount(1);
+    await expect(page.getByTestId('circuito-al-motor')).toContainText('Fuerza B3 → motor: Sintenax Valio · Tripolar · cobre · 3 × 50 mm² × 2, 3 pieza(s)');
+    const mando = page.getByTestId('circuito-no-motor');
+    await expect(mando).toHaveCount(1);
+    await expect(mando).toContainText('Mando B3');
+    await expect(mando).toContainText(/longitud [\d.,]+ mm · no se calcula/);
+    await expect(mando.getByTestId('circuito-no-motor-motivo')).toContainText('D-11 del motor: los circuitos de mando y señal no tienen reglas de disposición ni de ocupación acordadas');
+
+    // Calcular con el motor real.
+    await page.getByTestId('reserva-input').fill('20');
+    await page.getByTestId('calculate-tray').click();
+    await expect.poll(async () => page.evaluate(() => (window as unknown as Codex).__codex.trayStore.getState().status), { timeout: 60_000 }).toBe('vigente');
+    const res = (await resultado(page))!;
+    const circs = res.circuitos as Record<string, unknown>;
+    expect(Object.keys(circs)).toEqual(['CIR-1']); // sólo potencia
+    const entradaMotor = res.entrada as { circuitos: Array<{ separado: boolean; funcion: string; cantidad: number; cable_id: string; recorrido: string[] }>; pe: { cable_id: string; seccion_requerida_mm2: number } };
+    expect(entradaMotor.circuitos).toEqual([expect.objectContaining({ funcion: 'potencia', separado: false, cantidad: 2, cable_id: 'PRY-SVALIO-CU-3x50', recorrido: [r1.instancia_id, curva.instancia_id, r2.instancia_id] })]);
+    expect(entradaMotor.pe).toMatchObject({ cable_id: 'PRY-SASTFLEX-CU-1x16', seccion_requerida_mm2: 16 });
+
+    const calc = page.getByTestId('calculo-motor');
+    await expect(calc.getByTestId('calculo-motor-procedencia')).toContainText('Calculado por el motor motor_bandejas');
+    await expect(calc.getByTestId('motor-circuito')).toHaveCount(1);
+    await expect(calc.getByTestId('motor-circuito')).toHaveAttribute('data-recorrido', 'CONTINUO');
+    // Ocupación y reserva de cada pieza: lo que devolvió el motor, en pantalla.
+    const ocup = res.ocupacion as Record<string, { secciones: Record<string, { estado: string; ancho_ocupado_mm?: number; reserva?: { reserva_libre_pct: number } }> }>;
+    for (const p of [r1, r2]) {
+      const s = ocup[p.instancia_id].secciones.pieza;
+      expect(s.ancho_ocupado_mm).toBeGreaterThan(0);
+      const fila = calc.locator(`[data-testid="motor-pieza"][data-pieza="${p.instancia_id}"] [data-testid="motor-ocupacion"]`);
+      await expect(fila).toHaveAttribute('data-estado', s.estado);
+      await expect(fila).toHaveAttribute('data-ocupado', String(s.ancho_ocupado_mm));
+      await expect(fila).toHaveAttribute('data-reserva-libre', String(s.reserva!.reserva_libre_pct));
+      await expect(fila).toContainText(`ocupa ${s.ancho_ocupado_mm!.toLocaleString('es-AR', { maximumFractionDigits: 1 })} mm de 300 mm`);
+      await expect(fila).toContainText('reserva libre');
+      await expect(fila).toContainText('M-RES-1');
+    }
+    // PE del trazado: cobertura completa según el motor.
+    await expect(calc.getByTestId('motor-pe')).toHaveAttribute('data-cobertura', 'COMPLETA');
+    await expect(calc.getByTestId('motor-pe')).toContainText('PRY-SASTFLEX-CU-1x16');
+    // El resumen del motor, tal cual.
+    const resumen = res.resumen as { estado_trazado: string; incumplimientos: string[] };
+    await expect(calc.getByTestId('motor-resumen')).toHaveAttribute('data-estado', resumen.estado_trazado);
+    await expect(calc.getByTestId('motor-incumplimiento')).toHaveCount(resumen.incumplimientos.length);
+    expect(resumen.incumplimientos).not.toContain('cobertura del PE incompleta');
+    expect(resumen.incumplimientos).not.toContain('PE sin conexión al sistema de protección');
+    // La maniobra sigue con su motivo después de calcular.
+    await expect(page.getByTestId('circuito-no-motor-motivo')).toContainText('D-11');
+    await page.screenshot({ path: resolve(OUT_DIR, 'calculo-motor-01.png'), fullPage: true });
+  });
+});

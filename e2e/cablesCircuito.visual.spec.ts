@@ -82,12 +82,12 @@ async function enlazar(page: Page, equipoId: string, tronco: string, desde: 'P1'
 }
 
 /** Cable en cascada: línea → tipo → formación, cantidad y disposición. */
-async function elegirCable(page: Page, prefijo: string, o: { tipo: string; formacion: string; cantidad: number; separado: boolean }) {
+async function elegirCable(page: Page, prefijo: string, o: { tipo: string; formacion: string; cantidad: number; funcion?: string }) {
   await page.getByTestId(`${prefijo}-cable-linea`).selectOption({ label: 'Sintenax Valio' });
   await page.getByTestId(`${prefijo}-cable-tipo`).selectOption({ label: o.tipo });
   await page.getByTestId(`${prefijo}-cable-formacion`).selectOption(o.formacion);
   await page.getByTestId(`${prefijo}-cable-cantidad`).fill(String(o.cantidad));
-  await page.getByTestId(`${prefijo}-cable-separado-${o.separado ? 'si' : 'no'}`).check();
+  if (o.funcion) await page.getByTestId(`${prefijo}-cable-funcion-select`).selectOption(o.funcion);
 }
 
 test.describe('Etapa 2 — el cable del circuito', () => {
@@ -127,13 +127,11 @@ test.describe('Etapa 2 — el cable del circuito', () => {
     await page.getByTestId('circuito-cable-tipo').selectOption({ label: 'Tripolar · cobre' });
     expect(await page.getByTestId('circuito-cable-formacion').locator('option').count()).toBe(1 + 16);
     await expect(page.getByTestId('circuito-cable-cantidad')).toHaveValue('1'); // por defecto 1
-    await expect(page.getByTestId('circuito-cable-separado-si')).not.toBeChecked(); // la disposición no se presume
-    await expect(page.getByTestId('circuito-cable-separado-no')).not.toBeChecked();
-    await expect(page.getByTestId('circuito-cable-separado')).toContainText('Separados: un diámetro de cable libre entre cada uno');
-    await expect(page.getByTestId('circuito-cable-separado')).toContainText('Juntos: tocándose, uno al lado del otro');
-    await expect(page.getByTestId('circuito-cable-funcion')).toContainText('Función: potencia');
-    await expect(page.getByTestId('circuito-cable-funcion')).toContainText('el conductor de protección (PE) se declara aparte');
-    await elegirCable(page, 'circuito', { tipo: 'Tripolar · cobre', formacion: 'PRY-SVALIO-CU-3x50', cantidad: 2, separado: false });
+    // Etapa 3: la disposición no se elige (en contacto, D-02, confirmado por el operador); la función sí, potencia por defecto.
+    await expect(page.getByTestId('circuito-cable-disposicion')).toContainText('Juntos, en contacto, en una sola capa (D-02)');
+    await expect(page.getByTestId('circuito-cable-funcion-select')).toHaveValue('potencia');
+    await expect(page.getByTestId('circuito-cable-funcion')).toContainText('El conductor de protección (PE) no es un circuito');
+    await elegirCable(page, 'circuito', { tipo: 'Tripolar · cobre', formacion: 'PRY-SVALIO-CU-3x50', cantidad: 2 });
     await page.getByTestId('circuito-nombre-input').fill('TG-A → Bomba 3');
     await page.getByTestId('circuito-guardar').click();
     await expect(page.getByTestId('circuito-guardado-msg')).toHaveText('Circuito "TG-A → Bomba 3" guardado. Está en Resultados.');
@@ -185,12 +183,12 @@ test.describe('Etapa 2 — el cable del circuito', () => {
     // 5. Elegir el cable después, desde Resultados: pasa a completo.
     const fila2 = page.getByTestId('circuito-fila').nth(1);
     await fila2.getByTestId('circuito-cable-editar').click();
-    await elegirCable(page, 'editar', { tipo: 'Tetrapolar · cobre', formacion: 'PRY-SVALIO-CU-4x25/16', cantidad: 1, separado: true });
+    await elegirCable(page, 'editar', { tipo: 'Tetrapolar · cobre', formacion: 'PRY-SVALIO-CU-4x25/16', cantidad: 1 });
     await page.getByTestId('circuito-cable-guardar').click();
     await expect(page.getByTestId('circuitos-msg')).toHaveText('Cable guardado.');
     await expect(fila2).toHaveAttribute('data-completo', 'true');
     await expect(fila2.getByTestId('circuito-cable')).toHaveText('Sintenax Valio · Tetrapolar · cobre · 4 × 25/16 mm²');
     await expect(fila2.getByTestId('circuito-cantidad')).toHaveText('1');
-    expect((await circuitos(page))[1].cable).toEqual({ cable_id: 'PRY-SVALIO-CU-4x25/16', cantidad: 1, separado: true, funcion: 'potencia' });
+    expect((await circuitos(page))[1].cable).toEqual({ cable_id: 'PRY-SVALIO-CU-4x25/16', cantidad: 1, separado: false, funcion: 'potencia' });
   });
 });

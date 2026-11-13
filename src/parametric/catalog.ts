@@ -3,8 +3,10 @@
  *
  * Fuente (originales y volúmenes): artifacts/parametric/fidelity.json y los
  * reportes STEP de tools/step_parametric/report/*.json. Los GLB se sirven desde
- * /parametric/*. Procedencia de los STEP: aportados al proyecto por el usuario;
- * no confirmados como originales del fabricante.
+ * /parametric/*. Procedencia de los STEP (operador, 2026-11-13): los dibujó el
+ * operador a partir de los CAD de SAMET. La geometría medida tiene autoridad al
+ * milímetro (viene del fabricante), no a la décima (pasó por un redibujo):
+ * ninguna regla se apoya en diferencias menores a 0,5 mm entre dos modelos.
  *
  * Fuente (reconstrucciones y variantes): recetas paramétricas JS en
  * ./geometry/outlines.ts, despachadas por ./geometry/recipes.ts. Las bocas y

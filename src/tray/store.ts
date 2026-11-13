@@ -6,11 +6,13 @@ import { loadStaticCatalog, seedStaticCatalog, staticContext } from '../catalog/
 import { emptyTrayInput, isNeutralPe } from '../project/emptyProject';
 import { placedOf } from '../workspace/placement/definitions';
 import { puertosFromWorld, worldPorts } from '../workspace/placement/placementCore';
+import { circuitosParaMotor, peDelTrazado } from '../workspace/motor/paraMotor';
+import type { EquipmentElement } from '../types/domain-v2';
 const manager=createManager();
 let callSequence=0;
 
 /** Workspace-only fields that must not be sent to the Python motor (additionalProperties:false). */
-const WS_ONLY: ReadonlySet<string> = new Set(['excepciones_conexion', 'definiciones_ws', 'uniones_ws', 'circuitos_ws', 'enganches_ws']);
+const WS_ONLY: ReadonlySet<string> = new Set(['excepciones_conexion', 'definiciones_ws', 'uniones_ws', 'circuitos_ws', 'enganches_ws', 'bajadas_ws']);
 
 /**
  * Strips workspace-only fields from TrayInput before submitting to the motor AND
@@ -36,16 +38,29 @@ const WS_ONLY: ReadonlySet<string> = new Set(['excepciones_conexion', 'definicio
  * y no cambian. Es side-effect free y conserva el `TrayInput` original
  * intacto (copia profunda de las secciones afectadas).
  */
-export function toMotorEntrada(trayInput: TrayInput): Record<string,unknown> {
+export function toMotorEntrada(
+  trayInput: TrayInput,
+  opts: { elements?: readonly EquipmentElement[]; idsCables?: readonly string[] } = {},
+): Record<string,unknown> {
   const out: Record<string,unknown> = {};
   for (const [k,v] of Object.entries(trayInput)) {
     if (!WS_ONLY.has(k)) out[k] = v;
   }
-  // `pe` neutro (proyecto sin PE definido, ver emptyProject.ts): OBLIGATORIO omitirlo.
-  // Verificado contra el motor real: enviarlo falla con ErrorEntrada "Cable desconocido: ''"
-  // (cable_id vacío); sin bloque `pe` el motor calcula ocupación, cargas, corridas y cómputo.
-  // Fijado por la prueba "toMotorEntrada omite el pe neutro" (tray/__tests__/integration.test.ts).
-  if (isNeutralPe(trayInput.pe)) delete out.pe;
+  // Etapa 3: los circuitos guardados de potencia (vigentes, con cable) viajan al motor junto
+  // con los del trazado; maniobra e instrumentación no (D-11). Ver `workspace/motor/paraMotor.ts`.
+  out.circuitos = [...trayInput.circuitos, ...circuitosParaMotor(trayInput, opts.elements ?? [], opts.idsCables).enviados];
+  // `pe` neutro (proyecto sin PE definido, ver emptyProject.ts): NUNCA se envía tal cual
+  // (el motor falla con "Cable desconocido: ''"). Etapa 3: con piezas, se envía el PE del
+  // trazado (D-20 16 mm², D-21 verde/amarillo, recorrido por todas las piezas) y sus puntos
+  // equipotenciales; sin piezas, se omite. Un `pe` propio (no neutro) se respeta.
+  if (isNeutralPe(trayInput.pe)) {
+    const gen = peDelTrazado(trayInput);
+    if (gen) {
+      out.pe = gen.pe;
+      const eq = trayInput.equipotencial as { puntos?: unknown[] } | undefined;
+      if (!eq?.puntos?.length) out.equipotencial = gen.equipotencial;
+    } else delete out.pe;
+  }
   // Índice instancia_id → producto_id para traducir conexiones sin volver a
   // buscar la pieza en cada extremo.
   const productByInstance = new Map<string, string>();
@@ -232,7 +247,10 @@ export const useTrayStore=create<State>((set,get)=>({
    await get().checkEngine(true);if(get().revision!==revision||call!==callSequence)return;
    const engine=get().engine;
    if(engine.state!=='conectado'){set({status:'error',error:engine.detail??'Motor no disponible'});return}
-   const outcome=await manager.calcular('trazado','trazado',toMotorEntrada(input));
+   // Equipos (para la vigencia de los circuitos guardados) y cables del catálogo; import dinámico: evita el ciclo de módulos.
+   const {useWorkspaceStore}=await import('../workspace/useWorkspaceStore');
+   const cat=get().context?.catalogoCables;
+   const outcome=await manager.calcular('trazado','trazado',toMotorEntrada(input,{elements:useWorkspaceStore.getState().elements,idsCables:cat?.ok?cat.cables.map(c=>c.cable_id):undefined}));
    if(get().revision!==revision||call!==callSequence)return;
    if(outcome.tipo==='descartada')return;
    if(outcome.tipo==='aplicada'){

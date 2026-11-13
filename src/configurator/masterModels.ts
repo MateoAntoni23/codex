@@ -689,7 +689,7 @@ const MASTER_PERFORADA: readonly MasterModel[] = [
       variants: {
         status: 'partial',
         regressionSpecs: ['src/parametric/geometry/__tests__/dcpsLateral.test.ts'],
-        limitations: ['100, 150, 200, 450 y 600 sin STEP propio: cota de boca no confirmada. La DCPS-450 se reexporta con ala 50 (la primera vino con ala 65).'],
+        limitations: ['100, 150, 200, 450 y 600 sin STEP propio: cota de boca no confirmada. La reexportación de la DCPS-450 quedó ignorada por decisión del operador (2026-11-13).'],
       },
     },
     revision: 1,

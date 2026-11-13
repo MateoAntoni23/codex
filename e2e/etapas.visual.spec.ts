@@ -349,21 +349,21 @@ test.describe('Hito 1b — interfaz por etapas', () => {
     expect(Object.keys(after)).not.toContain('theme');
   });
 
-  test('B6 — proyecto sin PE: Resultados dice "PE sin definir", no incumplimiento', async ({ page }) => {
+  test('B6 — proyecto sin PE declarado: viaja el PE del trazado (etapa 3) y el motor no informa incumplimiento', async ({ page }) => {
     await openApp(page, '/');
     await newStraight(page);
     await goStage(page, 'resultados');
     await page.getByTestId('reserva-input').fill('20');
     await expect(page.getByTestId('engine-state')).toHaveAttribute('data-engine', 'conectado', { timeout: 20_000 });
     await page.getByTestId('calculate-tray').click();
+    // Antes de la etapa 3 decía "PE sin definir": ahora el PE (D-20 16 mm², D-21 verde/amarillo) sale del trazado.
     const headline = page.getByTestId('result-headline');
-    await expect(headline).toHaveText('PE sin definir', { timeout: 30_000 });
-    await expect(headline).toHaveAttribute('data-tone', 'neutral');
-    await expect(page.getByTestId('result-pe-note')).toBeVisible();
+    await expect(headline).toHaveText('Preseleccion condicionada', { timeout: 30_000 });
+    await expect(page.getByTestId('result-pe-note')).toHaveCount(0);
     await expect(page.getByTestId('result-issues')).toHaveCount(0);
-    const visible = await page.getByTestId('panel-resultados').innerText();
-    expect(visible).not.toMatch(/incumplimiento/i);
-    expect(await page.getByTestId('stage-status-resultados').innerText()).toBe('PE sin definir');
+    await expect(page.getByTestId('motor-pe')).toHaveAttribute('data-cobertura', 'COMPLETA');
+    await expect(page.getByTestId('motor-incumplimiento')).toHaveCount(0);
+    expect(await page.getByTestId('stage-status-resultados').innerText()).toBe('Preseleccion condicionada');
   });
 
   test('B7 — las acciones de prueba no aparecen en uso normal; con ?dev=1 sí', async ({ page }) => {

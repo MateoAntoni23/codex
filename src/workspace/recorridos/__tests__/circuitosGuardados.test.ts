@@ -296,17 +296,19 @@ describe('cable del circuito (etapa 2)', () => {
     expect(circuitosOf(quitarCable(a.entrada, 'CIR-1'))[0].cable).toBeUndefined();
   });
 
-  it('valida: cable del catálogo, cantidad entero positivo, función siempre potencia; "separado" sin elegir queda incompleto', () => {
+  it('valida: cable del catálogo, cantidad entero positivo, función potencia/maniobra/instrumentación; "separado" ya no se elige (etapa 3)', () => {
     const { t, elements } = proyecto();
     const sin = guardado(t, elements);
     expect(asignarCable(sin.entrada, 'CIR-1', { ...TRI, cable_id: 'NO-EXISTE' }, IDS)).toEqual({ ok: false, motivo: 'el cable NO-EXISTE no está en el catálogo de cables' });
     for (const cantidad of [0, -1, 1.5, Number.NaN]) {
       expect(asignarCable(sin.entrada, 'CIR-1', { ...TRI, cantidad }, IDS)).toEqual({ ok: false, motivo: 'la cantidad tiene que ser un entero positivo' });
     }
-    expect(asignarCable(sin.entrada, 'CIR-1', { ...TRI, funcion: 'mando' as 'potencia' }, IDS)).toEqual({ ok: false, motivo: 'la función del circuito es siempre potencia' });
+    expect(asignarCable(sin.entrada, 'CIR-1', { ...TRI, funcion: 'mando' as 'potencia' }, IDS)).toEqual({ ok: false, motivo: 'la función tiene que ser potencia, maniobra o instrumentación' });
+    for (const funcion of ['maniobra', 'instrumentacion'] as const) expect(asignarCable(sin.entrada, 'CIR-1', { ...TRI, funcion }, IDS).ok).toBe(true);
+    // Un circuito de la etapa 2 con "separado" sin elegir ya no queda incompleto: viaja en false (operador, etapa 3).
     const sinDisp = asignarCable(sin.entrada, 'CIR-1', { ...TRI, separado: null }, IDS);
     if (!sinDisp.ok) throw new Error(sinDisp.motivo);
-    expect(faltaParaCalcular(circuitosOf(sinDisp.entrada)[0], IDS)).toEqual(['falta indicar si los cables van separados o juntos']);
+    expect(faltaParaCalcular(circuitosOf(sinDisp.entrada)[0], IDS)).toEqual([]);
     // Un cable que el catálogo ya no tiene se informa (no se borra).
     expect(faltaParaCalcular(circuitosOf(sinDisp.entrada)[0], ['OTRO'])).toContain('el cable PRY-SVALIO-CU-3x50 no está en el catálogo de cables');
   });
