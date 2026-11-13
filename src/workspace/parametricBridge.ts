@@ -18,8 +18,7 @@
  */
 
 import * as THREE from 'three';
-import { RECETAS_ESLABONADAS } from '../parametric/geometry/recipes';
-import { ANGULO_ESLABONADA_POR_DEFECTO } from '../parametric/geometry/curvaEslabonada';
+import { ANGULO_ESLABONADA_POR_DEFECTO, RECETAS_ESLABONADAS } from '../parametric/reglaEslabones';
 import {
   type ParametricEntry,
   type ParametricVariantView,

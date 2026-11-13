@@ -143,28 +143,23 @@ describe('sharedVerticalPatternClosure — perforada CUPS A/D', () => {
     }
   });
 
-  it('SV7. CUS escalera comparte fuente geométrica y calibración con CUPS', () => {
-    // Equivalencia conceptual autorizada por el usuario (2026-11-10):
-    // master:escalera:curva_vertical reutiliza buildCUPSRecipe y el STEP
-    // CUPS-300-A-Z como fuente única. No hay duplicación de polígono ni
-    // calibración; sólo distinción comercial y rotulación.
-    const cusMaster = findMasterById('master:escalera:curva_vertical');
-    expect(cusMaster).toBeTruthy();
-    expect(cusMaster!.sistema).toBe('escalera');
-    expect(cusMaster!.pieceKind).toBe('curva_vertical');
-    expect(cusMaster!.recipeKey).toBe('escalera:curva_vertical');
-    // Fuente compartida con el patrón perforada.
+  it('SV7. la CUS escalera YA NO comparte fuente ni receta con la CUPS (equivalencia retirada 2026-11-13)', () => {
+    // La "equivalencia conceptual autorizada" (2026-11-10) modelaba la CUS como
+    // curva rígida con el perfil de la CUPS. La CUS es una cadena de 5 eslabones
+    // con ángulo ajustable ("Articulated Bend"): otra pieza. Por eso saltaba el
+    // aviso de ala (36,56 mm contra 65/90/115/150). Ahora es la curva eslabonada.
+    expect(findMasterById('master:escalera:curva_vertical')).toBeNull();
+    const cusMaster = findMasterById('master:escalera:curva_eslabonada')!;
+    expect(cusMaster.sistema).toBe('escalera');
+    expect(cusMaster.recipeKey).toBe('escalera:curva_eslabonada');
     const interior = findMasterById('master:perforada:curva_vertical_interior')!;
-    expect(cusMaster!.source.stepFile).toBe(interior.source.stepFile);
-    expect(cusMaster!.source.stepHashShort).toBe(interior.source.stepHashShort);
-    // Provenance='estimated' + rationale documenta la equivalencia.
-    expect(cusMaster!.variationRule.provenance).toBe('estimated');
-    expect(cusMaster!.variationRule.rationale).toMatch(/autorizad|equivalencia/i);
-    // Fidelity='pending' — no hay plano SAMET medido.
-    expect(cusMaster!.closure.fidelity.status).toBe('pending');
+    expect(cusMaster.source.stepFile).not.toBe(interior.source.stepFile);
+    expect(cusMaster.variationRule.rationale).toMatch(/declarada por el operador/);
+    expect(cusMaster.variationRule.rationale).not.toMatch(/equivalencia/i);
+    expect(cusMaster.closure.fidelity.status).toBe('pending');
   });
 
-  it('SV8. las 40 variantes CUS declaradas resuelven al master escalera-vertical', () => {
+  it('SV8. las 40 variantes CUS declaradas resuelven al master escalera eslabonado', () => {
     // Todos los SKUs del catálogo (anchos ×  alas × espesor × acabado) caen
     // sobre el mismo master, vía regla `ala-independent` que no filtra por
     // ala estricto.
@@ -193,7 +188,7 @@ describe('sharedVerticalPatternClosure — perforada CUPS A/D', () => {
         master,
         `CUS ancho=${ancho} ala=${ala} ${familia}`,
       ).toBeTruthy();
-      expect(master!.id).toBe('master:escalera:curva_vertical');
+      expect(master!.id).toBe('master:escalera:curva_eslabonada');
     }
   });
 

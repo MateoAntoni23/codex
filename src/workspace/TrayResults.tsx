@@ -7,6 +7,7 @@ import { useTrayStore } from '../tray/store';
 import { useWorkspaceStore } from './useWorkspaceStore';
 import { object } from '../tray/model';
 import { summarizeResultDe } from './stages/resultPresentation';
+import { curvasEslabonadas } from './computoEslabonado';
 
 function JsonBlock({ value }: { value: unknown }) {
   return <pre className="tray-json">{JSON.stringify(value, null, 2)}</pre>;
@@ -18,6 +19,8 @@ export function TrayResults() {
   const status   = useTrayStore((s) => s.status);
   const entrada  = useTrayStore((s) => s.entrada);
   const selectTray = useWorkspaceStore((s) => s.selectTray);
+  const ctx = useTrayStore((s) => s.context);
+  const eslabonadas = new Set(curvasEslabonadas(entrada, new Map((ctx?.productos ?? []).map((p) => [p.producto_id, p]))).map((c) => c.pieza));
 
   if (!result) {
     return <p style={{ padding: '8px 12px', fontSize: 12, color: '#666688' }}>Sin resultados. Calcular para consultar al motor.</p>;
@@ -95,7 +98,9 @@ export function TrayResults() {
           result.computo.lineas.map((v, i) =>
             object(v) ? (
               <p key={i} style={{ padding: '2px 12px', fontSize: 11 }}>
-                {String(v.sku ?? v.producto_id ?? 'Pendiente')}: {String(v.cantidad ?? '?')} {String(v.unidad ?? '')}<br />
+                {String(v.sku ?? v.producto_id ?? 'Pendiente')}: {String(v.cantidad ?? '?')} {String(v.unidad ?? '')}
+                {object(v.origen) && typeof v.origen.pieza === 'string' && eslabonadas.has(v.origen.pieza)
+                  ? ' — curva eslabonada: reemplazada por la cuenta de eslabones (ver "Curvas eslabonadas")' : ''}<br />
                 {String(v.descripcion ?? '')}
               </p>
             ) : null

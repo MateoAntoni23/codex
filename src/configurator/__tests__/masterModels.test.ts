@@ -14,17 +14,14 @@ function makeProduct(partial: Partial<Product> & { producto_id: string; sku: str
 }
 
 describe('MASTER_MODELS inventory', () => {
-  it('tiene 15 maestros (8 perforada + 7 escalera)', () => {
-    // 8 perforada = 6 geometrías medidas + 1 "derivación lateral pendiente"
-    // (DCPS) declarada sin STEP + 1 "curva vertical exterior" (CUPS-D-Z) que
-    // comparte patrón geométrico con CUPS-A-Z pero se declara aparte para
-    // preservar la distinción comercial.
-    // 7 escalera = 6 geometrías medidas + 1 "curva vertical articulada" (CUS)
-    // que comparte el patrón geométrico CUPS por equivalencia conceptual
-    // autorizada por el usuario (2026-11-10). SAMET no publica STEP CUS;
-    // provenance='estimated'.
-    expect(MASTER_MODELS.length).toBe(15);
-    expect(MASTER_MODELS.filter((m) => m.sistema === 'perforada').length).toBe(8);
+  it('tiene 16 maestros (9 perforada + 7 escalera)', () => {
+    // 9 perforada = 6 geometrías medidas + DCPS lateral (STEP del operador) +
+    // CUPS-D (comparte patrón con CUPS-A) + curva eslabonada EPS (regla del
+    // operador, sin STEP).
+    // 7 escalera = 6 geometrías medidas + curva eslabonada CUS (regla del
+    // operador; antes compartía el perfil de la CUPS, equivalencia retirada).
+    expect(MASTER_MODELS.length).toBe(16);
+    expect(MASTER_MODELS.filter((m) => m.sistema === 'perforada').length).toBe(9);
     expect(MASTER_MODELS.filter((m) => m.sistema === 'escalera').length).toBe(7);
   });
 

@@ -13,7 +13,7 @@ import { definicionEfectiva, placedOf, withDefinition } from './definitions';
 import { placeDefinition, puertosFromWorld, type V3 } from './placementCore';
 import { conLongitudesEje, PATRONES_CURVA_ESLABONADA } from './longitudesEje';
 import { invalidConnections } from './joins';
-import { ANGULO_ESLABONADA_MAX, ANGULO_ESLABONADA_MIN, eslabonesPara } from '../../parametric/geometry/curvaEslabonada';
+import { ANGULO_ESLABONADA_MAX, ANGULO_ESLABONADA_MIN, eslabonesPara } from '../../parametric/reglaEslabones';
 
 export function esCurvaEslabonada(entrada: TrayInput | null | undefined, piece: Piece): boolean {
   const placed = placedOf(entrada, piece);

@@ -15,7 +15,7 @@
 import type { Product, TrayInput } from '../tray/model';
 import { placedOf } from './placement/definitions';
 import { PATRONES_CURVA_ESLABONADA } from './placement/longitudesEje';
-import { medidasEslabonada } from '../parametric/geometry/curvaEslabonada';
+import { medidasEslabonada } from '../parametric/reglaEslabones';
 
 export interface CurvaEslabonada {
   readonly pieza: string;

@@ -753,7 +753,8 @@ const MASTER_PERFORADA: readonly MasterModel[] = [
     pieceKind: 'curva_vertical',
     source: ESLABONADA_SOURCE,
     recipeKey: 'curva_eslabonada',
-    baseParams: { ancho_mm: 300, ala_mm: 50 },
+    // Ángulo de referencia = el de por defecto del operador (90°); cada instancia guarda el suyo.
+    baseParams: { ancho_mm: 300, ala_mm: 50, angulo_deg: 90, sentido_vertical: -1 },
     canonicalRotationZDeg: 0,
     catalogMatch: {
       familiaIds: PERFORADA_FAMILIAS,
@@ -964,7 +965,7 @@ const MASTER_ESCALERA: readonly MasterModel[] = [
     pieceKind: 'curva_vertical',
     source: ESLABONADA_SOURCE,
     recipeKey: 'escalera:curva_eslabonada',
-    baseParams: { ancho_mm: 300, ala_mm: 65 },
+    baseParams: { ancho_mm: 300, ala_mm: 65, angulo_deg: 90, sentido_vertical: -1 },
     canonicalRotationZDeg: 0,
     catalogMatch: {
       familiaIds: ESCALERA_FAMILIAS,

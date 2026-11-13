@@ -35,8 +35,8 @@ afterAll(() => {
 /** Final de un tramo horizontal: avanza en +X, sección hacia +Z. */
 const START: StartPort = { pieceId: 'R', portName: 'P2', pos: [3000, 0, 25], dir: [1, 0, 0], sectionUp: [0, 0, 1] };
 
-function curva(p: Product, sentido?: 'sube' | 'baja') {
-  const pl = computeRoutingPlacement({ product: p, startPort: START, entryPortName: 'P1_horizontal', side: 'right', ...(sentido ? { sentidoVertical: sentido } : {}) });
+function curva(p: Product, sentido?: 'sube' | 'baja', entrada = 'P1_horizontal') {
+  const pl = computeRoutingPlacement({ product: p, startPort: START, entryPortName: entrada, side: 'right', ...(sentido ? { sentidoVertical: sentido } : {}) });
   if (!pl.ok) throw new Error(`${p.producto_id}: ${pl.motivo}`);
   return pl;
 }
@@ -85,23 +85,28 @@ describe('sentido de la curva vertical', () => {
     }
   });
 
-  it('CUS articulada: sube o baja según lo elegido; mismo perfil', () => {
-    const cus = productos.get('SAM_CUS-300-5-065-18-Z')!;
-    const up = curva(cus, 'sube').ports.find((q) => q.name === 'P2_vertical')!;
-    const down = curva(cus, 'baja').ports.find((q) => q.name === 'P2_vertical')!;
-    expect(up.normal[2]).toBeCloseTo(1, 6);
-    expect(down.normal[2]).toBeCloseTo(-1, 6);
-    expect(siguiente('SAM_TRES-300-065-18-Z', up).dz).toBeCloseTo(1000, 6);
-    expect(siguiente('SAM_TRES-300-065-18-Z', down).dz).toBeCloseTo(-1000, 6);
-  });
+  // La CUS ya no es el perfil de la CUPS (equivalencia retirada): es la curva eslabonada, bocas P1/P2, 90° por defecto.
+  for (const [id, recto] of [['SAM_CUS-300-5-065-18-Z', 'SAM_TRES-300-065-18-Z'], ['SAM_EPS-300-Z', 'SAM_TRPS-300-22-Z']] as const) {
+    it(`${id} (eslabonada): sube o baja según lo elegido; el recto siguiente une y arranca hacia ese lado`, () => {
+      const p = productos.get(id)!;
+      const up = curva(p, 'sube', 'P1').ports.find((q) => q.name === 'P2')!;
+      const down = curva(p, 'baja', 'P1').ports.find((q) => q.name === 'P2')!;
+      expect(up.normal[2]).toBeCloseTo(1, 6);
+      expect(down.normal[2]).toBeCloseTo(-1, 6);
+      const s = siguiente(recto, up);
+      expect(s.dz).toBeCloseTo(1000, 6);
+      expect(join(up, s.p1).ok, 'unión curva–recto vertical').toBe(true);
+      expect(siguiente(recto, down).dz).toBeCloseTo(-1000, 6);
+    });
+  }
 
   it('CUS sin sentido elegido: no hay colocación (ni previa ni confirmación); con sentido, sí', () => {
     const cus = productos.get('SAM_CUS-300-5-065-18-Z')!;
     const context = { productos: [cus], compatibilidades: [], componentesUnion: [] } as never;
     const entrada = { version_contrato: 'trazado/1', piezas: [], conexiones: [], circuitos: [], soportes: [], pe: {} } as unknown as TrayInput;
-    const base = { startPort: START, selectedProductId: cus.producto_id, entryPortName: 'P1_horizontal', turnDirection: 'right' as const, previewLengthMm: 0, snapToAxis: false, step: 'configuringSegment' };
+    const base = { startPort: START, selectedProductId: cus.producto_id, entryPortName: 'P1', turnDirection: 'right' as const, previewLengthMm: 0, snapToAxis: false, step: 'configuringSegment' };
     expect(routingPlacementFromState(context, entrada, { ...base, sentidoVertical: null })).toBeNull();
     const pl = routingPlacementFromState(context, entrada, { ...base, sentidoVertical: 'sube' });
-    expect(pl?.ok && pl.ports.find((q) => q.name === 'P2_vertical')!.normal[2]).toBeCloseTo(1, 6);
+    expect(pl?.ok && pl.ports.find((q) => q.name === 'P2')!.normal[2]).toBeCloseTo(1, 6);
   });
 });

@@ -26,9 +26,7 @@ import {
   buildXSRecipe,
 } from './escaleraRecipes';
 import { buildCurvaEslabonadaRecipe } from './curvaEslabonada';
-
-/** Recetas de curva ESLABONADA (EPS perforada, CUS escalera): ángulo por instancia. */
-export const RECETAS_ESLABONADAS: ReadonlySet<string> = new Set(['curva_eslabonada', 'escalera:curva_eslabonada']);
+export { RECETAS_ESLABONADAS } from '../reglaEslabones';
 
 export type PieceKind =
   | 'tramo_recto'

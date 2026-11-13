@@ -30,7 +30,7 @@
  * y los tramos rectos su `longitud_mm`: no pasan por acá.
  */
 import { lineaMediaPerfilCUPS } from '../../parametric/geometry/outlines';
-import { medidasEslabonada, PROCEDENCIA_ESLABONADA } from '../../parametric/geometry/curvaEslabonada';
+import { medidasEslabonada, PROCEDENCIA_ESLABONADA } from '../../parametric/reglaEslabones';
 import type { StoredDefinition } from './placementCore';
 import decisiones from '../../../vendor/motor_bandejas/datos/decisiones_producto.json';
 
