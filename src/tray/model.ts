@@ -66,6 +66,8 @@ export interface Context {
   familias: CatalogFamily[];
   ejemplos: Record<string, Record<string, unknown>>;
   versions: string;
+  /** Cables agrupados para elegir en cascada (etapa 2), contrastados con `cables` del motor. */
+  catalogoCables?: import('../workspace/cables/catalogoCables').ResultadoCatalogoCables;
 }
 export const object = (x:unknown): x is Record<string,unknown> => !!x && typeof x==='object' && !Array.isArray(x);
 export function assertInput(raw:unknown): asserts raw is TrayInput {

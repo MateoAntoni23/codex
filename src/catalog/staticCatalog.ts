@@ -28,6 +28,7 @@ import type {
 } from '../tray/model';
 import { setCatalogPortIndex, setMasterResolver, setProductCatalogIndex } from '../workspace/catalogPortMapping';
 import { findMasterForProduct } from '../configurator/masterModels';
+import { construirCatalogoCables, idDeCable, type ResultadoCatalogoCables } from '../workspace/cables/catalogoCables';
 
 export interface StaticCatalog {
   readonly productos: Product[];
@@ -36,6 +37,8 @@ export interface StaticCatalog {
   readonly componentesUnion: CatalogUnionComponent[];
   readonly familias: CatalogFamily[];
   readonly cables: string[];
+  /** Cables agrupados para elegir en cascada (etapa 2). */
+  readonly catalogoCables: ResultadoCatalogoCables;
   readonly ejemplos: Context['ejemplos'];
   /** Huella estructural del catálogo + cables; comparable con la del motor. */
   readonly fingerprint: string;
@@ -45,27 +48,18 @@ export interface StaticCatalog {
 
 type RawCatalog = Record<string, unknown>;
 
-const PREFIJOS_DATASET: Record<string, string> = {
-  'PRY-SINTENAX-VALIO-ED2020': 'PRY-SVALIO',
-  'PRY-SUPERASTIC-ED2026': 'PRY-SASTFLEX',
-};
-const MATERIAL: Record<string, string> = { cobre: 'CU', aluminio: 'AL' };
-
-/** Reproduce la regla de ids de `motor_bandejas/datos_cables.py`. */
+/** Reproduce la regla de ids de `motor_bandejas/datos_cables.py` (`idDeCable`, una sola copia). */
 export function deriveCableIds(datasets: readonly unknown[]): string[] {
   const ids = new Set<string>();
   for (const ds of datasets) {
     const d = ds as { dataset_id?: string; tablas?: unknown[] };
-    const prefijo = d.dataset_id ? PREFIJOS_DATASET[d.dataset_id] : undefined;
-    if (!prefijo || !Array.isArray(d.tablas)) continue;
+    if (!d.dataset_id || !Array.isArray(d.tablas)) continue;
     for (const t of d.tablas) {
       const tabla = t as { material?: string; n_conductores?: number; tipo?: string; filas?: unknown[] };
-      const mat = tabla.material ? MATERIAL[tabla.material] : undefined;
-      if (!mat || !Array.isArray(tabla.filas)) continue;
-      const sufijo = tabla.tipo === 'tetrapolar_neutro_igual' ? '-NI' : '';
+      if (!Array.isArray(tabla.filas)) continue;
       for (const fila of tabla.filas) {
-        const formacion = String((fila as unknown[])[0]).replace(',', '.');
-        ids.add(`${prefijo}-${mat}-${tabla.n_conductores}x${formacion}${sufijo}`);
+        const id = idDeCable(d.dataset_id, tabla, String((fila as unknown[])[0]));
+        if (id) ids.add(id);
       }
     }
   }
@@ -141,7 +135,8 @@ export function buildStaticCatalog(input: {
   ) {
     throw new Error('CATALOGO_ESTATICO_INVALIDO: PRODUCTOS');
   }
-  const cables = deriveCableIds(input.cablesJson.map((t) => JSON.parse(t)));
+  const datasetsCables = input.cablesJson.map((t) => JSON.parse(t));
+  const cables = deriveCableIds(datasetsCables);
   const ejemplos: Context['ejemplos'] = {};
   for (const [name, text] of Object.entries(input.ejemplosJson)) {
     ejemplos[name] = JSON.parse(text) as Record<string, unknown>;
@@ -153,6 +148,7 @@ export function buildStaticCatalog(input: {
     componentesUnion: typedList<CatalogUnionComponent>(raw.COMPONENTES_UNION, 'compatibilidad_id'),
     familias: typedList<CatalogFamily>(raw.FAMILIAS, 'familia_id'),
     cables,
+    catalogoCables: construirCatalogoCables(datasetsCables, cables),
     ejemplos,
     fingerprint: catalogFingerprint(raw, cables),
     decisionesSha256: input.decisionesSha256,
@@ -199,6 +195,7 @@ export function staticContext(c: StaticCatalog): Context {
   return {
     productos: c.productos,
     cables: c.cables,
+    catalogoCables: c.catalogoCables,
     puertos: c.puertos,
     compatibilidades: c.compatibilidades,
     componentesUnion: c.componentesUnion,

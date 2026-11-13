@@ -178,8 +178,9 @@ test.describe('Circuitos guardados', () => {
     const copiado = await page.evaluate(() => navigator.clipboard.readText());
     const n = (x: number) => x.toLocaleString('es-AR', { maximumFractionDigits: 1, minimumFractionDigits: 1, useGrouping: false });
     expect(copiado.split(/\r?\n/)).toEqual([
-      'Nombre\tOrigen\tDestino\tLongitud total (mm)\tBandeja (mm)\tBajadas (mm)\tPiezas\tEstado',
-      `TG-1 → Bomba 3\tTablero General A\tBomba 3\t${n(total)}\t${n(esperado)}\t${n(bajadasMm)}\t7\tvigente`,
+      'Nombre\tOrigen\tDestino\tCable\tCantidad\tLongitud total (mm)\tBandeja (mm)\tBajadas (mm)\tPiezas\tEstado',
+      // Sin cable (etapa 2): vigente, pero incompleto para calcular.
+      `TG-1 → Bomba 3\tTablero General A\tBomba 3\tsin cable\t\t${n(total)}\t${n(esperado)}\t${n(bajadasMm)}\t7\tvigente; incompleto: le falta el cable para poder calcular`,
     ]);
     await page.screenshot({ path: resolve(OUT_DIR, 'circuitos-01-tabla.png') });
 

@@ -21,6 +21,15 @@
  *
  * Los circuitos con extremos de boca (formato anterior a la etapa 1) no se
  * migran: un archivo que los traiga se rechaza (`validarCircuitosDeArchivo`).
+ *
+ * Etapa 2 (2026-11-13): el CABLE del circuito — lo que el motor exige para
+ * calcular (`trazado_entrada.py`: funcion, cable_id, cantidad, separado). Se
+ * elige al guardar o después, y se guarda con el circuito. Un circuito sin cable
+ * NO es un error: queda incompleto y se dice qué le falta (`faltaParaCalcular`).
+ * No hay cable por defecto, y `separado` tampoco se presume (el motor lo exige
+ * explícito: «no se presume la disposición»). La función es siempre "potencia":
+ * el motor no acepta otra en los circuitos, y el PE se declara aparte. Enviar el
+ * circuito al motor es la etapa 3.
  */
 import type { TrayInput } from '../../tray/model';
 import type { EquipmentElement } from '../../types/domain-v2';
@@ -49,11 +58,28 @@ export interface ExtremoEquipo { readonly equipo: string }
 /** Bajada usada por un circuito, congelada al guardar. */
 export interface BajadaGuardada { readonly id: string; readonly firma: string; readonly longitud_mm: number }
 
+/** Función del circuito: siempre "potencia" (única que acepta el motor; el PE va aparte). */
+export const FUNCION_CIRCUITO = 'potencia' as const;
+export const MOTIVO_FUNCION_FIJA =
+  'Siempre potencia: el motor sólo acepta circuitos de potencia; el conductor de protección (PE) se declara aparte, en su propia sección, para no contarlo dos veces.';
+
+/** Cable del circuito (etapa 2). */
+export interface CableDeCircuito {
+  readonly cable_id: string;
+  /** Cantidad de cables de ese tipo en el circuito: entero positivo. */
+  readonly cantidad: number;
+  /** Disposición en la bandeja: true separados (un diámetro libre entre cables), false juntos; null sin elegir. */
+  readonly separado: boolean | null;
+  readonly funcion: typeof FUNCION_CIRCUITO;
+}
+
 export interface CircuitoGuardado {
   readonly id: string;
   readonly nombre: string;
   readonly origen: ExtremoEquipo;
   readonly destino: ExtremoEquipo;
+  /** Cable del circuito; ausente mientras el operador no lo elija (circuito incompleto). */
+  readonly cable?: CableDeCircuito;
   readonly bajadas: { readonly origen: BajadaGuardada; readonly destino: BajadaGuardada };
   readonly cruces: readonly CruceGuardado[];
   readonly uniones: readonly string[];
@@ -163,10 +189,16 @@ function construir(entrada: TrayInput, elements: readonly EquipmentElement[], id
   };
 }
 
-export function guardarCircuito(entrada: TrayInput, elements: readonly EquipmentElement[], nombre: string, origen: ExtremoEquipo, destino: ExtremoEquipo):
-  { ok: true; entrada: TrayInput; circuito: CircuitoGuardado } | { ok: false; motivo: string } {
+export function guardarCircuito(
+  entrada: TrayInput, elements: readonly EquipmentElement[], nombre: string, origen: ExtremoEquipo, destino: ExtremoEquipo,
+  cable?: CableDeCircuito, idsCables?: readonly string[],
+): { ok: true; entrada: TrayInput; circuito: CircuitoGuardado } | { ok: false; motivo: string } {
   const n = nombre.trim();
   if (!n) return { ok: false, motivo: 'el circuito necesita un nombre' };
+  if (cable) {
+    const m = motivoCableInvalido(cable, idsCables);
+    if (m) return { ok: false, motivo: m };
+  }
   const lista = circuitosOf(entrada);
   if (lista.some((c) => c.nombre.toLowerCase() === n.toLowerCase())) return { ok: false, motivo: `ya hay un circuito llamado "${n}"` };
   const usados = new Set(lista.map((c) => c.id));
@@ -174,7 +206,8 @@ export function guardarCircuito(entrada: TrayInput, elements: readonly Equipment
   while (usados.has(`CIR-${k}`)) k++;
   const r = construir(entrada, elements, `CIR-${k}`, n, origen, destino);
   if (!r.ok) return r;
-  return { ok: true, entrada: conCircuitos(entrada, [...lista, r.circuito]), circuito: r.circuito };
+  const circuito: CircuitoGuardado = cable ? { ...r.circuito, cable: { ...cable } } : r.circuito;
+  return { ok: true, entrada: conCircuitos(entrada, [...lista, circuito]), circuito };
 }
 
 /** Recalcula un circuito con el proyecto actual (acción explícita del operador). Conserva id y nombre. */
@@ -184,11 +217,56 @@ export function recalcularCircuito(entrada: TrayInput, elements: readonly Equipm
   if (!c) return { ok: false, motivo: `no existe el circuito ${id}` };
   const r = construir(entrada, elements, c.id, c.nombre, c.origen, c.destino);
   if (!r.ok) return r;
-  return { ok: true, entrada: conCircuitos(entrada, lista.map((x) => (x.id === id ? r.circuito : x))) };
+  // El cable es un dato del circuito, no del recorrido: se conserva.
+  const nuevo: CircuitoGuardado = c.cable ? { ...r.circuito, cable: c.cable } : r.circuito;
+  return { ok: true, entrada: conCircuitos(entrada, lista.map((x) => (x.id === id ? nuevo : x))) };
 }
 
 export function borrarCircuito(entrada: TrayInput, id: string): TrayInput {
   return conCircuitos(entrada, circuitosOf(entrada).filter((c) => c.id !== id));
+}
+
+// ─── Cable del circuito (etapa 2) ────────────────────────────────────────────
+
+/** Motivo por el que el dato del cable no es válido, o null. `idsCables`: ids del catálogo del motor. */
+export function motivoCableInvalido(c: CableDeCircuito, idsCables?: readonly string[]): string | null {
+  if (typeof c.cable_id !== 'string' || !c.cable_id) return 'elegí el cable';
+  if (idsCables && !idsCables.includes(c.cable_id)) return `el cable ${c.cable_id} no está en el catálogo de cables`;
+  if (!Number.isInteger(c.cantidad) || c.cantidad < 1) return 'la cantidad tiene que ser un entero positivo';
+  if (c.separado !== null && typeof c.separado !== 'boolean') return 'indicá si los cables van separados o juntos';
+  if (c.funcion !== FUNCION_CIRCUITO) return 'la función del circuito es siempre potencia';
+  return null;
+}
+
+/** Asigna (o cambia) el cable de un circuito guardado. No toca el recorrido ni su estado. */
+export function asignarCable(entrada: TrayInput, id: string, cable: CableDeCircuito, idsCables?: readonly string[]):
+  { ok: true; entrada: TrayInput } | { ok: false; motivo: string } {
+  const lista = circuitosOf(entrada);
+  if (!lista.some((c) => c.id === id)) return { ok: false, motivo: `no existe el circuito ${id}` };
+  const m = motivoCableInvalido(cable, idsCables);
+  if (m) return { ok: false, motivo: m };
+  return { ok: true, entrada: conCircuitos(entrada, lista.map((c) => (c.id === id ? { ...c, cable: { ...cable } } : c))) };
+}
+
+export function quitarCable(entrada: TrayInput, id: string): TrayInput {
+  return conCircuitos(entrada, circuitosOf(entrada).map((c) => {
+    if (c.id !== id || !c.cable) return c;
+    const { cable: _quitado, ...resto } = c; // eslint-disable-line @typescript-eslint/no-unused-vars
+    return resto;
+  }));
+}
+
+/**
+ * Qué le falta al circuito para poder calcular (vacío: nada). No es un error: el
+ * circuito queda incompleto. `idsCables`: ids del catálogo del motor (si se pasan,
+ * un cable que no está se informa).
+ */
+export function faltaParaCalcular(c: CircuitoGuardado, idsCables?: readonly string[]): string[] {
+  if (!c.cable) return ['le falta el cable para poder calcular'];
+  const out: string[] = [];
+  if (idsCables && !idsCables.includes(c.cable.cable_id)) out.push(`el cable ${c.cable.cable_id} no está en el catálogo de cables`);
+  if (c.cable.separado === null) out.push('falta indicar si los cables van separados o juntos');
+  return out;
 }
 
 const angDeg = (a: readonly number[], b: readonly number[]) => {
@@ -293,6 +371,13 @@ export function validarCircuitosDeArchivo(trayInput: unknown): void {
           ? `el circuito ${nombre} va de una boca de bandeja a otra (formato anterior): no es compatible con esta versión, que une equipos. No se intenta repararlo.`
           : `el circuito ${nombre} no tiene equipos de origen y destino válidos`,
       );
+    }
+    if (c.cable !== undefined) {
+      const k = c.cable;
+      const valido = esObj(k) && typeof k.cable_id === 'string' && k.cable_id.length > 0
+        && Number.isInteger(k.cantidad) && (k.cantidad as number) >= 1
+        && (k.separado === null || typeof k.separado === 'boolean') && k.funcion === FUNCION_CIRCUITO;
+      if (!valido) throw new Error(`el circuito ${nombre} tiene un cable con datos inválidos`);
     }
   }
 }
