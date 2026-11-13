@@ -7,6 +7,7 @@ import { useTrayStore } from '../tray/store';
 import { useWorkspaceStore } from './useWorkspaceStore';
 import { object } from '../tray/model';
 import { summarizeResultDe } from './stages/resultPresentation';
+import { completarComponentesMezclas } from './componentesUnionMezcla';
 
 function JsonBlock({ value }: { value: unknown }) {
   return <pre className="tray-json">{JSON.stringify(value, null, 2)}</pre>;
@@ -15,9 +16,11 @@ function JsonBlock({ value }: { value: unknown }) {
 export function TrayResults() {
   const result   = useTrayStore((s) => s.result);
   const productos = useTrayStore((s) => s.context?.productos);
+  const ctx = useTrayStore((s) => s.context);
   const status   = useTrayStore((s) => s.status);
   const entrada  = useTrayStore((s) => s.entrada);
   const selectTray = useWorkspaceStore((s) => s.selectTray);
+  const agregadas = completarComponentesMezclas(result, entrada, new Map((ctx?.productos ?? []).map((p) => [p.producto_id, p])), ctx?.compatibilidades ?? [], ctx?.componentesUnion ?? []);
 
   if (!result) {
     return <p style={{ padding: '8px 12px', fontSize: 12, color: '#666688' }}>Sin resultados. Calcular para consultar al motor.</p>;
@@ -94,13 +97,22 @@ export function TrayResults() {
         {object(result.computo) && Array.isArray(result.computo.lineas) &&
           result.computo.lineas.map((v, i) =>
             object(v) ? (
-              <p key={i} style={{ padding: '2px 12px', fontSize: 11 }}>
-                {String(v.sku ?? v.producto_id ?? 'Pendiente')}: {String(v.cantidad ?? '?')} {String(v.unidad ?? '')}<br />
+              <p key={i} style={{ padding: '2px 12px', fontSize: 11 }} data-testid="computo-linea-motor">
+                {String(v.sku ?? v.producto_id ?? 'Pendiente')}: {String(v.cantidad ?? '?')} {String(v.unidad ?? '')}
+                {object(v.origen) && typeof v.origen.conexion === 'string' && agregadas.completadas.includes(v.origen.conexion)
+                  ? ' — completada por la app (ver "agregadas por la app")' : ''}<br />
                 {String(v.descripcion ?? '')}
               </p>
             ) : null
           )
         }
+        {/* Líneas que agregó la app (no el motor): se distinguen al leer el presupuesto. */}
+        {agregadas.agregadas.map((l, i) => (
+          <p key={`app-${i}`} style={{ padding: '2px 12px', fontSize: 11 }} data-testid="computo-linea-app-detalle">
+            [AGREGADA POR LA APP] {l.sku ?? l.producto_id}: {String(l.cantidad ?? '?')} {l.unidad ?? ''} — unión {l.origen.conexion}<br />
+            {l.procedencia}
+          </p>
+        ))}
       </details>
 
       {Object.entries(result).filter(([k]) => k !== 'entrada').map(([key, val]) => (
