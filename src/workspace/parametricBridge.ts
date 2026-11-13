@@ -18,6 +18,7 @@
  */
 
 import * as THREE from 'three';
+import { ANGULO_ESLABONADA_POR_DEFECTO, RECETAS_ESLABONADAS } from '../parametric/reglaEslabones';
 import {
   type ParametricEntry,
   type ParametricVariantView,
@@ -217,6 +218,9 @@ function paramsForMaster(master: MasterModel, product: SyntheticProductLike): Ra
     params.angulo_deg = numOrNull(product.angulo_grados);
   }
   if (master.pieceKind === 'curva_vertical') params.sentido_vertical = sentidoPorTipo(String(product.tipo_pieza));
+  // Curva eslabonada: el catálogo no declara ángulo; el modelo de referencia usa el
+  // de por defecto declarado por el operador (90°). Cada instancia guarda el suyo.
+  if (RECETAS_ESLABONADAS.has(master.recipeKey)) params.angulo_deg = ANGULO_ESLABONADA_POR_DEFECTO;
   return params as RawParams;
 }
 
@@ -414,6 +418,8 @@ interface BuildRecipeOverrides {
    * CUPS lo traen fijo por producto (A sube, D baja) y lo ignoran.
    */
   readonly sentido_vertical?: 'sube' | 'baja';
+  /** Ángulo de una curva ESLABONADA (por instancia); sin valor, el de por defecto (90°). */
+  readonly angulo_deg?: number | null;
 }
 
 /**
@@ -423,7 +429,7 @@ interface BuildRecipeOverrides {
  *     REFERENCIA del modelo (vistas de catálogo). Al colocar se exige elegir.
  */
 export function sentidoVerticalDe(product: Product, entry: ParametricEntry, elegido?: 'sube' | 'baja'): 1 | -1 | null {
-  const esVertical = entry.piece_kind === 'curva_vertical' || entry.recipe === 'escalera:curva_vertical';
+  const esVertical = entry.piece_kind === 'curva_vertical' || RECETAS_ESLABONADAS.has(String(entry.recipe));
   if (!esVertical) return null;
   return sentidoPorTipo(String(product.tipo_pieza), elegido);
 }
@@ -487,6 +493,11 @@ export function buildRecipeFromProduct(
 
   const sentido = sentidoVerticalDe(product, entry, overrides?.sentido_vertical);
   if (sentido !== null) params.sentido_vertical = sentido;
+
+  if (RECETAS_ESLABONADAS.has(String(entry.recipe))) {
+    const a = overrides?.angulo_deg;
+    params.angulo_deg = typeof a === 'number' && Number.isFinite(a) ? a : ANGULO_ESLABONADA_POR_DEFECTO;
+  }
 
   const takesAngulo =
     entry.piece_kind === 'curva_horizontal' || entry.recipe === 'escalera:curva_horizontal';

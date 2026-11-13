@@ -1,23 +1,19 @@
 /**
  * E2E — Cadena vertical escalera: TRES horizontal → CUS → TRES vertical.
  *
- * Demuestra con clicks reales que la curva vertical articulada de escalera
- * reutiliza el patrón geométrico CUPS por equivalencia conceptual autorizada
- * por el usuario (2026-11-10), sin duplicar polígono ni calibración:
+ * Con clicks reales, la curva vertical articulada de escalera (CUS) — desde
+ * 2026-11-13 una curva ESLABONADA (regla del operador; ya no el perfil de la
+ * CUPS, equivalencia retirada), bocas P1/P2, 90° por defecto:
  *
  *   1) Partiendo de un TRES-300-065-18-Z horizontal en escena, insertar
- *      CUS-300-5-065-18-Z por su boca P1_horizontal. La CUS queda con
- *      P2_vertical libre.
- *   2) Desde P2_vertical arranca un TRES vertical cuyo P1 coincide (±1 mm)
- *      con la posición de P2_vertical y cuyo P2 está ±1500 mm en Z.
+ *      CUS-300-5-065-18-Z por su boca P1. La CUS queda con P2 libre.
+ *   2) Desde P2 arranca un TRES vertical cuyo P1 coincide (±1 mm) con la
+ *      posición de P2 y cuyo P2 está ±1500 mm en Z.
  *   3) Preview → confirmado → export JSON + re-import conserva las 3 piezas
  *      y las 2 conexiones.
  *
- * El master `master:escalera:curva_vertical` resuelve 40 SKUs CUS (anchos
- * {150,300,450,600} × alas {65,90,115,150} × espesores × acabados) sobre
- * una única definición geométrica compartida (buildCUPSRecipe). No existe un
- * SKU "CDS" descendente en SAMET — la orientación descendente se resuelve
- * por colocación en escena (boca fuente), no por declarar otro master.
+ * El master `master:escalera:curva_eslabonada` resuelve los 40 SKUs CUS. No
+ * existe un SKU "CDS" descendente: el sentido se elige al colocar.
  *
  * Requiere `npm run dev` corriendo en http://localhost:5173.
  */
@@ -99,8 +95,8 @@ async function bootstrap(page: Page): Promise<void> {
 async function insertCus(page: Page): Promise<void> {
   const productSelect = page.locator('[data-codex-routing-product-select]');
   // El SKU debe aparecer en el selector gracias a la entrada sintética que
-  // deriva del master `master:escalera:curva_vertical` (comparte receta
-  // escalera:curva_vertical → buildCUPSRecipe). Si falla acá significa que el
+  // deriva del master `master:escalera:curva_eslabonada` (receta
+  // escalera:curva_eslabonada). Si falla acá significa que el
   // dispatcher o la resolución a maestro se rompió.
   await page.waitForFunction(() => {
     const sel = document.querySelector('[data-codex-routing-product-select]') as HTMLSelectElement | null;
@@ -111,10 +107,10 @@ async function insertCus(page: Page): Promise<void> {
   // Esta cadena se escribió con la curva bajando (orientación de referencia del perfil).
   await page.locator('[data-codex-routing-vertical="baja"]').click();
   await page.waitForTimeout(300);
-  // Receta vertical: entrada por P1_horizontal, salida por P2_vertical.
+  // Curva eslabonada: entrada por P1, salida por P2.
   const motive = page.locator('[data-codex-routing-exception-motive]');
   if (await motive.count()) {
-    await motive.fill('CUS escalera inserta por patrón compartido CUPS (E2E cadena vertical escalera)');
+    await motive.fill('CUS escalera eslabonada (E2E cadena vertical escalera)');
   }
   await page.locator('text=Confirmar continuación').click();
   await page.waitForTimeout(400);
@@ -144,8 +140,8 @@ async function selectVerticalExitAndContinueStraight(page: Page, lengthMm: numbe
     };
     const cus = entrada.piezas.find((p) => p.producto_id === 'SAM_CUS-300-5-065-18-Z');
     if (!cus) return null;
-    const pv = cus.puertos['P2_vertical'];
-    const ph = cus.puertos['P1_horizontal'];
+    const pv = cus.puertos['P2'];
+    const ph = cus.puertos['P1'];
     if (!pv || !ph) return null;
     const dx = pv.posicion_mm[0] - ph.posicion_mm[0];
     const dy = pv.posicion_mm[1] - ph.posicion_mm[1];
@@ -156,7 +152,7 @@ async function selectVerticalExitAndContinueStraight(page: Page, lengthMm: numbe
     rs.activate();
     rs.selectStartPort({
       pieceId: cus.instancia_id,
-      portName: 'P2_vertical',
+      portName: 'P2',
       pos: pv.posicion_mm,
       dir: pv.direccion,
       sectionUp,
@@ -164,8 +160,8 @@ async function selectVerticalExitAndContinueStraight(page: Page, lengthMm: numbe
     const now = w.__codex.routingStore.getState().startPort;
     return { pieceId: cus.instancia_id, startPort: now, pv };
   });
-  expect(started, 'P2_vertical de la CUS localizada y routing arrancado').toBeTruthy();
-  expect(started!.startPort?.portName).toBe('P2_vertical');
+  expect(started, 'P2 de la CUS localizada y routing arrancado').toBeTruthy();
+  expect(started!.startPort?.portName).toBe('P2');
 
   const productSelect = page.locator('[data-codex-routing-product-select]');
   await productSelect.waitFor({ state: 'visible', timeout: 10_000 });
@@ -214,10 +210,10 @@ async function readTray(page: Page) {
   });
 }
 
-test.describe('Cadena vertical escalera: TRES → CUS → TRES vertical (patrón CUPS compartido)', () => {
+test.describe('Cadena vertical escalera: TRES → CUS → TRES vertical (CUS eslabonada)', () => {
   test.setTimeout(90_000);
 
-  test('insertar CUS escalera, continuar por P2_vertical, verificar unión y roundtrip', async ({ page }) => {
+  test('insertar CUS escalera, continuar por P2, verificar unión y roundtrip', async ({ page }) => {
     const pageErrors: string[] = [];
     const consoleErrors: string[] = [];
     page.on('pageerror', (e) => pageErrors.push(e.message));
@@ -234,13 +230,13 @@ test.describe('Cadena vertical escalera: TRES → CUS → TRES vertical (patrón
     expect(afterCus.conexiones).toHaveLength(1);
     const cus = afterCus.pieces.find((p) => p.producto_id === 'SAM_CUS-300-5-065-18-Z');
     expect(cus, 'CUS escalera presente tras colocación').toBeTruthy();
-    const pvBefore = cus!.puertos['P2_vertical'];
-    expect(pvBefore, 'CUS expone P2_vertical (nombre heredado de la receta CUPS)').toBeTruthy();
+    const pvBefore = cus!.puertos['P2'];
+    expect(pvBefore, 'CUS expone P2 (receta eslabonada)').toBeTruthy();
     // La boca vertical sale con un componente Z ≠ 0 (ascendente o descendente
     // según la orientación de colocación).
     expect(Math.abs(pvBefore.direccion[2])).toBeGreaterThan(0.5);
 
-    // Insertar recto vertical de 1500 mm por P2_vertical.
+    // Insertar recto vertical de 1500 mm por P2.
     await selectVerticalExitAndContinueStraight(page, 1500);
 
     const codexAlive = await page.evaluate(() => {
@@ -273,7 +269,7 @@ test.describe('Cadena vertical escalera: TRES → CUS → TRES vertical (patrón
     );
     expect(
       matches.length,
-      'uno de los puertos del nuevo recto está sobre P2_vertical de la CUS',
+      'uno de los puertos del nuevo recto está sobre P2 de la CUS',
     ).toBe(1);
     const [, entryPort] = matches[0];
     const [, otherPort] = ports.find(([n]) => n !== matches[0][0])!;
@@ -314,14 +310,13 @@ test.describe('Cadena vertical escalera: TRES → CUS → TRES vertical (patrón
     expect(afterReimport.pieces).toHaveLength(3);
     expect(afterReimport.conexiones).toHaveLength(2);
     // Tras re-importar, la CUS escalera sigue siendo la misma instancia con
-    // sus puertos nombrados P1_horizontal / P2_vertical (nombres de la receta
-    // CUPS compartida).
+    // sus bocas P1 / P2 (receta eslabonada).
     const cusAfter = afterReimport.pieces.find(
       (p) => p.producto_id === 'SAM_CUS-300-5-065-18-Z',
     );
     expect(cusAfter, 'CUS escalera sobrevive export/import').toBeTruthy();
-    expect(cusAfter!.puertos['P1_horizontal']).toBeTruthy();
-    expect(cusAfter!.puertos['P2_vertical']).toBeTruthy();
+    expect(cusAfter!.puertos['P1']).toBeTruthy();
+    expect(cusAfter!.puertos['P2']).toBeTruthy();
   });
 
   test('cancelar la continuación vertical NO modifica la cadena ya confirmada', async ({ page }) => {
@@ -351,13 +346,13 @@ test.describe('Cadena vertical escalera: TRES → CUS → TRES vertical (patrón
         }>;
       };
       const cus = entrada.piezas.find((p) => p.producto_id === 'SAM_CUS-300-5-065-18-Z')!;
-      const pv = cus.puertos['P2_vertical'];
+      const pv = cus.puertos['P2'];
       const rs = w.__codex.routingStore.getState();
       rs.deactivate();
       rs.activate();
       rs.selectStartPort({
         pieceId: cus.instancia_id,
-        portName: 'P2_vertical',
+        portName: 'P2',
         pos: pv.posicion_mm,
         dir: pv.direccion,
         sectionUp: [1, 0, 0],

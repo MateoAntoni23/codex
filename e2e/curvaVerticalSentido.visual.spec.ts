@@ -50,16 +50,17 @@ async function continueFrom(page: Page, freeEnd: RegExp, productoId: string, opt
   await expect.poll(async () => (await piezas(page)).length).toBe(before + 1);
 }
 
-async function cadena(page: Page, recto: string, curva: string, curvaSku: RegExp, sentido?: 'sube' | 'baja') {
+/** Bocas de la curva: CUPS (perfil medido) P1_horizontal/P2_vertical; CUS (eslabonada) P1/P2. */
+async function cadena(page: Page, recto: string, curva: string, curvaSku: RegExp, sentido?: 'sube' | 'baja', bocas: [string, string] = ['P1_horizontal', 'P2_vertical']) {
   await openBandejas(page);
   await page.getByTestId('tool-bandejas-tramo').click();
   await page.getByTestId('add-product-select').selectOption(recto);
   await page.getByRole('button', { name: 'Crear tramo' }).click();
   await expect.poll(async () => (await piezas(page)).length).toBe(1);
-  await continueFrom(page, /^↗ 1\. .* · Boca x_max/, curva, { entryPort: 'P1_horizontal', ...(sentido ? { sentido } : {}) });
+  await continueFrom(page, /^↗ 1\. .* · Boca x_max/, curva, { entryPort: bocas[0], ...(sentido ? { sentido } : {}) });
   await continueFrom(page, curvaSku, recto, { length: 1000 });
   const ps = await piezas(page);
-  const curvaP2 = ps[1].puertos.P2_vertical;
+  const curvaP2 = ps[1].puertos[bocas[1]];
   const vertical = ps[2];
   await page.getByTestId('tool-bandejas-seleccionar').click();
   const filas = page.getByTestId('join-row');
@@ -88,13 +89,13 @@ test.describe('Sentido de la curva vertical', () => {
   });
 
   test('escalera CUS eligiendo "Sube": horizontal → curva → vertical que sube', async ({ page }) => {
-    const r = await cadena(page, 'SAM_TRES-300-065-18-Z', 'SAM_CUS-300-5-065-18-Z', /^↗ 2\. CUS-300-5-065-18-Z · Boca vertical/, 'sube');
+    const r = await cadena(page, 'SAM_TRES-300-065-18-Z', 'SAM_CUS-300-5-065-18-Z', /^↗ 2\. CUS-300-5-065-18-Z · Boca de salida/, 'sube', ['P1', 'P2']);
     expect(r.curvaNormalZ).toBeCloseTo(1, 6);
     expect(r.dz).toBeCloseTo(1000, 3);
   });
 
   test('escalera CUS eligiendo "Baja": horizontal → curva → vertical que baja', async ({ page }) => {
-    const r = await cadena(page, 'SAM_TRES-300-065-18-Z', 'SAM_CUS-300-5-065-18-Z', /^↗ 2\. CUS-300-5-065-18-Z · Boca vertical/, 'baja');
+    const r = await cadena(page, 'SAM_TRES-300-065-18-Z', 'SAM_CUS-300-5-065-18-Z', /^↗ 2\. CUS-300-5-065-18-Z · Boca de salida/, 'baja', ['P1', 'P2']);
     expect(r.curvaNormalZ).toBeCloseTo(-1, 6);
     expect(r.dz).toBeCloseTo(-1000, 3);
   });

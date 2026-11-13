@@ -15,6 +15,7 @@ import { TrayResults } from '../TrayResults';
 import { summarizeResultDe } from './resultPresentation';
 import { mezclasDelTrazado, PROCEDENCIA_MEZCLA } from '../mezclaAcabados';
 import { MarcaMezcla } from './MarcaMezcla';
+import { compraEslabones, curvasEslabonadas } from '../computoEslabonado';
 import { completarComponentesMezclas, PROCEDENCIA_COMPONENTES_MEZCLA } from '../componentesUnionMezcla';
 import { Section } from './shared';
 import { CircuitosTabla } from './CircuitosTabla';
@@ -127,6 +128,36 @@ function MezclasList() {
         <div key={`${m.tipo}:${m.id}`} className="stage-card" data-testid="mezcla-row" data-mezcla-tipo={m.tipo}>
           <div>{m.tipo === 'enganche' ? `Derivación ${m.id}` : `Unión ${m.id}`}: {pieceLabelById(m.piezas[0], entrada!.piezas, idx)} ↔ {pieceLabelById(m.piezas[1], entrada!.piezas, idx)}</div>
           <MarcaMezcla mezcla={m.mezcla} testid="mezcla-row-marca" bloque />
+        </div>
+      ))}
+    </Section>
+  );
+}
+
+/**
+ * Curvas eslabonadas (EPS, CUS): eslabones por curva y códigos a comprar. El
+ * motor cuenta 1 pieza por instancia (D-18); esta cuenta la reemplaza.
+ */
+function CurvasEslabonadasList() {
+  const entrada = useTrayStore((s) => s.entrada);
+  const context = useTrayStore((s) => s.context);
+  const idx = indexProducts(context?.productos);
+  const curvas = curvasEslabonadas(entrada, new Map((context?.productos ?? []).map((p) => [p.producto_id, p])));
+  if (!curvas.length) return null;
+  const compra = compraEslabones(curvas);
+  return (
+    <Section title={`Curvas eslabonadas (${curvas.length})`} testid="eslabonadas">
+      <p className="stage-note">Eslabones = techo(θ/22,5°) + 1 (declarado por el operador). El motor cuenta 1 pieza por curva; esta cuenta lo reemplaza.</p>
+      {curvas.map((c) => (
+        <div key={c.pieza} className="stage-row-sub" data-testid="eslabonada-curva-row" data-pieza={c.pieza} data-eslabones={c.eslabones} data-angulo={c.anguloDeg}>
+          {pieceLabelById(c.pieza, entrada!.piezas, idx)}: {c.anguloDeg}° → {c.eslabones} eslabones · eje {c.longitudEjeMm.toFixed(1)} mm
+        </div>
+      ))}
+      <h4 className="stage-section-subtitle">Códigos a comprar</h4>
+      {compra.map((l) => (
+        <div key={l.producto_id} className="stage-card" data-testid="eslabonada-compra-row" data-producto={l.producto_id} data-codigos={l.codigos} data-eslabones={l.eslabones}>
+          <div><strong>{l.sku}: {l.codigos} {l.eslabonesPorCodigo === 1 ? 'eslabón(es)' : 'código(s)'}</strong></div>
+          <div className="stage-row-sub">{l.regla}</div>
         </div>
       ))}
     </Section>
@@ -268,6 +299,7 @@ export function ResultadosPanel() {
       <NominalList />
       <AvisosModeloList />
       <MezclasList />
+      <CurvasEslabonadasList />
       <ComponentesUnionApp />
 
       <Section title="Resultado">

@@ -27,7 +27,7 @@ import { seedStaticCatalog } from '../../../catalog/staticCatalog';
 import { clearCatalogPortIndex, clearPortMappingOverrides, clearProductCatalogIndex, setMasterResolver } from '../../catalogPortMapping';
 import { definicionEfectiva } from '../definitions';
 import { TOL_GEOM_DEG, tolGeomMm } from '../geometriaEquivalente';
-import { claveTramo, conLongitudesEje, longitudesDeEje, PATRONES_CURVA_VERTICAL, TOL_EXTREMO_MM } from '../longitudesEje';
+import { claveTramo, conLongitudesEje, longitudesDeEje, PATRONES_CURVA_ESLABONADA, PATRONES_CURVA_VERTICAL, TOL_EXTREMO_MM } from '../longitudesEje';
 import { lineaMediaPerfilCUPS } from '../../../parametric/geometry/outlines';
 import { placeDefinition, puertosFromWorld, type ColocacionResuelta, type DefPort } from '../placementCore';
 import { updateOutdatedPieces, withDefinition } from '../definitions';
@@ -110,7 +110,8 @@ describe('longitudes de eje guardadas al colocar — catálogo completo', () => 
   it('curva vertical: la línea media va de centro de boca a centro de boca, sale por las normales y queda entre la cuerda y las tangentes', () => {
     const linea = lineaMediaPerfilCUPS();
     let piezas = 0;
-    for (const p of snapshot.PRODUCTOS.filter((x) => String(x.tipo_pieza).startsWith('curva vertical'))) {
+    // Sólo las CUPS (curva rígida medida). La CUS ya no usa este perfil: es eslabonada (caso siguiente).
+    for (const p of snapshot.PRODUCTOS.filter((x) => String(x.tipo_pieza).startsWith('curva vertical') && x.tipo_pieza !== 'curva vertical articulada')) {
       const r = colocada(p);
       if (!r) continue;
       piezas++;
@@ -135,8 +136,28 @@ describe('longitudes de eje guardadas al colocar — catálogo completo', () => 
       expect(guardada.mm).toBeGreaterThan(cuerda);
       expect(guardada.mm).toBeLessThan(t1 + t2);
     }
-    expect(piezas).toBe(54); // CUPS-A 7 + CUPS-D 7 + CUS 40
+    expect(piezas).toBe(14); // CUPS-A 7 + CUPS-D 7
     expect(linea.longitud_mm).toBeCloseTo(227.588, 3);
+  });
+
+  it('curva eslabonada (EPS, CUS): el polígono de N−1 cuerdas sobre radio = ancho, entre la cuerda directa y el arco', () => {
+    let piezas = 0;
+    for (const p of snapshot.PRODUCTOS.filter((x) => x.tipo_pieza === 'curva vertical articulada')) {
+      const r = colocada(p);
+      expect(r, p.producto_id).not.toBeNull();
+      if (!r) continue;
+      piezas++;
+      expect(PATRONES_CURVA_ESLABONADA.has(r.def.patron), p.producto_id).toBe(true);
+      const g = r.pieza.colocacion.longitudes_eje![claveTramo('P1', 'P2')];
+      expect(g.regla).toBe('poligono_eslabones');
+      const R = p.ancho_nominal_mm!;
+      // 90° por defecto: 5 eslabones, 4 cuerdas de 22,5°.
+      expect(g.mm).toBeCloseTo(4 * 2 * R * Math.sin((11.25 * Math.PI) / 180), 9);
+      expect(g.mm).toBeGreaterThan(R * Math.SQRT2);
+      expect(g.mm).toBeLessThan((R * Math.PI) / 2);
+      expect(r.pieza.longitud_eje_mm).toBe(g.mm);
+    }
+    expect(piezas).toBe(47); // EPS 7 + CUS 40
   });
 
   it('familias sin regla: sin longitud y con motivo (las T, X y curvas verticales sin modelo no tienen definición)', () => {

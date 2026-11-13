@@ -7,6 +7,7 @@ import { useTrayStore } from '../tray/store';
 import { useWorkspaceStore } from './useWorkspaceStore';
 import { object } from '../tray/model';
 import { summarizeResultDe } from './stages/resultPresentation';
+import { curvasEslabonadas } from './computoEslabonado';
 import { completarComponentesMezclas } from './componentesUnionMezcla';
 
 function JsonBlock({ value }: { value: unknown }) {
@@ -20,6 +21,7 @@ export function TrayResults() {
   const status   = useTrayStore((s) => s.status);
   const entrada  = useTrayStore((s) => s.entrada);
   const selectTray = useWorkspaceStore((s) => s.selectTray);
+  const eslabonadas = new Set(curvasEslabonadas(entrada, new Map((ctx?.productos ?? []).map((p) => [p.producto_id, p]))).map((c) => c.pieza));
   const agregadas = completarComponentesMezclas(result, entrada, new Map((ctx?.productos ?? []).map((p) => [p.producto_id, p])), ctx?.compatibilidades ?? [], ctx?.componentesUnion ?? []);
 
   if (!result) {
@@ -100,7 +102,9 @@ export function TrayResults() {
               <p key={i} style={{ padding: '2px 12px', fontSize: 11 }} data-testid="computo-linea-motor">
                 {String(v.sku ?? v.producto_id ?? 'Pendiente')}: {String(v.cantidad ?? '?')} {String(v.unidad ?? '')}
                 {object(v.origen) && typeof v.origen.conexion === 'string' && agregadas.completadas.includes(v.origen.conexion)
-                  ? ' — completada por la app (ver "agregadas por la app")' : ''}<br />
+                  ? ' — completada por la app (ver "agregadas por la app")' : ''}
+                {object(v.origen) && typeof v.origen.pieza === 'string' && eslabonadas.has(v.origen.pieza)
+                  ? ' — curva eslabonada: reemplazada por la cuenta de eslabones (ver "Curvas eslabonadas")' : ''}<br />
                 {String(v.descripcion ?? '')}
               </p>
             ) : null

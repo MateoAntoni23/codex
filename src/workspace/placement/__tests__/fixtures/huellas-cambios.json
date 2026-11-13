@@ -1221,6 +1221,241 @@
       "antes": "def-0b9aaad44155da",
       "despues": "def-0b8607726c6df2",
       "motivo": "Defecto de orientación: la curva vertical ASCENDENTE (CUPS-A, interior) salía hacia abajo, como la descendente. Mismo perfil medido; la boca horizontal toma el marco medido del STEP (u=−Z, v≈−Y) y la definición registra sentido_vertical=+1. La D (descendente) no cambia."
+    },
+    "SAM_CUS-150-5-065-14-G": {
+      "antes": "def-1ec73b81a184fa",
+      "despues": "def-11de01dca2edd2",
+      "motivo": "Curva eslabonada (2026-11-13): la CUS deja el perfil rígido de la CUPS (\"equivalencia autorizada\" retirada) y pasa a la regla del operador — radio = ancho, 22,5° por articulación, polígono de cuerdas, bocas P1/P2 con el ala del catálogo, ángulo por instancia (90° por defecto). Las CUS ya colocadas quedan desactualizadas (A-6)."
+    },
+    "SAM_CUS-150-5-065-18-G": {
+      "antes": "def-1ec73b81a184fa",
+      "despues": "def-11de01dca2edd2",
+      "motivo": "Curva eslabonada (2026-11-13): la CUS deja el perfil rígido de la CUPS (\"equivalencia autorizada\" retirada) y pasa a la regla del operador — radio = ancho, 22,5° por articulación, polígono de cuerdas, bocas P1/P2 con el ala del catálogo, ángulo por instancia (90° por defecto). Las CUS ya colocadas quedan desactualizadas (A-6)."
+    },
+    "SAM_CUS-150-5-065-18-Z": {
+      "antes": "def-1ec73b81a184fa",
+      "despues": "def-11de01dca2edd2",
+      "motivo": "Curva eslabonada (2026-11-13): la CUS deja el perfil rígido de la CUPS (\"equivalencia autorizada\" retirada) y pasa a la regla del operador — radio = ancho, 22,5° por articulación, polígono de cuerdas, bocas P1/P2 con el ala del catálogo, ángulo por instancia (90° por defecto). Las CUS ya colocadas quedan desactualizadas (A-6)."
+    },
+    "SAM_CUS-150-5-090-14-G": {
+      "antes": "def-17c7663c9f8ff8",
+      "despues": "def-06dda8108bcd74",
+      "motivo": "Curva eslabonada (2026-11-13): la CUS deja el perfil rígido de la CUPS (\"equivalencia autorizada\" retirada) y pasa a la regla del operador — radio = ancho, 22,5° por articulación, polígono de cuerdas, bocas P1/P2 con el ala del catálogo, ángulo por instancia (90° por defecto). Las CUS ya colocadas quedan desactualizadas (A-6)."
+    },
+    "SAM_CUS-150-5-090-18-G": {
+      "antes": "def-17c7663c9f8ff8",
+      "despues": "def-06dda8108bcd74",
+      "motivo": "Curva eslabonada (2026-11-13): la CUS deja el perfil rígido de la CUPS (\"equivalencia autorizada\" retirada) y pasa a la regla del operador — radio = ancho, 22,5° por articulación, polígono de cuerdas, bocas P1/P2 con el ala del catálogo, ángulo por instancia (90° por defecto). Las CUS ya colocadas quedan desactualizadas (A-6)."
+    },
+    "SAM_CUS-150-5-090-18-Z": {
+      "antes": "def-17c7663c9f8ff8",
+      "despues": "def-06dda8108bcd74",
+      "motivo": "Curva eslabonada (2026-11-13): la CUS deja el perfil rígido de la CUPS (\"equivalencia autorizada\" retirada) y pasa a la regla del operador — radio = ancho, 22,5° por articulación, polígono de cuerdas, bocas P1/P2 con el ala del catálogo, ángulo por instancia (90° por defecto). Las CUS ya colocadas quedan desactualizadas (A-6)."
+    },
+    "SAM_CUS-150-5-115-14-G": {
+      "antes": "def-0c2b98ec925663",
+      "despues": "def-012f2c1a8c930d",
+      "motivo": "Curva eslabonada (2026-11-13): la CUS deja el perfil rígido de la CUPS (\"equivalencia autorizada\" retirada) y pasa a la regla del operador — radio = ancho, 22,5° por articulación, polígono de cuerdas, bocas P1/P2 con el ala del catálogo, ángulo por instancia (90° por defecto). Las CUS ya colocadas quedan desactualizadas (A-6)."
+    },
+    "SAM_CUS-150-5-115-18-G": {
+      "antes": "def-0c2b98ec925663",
+      "despues": "def-012f2c1a8c930d",
+      "motivo": "Curva eslabonada (2026-11-13): la CUS deja el perfil rígido de la CUPS (\"equivalencia autorizada\" retirada) y pasa a la regla del operador — radio = ancho, 22,5° por articulación, polígono de cuerdas, bocas P1/P2 con el ala del catálogo, ángulo por instancia (90° por defecto). Las CUS ya colocadas quedan desactualizadas (A-6)."
+    },
+    "SAM_CUS-150-5-115-18-Z": {
+      "antes": "def-0c2b98ec925663",
+      "despues": "def-012f2c1a8c930d",
+      "motivo": "Curva eslabonada (2026-11-13): la CUS deja el perfil rígido de la CUPS (\"equivalencia autorizada\" retirada) y pasa a la regla del operador — radio = ancho, 22,5° por articulación, polígono de cuerdas, bocas P1/P2 con el ala del catálogo, ángulo por instancia (90° por defecto). Las CUS ya colocadas quedan desactualizadas (A-6)."
+    },
+    "SAM_CUS-150-5-150-14-G": {
+      "antes": "def-04034de0ef95ed",
+      "despues": "def-00bd86b9337404",
+      "motivo": "Curva eslabonada (2026-11-13): la CUS deja el perfil rígido de la CUPS (\"equivalencia autorizada\" retirada) y pasa a la regla del operador — radio = ancho, 22,5° por articulación, polígono de cuerdas, bocas P1/P2 con el ala del catálogo, ángulo por instancia (90° por defecto). Las CUS ya colocadas quedan desactualizadas (A-6)."
+    },
+    "SAM_CUS-300-5-065-14-G": {
+      "antes": "def-08d783c8be28e6",
+      "despues": "def-15623c87e7478a",
+      "motivo": "Curva eslabonada (2026-11-13): la CUS deja el perfil rígido de la CUPS (\"equivalencia autorizada\" retirada) y pasa a la regla del operador — radio = ancho, 22,5° por articulación, polígono de cuerdas, bocas P1/P2 con el ala del catálogo, ángulo por instancia (90° por defecto). Las CUS ya colocadas quedan desactualizadas (A-6)."
+    },
+    "SAM_CUS-300-5-065-18-G": {
+      "antes": "def-08d783c8be28e6",
+      "despues": "def-15623c87e7478a",
+      "motivo": "Curva eslabonada (2026-11-13): la CUS deja el perfil rígido de la CUPS (\"equivalencia autorizada\" retirada) y pasa a la regla del operador — radio = ancho, 22,5° por articulación, polígono de cuerdas, bocas P1/P2 con el ala del catálogo, ángulo por instancia (90° por defecto). Las CUS ya colocadas quedan desactualizadas (A-6)."
+    },
+    "SAM_CUS-300-5-065-18-Z": {
+      "antes": "def-08d783c8be28e6",
+      "despues": "def-15623c87e7478a",
+      "motivo": "Curva eslabonada (2026-11-13): la CUS deja el perfil rígido de la CUPS (\"equivalencia autorizada\" retirada) y pasa a la regla del operador — radio = ancho, 22,5° por articulación, polígono de cuerdas, bocas P1/P2 con el ala del catálogo, ángulo por instancia (90° por defecto). Las CUS ya colocadas quedan desactualizadas (A-6)."
+    },
+    "SAM_CUS-300-5-090-14-G": {
+      "antes": "def-161a2230851c66",
+      "despues": "def-1724143fcd3152",
+      "motivo": "Curva eslabonada (2026-11-13): la CUS deja el perfil rígido de la CUPS (\"equivalencia autorizada\" retirada) y pasa a la regla del operador — radio = ancho, 22,5° por articulación, polígono de cuerdas, bocas P1/P2 con el ala del catálogo, ángulo por instancia (90° por defecto). Las CUS ya colocadas quedan desactualizadas (A-6)."
+    },
+    "SAM_CUS-300-5-090-18-G": {
+      "antes": "def-161a2230851c66",
+      "despues": "def-1724143fcd3152",
+      "motivo": "Curva eslabonada (2026-11-13): la CUS deja el perfil rígido de la CUPS (\"equivalencia autorizada\" retirada) y pasa a la regla del operador — radio = ancho, 22,5° por articulación, polígono de cuerdas, bocas P1/P2 con el ala del catálogo, ángulo por instancia (90° por defecto). Las CUS ya colocadas quedan desactualizadas (A-6)."
+    },
+    "SAM_CUS-300-5-090-18-Z": {
+      "antes": "def-161a2230851c66",
+      "despues": "def-1724143fcd3152",
+      "motivo": "Curva eslabonada (2026-11-13): la CUS deja el perfil rígido de la CUPS (\"equivalencia autorizada\" retirada) y pasa a la regla del operador — radio = ancho, 22,5° por articulación, polígono de cuerdas, bocas P1/P2 con el ala del catálogo, ángulo por instancia (90° por defecto). Las CUS ya colocadas quedan desactualizadas (A-6)."
+    },
+    "SAM_CUS-300-5-115-14-G": {
+      "antes": "def-16aca8a0c91123",
+      "despues": "def-0bc6a50b769632",
+      "motivo": "Curva eslabonada (2026-11-13): la CUS deja el perfil rígido de la CUPS (\"equivalencia autorizada\" retirada) y pasa a la regla del operador — radio = ancho, 22,5° por articulación, polígono de cuerdas, bocas P1/P2 con el ala del catálogo, ángulo por instancia (90° por defecto). Las CUS ya colocadas quedan desactualizadas (A-6)."
+    },
+    "SAM_CUS-300-5-115-18-G": {
+      "antes": "def-16aca8a0c91123",
+      "despues": "def-0bc6a50b769632",
+      "motivo": "Curva eslabonada (2026-11-13): la CUS deja el perfil rígido de la CUPS (\"equivalencia autorizada\" retirada) y pasa a la regla del operador — radio = ancho, 22,5° por articulación, polígono de cuerdas, bocas P1/P2 con el ala del catálogo, ángulo por instancia (90° por defecto). Las CUS ya colocadas quedan desactualizadas (A-6)."
+    },
+    "SAM_CUS-300-5-115-18-Z": {
+      "antes": "def-16aca8a0c91123",
+      "despues": "def-0bc6a50b769632",
+      "motivo": "Curva eslabonada (2026-11-13): la CUS deja el perfil rígido de la CUPS (\"equivalencia autorizada\" retirada) y pasa a la regla del operador — radio = ancho, 22,5° por articulación, polígono de cuerdas, bocas P1/P2 con el ala del catálogo, ángulo por instancia (90° por defecto). Las CUS ya colocadas quedan desactualizadas (A-6)."
+    },
+    "SAM_CUS-300-5-150-14-G": {
+      "antes": "def-0fffa38a473400",
+      "despues": "def-0ff1ca59038d90",
+      "motivo": "Curva eslabonada (2026-11-13): la CUS deja el perfil rígido de la CUPS (\"equivalencia autorizada\" retirada) y pasa a la regla del operador — radio = ancho, 22,5° por articulación, polígono de cuerdas, bocas P1/P2 con el ala del catálogo, ángulo por instancia (90° por defecto). Las CUS ya colocadas quedan desactualizadas (A-6)."
+    },
+    "SAM_CUS-450-5-065-14-G": {
+      "antes": "def-0efd5b1b141a6c",
+      "despues": "def-01c8e2828df28e",
+      "motivo": "Curva eslabonada (2026-11-13): la CUS deja el perfil rígido de la CUPS (\"equivalencia autorizada\" retirada) y pasa a la regla del operador — radio = ancho, 22,5° por articulación, polígono de cuerdas, bocas P1/P2 con el ala del catálogo, ángulo por instancia (90° por defecto). Las CUS ya colocadas quedan desactualizadas (A-6)."
+    },
+    "SAM_CUS-450-5-065-18-G": {
+      "antes": "def-0efd5b1b141a6c",
+      "despues": "def-01c8e2828df28e",
+      "motivo": "Curva eslabonada (2026-11-13): la CUS deja el perfil rígido de la CUPS (\"equivalencia autorizada\" retirada) y pasa a la regla del operador — radio = ancho, 22,5° por articulación, polígono de cuerdas, bocas P1/P2 con el ala del catálogo, ángulo por instancia (90° por defecto). Las CUS ya colocadas quedan desactualizadas (A-6)."
+    },
+    "SAM_CUS-450-5-065-18-Z": {
+      "antes": "def-0efd5b1b141a6c",
+      "despues": "def-01c8e2828df28e",
+      "motivo": "Curva eslabonada (2026-11-13): la CUS deja el perfil rígido de la CUPS (\"equivalencia autorizada\" retirada) y pasa a la regla del operador — radio = ancho, 22,5° por articulación, polígono de cuerdas, bocas P1/P2 con el ala del catálogo, ángulo por instancia (90° por defecto). Las CUS ya colocadas quedan desactualizadas (A-6)."
+    },
+    "SAM_CUS-450-5-090-14-G": {
+      "antes": "def-042e872fef06a8",
+      "despues": "def-16af7130f01e2f",
+      "motivo": "Curva eslabonada (2026-11-13): la CUS deja el perfil rígido de la CUPS (\"equivalencia autorizada\" retirada) y pasa a la regla del operador — radio = ancho, 22,5° por articulación, polígono de cuerdas, bocas P1/P2 con el ala del catálogo, ángulo por instancia (90° por defecto). Las CUS ya colocadas quedan desactualizadas (A-6)."
+    },
+    "SAM_CUS-450-5-090-18-G": {
+      "antes": "def-042e872fef06a8",
+      "despues": "def-16af7130f01e2f",
+      "motivo": "Curva eslabonada (2026-11-13): la CUS deja el perfil rígido de la CUPS (\"equivalencia autorizada\" retirada) y pasa a la regla del operador — radio = ancho, 22,5° por articulación, polígono de cuerdas, bocas P1/P2 con el ala del catálogo, ángulo por instancia (90° por defecto). Las CUS ya colocadas quedan desactualizadas (A-6)."
+    },
+    "SAM_CUS-450-5-090-18-Z": {
+      "antes": "def-042e872fef06a8",
+      "despues": "def-16af7130f01e2f",
+      "motivo": "Curva eslabonada (2026-11-13): la CUS deja el perfil rígido de la CUPS (\"equivalencia autorizada\" retirada) y pasa a la regla del operador — radio = ancho, 22,5° por articulación, polígono de cuerdas, bocas P1/P2 con el ala del catálogo, ángulo por instancia (90° por defecto). Las CUS ya colocadas quedan desactualizadas (A-6)."
+    },
+    "SAM_CUS-450-5-115-14-G": {
+      "antes": "def-0e3e8007124455",
+      "despues": "def-04b37a340852c6",
+      "motivo": "Curva eslabonada (2026-11-13): la CUS deja el perfil rígido de la CUPS (\"equivalencia autorizada\" retirada) y pasa a la regla del operador — radio = ancho, 22,5° por articulación, polígono de cuerdas, bocas P1/P2 con el ala del catálogo, ángulo por instancia (90° por defecto). Las CUS ya colocadas quedan desactualizadas (A-6)."
+    },
+    "SAM_CUS-450-5-115-18-G": {
+      "antes": "def-0e3e8007124455",
+      "despues": "def-04b37a340852c6",
+      "motivo": "Curva eslabonada (2026-11-13): la CUS deja el perfil rígido de la CUPS (\"equivalencia autorizada\" retirada) y pasa a la regla del operador — radio = ancho, 22,5° por articulación, polígono de cuerdas, bocas P1/P2 con el ala del catálogo, ángulo por instancia (90° por defecto). Las CUS ya colocadas quedan desactualizadas (A-6)."
+    },
+    "SAM_CUS-450-5-115-18-Z": {
+      "antes": "def-0e3e8007124455",
+      "despues": "def-04b37a340852c6",
+      "motivo": "Curva eslabonada (2026-11-13): la CUS deja el perfil rígido de la CUPS (\"equivalencia autorizada\" retirada) y pasa a la regla del operador — radio = ancho, 22,5° por articulación, polígono de cuerdas, bocas P1/P2 con el ala del catálogo, ángulo por instancia (90° por defecto). Las CUS ya colocadas quedan desactualizadas (A-6)."
+    },
+    "SAM_CUS-450-5-150-14-G": {
+      "antes": "def-1b38558c43f0dd",
+      "despues": "def-0426f14bf1de99",
+      "motivo": "Curva eslabonada (2026-11-13): la CUS deja el perfil rígido de la CUPS (\"equivalencia autorizada\" retirada) y pasa a la regla del operador — radio = ancho, 22,5° por articulación, polígono de cuerdas, bocas P1/P2 con el ala del catálogo, ángulo por instancia (90° por defecto). Las CUS ya colocadas quedan desactualizadas (A-6)."
+    },
+    "SAM_CUS-600-5-065-14-G": {
+      "antes": "def-08e5302e9bf832",
+      "despues": "def-1f5a9a76b9952d",
+      "motivo": "Curva eslabonada (2026-11-13): la CUS deja el perfil rígido de la CUPS (\"equivalencia autorizada\" retirada) y pasa a la regla del operador — radio = ancho, 22,5° por articulación, polígono de cuerdas, bocas P1/P2 con el ala del catálogo, ángulo por instancia (90° por defecto). Las CUS ya colocadas quedan desactualizadas (A-6)."
+    },
+    "SAM_CUS-600-5-065-18-G": {
+      "antes": "def-08e5302e9bf832",
+      "despues": "def-1f5a9a76b9952d",
+      "motivo": "Curva eslabonada (2026-11-13): la CUS deja el perfil rígido de la CUPS (\"equivalencia autorizada\" retirada) y pasa a la regla del operador — radio = ancho, 22,5° por articulación, polígono de cuerdas, bocas P1/P2 con el ala del catálogo, ángulo por instancia (90° por defecto). Las CUS ya colocadas quedan desactualizadas (A-6)."
+    },
+    "SAM_CUS-600-5-065-18-Z": {
+      "antes": "def-08e5302e9bf832",
+      "despues": "def-1f5a9a76b9952d",
+      "motivo": "Curva eslabonada (2026-11-13): la CUS deja el perfil rígido de la CUPS (\"equivalencia autorizada\" retirada) y pasa a la regla del operador — radio = ancho, 22,5° por articulación, polígono de cuerdas, bocas P1/P2 con el ala del catálogo, ángulo por instancia (90° por defecto). Las CUS ya colocadas quedan desactualizadas (A-6)."
+    },
+    "SAM_CUS-600-5-090-14-G": {
+      "antes": "def-1709188d8804c0",
+      "despues": "def-1808d192391fa6",
+      "motivo": "Curva eslabonada (2026-11-13): la CUS deja el perfil rígido de la CUPS (\"equivalencia autorizada\" retirada) y pasa a la regla del operador — radio = ancho, 22,5° por articulación, polígono de cuerdas, bocas P1/P2 con el ala del catálogo, ángulo por instancia (90° por defecto). Las CUS ya colocadas quedan desactualizadas (A-6)."
+    },
+    "SAM_CUS-600-5-090-18-G": {
+      "antes": "def-1709188d8804c0",
+      "despues": "def-1808d192391fa6",
+      "motivo": "Curva eslabonada (2026-11-13): la CUS deja el perfil rígido de la CUPS (\"equivalencia autorizada\" retirada) y pasa a la regla del operador — radio = ancho, 22,5° por articulación, polígono de cuerdas, bocas P1/P2 con el ala del catálogo, ángulo por instancia (90° por defecto). Las CUS ya colocadas quedan desactualizadas (A-6)."
+    },
+    "SAM_CUS-600-5-090-18-Z": {
+      "antes": "def-1709188d8804c0",
+      "despues": "def-1808d192391fa6",
+      "motivo": "Curva eslabonada (2026-11-13): la CUS deja el perfil rígido de la CUPS (\"equivalencia autorizada\" retirada) y pasa a la regla del operador — radio = ancho, 22,5° por articulación, polígono de cuerdas, bocas P1/P2 con el ala del catálogo, ángulo por instancia (90° por defecto). Las CUS ya colocadas quedan desactualizadas (A-6)."
+    },
+    "SAM_CUS-600-5-115-14-G": {
+      "antes": "def-1ad921191664a4",
+      "despues": "def-0c9d462a777e2d",
+      "motivo": "Curva eslabonada (2026-11-13): la CUS deja el perfil rígido de la CUPS (\"equivalencia autorizada\" retirada) y pasa a la regla del operador — radio = ancho, 22,5° por articulación, polígono de cuerdas, bocas P1/P2 con el ala del catálogo, ángulo por instancia (90° por defecto). Las CUS ya colocadas quedan desactualizadas (A-6)."
+    },
+    "SAM_CUS-600-5-115-18-G": {
+      "antes": "def-1ad921191664a4",
+      "despues": "def-0c9d462a777e2d",
+      "motivo": "Curva eslabonada (2026-11-13): la CUS deja el perfil rígido de la CUPS (\"equivalencia autorizada\" retirada) y pasa a la regla del operador — radio = ancho, 22,5° por articulación, polígono de cuerdas, bocas P1/P2 con el ala del catálogo, ángulo por instancia (90° por defecto). Las CUS ya colocadas quedan desactualizadas (A-6)."
+    },
+    "SAM_CUS-600-5-115-18-Z": {
+      "antes": "def-1ad921191664a4",
+      "despues": "def-0c9d462a777e2d",
+      "motivo": "Curva eslabonada (2026-11-13): la CUS deja el perfil rígido de la CUPS (\"equivalencia autorizada\" retirada) y pasa a la regla del operador — radio = ancho, 22,5° por articulación, polígono de cuerdas, bocas P1/P2 con el ala del catálogo, ángulo por instancia (90° por defecto). Las CUS ya colocadas quedan desactualizadas (A-6)."
+    },
+    "SAM_CUS-600-5-150-14-G": {
+      "antes": "def-0e6569e5a9adde",
+      "despues": "def-12cdf959d2fd24",
+      "motivo": "Curva eslabonada (2026-11-13): la CUS deja el perfil rígido de la CUPS (\"equivalencia autorizada\" retirada) y pasa a la regla del operador — radio = ancho, 22,5° por articulación, polígono de cuerdas, bocas P1/P2 con el ala del catálogo, ángulo por instancia (90° por defecto). Las CUS ya colocadas quedan desactualizadas (A-6)."
+    },
+    "SAM_EPS-050-Z": {
+      "antes": "(sin modelo)",
+      "despues": "def-1d95551f680c4b",
+      "motivo": "Curva eslabonada (2026-11-13): la EPS pasa a tener modelo (regla declarada por el operador; antes \"ángulo ajustable\" sin definición)."
+    },
+    "SAM_EPS-100-Z": {
+      "antes": "(sin modelo)",
+      "despues": "def-08af980d75b4eb",
+      "motivo": "Curva eslabonada (2026-11-13): la EPS pasa a tener modelo (regla declarada por el operador; antes \"ángulo ajustable\" sin definición)."
+    },
+    "SAM_EPS-150-Z": {
+      "antes": "(sin modelo)",
+      "despues": "def-0fd58ab876fb9c",
+      "motivo": "Curva eslabonada (2026-11-13): la EPS pasa a tener modelo (regla declarada por el operador; antes \"ángulo ajustable\" sin definición)."
+    },
+    "SAM_EPS-200-Z": {
+      "antes": "(sin modelo)",
+      "despues": "def-1b6763f82bd837",
+      "motivo": "Curva eslabonada (2026-11-13): la EPS pasa a tener modelo (regla declarada por el operador; antes \"ángulo ajustable\" sin definición)."
+    },
+    "SAM_EPS-300-Z": {
+      "antes": "(sin modelo)",
+      "despues": "def-1de973e192ec6d",
+      "motivo": "Curva eslabonada (2026-11-13): la EPS pasa a tener modelo (regla declarada por el operador; antes \"ángulo ajustable\" sin definición)."
+    },
+    "SAM_EPS-450-Z": {
+      "antes": "(sin modelo)",
+      "despues": "def-1d0f83cc59eb15",
+      "motivo": "Curva eslabonada (2026-11-13): la EPS pasa a tener modelo (regla declarada por el operador; antes \"ángulo ajustable\" sin definición)."
+    },
+    "SAM_EPS-600-Z": {
+      "antes": "(sin modelo)",
+      "despues": "def-029d370a246956",
+      "motivo": "Curva eslabonada (2026-11-13): la EPS pasa a tener modelo (regla declarada por el operador; antes \"ángulo ajustable\" sin definición)."
     }
   }
 }
