@@ -428,8 +428,12 @@ ${body}
       {entrada.piezas.map((piece) => {
         const ports = Object.values(piece.puertos);
         const p1 = ports[0]?.posicion_mm as V3 | undefined;
-        const p2 = ports[1]?.posicion_mm as V3 | undefined;
-        if (!p1 || !p2) return null;
+        // Una pieza de UNA boca (la DCPS: su cara de apoyo no es boca) se dibuja igual
+        // desde su definición; antes se descartaba y el tramo continuado desde su boca
+        // se veía suelto, sin junta con el flanco del tronco.
+        if (!p1) return null;
+        const p2 = (ports[1]?.posicion_mm as V3 | undefined) ?? (placedOf(entrada, piece) ? p1 : undefined);
+        if (!p2) return null;
 
         const product   = productMap.get(piece.producto_id);
         const tipo      = product?.tipo_pieza ?? 'recta';

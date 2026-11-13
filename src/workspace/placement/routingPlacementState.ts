@@ -4,6 +4,7 @@
  * esta misma función con el mismo estado: reciben el mismo objeto (A-1).
  */
 import type { Context, TrayInput, Product } from '../../tray/model';
+import { origenDeBoca } from '../derivacion/enganche';
 import type { StartPort } from '../routingRules';
 import { checkDirectCompatibility, snapDirectionToAxis } from '../routingRules';
 import { definicionEfectiva, esTramoRecto, modeloDeProducto } from './definitions';
@@ -54,12 +55,12 @@ export function routingPlacementFromState(
       entryPortName = d.def.ports[0]?.name ?? 'P1';
     }
   } else if (isStraightKind(product)) {
-    const existing = entrada.piezas.find((p) => p.instancia_id === startPort.pieceId);
-    const existingProduct = context.productos.find((p) => p.producto_id === existing?.producto_id);
-    const compat = existingProduct
+    // Origen: el producto de la pieza, o el recto de referencia de una boca de enganche (escalera).
+    const origen = origenDeBoca(entrada, new Map(context.productos.map((p) => [p.producto_id, p])), startPort.pieceId, startPort.portName);
+    const compat = origen
       ? checkDirectCompatibility(
           { compatibilidades: context.compatibilidades ?? [], componentesUnion: context.componentesUnion ?? [] },
-          existingProduct, startPort.portName, product, 'P1',
+          origen.product, origen.portName, product, 'P1',
         )
       : null;
     entryPortName = compat?.ok ? compat.newPiecePort : 'P1';

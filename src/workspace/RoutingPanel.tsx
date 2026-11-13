@@ -11,13 +11,13 @@
  *
  * Undo/redo: exposed in the panel header; both invalidate motor results.
  */
-import { bocasOcupadasPorEnganches } from './derivacion/enganche';
+import { asentarSalidasDeEnganche, origenDeBoca } from './derivacion/enganche';
+import { extremosLibres, verificarOrigen } from './derivacion/extremosLibres';
 import { useEffect, useMemo, useState } from 'react';
 import { useTrayStore } from '../tray/store';
 import { useWorkspaceStore } from './useWorkspaceStore';
 import { useRoutingStore } from './useRoutingStore';
 import {
-  getFreePorts,
   getPortCompatibility,
   checkDirectCompatibility,
   findReductionCandidates,
@@ -25,7 +25,6 @@ import {
   snapDirectionToAxis,
   snapChangesDirection,
   angleBetweenDirs,
-  verifyStartPortValid,
   generateConnectionId,
 } from './routingRules';
 import { compatiblesDirectos } from './compatibilidadFisica';
@@ -154,8 +153,7 @@ function PeExtensionWidget({
 function StepSelectingPort() {
   const entrada = useTrayStore((s) => s.entrada);
   const freePorts = useMemo(() => {
-    if (!entrada) return [];
-    return getFreePorts(entrada.piezas, entrada.conexiones, bocasOcupadasPorEnganches(entrada));
+    return extremosLibres(entrada);
   }, [entrada]);
 
   return (
@@ -219,10 +217,15 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
     () => entrada?.piezas.find((p) => p.instancia_id === startPort?.pieceId),
     [entrada?.piezas, startPort?.pieceId],
   );
-  const existingProduct = useMemo(
-    () => context?.productos.find((p) => p.producto_id === existingPiece?.producto_id),
-    [context?.productos, existingPiece?.producto_id],
+  // Origen contra el que se decide qué continuar: el producto de la pieza, o el
+  // recto de referencia cuando se continúa desde una boca de enganche (escalera).
+  const productMap = useMemo(() => new Map((context?.productos ?? []).map((p) => [p.producto_id, p])), [context?.productos]);
+  const origen = useMemo(
+    () => (startPort ? origenDeBoca(entrada, productMap, startPort.pieceId, startPort.portName) : null),
+    [entrada, productMap, startPort],
   );
+  const existingProduct = origen?.product;
+  const originPortName = origen?.portName ?? startPort?.portName ?? '';
 
   // Port info from PUERTOS_PRODUCTO (port-level dimensions and interface)
   const existingPortInfo = useMemo(() => {
@@ -241,7 +244,7 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
   // "sin calibración de bocas" (modelo no resuelto) en lugar de "0 compatibles".
   const portCalibration = useMemo(() => {
     if (!existingProduct || !startPort || !context?.compatibilidades) return null;
-    const r = getPortCompatibility(context.compatibilidades, existingProduct.producto_id, startPort.portName);
+    const r = getPortCompatibility(context.compatibilidades, existingProduct.producto_id, originPortName);
     return r.status === 'uncalibrated' ? r : null;
   }, [context?.compatibilidades, existingProduct, startPort]);
 
@@ -310,7 +313,7 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
     if (!existingProduct || !startPort || !context?.productos) return [];
     return buildContinuationCandidates({
       existingProduct,
-      existingPortName: startPort.portName,
+      existingPortName: originPortName,
       catalogProducts: context.productos,
       compatibleIds,
     });
@@ -412,11 +415,11 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
     return checkDirectCompatibility(
       { compatibilidades: context.compatibilidades ?? [], componentesUnion: context.componentesUnion ?? [] },
       existingProduct,
-      startPort.portName,
+      originPortName,
       selectedProduct,
       'P1',
     );
-  }, [context, existingProduct, selectedProduct, startPort]);
+  }, [context, existingProduct, selectedProduct, startPort, originPortName]);
 
   // Receta paramétrica resuelta para el producto seleccionado — null cuando
   // caemos al fallback de arco sustituto (familia sin catálogo paramétrico).
@@ -1019,9 +1022,9 @@ function StepConfirmingReduction({ onConfirm, onBack }: {
   const [error, setError] = useState<string | null>(null);
 
   const existingProduct = useMemo(() => {
-    const piece = entrada?.piezas.find((p) => p.instancia_id === startPort?.pieceId);
-    return context?.productos.find((p) => p.producto_id === piece?.producto_id);
-  }, [context?.productos, entrada?.piezas, startPort?.pieceId]);
+    if (!startPort || !context) return undefined;
+    return origenDeBoca(entrada, new Map(context.productos.map((p) => [p.producto_id, p])), startPort.pieceId, startPort.portName)?.product;
+  }, [context, entrada, startPort]);
 
   const newProduct = useMemo(
     () => context?.productos.find((p) => p.producto_id === selectedProductId),
@@ -1232,7 +1235,7 @@ export function RoutingPanel() {
     if (!entrada || !startPort) return;
 
     // Pre-commit validation
-    const portCheck = verifyStartPortValid(entrada.piezas, entrada.conexiones, startPort);
+    const portCheck = verificarOrigen(entrada, startPort);
     if (!portCheck.valid) { setCommitError(portCheck.reason); return; }
 
     const effDir = getEffectiveDir();
@@ -1242,8 +1245,8 @@ export function RoutingPanel() {
     if (previewLengthMm <= 0) { setCommitError('La longitud debe ser mayor que 0.'); return; }
 
     // Re-verify compatibility at commit time (single source of truth)
-    const existingPiece = entrada.piezas.find((p) => p.instancia_id === startPort.pieceId);
-    const existingProductForComp = context?.productos.find((p) => p.producto_id === existingPiece?.producto_id);
+    const origenComp = context ? origenDeBoca(entrada, new Map(context.productos.map((p) => [p.producto_id, p])), startPort.pieceId, startPort.portName) : null;
+    const existingProductForComp = origenComp?.product;
     const selectedProductForComp = context?.productos.find((p) => p.producto_id === selectedProductId);
     if (!existingProductForComp || !selectedProductForComp) {
       setCommitError('Producto no encontrado en catálogo. Recargá el contexto.');
@@ -1251,7 +1254,7 @@ export function RoutingPanel() {
     }
     const documentedCompat = checkDirectCompatibility(
       { compatibilidades: context?.compatibilidades ?? [], componentesUnion: context?.componentesUnion ?? [] },
-      existingProductForComp, startPort.portName, selectedProductForComp, 'P1',
+      existingProductForComp, origenComp!.portName, selectedProductForComp, 'P1',
     );
     // A-9: una unión sin compatibilidad documentada sólo procede como excepción
     // aceptada con motivo (validado en el paso 2). No se agrega compatibilidad: la
@@ -1313,8 +1316,8 @@ export function RoutingPanel() {
         }
       }
 
-      // Apply all-or-nothing
-      const nextEntrada = applyOperation(entrada, op, peDecision);
+      // Apply all-or-nothing. Desde una boca de enganche, la unión pasa a ser la salida del enganche.
+      const nextEntrada = asentarSalidasDeEnganche(applyOperation(entrada, op, peDecision));
       // Si se confirmó con excepción, anotarla en el campo workspace-only
       // keyed por conexion_id; conserva motivo, reason_code, producto_id,
       // autor y timestamp. La presencia del motivo se validó en Step 2.
@@ -1354,7 +1357,7 @@ export function RoutingPanel() {
     setCommitError(null);
     if (!entrada || !startPort) return;
 
-    const portCheck = verifyStartPortValid(entrada.piezas, entrada.conexiones, startPort);
+    const portCheck = verificarOrigen(entrada, startPort);
     if (!portCheck.valid) { setCommitError(portCheck.reason); return; }
 
     const effDir = getEffectiveDir();
@@ -1401,7 +1404,7 @@ export function RoutingPanel() {
 
       next.piezas.push(redPiece, newPiece);
       next.conexiones.push(conn1, conn2);
-      trayEdit(next);
+      trayEdit(asentarSalidasDeEnganche(next));
       selectTray(newId);
       markDirty();
       deactivate();

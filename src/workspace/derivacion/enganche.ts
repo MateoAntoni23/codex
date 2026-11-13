@@ -1,26 +1,35 @@
 /**
- * Derivación en un tramo: una pieza se engancha a un punto intermedio del flanco
- * de un tramo recto, que NO se corta y NO cambia su longitud guardada.
+ * Derivación en un tramo: se abre una boca en un punto intermedio del flanco de
+ * un tramo recto, que NO se corta y NO cambia su longitud guardada.
  *
- * LA UNIÓN (común a perforada y escalera): el operador elige un tramo recto, una
- * boca de referencia, la distancia desde esa boca hasta el centro del enganche y
- * el lado. El ramal sale perpendicular al flanco. Su ancho NO tiene que coincidir
- * con el del tronco: la cuarta condición de B-3 no se aplica entre tronco y ramal
- * (el enganche no es una `conexion`); sí entre la boca del accesorio y el tramo
- * que se le conecta, que es una unión normal.
- *
- * EL ACCESORIO (por familia):
- *   - perforada → una DCPS del ANCHO DEL RAMAL, colocada con su cara de apoyo
- *     contra el flanco; es una pieza del trazado (el motor la computa) y el ramal
- *     se une a su boca P1. Sin DCPS de ese ancho → inválido con motivo.
+ * LA OPERACIÓN COLOCA SÓLO LA DERIVACIÓN (operador, 2026-11-13). No crea ninguna
+ * bandeja de ramal: deja una boca libre a la vista y el operador continúa desde
+ * ella por el camino normal de continuación, igual que desde cualquier accesorio.
+ *   - perforada → la DCPS del ancho elegido, con su cara de apoyo contra el
+ *     flanco en el punto de enganche. Es una pieza del trazado (el motor la
+ *     computa: 1 DCPS del ancho elegido) y su boca P1 queda libre.
  *   - escalera → sin accesorio, explícito en el dato
- *     ({ tipo: 'sin_accesorio_por_familia' }): se arma cortando en obra. El ramal
- *     queda enganchado directamente al flanco.
+ *     ({ tipo: 'sin_accesorio_por_familia' }): se arma cortando en obra. Lo que
+ *     queda es la BOCA sobre el flanco (`enganche:<id>` del tronco), libre. Una
+ *     boca de enganche sin nada continuado es un extremo libre legítimo.
+ *
+ * El operador elige tronco, boca de referencia, distancia, lado y el ANCHO de la
+ * derivación (en perforada determina qué DCPS se computa; en escalera, el ancho
+ * del corte: la huella sobre el flanco y el de la boca libre). El ancho NO tiene
+ * que coincidir con el del tronco: entre tronco y derivación no hay una
+ * `conexion`, así que la cuarta condición de B-3 no se aplica ahí.
+ *
+ * Continuar desde la boca de escalera: el camino normal arma una `conexion`
+ * contra `enganche:<id>`; `asentarSalidasDeEnganche` la convierte en la `salida`
+ * del enganche (la boca no es del catálogo y no viaja al motor). La
+ * compatibilidad se decide contra un recto de referencia de la familia del
+ * tronco con el ancho de la derivación (`origenDeBoca`).
  *
  * Persistencia: clave workspace-only `enganches_ws` del trazado (no viaja al
  * motor). Cada enganche guarda la foto del tronco al crearlo; si el tronco se
  * mueve, se acorta o se borra, `estadoEnganche` lo informa desactualizado con el
- * motivo. Nunca se recalcula solo.
+ * motivo. Nunca se recalcula solo. Los enganches de proyectos anteriores (con un
+ * ramal creado por la operación) se leen igual: su salida es ese ramal.
  */
 import type { Piece, Product, TrayInput } from '../../tray/model';
 import { definicionEfectiva, placedOf, withDefinition } from '../placement/definitions';
@@ -28,7 +37,7 @@ import { placeDefinition, puertosFromWorld, type StoredDefinition, type V3 } fro
 import { avisoCotaNoConfirmada, findMasterById, sobreanchoDeBoca } from '../../configurator/masterModels';
 
 export const ENGANCHES_KEY = 'enganches_ws';
-/** Pseudo-boca del tronco por la que sale/entra un recorrido hacia el ramal. */
+/** Pseudo-boca del tronco en el enganche: por ella sale/entra un recorrido (y, en escalera, se continúa). */
 export const bocaEnganche = (id: string) => `enganche:${id}`;
 export const idDeBocaEnganche = (boca: string): string | null => (boca.startsWith('enganche:') ? boca.slice('enganche:'.length) : null);
 /** Pseudo-boca de la DCPS: su cara de apoyo contra el flanco del tronco (no es una boca del catálogo). */
@@ -60,18 +69,27 @@ export interface Enganche {
   readonly distancia_mm: number;
   readonly lado: Lado;
   readonly familia: Familia;
+  /** Ancho de la derivación (mm): el de la DCPS en perforada, el del corte en escalera. */
   readonly ramal_ancho_mm: number;
   /** Largo que ocupa sobre el flanco del tronco (mm). */
   readonly huella_mm: number;
   readonly huella_procedencia: string;
   readonly accesorio: AccesorioEnganche;
-  /** Por dónde sigue el recorrido del otro lado del enganche: [pieza, boca]. */
+  /**
+   * Por dónde sigue el recorrido del otro lado del enganche: [pieza, boca].
+   * Perforada: [DCPS, 'apoyo']. Escalera: lo continuado desde la boca, o ['', '']
+   * mientras la boca está libre.
+   */
   readonly salida: readonly [string, string];
+  /** Escalera: la boca sobre el flanco (posición, dirección hacia afuera y "arriba" de sección). */
+  readonly boca?: BocaFoto;
+  /** Escalera: recto de referencia (familia del tronco, ancho de la derivación) contra el que se decide qué se continúa. */
+  readonly ref_producto_id?: string;
   /** Foto del tronco al crear el enganche (para avisar si cambia). */
   readonly ref_tronco: { readonly longitud_mm: number; readonly bocas: Readonly<Record<string, BocaFoto>> };
   /**
    * Incertidumbres que el operador tiene que ver al colocar (p. ej. la cota de
-   * boca de la DCPS-450/600, extrapolada y pendiente de confirmar).
+   * boca de una DCPS sin STEP propio).
    */
   readonly advertencias?: readonly string[];
   readonly creado_iso: string;
@@ -98,12 +116,34 @@ export function familiaDe(def: StoredDefinition): Familia | null {
   return null;
 }
 
-/** La DCPS de un ancho de ramal (perforada), o null. */
+/** La DCPS de un ancho (perforada), o null. */
 export function dcpsParaAncho(productos: ReadonlyMap<string, Product>, ancho: number): Product | null {
   for (const p of productos.values()) {
     if (String(p.sku).startsWith('DCPS-') && p.ancho_nominal_mm === ancho) return p;
   }
   return null;
+}
+
+const familiaId = (p: Product) => (p as Record<string, unknown>).familia_id;
+const alaNominal = (p: Product) => (p as Record<string, unknown>).ala_nominal_mm;
+
+/** Recto de la familia del tronco con el ancho dado (mismo ala): referencia para continuar desde una boca de escalera. */
+export function rectoDeReferencia(productos: ReadonlyMap<string, Product>, tronco: Product, ancho: number): Product | null {
+  const cands = [...productos.values()]
+    .filter((p) => p.tipo_pieza === 'recta' && familiaId(p) === familiaId(tronco) && alaNominal(p) === alaNominal(tronco) && p.ancho_nominal_mm === ancho)
+    .sort((a, b) => a.producto_id.localeCompare(b.producto_id));
+  return cands[0] ?? null;
+}
+
+/** Anchos elegibles para una derivación sobre ese tronco (perforada: los de las DCPS; escalera: los rectos de su familia y ala). */
+export function anchosDeDerivacion(productos: ReadonlyMap<string, Product>, tronco: Product, familia: Familia): number[] {
+  const out = new Set<number>();
+  for (const p of productos.values()) {
+    if (typeof p.ancho_nominal_mm !== 'number') continue;
+    if (familia === 'perforada') { if (String(p.sku).startsWith('DCPS-')) out.add(p.ancho_nominal_mm); }
+    else if (p.tipo_pieza === 'recta' && familiaId(p) === familiaId(tronco) && alaNominal(p) === alaNominal(tronco)) out.add(p.ancho_nominal_mm);
+  }
+  return [...out].sort((a, b) => a - b);
 }
 
 /** Huella y profundidad de una DCPS, medidas sobre su definición (planta en XZ: apoyo en z mín, boca en z máx). */
@@ -118,9 +158,8 @@ export interface ParamsEnganche {
   readonly desde_boca: string;
   readonly distancia_mm: number;
   readonly lado: Lado;
-  /** Tramo recto que sale como ramal (su ancho es el del ramal). */
-  readonly ramal_producto_id: string;
-  readonly ramal_longitud_mm: number;
+  /** Ancho de la derivación (mm). Perforada: elige la DCPS que se computa. Escalera: ancho del corte. */
+  readonly ancho_mm: number;
 }
 
 function idLibre(usados: ReadonlySet<string>, prefijo: string): string {
@@ -131,16 +170,16 @@ function idLibre(usados: ReadonlySet<string>, prefijo: string): string {
 
 /** Tramo con 2 bocas de un producto recto, con colocación y definición. */
 function troncoDe(entrada: TrayInput, productos: ReadonlyMap<string, Product>, id: string):
-  { ok: true; piece: Piece; def: StoredDefinition; L: number; familia: Familia } | { ok: false; motivo: string } {
+  { ok: true; piece: Piece; product: Product; def: StoredDefinition; L: number; familia: Familia } | { ok: false; motivo: string } {
   const piece = entrada.piezas.find((p) => p.instancia_id === id);
   if (!piece) return { ok: false, motivo: `el tronco ${id} no existe` };
   const prod = productos.get(piece.producto_id);
-  if (prod?.tipo_pieza !== 'recta' || typeof piece.longitud_mm !== 'number') return { ok: false, motivo: 'el tronco tiene que ser un tramo recto' };
+  if (!prod || prod.tipo_pieza !== 'recta' || typeof piece.longitud_mm !== 'number') return { ok: false, motivo: 'el tronco tiene que ser un tramo recto' };
   const placed = placedOf(entrada, piece);
   if (!placed) return { ok: false, motivo: 'el tronco no tiene colocación resuelta' };
   const familia = familiaDe(placed.def);
   if (!familia) return { ok: false, motivo: `familia del tronco no soportada (${placed.def.patron})` };
-  return { ok: true, piece, def: placed.def, L: piece.longitud_mm, familia };
+  return { ok: true, piece, product: prod, def: placed.def, L: piece.longitud_mm, familia };
 }
 
 /** Intervalo que ocupa un enganche sobre el tronco, medido desde P1 (mm). */
@@ -150,31 +189,27 @@ function intervaloDesdeP1(desde: string, d: number, huella: number, L: number): 
 }
 
 /**
- * Crea el enganche (y la DCPS en perforada) y el ramal. Devuelve el trazado nuevo
- * o el motivo por el que no se puede. No modifica el tronco.
+ * Crea el enganche y, en perforada, coloca la DCPS. Sólo eso: ninguna bandeja.
+ * Devuelve el trazado nuevo o el motivo por el que no se puede. No modifica el tronco.
  */
 export function crearEnganche(entrada: TrayInput, productos: ReadonlyMap<string, Product>, p: ParamsEnganche):
   { ok: true; entrada: TrayInput; enganche: Enganche } | { ok: false; motivo: string } {
   const t = troncoDe(entrada, productos, p.tronco);
   if (!t.ok) return t;
-  const { piece, def: defT, L, familia } = t;
+  const { piece, product: troncoProd, def: defT, L, familia } = t;
   if (!piece.puertos[p.desde_boca] || !['P1', 'P2'].includes(p.desde_boca)) return { ok: false, motivo: `el tronco no tiene la boca ${p.desde_boca}` };
   if (!(p.distancia_mm >= 0) || !(p.distancia_mm <= L)) return { ok: false, motivo: `la distancia ${fmt(p.distancia_mm)} mm está fuera del tronco (0–${fmt(L)} mm)` };
-
-  const ramalProd = productos.get(p.ramal_producto_id);
-  if (!ramalProd || ramalProd.tipo_pieza !== 'recta' || typeof ramalProd.ancho_nominal_mm !== 'number') return { ok: false, motivo: 'el ramal tiene que ser un tramo recto con ancho declarado' };
-  const ramalDef = definicionEfectiva(ramalProd, { longitud_mm: p.ramal_longitud_mm });
-  if (!ramalDef.ok) return { ok: false, motivo: `el ramal no tiene definición: ${ramalDef.motivo}` };
-  if (familiaDe(ramalDef.def) !== familia) return { ok: false, motivo: `el ramal (${familiaDe(ramalDef.def) ?? ramalDef.def.patron}) no es de la familia del tronco (${familia})` };
-  const ancho = ramalProd.ancho_nominal_mm;
+  const ancho = p.ancho_mm;
+  if (!(typeof ancho === 'number' && ancho > 0)) return { ok: false, motivo: 'elegí el ancho de la derivación' };
 
   // Accesorio por familia.
   let dcps: { prod: Product; def: StoredDefinition; huella: string; medidas: { huella_mm: number; profundidad_mm: number } } | null = null;
+  let ref: Product | null = null;
   let huella_mm: number;
   let huella_procedencia: string;
   if (familia === 'perforada') {
     const prod = dcpsParaAncho(productos, ancho);
-    if (!prod) return { ok: false, motivo: `no hay DCPS de ${ancho} mm en el catálogo para el ramal` };
+    if (!prod) return { ok: false, motivo: `no hay DCPS de ${ancho} mm en el catálogo` };
     const d = definicionEfectiva(prod);
     if (!d.ok) return { ok: false, motivo: `la DCPS ${prod.sku} no tiene definición: ${d.motivo}` };
     const medidas = medidasDCPS(d.def);
@@ -182,8 +217,10 @@ export function crearEnganche(entrada: TrayInput, productos: ReadonlyMap<string,
     huella_mm = medidas.huella_mm;
     huella_procedencia = `cara de apoyo de la ${prod.sku} (patrón ${d.def.patron})`;
   } else {
+    ref = rectoDeReferencia(productos, troncoProd, ancho);
+    if (!ref) return { ok: false, motivo: `no hay tramo recto de ${ancho} mm en la familia del tronco para continuar desde la boca` };
     huella_mm = ancho;
-    huella_procedencia = 'escalera: el corte en obra ocupa el ancho del ramal';
+    huella_procedencia = 'escalera: el corte en obra ocupa el ancho de la derivación';
   }
 
   // Cabe en el tronco y no se superpone con otro enganche del mismo lado.
@@ -214,12 +251,11 @@ export function crearEnganche(entrada: TrayInput, productos: ReadonlyMap<string,
   const engId = idLibre(new Set(enganchesOf(entrada).map((e) => e.id)), 'ENG');
   let next: TrayInput = { ...entrada, piezas: [...entrada.piezas], conexiones: [...entrada.conexiones] };
   let accesorio: AccesorioEnganche;
-  let bocaRamal: { pos: V3; dir: V3 };
   let salida: [string, string];
+  let boca: BocaFoto | undefined;
 
   if (dcps) {
     const dcpsId = idLibre(ids, 'DER');
-    ids.add(dcpsId);
     const bocaPos = add(F, mul(s, dcps.medidas.profundidad_mm));
     const pl = placeDefinition({ def: dcps.def, huella: dcps.huella, mano: 'nativa', entryPortName: 'P1', startPos: bocaPos, entryDir: mul(s, -1), sectionUp: up });
     const procedencia = `profundidad de la cara de apoyo a la boca, medida sobre la definición de la ${dcps.prod.sku} (patrón ${dcps.def.patron})`;
@@ -229,31 +265,17 @@ export function crearEnganche(entrada: TrayInput, productos: ReadonlyMap<string,
       puertos: puertosFromWorld(pl.ports),
       colocacion: {
         ...pl.colocacion,
-        longitudes_eje: { [`${'P1'}|${BOCA_APOYO}`]: { mm: dcps.medidas.profundidad_mm, regla: 'profundidad_derivacion', procedencia } },
+        longitudes_eje: { [`P1|${BOCA_APOYO}`]: { mm: dcps.medidas.profundidad_mm, regla: 'profundidad_derivacion', procedencia } },
       },
     };
     next = withDefinition(next, dcps.huella, dcps.def);
     next.piezas.push(pieza);
     accesorio = { tipo: 'producto', producto_id: dcps.prod.producto_id, pieza: dcpsId, profundidad_mm: dcps.medidas.profundidad_mm, procedencia };
-    const p1 = pl.ports.find((q) => q.name === 'P1')!;
-    bocaRamal = { pos: p1.pos, dir: p1.normal };
     salida = [dcpsId, BOCA_APOYO];
   } else {
     accesorio = { tipo: 'sin_accesorio_por_familia', familia: 'escalera', motivo: MOTIVO_SIN_ACCESORIO_ESCALERA };
-    bocaRamal = { pos: F, dir: s };
     salida = ['', ''];
-  }
-
-  // Ramal: tramo recto saliendo de la boca, perpendicular al flanco.
-  const ramalId = idLibre(ids, 'RAM');
-  const plR = placeDefinition({ def: ramalDef.def, huella: ramalDef.huella, mano: 'nativa', entryPortName: 'P1', startPos: bocaRamal.pos, entryDir: bocaRamal.dir, sectionUp: up });
-  next = withDefinition(next, ramalDef.huella, ramalDef.def);
-  next.piezas.push({ instancia_id: ramalId, producto_id: ramalProd.producto_id, longitud_mm: p.ramal_longitud_mm, puertos: puertosFromWorld(plR.ports), colocacion: plR.colocacion });
-  if (dcps) {
-    const conIds = new Set(next.conexiones.map((c) => c.conexion_id));
-    next.conexiones.push({ conexion_id: idLibre(conIds, 'CON-DER'), a: [accesorio.tipo === 'producto' ? accesorio.pieza : '', 'P1'], b: [ramalId, 'P1'] });
-  } else {
-    salida = [ramalId, 'P1'];
+    boca = { posicion_mm: F, direccion: s, orientacion_seccion_ws: up };
   }
 
   const fotos: Record<string, BocaFoto> = {};
@@ -269,6 +291,8 @@ export function crearEnganche(entrada: TrayInput, productos: ReadonlyMap<string,
   const enganche: Enganche = {
     id: engId, tronco: p.tronco, desde_boca: p.desde_boca, distancia_mm: p.distancia_mm, lado: p.lado,
     familia, ramal_ancho_mm: ancho, huella_mm, huella_procedencia, accesorio, salida,
+    ...(boca ? { boca } : {}),
+    ...(ref ? { ref_producto_id: ref.producto_id } : {}),
     ref_tronco: { longitud_mm: L, bocas: fotos },
     ...(advertencias.length ? { advertencias } : {}),
     creado_iso: new Date().toISOString(),
@@ -277,9 +301,79 @@ export function crearEnganche(entrada: TrayInput, productos: ReadonlyMap<string,
   return { ok: true, entrada: next, enganche };
 }
 
+/** ¿La boca de escalera de este enganche está libre? (sin salida, o lo continuado ya no está). */
+function bocaLibre(entrada: TrayInput, e: Enganche): boolean {
+  if (e.familia !== 'escalera' || !e.boca) return false;
+  return !e.salida[0] || !entrada.piezas.some((p) => p.instancia_id === e.salida[0]);
+}
+
+export interface BocaLibreEnganche {
+  readonly pieceId: string;
+  readonly portName: string;
+  readonly pos: V3;
+  readonly dir: V3;
+  readonly sectionUp: V3;
+}
+
+/** Bocas de enganche de escalera libres y vigentes, como extremos para continuar (pieza = tronco, boca = `enganche:<id>`). */
+export function bocasLibresDeEnganche(entrada: TrayInput | null | undefined): BocaLibreEnganche[] {
+  if (!entrada) return [];
+  return enganchesOf(entrada)
+    .filter((e) => bocaLibre(entrada, e) && estadoEnganche(entrada, null, e).vigente)
+    .map((e) => ({
+      pieceId: e.tronco,
+      portName: bocaEnganche(e.id),
+      pos: [...e.boca!.posicion_mm] as V3,
+      dir: [...e.boca!.direccion] as V3,
+      sectionUp: [...(e.boca!.orientacion_seccion_ws ?? [0, 0, 1])] as V3,
+    }));
+}
+
+/**
+ * Producto y boca contra los que se decide qué se puede continuar desde
+ * (pieza, boca). Para una boca de enganche: el recto de referencia del enganche,
+ * por su boca P2. Para cualquier otra: el producto de la pieza y esa boca.
+ */
+export function origenDeBoca(entrada: TrayInput | null | undefined, productos: ReadonlyMap<string, Product>, pieceId: string, portName: string):
+  { product: Product; portName: string } | null {
+  const id = idDeBocaEnganche(portName);
+  if (id) {
+    const e = enganchesOf(entrada).find((x) => x.id === id && x.tronco === pieceId);
+    const ref = e?.ref_producto_id ? productos.get(e.ref_producto_id) : undefined;
+    return ref ? { product: ref, portName: 'P2' } : null;
+  }
+  const piece = entrada?.piezas.find((p) => p.instancia_id === pieceId);
+  const product = piece ? productos.get(piece.producto_id) : undefined;
+  return product ? { product, portName } : null;
+}
+
+/**
+ * La continuación desde una boca de enganche arma una `conexion` contra
+ * `enganche:<id>` (camino normal). Esa boca no es del catálogo ni viaja al motor:
+ * la conexión se quita y lo continuado pasa a ser la `salida` del enganche.
+ */
+export function asentarSalidasDeEnganche(entrada: TrayInput): TrayInput {
+  const engs = enganchesOf(entrada);
+  if (!engs.length) return entrada;
+  const salidas = new Map<string, [string, string]>();
+  const quedan: TrayInput['conexiones'] = [];
+  for (const c of entrada.conexiones) {
+    const lados: Array<[readonly [string, string], readonly [string, string]]> = [[c.a, c.b], [c.b, c.a]];
+    const hit = lados.find(([x]) => {
+      const id = idDeBocaEnganche(x[1]);
+      return id !== null && engs.some((e) => e.id === id && e.tronco === x[0]);
+    });
+    if (hit) salidas.set(idDeBocaEnganche(hit[0][1])!, [hit[1][0], hit[1][1]]);
+    else quedan.push(c);
+  }
+  if (!salidas.size) return entrada;
+  const nuevos = engs.map((e) => (salidas.has(e.id) ? { ...e, salida: salidas.get(e.id)! } : e));
+  return { ...entrada, conexiones: quedan, [ENGANCHES_KEY]: nuevos } as TrayInput;
+}
+
 /**
  * Reglas del dato por familia (también el control negativo): perforada exige la
- * DCPS del ancho del ramal resuelta; escalera exige "sin accesorio por familia".
+ * DCPS del ancho de la derivación resuelta; escalera exige "sin accesorio por familia".
  */
 export function validarEnganche(entrada: TrayInput, productos: ReadonlyMap<string, Product> | null, e: Enganche): string[] {
   const motivos: string[] = [];
@@ -288,7 +382,7 @@ export function validarEnganche(entrada: TrayInput, productos: ReadonlyMap<strin
     else if (productos) {
       const prod = productos.get(e.accesorio.producto_id);
       if (!prod || !String(prod.sku).startsWith('DCPS-')) motivos.push(`el accesorio ${e.accesorio.producto_id} no es una DCPS`);
-      else if (prod.ancho_nominal_mm !== e.ramal_ancho_mm) motivos.push(`la DCPS es de ${prod.ancho_nominal_mm} mm y el ramal de ${e.ramal_ancho_mm} mm`);
+      else if (prod.ancho_nominal_mm !== e.ramal_ancho_mm) motivos.push(`la DCPS es de ${prod.ancho_nominal_mm} mm y la derivación de ${e.ramal_ancho_mm} mm`);
       else if (!definicionEfectiva(prod).ok) motivos.push(`la DCPS ${prod.sku} no tiene definición`);
     }
     if (e.accesorio.tipo === 'producto' && !entrada.piezas.some((p) => p.instancia_id === (e.accesorio as { pieza: string }).pieza)) {
@@ -303,7 +397,7 @@ export function validarEnganche(entrada: TrayInput, productos: ReadonlyMap<strin
 const angDeg = (a: readonly number[], b: readonly number[]) => (Math.atan2(norm(cross(a, b)), dot(a, b)) * 180) / Math.PI;
 const TOL_MOV = 1e-6;
 
-/** ¿El enganche sigue valiendo? Si el tronco se movió, se acortó o se borró, o el ramal ya no está: desactualizado con motivo. */
+/** ¿El enganche sigue valiendo? Si el tronco se movió, se acortó o se borró, o la DCPS ya no está: desactualizado con motivo. */
 export function estadoEnganche(entrada: TrayInput, productos: ReadonlyMap<string, Product> | null, e: Enganche): { vigente: true } | { vigente: false; motivos: string[] } {
   const motivos = validarEnganche(entrada, productos, e);
   const t = entrada.piezas.find((p) => p.instancia_id === e.tronco);
@@ -318,8 +412,10 @@ export function estadoEnganche(entrada: TrayInput, productos: ReadonlyMap<string
       if (d > TOL_MOV || g > TOL_MOV) { motivos.push(`el tronco se movió o rotó (boca ${b}: ${d.toFixed(2)} mm, ${g.toFixed(2)}°)`); break; }
     }
   }
-  if (e.salida[0] && !entrada.piezas.some((p) => p.instancia_id === e.salida[0])) {
-    motivos.push(e.accesorio.tipo === 'producto' ? 'la DCPS ya no está en el trazado' : 'el ramal ya no está en el trazado');
+  // Escalera: si lo continuado desde la boca se borró, la boca vuelve a quedar libre (no es un error).
+  // Un enganche de un proyecto anterior sin boca guardada (el ramal lo creaba la operación) sí lo informa.
+  if (e.salida[0] && !entrada.piezas.some((p) => p.instancia_id === e.salida[0]) && e.accesorio.tipo !== 'producto' && !e.boca) {
+    motivos.push('el ramal ya no está en el trazado');
   }
   const unicos = [...new Set(motivos)];
   return unicos.length ? { vigente: false, motivos: unicos } : { vigente: true };

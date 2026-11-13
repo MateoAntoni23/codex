@@ -44,6 +44,8 @@ export function pieceLabelById(id: string, piezas: readonly Piece[], idx: Produc
 
 /** Nombre físico de una boca (physicalLabel del maestro) o el nombre de la boca. */
 export function portLabel(productoId: string, portName: string, idx: ProductIndex): string {
+  // Boca abierta por una derivación en el flanco del tronco (escalera: sin accesorio).
+  if (portName.startsWith('enganche:')) return `Boca de derivación ${portName.slice('enganche:'.length)} (flanco del tronco)`;
   const product = idx.get(productoId);
   if (!product) return portName;
   const master = findMasterForProduct(product as Record<string, unknown>);

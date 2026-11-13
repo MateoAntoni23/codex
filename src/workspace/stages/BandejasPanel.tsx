@@ -7,12 +7,11 @@
  * (AddTraySegmentForm, AddSupportForm) y el panel de continuación (RoutingPanel,
  * en el inspector).
  */
-import { bocasOcupadasPorEnganches } from '../derivacion/enganche';
+import { extremosLibres } from '../derivacion/extremosLibres';
 import { useMemo, useState } from 'react';
 import { useWorkspaceStore, type LayerKey } from '../useWorkspaceStore';
 import { useTrayStore } from '../../tray/store';
 import { useRoutingStore } from '../useRoutingStore';
-import { getFreePorts } from '../routingRules';
 import { AddTraySegmentForm } from '../AddTraySegmentForm';
 import { AddSupportForm } from '../AddSupportForm';
 import { RoutingStatusBadge } from '../RoutingPanel';
@@ -54,7 +53,7 @@ export function BandejasPanel() {
   const piezas = entrada?.piezas ?? [];
   const conexiones = entrada?.conexiones ?? [];
   const pIdx = useMemo(() => indexProducts(context?.productos), [context]);
-  const freeEnds = useMemo(() => getFreePorts(piezas, conexiones, bocasOcupadasPorEnganches(entrada)), [piezas, conexiones, entrada]);
+  const freeEnds = useMemo(() => extremosLibres(entrada), [entrada]);
   useRevealSelected(listEl, selectedTrayId ? `piece:${selectedTrayId}` : null);
 
   const activeTool: BandejasTool = routingActive

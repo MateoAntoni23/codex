@@ -3,14 +3,13 @@
  * la etapa activa; sin selección muestra el resumen de la etapa y el siguiente
  * paso sugerido (reemplaza a la guía de trabajo y a la leyenda fijas).
  */
-import { bocasOcupadasPorEnganches } from '../derivacion/enganche';
+import { extremosLibres } from '../derivacion/extremosLibres';
 import { useTrayStore } from '../../tray/store';
 import { useWorkspaceStore } from '../useWorkspaceStore';
 import { useRoutingStore } from '../useRoutingStore';
 import { RoutingPanel } from '../RoutingPanel';
 import { ImportedEquipmentInspector } from '../../import/ImportedEquipmentInspector';
 import { EquipmentCard, PieceCard, SupportCard } from '../WorkspaceInspector';
-import { getFreePorts } from '../routingRules';
 import { object } from '../../tray/model';
 import { useUiStore } from './uiStore';
 import { indexProducts, pieceLabelById } from './displayNames';
@@ -56,7 +55,7 @@ function PlantaSummary() {
 function BandejasSummary() {
   const entrada = useTrayStore((s) => s.entrada);
   const piezas = entrada?.piezas ?? [];
-  const free = getFreePorts(piezas, entrada?.conexiones ?? [], bocasOcupadasPorEnganches(entrada)).length;
+  const free = extremosLibres(entrada).length;
   const next = piezas.length === 0
     ? 'Usá Tramo nuevo para crear la primera pieza.'
     : `Continuá el trazado desde un extremo libre (${free}) o pasá a Resultados para calcular.`;

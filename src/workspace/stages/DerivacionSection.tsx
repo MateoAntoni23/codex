@@ -1,13 +1,17 @@
 /**
  * Bandejas — derivación en un tramo: formulario para crear el enganche (tronco,
- * boca de referencia, distancia, lado, ramal) y lista de enganches con su
- * accesorio y su estado. La lógica está en `derivacion/enganche.ts`.
+ * boca de referencia, distancia, lado y ancho de la derivación) y lista de
+ * enganches con su accesorio y su estado. La operación coloca sólo la derivación
+ * (DCPS en perforada; la boca sobre el flanco en escalera) y deja su boca libre:
+ * lo que sigue se continúa por el camino normal. La lógica está en
+ * `derivacion/enganche.ts`.
  */
 import { useMemo, useState } from 'react';
 import { useTrayStore } from '../../tray/store';
 import { useWorkspaceStore } from '../useWorkspaceStore';
 import type { Product } from '../../tray/model';
-import { crearEnganche, dcpsHuerfanas, enganchesOf, estadoEnganche, type Lado } from '../derivacion/enganche';
+import { anchosDeDerivacion, crearEnganche, dcpsHuerfanas, dcpsParaAncho, enganchesOf, estadoEnganche, familiaDe, type Lado } from '../derivacion/enganche';
+import { placedOf } from '../placement/definitions';
 import { indexProducts, pieceLabelById, portLabel } from './displayNames';
 import { Empty, Section } from './shared';
 
@@ -20,27 +24,31 @@ export function DerivacionForm({ onClose }: { onClose: () => void }) {
   const idx = useMemo(() => indexProducts(context?.productos), [context]);
   const piezas = entrada?.piezas ?? [];
   const troncos = piezas.filter((p) => productos.get(p.producto_id)?.tipo_pieza === 'recta' && typeof p.longitud_mm === 'number');
-  const rectas = (context?.productos ?? []).filter((p) => p.tipo_pieza === 'recta' && typeof p.ancho_nominal_mm === 'number');
 
   const [tronco, setTronco] = useState('');
   const [desde, setDesde] = useState('P1');
   const [distancia, setDistancia] = useState('');
   const [lado, setLado] = useState<Lado>('izquierda');
-  const [ramal, setRamal] = useState('');
-  const [largo, setLargo] = useState('1000');
+  const [ancho, setAncho] = useState('');
   const [msg, setMsg] = useState<{ ok: boolean; texto: string; advertencias?: readonly string[] } | null>(null);
 
   const t = troncos.find((p) => p.instancia_id === tronco);
+  const defTronco = entrada && t ? placedOf(entrada, t)?.def : undefined;
+  const familia = defTronco ? familiaDe(defTronco) : null;
+  const troncoProd = t ? productos.get(t.producto_id) : undefined;
+  const anchos = troncoProd && familia ? anchosDeDerivacion(productos, troncoProd, familia) : [];
   const crear = () => {
     if (!entrada) return;
     const r = crearEnganche(entrada, productos, {
-      tronco, desde_boca: desde, distancia_mm: Number(distancia), lado, ramal_producto_id: ramal, ramal_longitud_mm: Number(largo),
+      tronco, desde_boca: desde, distancia_mm: Number(distancia), lado, ancho_mm: Number(ancho),
     });
     if (!r.ok) { setMsg({ ok: false, texto: r.motivo }); return; }
     trayEdit(r.entrada);
     markDirty();
-    const acc = r.enganche.accesorio.tipo === 'producto' ? `con ${productos.get(r.enganche.accesorio.producto_id)?.sku}` : 'sin accesorio (escalera)';
-    setMsg({ ok: true, texto: `Derivación ${r.enganche.id} creada ${acc}.`, advertencias: r.enganche.advertencias ?? [] });
+    const acc = r.enganche.accesorio.tipo === 'producto'
+      ? `: ${productos.get(r.enganche.accesorio.producto_id)?.sku} colocada, su boca queda libre para continuar`
+      : ': boca libre sobre el flanco, sin accesorio (escalera), lista para continuar';
+    setMsg({ ok: true, texto: `Derivación ${r.enganche.id} creada${acc}.`, advertencias: r.enganche.advertencias ?? [] });
   };
 
   return (
@@ -69,18 +77,21 @@ export function DerivacionForm({ onClose }: { onClose: () => void }) {
         </select>
       </label>
       <label className="stage-field">
-        Ramal (tramo recto)
-        <select className="inspector-input" data-testid="der-ramal" value={ramal} onChange={(e) => setRamal(e.target.value)}>
-          <option value="">Elegí el tramo del ramal…</option>
-          {rectas.map((p) => <option key={p.producto_id} value={p.producto_id}>{p.sku} · ancho {p.ancho_nominal_mm}</option>)}
+        Ancho de la derivación
+        <select className="inspector-input" data-testid="der-ancho" value={ancho} onChange={(e) => setAncho(e.target.value)} disabled={!t}>
+          <option value="">{t ? 'Elegí el ancho…' : 'Elegí primero el tronco'}</option>
+          {anchos.map((w) => (
+            <option key={w} value={String(w)}>
+              {w} mm{familia === 'perforada' ? ` — ${dcpsParaAncho(productos, w)?.sku ?? '?'} (se computa)` : ' — boca cortada en obra (sin accesorio)'}
+            </option>
+          ))}
         </select>
       </label>
-      <label className="stage-field">
-        Largo del ramal (mm)
-        <input type="number" className="inspector-input" data-testid="der-ramal-largo" value={largo} onChange={(e) => setLargo(e.target.value)} />
-      </label>
+      <p className="stage-note" style={{ whiteSpace: 'normal' }}>
+        Se coloca sólo la derivación y su boca queda libre: lo que sigue se continúa desde esa boca, como desde cualquier accesorio.
+      </p>
       <div style={{ display: 'flex', gap: 6 }}>
-        <button type="button" className="stage-primary" data-testid="der-crear" onClick={crear} disabled={!tronco || !ramal || distancia === ''}>Crear derivación</button>
+        <button type="button" className="stage-primary" data-testid="der-crear" onClick={crear} disabled={!tronco || !ancho || distancia === ''}>Crear derivación</button>
         <button type="button" onClick={onClose}>Cerrar</button>
       </div>
       {msg && <p className={`stage-note${msg.ok ? '' : ' tone-warn'}`} role="status" data-testid="der-msg">{msg.texto}</p>}
@@ -116,7 +127,7 @@ export function EnganchesSection() {
           : `sin accesorio por familia — ${e.accesorio.motivo}`;
         return (
           <div key={e.id} className="stage-card" data-testid="enganche-row" data-vigente={est.vigente ? 'true' : 'false'}>
-            <div><strong>{e.id}</strong> · {etiqueta(e.tronco)} · {e.distancia_mm} mm desde {e.desde_boca} · {e.lado} · ramal {e.ramal_ancho_mm} mm</div>
+            <div><strong>{e.id}</strong> · {etiqueta(e.tronco)} · {e.distancia_mm} mm desde {e.desde_boca} · {e.lado} · ancho {e.ramal_ancho_mm} mm</div>
             <div className="stage-row-sub" style={{ whiteSpace: 'normal' }} data-testid="enganche-accesorio">Accesorio: {acc}</div>
             {(e.advertencias ?? []).map((a) => (
               <div key={a} className="tone-warn" style={{ whiteSpace: 'normal' }} data-testid="enganche-advertencia">⚠ {a}</div>
