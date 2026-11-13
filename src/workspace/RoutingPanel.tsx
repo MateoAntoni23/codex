@@ -629,8 +629,8 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
           )}
         </label>
         {/* Hint: familia activa sin modelos paramétricos — propone arrancar
-            un trazado nuevo. No falsea compatibilidad: declara explícitamente
-            que el catálogo SAMET veda intercambio entre familias (REV-032). */}
+            un trazado nuevo. No falsea compatibilidad. REV-032 es una fila de la
+            fuente F-005 del catálogo (decisión del usuario), no de SAMET. */}
         {compatibleProducts.length > 0 && parametricCompatible.length === 0 && (
           <div style={{
             marginBottom: 6, padding: '6px 8px', borderRadius: 3, fontSize: 10,
@@ -639,7 +639,8 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
             <div style={{ fontWeight: 600, marginBottom: 2 }}>Ningún compatible tiene modelo paramétrico diseñado</div>
             Los modelos 3D confirmados viven en la familia <strong>SAM-STP-Z (Perforada)</strong>:
             TRPS-300-22-Z (recto), CPS-300-45-Z y CPS-300-90-Z (curvas horizontales).
-            SAMET veda compatibilidad entre familias (REV-032), por eso no aparecen acá.
+            No hay unión directa entre familias de distinto tipo de bandeja, por eso no aparecen acá.
+            (Entre acabados del mismo tipo sí: se marca como mezcla de acabados.)
             Cancelá y usá "+ Agregar tramo recto" para iniciar un principal perforado.
           </div>
         )}

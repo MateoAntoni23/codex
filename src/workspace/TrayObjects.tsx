@@ -390,14 +390,19 @@ export function TrayObjects() {
       // Regla física de unión directa (compatibilidadFisica.ts); la tabla sólo confirma o bloquea.
       const prodA = context?.productos.find((p) => p.producto_id === pa.producto_id);
       const prodB = context?.productos.find((p) => p.producto_id === pb.producto_id);
-      const documented = !!prodA && !!prodB && compatibilidadDirecta(prodA, prodB, context?.compatibilidades ?? []).ok;
+      const fisica = prodA && prodB ? compatibilidadDirecta(prodA, prodB, context?.compatibilidades ?? []) : null;
+      const documented = !!fisica?.ok;
+      // Mezcla de acabados: se permite y se avisa (no invalida la unión).
+      const mezcla = fisica?.ok ? fisica.mezcla : null;
       const head = `Unir ${aInst}.${aPort} ↔ ${instanciaId}.${puertoId}
 ${formatJoin(check)}`;
       const body = (check.ok
         ? 'La unión cumple las tolerancias (D-14).'
         : `La unión NO cumple las tolerancias (${check.motivos.join('; ')}). No se mueve ninguna pieza: el hueco queda a la vista.`)
         + (check.avisos.length ? `
-Avisos: ${check.avisos.join('; ')}` : '');
+Avisos: ${check.avisos.join('; ')}` : '')
+        + (mezcla ? `
+⚠ MEZCLA DE ACABADOS — ${mezcla.texto}` : '');
       if (confirm(`${head}
 ${body}
 ¿Registrar la unión?`)) {

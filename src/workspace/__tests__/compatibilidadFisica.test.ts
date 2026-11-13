@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { bloqueoExplicito, compatibilidadDirecta, compatiblesDirectos, FAMILIA_ACCESORIOS_UNION } from '../compatibilidadFisica';
+import { esBloqueoREV032Superado } from '../mezclaAcabados';
 import type { CatalogCompatibility, Product } from '../../tray/model';
 
 const snap = JSON.parse(readFileSync(resolve(__dirname, '../../../vendor/motor_bandejas/datos/catalogo/catalogo_bandejas_snapshot.json'), 'utf8')) as {
@@ -17,7 +18,7 @@ const fam = (p: Product) => (p as Record<string, unknown>).familia_id as string;
 const ala = (p: Product) => (p as Record<string, unknown>).ala_nominal_mm;
 
 describe('compatibilidad por la regla física', () => {
-  it('desde la CPS-300-45-Z (perforada zincada) sólo se ofrece perforada de 300 y ala 50, o accesorios de unión — NUNCA escalera', () => {
+  it('desde la CPS-300-45-Z (perforada zincada) sólo se ofrece perforada de 300 y ala 50 (zincada o color, ésta con mezcla de acabados), o accesorios de unión — NUNCA escalera', () => {
     const cps = P.get('SAM_CPS-300-45-Z')!;
     const ids = compatiblesDirectos(cps, snap.PRODUCTOS, C);
     expect(ids.has('SAM_CS-300-45-065-14-G'), 'la escalera galvanizada del defecto').toBe(false);
@@ -25,8 +26,13 @@ describe('compatibilidad por la regla física', () => {
       const p = P.get(id)!;
       expect(fam(p).startsWith('SAM-STE'), `escalera ofrecida desde perforada: ${id}`).toBe(false);
       if (fam(p) === FAMILIA_ACCESORIOS_UNION) continue;
-      expect([fam(p), p.ancho_nominal_mm, ala(p)], id).toEqual(['SAM-STP-Z', 300, 50]);
+      expect(['SAM-STP-Z', 'SAM-STP-ZN'], id).toContain(fam(p));
+      expect([p.ancho_nominal_mm, ala(p)], id).toEqual([300, 50]);
+      // Color desde zincada: se ofrece, marcada como mezcla de acabados.
+      const r = compatibilidadDirecta(cps, p, C);
+      expect(r.ok && r.mezcla !== null, `${id}: mezcla`).toBe(fam(p) === 'SAM-STP-ZN');
     }
+    expect(ids.has('SAM_TRPS-300-22-ZN')).toBe(true);
     expect(ids.has('SAM_TRPS-300-22-Z')).toBe(true);
     expect(ids.has('SAM_TPS-300-Z')).toBe(true);
   });
@@ -49,14 +55,24 @@ describe('compatibilidad por la regla física', () => {
     expect(compatibilidadDirecta(par[0], par[1], C).ok).toBe(true);
   });
 
-  it('los 45 pares "no compatible" de la tabla son bloqueo explícito', () => {
+  it('de los 45 pares "no compatible": los 38 de REV-032 entre acabados del mismo tipo de bandeja unen con marca de mezcla; los otros 7 siguen bloqueando', () => {
     const nc = C.filter((c) => c.estado_compatibilidad === 'no compatible');
     expect(nc).toHaveLength(45);
+    let superados = 0;
     for (const c of nc) {
-      const r = compatibilidadDirecta(P.get(c.producto_a_id)!, P.get(c.producto_b_id)!, C);
-      expect(r, c.compatibilidad_id).toMatchObject({ ok: false, bloqueo: c.compatibilidad_id });
-      expect(bloqueoExplicito(C, P.get(c.producto_b_id)!, P.get(c.producto_a_id)!)?.compatibilidad_id).toBe(c.compatibilidad_id);
+      const a = P.get(c.producto_a_id)!;
+      const b = P.get(c.producto_b_id)!;
+      expect(bloqueoExplicito(C, b, a)?.compatibilidad_id).toBe(c.compatibilidad_id);
+      const r = compatibilidadDirecta(a, b, C);
+      if (esBloqueoREV032Superado(c, a, b)) {
+        superados++;
+        expect(r, c.compatibilidad_id).toMatchObject({ ok: true, regla: 'mismo tipo de bandeja, ancho y ala (mezcla de acabados)' });
+        expect(r.ok && r.mezcla?.texto, c.compatibilidad_id).toContain('declarado por el operador, contradice REV-032 (fuente del catálogo)');
+      } else {
+        expect(r, c.compatibilidad_id).toMatchObject({ ok: false, bloqueo: c.compatibilidad_id });
+      }
     }
+    expect(superados).toBe(38);
   });
 
   it('excepción declarada: los accesorios de unión (SAM-SMT-ACC) se unen con cualquier familia', () => {

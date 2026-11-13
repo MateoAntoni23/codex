@@ -11,6 +11,8 @@ import { useWorkspaceStore } from './useWorkspaceStore';
 import { useTrayStore } from '../tray/store';
 import { placedOf } from './placement/definitions';
 import { avisosDeModelo } from './placement/joins';
+import { mezclasDePieza } from './mezclaAcabados';
+import { MarcaMezcla } from './stages/MarcaMezcla';
 import { useRoutingStore } from './useRoutingStore';
 import { useTrayMoveState } from './useTrayMoveState';
 import { useTrayRotateState } from './useTrayRotateState';
@@ -630,6 +632,12 @@ export function PieceCard({ piece }: { piece: Piece }) {
       })()}
       {avisosDeModelo(entrada, piece).map((a) => (
         <p key={a} className="stage-note tone-warn" data-testid="piece-aviso-modelo">Aviso de modelo — {a}.</p>
+      ))}
+      {mezclasDePieza(entrada, new Map((context?.productos ?? []).map((p) => [p.producto_id, p])), piece.instancia_id).map((m) => (
+        <div key={`${m.tipo}:${m.id}`} className="stage-note" style={{ padding: '2px 12px' }} data-testid="piece-mezcla">
+          {m.tipo === 'enganche' ? `Derivación ${m.id}` : `Unión ${m.id}`}
+          <MarcaMezcla mezcla={m.mezcla} testid="piece-aviso-mezcla" />
+        </div>
       ))}
 
       <BrokenConnectionsModal />

@@ -3,13 +3,14 @@ import { useTrayStore } from '../../tray/store';
 import { useWorkspaceStore } from '../useWorkspaceStore';
 import { STAGES, type StageId } from './stageModel';
 import { useUiStore } from './uiStore';
-import { summarizeResult } from './resultPresentation';
+import { summarizeResultDe } from './resultPresentation';
 
 function useStageStatus(): Record<StageId, string> {
   const elements = useWorkspaceStore((s) => s.elements);
   const catalog = useWorkspaceStore((s) => s.importedCatalog);
   const entrada = useTrayStore((s) => s.entrada);
   const result = useTrayStore((s) => s.result);
+  const productos = useTrayStore((s) => s.context?.productos);
   const status = useTrayStore((s) => s.status);
   const engine = useTrayStore((s) => s.engine);
 
@@ -22,7 +23,7 @@ function useStageStatus(): Record<StageId, string> {
   const piezas = entrada?.piezas.length ?? 0;
   const cx = catalog?.conexiones.length ?? 0;
   const circ = entrada?.circuitos.length ?? 0;
-  const view = summarizeResult(result);
+  const view = summarizeResultDe(result, entrada, productos);
   const resultados = status === 'calculando'
     ? 'calculando…'
     : view

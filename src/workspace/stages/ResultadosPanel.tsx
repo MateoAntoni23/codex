@@ -12,7 +12,9 @@
 import { useTrayStore } from '../../tray/store';
 import { useWorkspaceStore } from '../useWorkspaceStore';
 import { TrayResults } from '../TrayResults';
-import { summarizeResult } from './resultPresentation';
+import { summarizeResultDe } from './resultPresentation';
+import { mezclasDelTrazado, PROCEDENCIA_MEZCLA } from '../mezclaAcabados';
+import { MarcaMezcla } from './MarcaMezcla';
 import { Section } from './shared';
 import { CircuitosTabla } from './CircuitosTabla';
 import { unionsOf } from '../workspaceOperation';
@@ -35,7 +37,9 @@ export function reservaOf(entrada: Record<string, unknown> | null): number | nul
 export function ResultSummary() {
   const result = useTrayStore((s) => s.result);
   const status = useTrayStore((s) => s.status);
-  const view = summarizeResult(result);
+  const entrada = useTrayStore((s) => s.entrada);
+  const context = useTrayStore((s) => s.context);
+  const view = summarizeResultDe(result, entrada, context?.productos);
   if (!view) return null;
   return (
     <div className={`stage-result tone-${view.tone}`} data-testid="result-summary">
@@ -46,6 +50,11 @@ export function ResultSummary() {
       {view.peUndefined && (
         <p className="stage-note" data-testid="result-pe-note">
           PE sin definir: el requisito de PE todavía no se cargó en el proyecto. No es un defecto del diseño.
+        </p>
+      )}
+      {view.mezclaNotes.length > 0 && (
+        <p className="stage-note" data-testid="result-mezcla-note">
+          ⚠ MEZCLA DE ACABADOS en {view.mezclaNotes.length} unión(es): el motor las da "no compatible" por REV-032; se permiten como aviso ({PROCEDENCIA_MEZCLA}). Detalle en "Mezclas de acabados".
         </p>
       )}
       {view.designIssues.length > 0 && (
@@ -94,6 +103,29 @@ function AvisosModeloList() {
         <div key={p.instancia_id} className="stage-card" data-testid="aviso-modelo-row">
           <div className="tone-warn">{pieceLabelById(p.instancia_id, entrada!.piezas, idx)}</div>
           {avisos.map((a) => <div key={a} className="stage-row-sub">{a}</div>)}
+        </div>
+      ))}
+    </Section>
+  );
+}
+
+/**
+ * Mezclas de acabados del trazado (uniones y derivaciones): avisos que no pueden
+ * pasar desapercibidos en el cómputo. No invalidan; la validez la decide B-3.
+ */
+function MezclasList() {
+  const entrada = useTrayStore((s) => s.entrada);
+  const context = useTrayStore((s) => s.context);
+  const idx = indexProducts(context?.productos);
+  const filas = mezclasDelTrazado(entrada, new Map((context?.productos ?? []).map((p) => [p.producto_id, p])));
+  if (!filas.length) return null;
+  return (
+    <Section title={`Mezclas de acabados (${filas.length})`} testid="mezcla-list">
+      <p className="stage-note">Uniones entre acabados distintos del mismo tipo de bandeja. Se permiten y se computan; quedan marcadas. Procedencia: {PROCEDENCIA_MEZCLA}.</p>
+      {filas.map((m) => (
+        <div key={`${m.tipo}:${m.id}`} className="stage-card" data-testid="mezcla-row" data-mezcla-tipo={m.tipo}>
+          <div>{m.tipo === 'enganche' ? `Derivación ${m.id}` : `Unión ${m.id}`}: {pieceLabelById(m.piezas[0], entrada!.piezas, idx)} ↔ {pieceLabelById(m.piezas[1], entrada!.piezas, idx)}</div>
+          <MarcaMezcla mezcla={m.mezcla} testid="mezcla-row-marca" bloque />
         </div>
       ))}
     </Section>
@@ -204,6 +236,7 @@ export function ResultadosPanel() {
       <CircuitosTabla />
       <NominalList />
       <AvisosModeloList />
+      <MezclasList />
 
       <Section title="Resultado">
         <ResultSummary />

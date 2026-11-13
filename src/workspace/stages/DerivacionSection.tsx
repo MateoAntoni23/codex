@@ -12,6 +12,8 @@ import { useWorkspaceStore } from '../useWorkspaceStore';
 import type { Product } from '../../tray/model';
 import { anchosDeDerivacion, crearEnganche, dcpsHuerfanas, dcpsParaAncho, enganchesOf, estadoEnganche, familiaDe, type Lado } from '../derivacion/enganche';
 import { placedOf } from '../placement/definitions';
+import { mezclaDeAcabados } from '../mezclaAcabados';
+import { MarcaMezcla } from './MarcaMezcla';
 import { indexProducts, pieceLabelById, portLabel } from './displayNames';
 import { Empty, Section } from './shared';
 
@@ -48,7 +50,10 @@ export function DerivacionForm({ onClose }: { onClose: () => void }) {
     const acc = r.enganche.accesorio.tipo === 'producto'
       ? `: ${productos.get(r.enganche.accesorio.producto_id)?.sku} colocada, su boca queda libre para continuar`
       : ': boca libre sobre el flanco, sin accesorio (escalera), lista para continuar';
-    setMsg({ ok: true, texto: `Derivación ${r.enganche.id} creada${acc}.`, advertencias: r.enganche.advertencias ?? [] });
+    // Mezcla de acabados (p. ej. DCPS zincada sobre un tronco color): se permite y se marca.
+    const sal = r.entrada.piezas.find((p) => p.instancia_id === r.enganche.salida[0]);
+    const mezcla = sal ? mezclaDeAcabados(productos.get(r.entrada.piezas.find((p) => p.instancia_id === r.enganche.tronco)!.producto_id), productos.get(sal.producto_id)) : null;
+    setMsg({ ok: true, texto: `Derivación ${r.enganche.id} creada${acc}.`, advertencias: [...(r.enganche.advertencias ?? []), ...(mezcla ? [mezcla.texto] : [])] });
   };
 
   return (
@@ -122,6 +127,9 @@ export function EnganchesSection() {
       ))}
       {engs.map((e) => {
         const est = entrada ? estadoEnganche(entrada, productos, e) : { vigente: true as const };
+        const pTronco = piezas.find((p) => p.instancia_id === e.tronco);
+        const pSalida = e.salida[0] ? piezas.find((p) => p.instancia_id === e.salida[0]) : undefined;
+        const mezcla = pTronco && pSalida ? mezclaDeAcabados(productos.get(pTronco.producto_id), productos.get(pSalida.producto_id)) : null;
         const acc = e.accesorio.tipo === 'producto'
           ? `${productos.get(e.accesorio.producto_id)?.sku ?? e.accesorio.producto_id} (se computa)`
           : `sin accesorio por familia — ${e.accesorio.motivo}`;
@@ -129,6 +137,7 @@ export function EnganchesSection() {
           <div key={e.id} className="stage-card" data-testid="enganche-row" data-vigente={est.vigente ? 'true' : 'false'}>
             <div><strong>{e.id}</strong> · {etiqueta(e.tronco)} · {e.distancia_mm} mm desde {e.desde_boca} · {e.lado} · ancho {e.ramal_ancho_mm} mm</div>
             <div className="stage-row-sub" style={{ whiteSpace: 'normal' }} data-testid="enganche-accesorio">Accesorio: {acc}</div>
+            {mezcla && <MarcaMezcla mezcla={mezcla} testid="enganche-aviso-mezcla" bloque />}
             {(e.advertencias ?? []).map((a) => (
               <div key={a} className="tone-warn" style={{ whiteSpace: 'normal' }} data-testid="enganche-advertencia">⚠ {a}</div>
             ))}
