@@ -19,9 +19,15 @@
  *
  * Las tolerancias de posición y ángulo se leen de `decisiones_producto.json` del
  * motor: el frontend no puede ser más permisivo que el motor.
+ *
+ * Mezcla de acabados (mezclaAcabados.ts): con el catálogo a mano, una unión entre
+ * acabados distintos del mismo tipo de bandeja lleva un AVISO con los dos acabados
+ * nombrados y su procedencia. No cambia `ok`: la validez la deciden las cuatro
+ * condiciones de arriba.
  */
 import decisiones from '../../../vendor/motor_bandejas/datos/decisiones_producto.json';
-import type { Piece, TrayInput } from '../../tray/model';
+import type { Piece, Product, TrayInput } from '../../tray/model';
+import { mezclaDeAcabados } from '../mezclaAcabados';
 import { angleDeg, type V3 } from './placementCore';
 import { placedOf } from './definitions';
 import { findMasterById, sobreanchoDeBoca } from '../../configurator/masterModels';
@@ -183,14 +189,22 @@ export function avisosDeModelo(entrada: TrayInput | null | undefined, piece: Pie
   return out;
 }
 
-/** Verifica una conexión del trazado; null si falta alguna pieza o boca. */
-export function checkConnection(entrada: TrayInput, c: { a: [string, string]; b: [string, string] }): JoinCheck | null {
+/** Prefijo del aviso de mezcla de acabados en `JoinCheck.avisos`. */
+export const AVISO_MEZCLA_PREFIJO = 'mezcla de acabados:';
+
+/**
+ * Verifica una conexión del trazado; null si falta alguna pieza o boca. Con el
+ * catálogo (`productos`), agrega el aviso de mezcla de acabados si corresponde.
+ */
+export function checkConnection(entrada: TrayInput, c: { a: [string, string]; b: [string, string] }, productos?: ReadonlyMap<string, Product>): JoinCheck | null {
   const pa = entrada.piezas.find((p) => p.instancia_id === c.a[0]);
   const pb = entrada.piezas.find((p) => p.instancia_id === c.b[0]);
   const A = pa && bocaConSeccion(entrada, pa, c.a[1]);
   const B = pb && bocaConSeccion(entrada, pb, c.b[1]);
   if (!A || !B) return null;
-  return checkJoin(A, B);
+  const r = checkJoin(A, B);
+  const m = productos ? mezclaDeAcabados(productos.get(pa!.producto_id), productos.get(pb!.producto_id)) : null;
+  return m ? { ...r, avisos: [...r.avisos, m.texto] } : r;
 }
 
 /** Conexiones que involucran a `pieceIds` y no cumplen A-7 (o perdieron una boca). */

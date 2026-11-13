@@ -12,16 +12,16 @@
  * producto. La DCPS no entra por la continuación (sólo con la herramienta
  * "Derivación en tramo"): se controla aparte con la búsqueda de esa herramienta.
  *
- * Lo que NO exige: que se ofrezca una pieza de OTRA familia. La familia color
- * (SAM-STP-ZN, ZN/ZB) sólo publica recto, curva plana y T; no tiene curva
- * vertical ni X, y no hay compatibilidad entre familias (REV-032). Esa
- * ausencia queda fijada en el último caso.
+ * La familia color (SAM-STP-ZN, ZN/ZB) sólo publica recto, curva plana y T: no
+ * tiene curva vertical ni X. Desde la decisión del operador sobre mezcla de
+ * acabados (mezclaAcabados.ts), desde una color se ofrecen las de la familia Z
+ * del mismo ancho, marcadas como mezcla. Queda fijado en el último caso.
  */
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { definicionEfectiva, modeloDeProducto } from '../placement/definitions';
-import { compatiblesDirectos } from '../compatibilidadFisica';
+import { compatibilidadDirecta, compatiblesDirectos } from '../compatibilidadFisica';
 import { buildContinuationCandidates, esDerivacionLateral } from '../continuationCandidates';
 import { dcpsParaAncho } from '../derivacion/enganche';
 import type { CatalogCompatibility, Product } from '../../tray/model';
@@ -100,14 +100,18 @@ describe('todos los anchos declarados del catálogo son ofrecibles, por familia'
     }
   });
 
-  it('familia color (SAM-STP-ZN): no publica curva vertical ni X, y no se ofrecen las de la familia Z (REV-032)', () => {
+  it('familia color (SAM-STP-ZN): no publica curva vertical ni X; se ofrecen las de la familia Z, con marca de mezcla de acabados', () => {
     const zn = PS.filter((p) => fam(p) === 'SAM-STP-ZN');
     expect(zn.some((p) => /curva vertical|^X$/.test(p.tipo_pieza))).toBe(false);
     for (const ancho of [50, 100]) {
       const recto = zn.find((p) => p.tipo_pieza === 'recta' && p.ancho_nominal_mm === ancho)!;
       const ofrecidos = ofrecidosDesde(recto);
       const w = String(ancho).padStart(3, '0');
-      for (const id of [`SAM_CUPS-${w}-A-Z`, `SAM_CUPS-${w}-D-Z`, `SAM_XPS-${w}-Z`]) expect(ofrecidos.has(id), `${recto.sku} → ${id}`).toBe(false);
+      for (const id of [`SAM_CUPS-${w}-A-Z`, `SAM_CUPS-${w}-D-Z`, `SAM_XPS-${w}-Z`]) {
+        expect(ofrecidos.has(id), `${recto.sku} → ${id}`).toBe(true);
+        const r = compatibilidadDirecta(recto, PS.find((p) => p.producto_id === id)!, snap.COMPATIBILIDADES);
+        expect(r.ok && r.mezcla && [r.mezcla.acabadoA.codigo, r.mezcla.acabadoB.codigo], `${recto.sku} → ${id}: marca`).toEqual(['ZN', 'Z']);
+      }
       // Lo que la familia color sí tiene, se ofrece.
       expect(ofrecidos.has(`SAM_TPS-${w}-ZN`)).toBe(true);
       expect(ofrecidos.has(`SAM_CPS-${w}-90-ZN`)).toBe(true);

@@ -6,7 +6,7 @@
 import { useTrayStore } from '../tray/store';
 import { useWorkspaceStore } from './useWorkspaceStore';
 import { object } from '../tray/model';
-import { summarizeResult } from './stages/resultPresentation';
+import { summarizeResultDe } from './stages/resultPresentation';
 
 function JsonBlock({ value }: { value: unknown }) {
   return <pre className="tray-json">{JSON.stringify(value, null, 2)}</pre>;
@@ -14,6 +14,7 @@ function JsonBlock({ value }: { value: unknown }) {
 
 export function TrayResults() {
   const result   = useTrayStore((s) => s.result);
+  const productos = useTrayStore((s) => s.context?.productos);
   const status   = useTrayStore((s) => s.status);
   const entrada  = useTrayStore((s) => s.entrada);
   const selectTray = useWorkspaceStore((s) => s.selectTray);
@@ -43,7 +44,7 @@ export function TrayResults() {
       {/* Hito 1b: el estado se lee con summarizeResult (PE sin definir ≠ incumplimiento). */}
       {object(result.resumen) && (
         <p style={{ padding: '2px 12px', fontSize: 12 }}>
-          <b>{summarizeResult(result)?.headline}</b>
+          <b>{summarizeResultDe(result, entrada, productos)?.headline}</b>
         </p>
       )}
 

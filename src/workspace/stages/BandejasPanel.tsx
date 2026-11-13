@@ -21,7 +21,9 @@ import { DerivacionForm, EnganchesSection } from './DerivacionSection';
 import { Empty, Section, ToolBar, useRevealSelected } from './shared';
 import { useCatalogConfigStore } from '../../configurator/catalogConfigStore';
 import { outdatedPieces, updateOutdatedPieces } from '../placement/definitions';
-import { checkConnection, formatJoin, invalidConnections } from '../placement/joins';
+import { AVISO_MEZCLA_PREFIJO, checkConnection, formatJoin, invalidConnections } from '../placement/joins';
+import { MarcaMezcla } from './MarcaMezcla';
+import { mezclaDeAcabados } from '../mezclaAcabados';
 import { unionsOf } from '../workspaceOperation';
 import type { Product } from '../../tray/model';
 
@@ -228,16 +230,19 @@ export function BandejasPanel() {
       <Section title={`Uniones (${conexiones.length})`} testid="joins">
         {conexiones.length === 0 && <Empty>Sin uniones.</Empty>}
         {conexiones.map((c) => {
-          const chk = entrada ? checkConnection(entrada, c) : null;
+          const chk = entrada ? checkConnection(entrada, c, productMap) : null;
+          const prodDe = (id: string) => productMap.get(piezas.find((p) => p.instancia_id === id)?.producto_id ?? '');
+          const mezcla = chk?.avisos.some((a) => a.startsWith(AVISO_MEZCLA_PREFIJO)) ? mezclaDeAcabados(prodDe(c.a[0]), prodDe(c.b[0])) : null;
           const rec = unionsOf(entrada)[c.conexion_id];
           const exc = rec?.estado === 'excepcion' || !!(entrada as Record<string, unknown> | null)?.excepciones_conexion?.[c.conexion_id as never];
           return (
-          <div key={c.conexion_id} className="stage-row-inline" data-testid="join-row" data-join-ok={chk?.ok ? 'true' : 'false'} data-join-estado={exc ? 'excepcion' : (rec?.estado ?? 'sin_registro')}>
+          <div key={c.conexion_id} className="stage-row-inline" data-testid="join-row" data-join-ok={chk?.ok ? 'true' : 'false'} data-join-estado={exc ? 'excepcion' : (rec?.estado ?? 'sin_registro')} data-join-mezcla={mezcla ? `${mezcla.acabadoA.codigo}|${mezcla.acabadoB.codigo}` : undefined}>
             <span>
               {endLabel(c.a[0], c.a[1])} ↔ {endLabel(c.b[0], c.b[1])}
               {chk && !chk.ok && <span className="tone-danger"> · no cumple ({formatJoin(chk)})</span>}
               {chk?.avisos.filter((a) => a.startsWith('ala (boca')).map((a) => <span key={a} className="tone-warn" data-testid="join-aviso-ala"> · {a}</span>)}
               {exc && <span className="tone-warn"> · excepción</span>}
+              {mezcla && <MarcaMezcla mezcla={mezcla} testid="join-aviso-mezcla" />}
             </span>
             <button type="button" className="stage-icon-btn tone-danger" aria-label="Eliminar unión" onClick={() => removeConexion(c.conexion_id)}>×</button>
           </div>
