@@ -61,10 +61,10 @@ const EVIDENCE: FieldEvidence[] = [];
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
 describe('exportWorkspace', () => {
-  it('produces parseable JSON with fileVersion 2', () => {
+  it('produces parseable JSON with fileVersion 3', () => {
     const json = exportWorkspace([ELEMENT], EVIDENCE, DEFAULT_PROJECT_META, TRAY_INPUT);
     const parsed = JSON.parse(json) as Record<string, unknown>;
-    expect(parsed.fileVersion).toBe(2);
+    expect(parsed.fileVersion).toBe(3);
     expect(typeof parsed.exportedAt).toBe('string');
   });
 
@@ -104,7 +104,7 @@ describe('importWorkspace', () => {
   it('round-trips export → import and recovers elements + trayInput', () => {
     const json   = exportWorkspace([ELEMENT], EVIDENCE, DEFAULT_PROJECT_META, TRAY_INPUT);
     const result = importWorkspace(json);
-    expect(result.fileVersion).toBe(2);
+    expect(result.fileVersion).toBe(3);
     expect(result.projectV2.elements).toHaveLength(1);
     expect(result.projectV2.elements[0].id).toBe('motor-001');
     expect(result.trayInput.piezas[0].instancia_id).toBe('R1');
@@ -174,8 +174,24 @@ describe('importWorkspace', () => {
   });
 
   it('throws on wrong fileVersion', () => {
-    const obj = JSON.stringify({ fileVersion: 3, projectV2: {}, trayInput: {} });
-    expect(() => importWorkspace(obj)).toThrow('Versión');
+    const obj = JSON.stringify({ fileVersion: 9, projectV2: {}, trayInput: {} });
+    expect(() => importWorkspace(obj)).toThrow('Versión de archivo no soportada: 9');
+  });
+
+  it('corte limpio: un archivo v1 o v2 no se abre — avisa que no es compatible y no intenta repararlo', () => {
+    const v3 = JSON.parse(exportWorkspace([ELEMENT], EVIDENCE, DEFAULT_PROJECT_META, TRAY_INPUT)) as Record<string, unknown>;
+    for (const v of [1, 2]) {
+      const viejo = JSON.stringify({ ...v3, fileVersion: v });
+      expect(() => importWorkspace(viejo)).toThrow(
+        `El archivo es de una versión anterior de la app (versión de archivo ${v}) y no es compatible con esta (versión 3). No se intenta repararlo.`,
+      );
+    }
+  });
+
+  it('un archivo con circuitos guardados de boca a boca (formato anterior) se rechaza', () => {
+    const conBocas = { ...TRAY_INPUT, circuitos_ws: [{ id: 'CIR-1', nombre: 'Viejo', origen: { pieza: 'R1', boca: 'P1' }, destino: { pieza: 'R2', boca: 'P2' } }] };
+    const json = exportWorkspace([ELEMENT], EVIDENCE, DEFAULT_PROJECT_META, conBocas as typeof TRAY_INPUT);
+    expect(() => importWorkspace(json)).toThrow('va de una boca de bandeja a otra (formato anterior)');
   });
 
   it('throws when projectV2 has wrong schemaVersion', () => {
@@ -202,7 +218,7 @@ describe('importWorkspace', () => {
   });
 
   it('importWorkspace is pure — does not mutate input or any store on throw', () => {
-    const badJson = JSON.stringify({ fileVersion: 1, projectV2: { schemaVersion: 2 }, trayInput: {} });
+    const badJson = JSON.stringify({ fileVersion: 3, projectV2: { schemaVersion: 2 }, trayInput: {} });
     expect(() => importWorkspace(badJson)).toThrow();
   });
 });
@@ -220,16 +236,6 @@ describe('exportWorkspace + importWorkspace — catalogConfig', () => {
         { recipePortName: 'tronco_P1', catalogPortName: 'P3', physicalLabel: 'reasignado', justification: 'Override' },
       ],
     },
-  };
-
-  // Hito 1: el archivo es fileVersion 2 y la biblioteca viaja en el bloque `library`
-  // (overrides + approvals + aporteOverrides). `catalogConfig` sólo se LEE (v1).
-  const asV1 = (json: string, catalogConfig: unknown) => {
-    const parsed = JSON.parse(json) as Record<string, unknown>;
-    delete parsed.library;
-    parsed.fileVersion = 1;
-    if (catalogConfig !== undefined) parsed.catalogConfig = catalogConfig;
-    return JSON.stringify(parsed);
   };
 
   it('omite el bloque library cuando la biblioteca está vacía', () => {
@@ -277,21 +283,10 @@ describe('exportWorkspace + importWorkspace — catalogConfig', () => {
     expect(Object.keys(lib?.overrides ?? {})).toEqual(['SAM_TPS-300-Z']);
   });
 
-  it('archivo v1 con catalogConfig se lee como biblioteca PARCIAL (sólo overrides)', () => {
-    const base = exportWorkspace([ELEMENT], EVIDENCE, DEFAULT_PROJECT_META, TRAY_INPUT);
-    const json = asV1(base, { version: 'codex:catalogConfig/1', overrides: SAMPLE_OVERRIDES });
-    const imported = importWorkspace(json);
-    expect(imported.fileVersion).toBe(1);
-    expect(imported.library?.partial).toBe(true);
-    expect(imported.catalogConfig?.overrides['SAM_TPS-300-Z'].entries[0].catalogPortName).toBe('P3');
-  });
-
   it('archivo sin ningún bloque de biblioteca importa correctamente (library null)', () => {
     const json = exportWorkspace([ELEMENT], EVIDENCE, DEFAULT_PROJECT_META, TRAY_INPUT);
     const imported = importWorkspace(json);
-    expect(imported.catalogConfig).toBeUndefined();
     expect(imported.library).toBeNull();
-    expect(importWorkspace(asV1(json, undefined)).library).toBeNull();
   });
 
   it('rechaza versión desconocida del bloque library', () => {
@@ -299,21 +294,6 @@ describe('exportWorkspace + importWorkspace — catalogConfig', () => {
     const parsed = JSON.parse(json) as Record<string, unknown>;
     (parsed.library as Record<string, unknown>).version = 'otra/9';
     expect(() => importWorkspace(JSON.stringify(parsed))).toThrow('library');
-  });
-
-  it('rechaza versión desconocida de catalogConfig (v1)', () => {
-    const base = exportWorkspace([ELEMENT], EVIDENCE, DEFAULT_PROJECT_META, TRAY_INPUT);
-    const json = asV1(base, { version: 'otra/9', overrides: {} });
-    expect(() => importWorkspace(json)).toThrow('catalogConfig');
-  });
-
-  it('rechaza catalogConfig (v1) con source inválido', () => {
-    const bad = {
-      version: 'codex:catalogConfig/1',
-      overrides: { X: { productId: 'X', source: 'garbage', entries: [] } },
-    };
-    const json = exportWorkspace([ELEMENT], EVIDENCE, DEFAULT_PROJECT_META, TRAY_INPUT);
-    expect(() => importWorkspace(asV1(json, bad))).toThrow('catalogConfig');
   });
 
   it('round-trip: overrides con modelFrame + port geometry se preservan', () => {

@@ -168,8 +168,8 @@ function idLibre(usados: ReadonlySet<string>, prefijo: string): string {
   return `${prefijo}-${k}`;
 }
 
-/** Tramo con 2 bocas de un producto recto, con colocación y definición. */
-function troncoDe(entrada: TrayInput, productos: ReadonlyMap<string, Product>, id: string):
+/** Tramo con 2 bocas de un producto recto, con colocación y definición. También lo usa la bajada a un equipo. */
+export function troncoDe(entrada: TrayInput, productos: ReadonlyMap<string, Product>, id: string):
   { ok: true; piece: Piece; product: Product; def: StoredDefinition; L: number; familia: Familia } | { ok: false; motivo: string } {
   const piece = entrada.piezas.find((p) => p.instancia_id === id);
   if (!piece) return { ok: false, motivo: `el tronco ${id} no existe` };
@@ -180,6 +180,77 @@ function troncoDe(entrada: TrayInput, productos: ReadonlyMap<string, Product>, i
   const familia = familiaDe(placed.def);
   if (!familia) return { ok: false, motivo: `familia del tronco no soportada (${placed.def.patron})` };
   return { ok: true, piece, product: prod, def: placed.def, L: piece.longitud_mm, familia };
+}
+
+/**
+ * Punto sobre un tramo recto, elegido como el enganche de una derivación:
+ * boca de referencia, distancia a lo largo del tramo desde su centro y lado.
+ * Lo comparten la derivación en un tramo y la bajada a un equipo.
+ */
+export interface PuntoEnTramo {
+  readonly tronco: string;
+  readonly desde_boca: string;
+  /** Desde el centro de `desde_boca`, a lo largo del tramo (mm). */
+  readonly distancia_mm: number;
+  readonly lado: Lado;
+}
+
+/**
+ * Valida el punto (boca P1/P2, distancia dentro del tramo) y da su geometría:
+ * A sobre el eje, F sobre el flanco del lado elegido, s hacia afuera, up de sección.
+ */
+export function geometriaPuntoEnTramo(entrada: TrayInput, productos: ReadonlyMap<string, Product>, p: PuntoEnTramo):
+  | { ok: true; piece: Piece; product: Product; def: StoredDefinition; L: number; familia: Familia; A: V3; F: V3; s: V3; up: V3 }
+  | { ok: false; motivo: string } {
+  const t = troncoDe(entrada, productos, p.tronco);
+  if (!t.ok) return t;
+  const { piece, def, L } = t;
+  if (!piece.puertos[p.desde_boca] || !['P1', 'P2'].includes(p.desde_boca)) return { ok: false, motivo: `el tronco no tiene la boca ${p.desde_boca}` };
+  if (!(p.distancia_mm >= 0) || !(p.distancia_mm <= L)) return { ok: false, motivo: `la distancia ${fmt(p.distancia_mm)} mm está fuera del tronco (0–${fmt(L)} mm)` };
+  const B = piece.puertos[p.desde_boca];
+  const u = unit(mul(B.direccion, -1));
+  const up = unit((B.orientacion_seccion_ws as V3 | undefined) ?? [0, 0, 1]);
+  const izq = unit(cross(up, u));
+  const s = p.lado === 'izquierda' ? izq : mul(izq, -1);
+  const portT = def.ports.find((q) => q.name === p.desde_boca)!;
+  const A = add(B.posicion_mm, mul(u, p.distancia_mm));
+  const F = add(A, mul(s, portT.ancho_mm / 2));
+  return { ...t, A, F, s, up };
+}
+
+/** Foto del tramo (largo y bocas) para avisar después si cambió. */
+export function fotoTronco(piece: Piece): { longitud_mm: number; bocas: Record<string, BocaFoto> } {
+  const bocas: Record<string, BocaFoto> = {};
+  for (const [nombre, q] of Object.entries(piece.puertos)) {
+    bocas[nombre] = {
+      posicion_mm: [...q.posicion_mm] as V3,
+      direccion: [...q.direccion] as V3,
+      ...(q.orientacion_seccion_ws ? { orientacion_seccion_ws: [...q.orientacion_seccion_ws] as V3 } : {}),
+    };
+  }
+  return { longitud_mm: piece.longitud_mm as number, bocas };
+}
+
+/** Motivos por los que un punto sobre el tramo quedó desactualizado: tramo borrado, de otro largo, movido o rotado. */
+export function motivosTronco(entrada: TrayInput, tronco: string, ref: { readonly longitud_mm: number; readonly bocas: Readonly<Record<string, BocaFoto>> }): string[] {
+  const motivos: string[] = [];
+  const t = entrada.piezas.find((p) => p.instancia_id === tronco);
+  if (!t) return [`el tronco ${tronco} ya no existe`];
+  if (t.longitud_mm !== ref.longitud_mm) motivos.push(`el tronco cambió de largo (${fmt(ref.longitud_mm)} → ${fmt(t.longitud_mm ?? NaN)} mm)`);
+  for (const [b, f] of Object.entries(ref.bocas)) {
+    const q = t.puertos[b];
+    if (!q) { motivos.push(`el tronco ya no tiene la boca ${b}`); break; }
+    const d = norm(sub(q.posicion_mm, f.posicion_mm));
+    const g = Math.max(angDeg(q.direccion, f.direccion), f.orientacion_seccion_ws && q.orientacion_seccion_ws ? angDeg(q.orientacion_seccion_ws, f.orientacion_seccion_ws) : 0);
+    if (d > TOL_MOV || g > TOL_MOV) { motivos.push(`el tronco se movió o rotó (boca ${b}: ${d.toFixed(2)} mm, ${g.toFixed(2)}°)`); break; }
+  }
+  return motivos;
+}
+
+/** Longitud del tramo desde una de sus bocas hasta un punto sobre él (persistida: distancia guardada y largo del tramo). */
+export function distanciaBocaAPunto(tronco: Piece, boca: string, p: Pick<PuntoEnTramo, 'desde_boca' | 'distancia_mm'>): number | null {
+  if (typeof tronco.longitud_mm !== 'number') return null;
+  return boca === p.desde_boca ? p.distancia_mm : tronco.longitud_mm - p.distancia_mm;
 }
 
 /** Intervalo que ocupa un enganche sobre el tronco, medido desde P1 (mm). */
@@ -194,11 +265,9 @@ function intervaloDesdeP1(desde: string, d: number, huella: number, L: number): 
  */
 export function crearEnganche(entrada: TrayInput, productos: ReadonlyMap<string, Product>, p: ParamsEnganche):
   { ok: true; entrada: TrayInput; enganche: Enganche } | { ok: false; motivo: string } {
-  const t = troncoDe(entrada, productos, p.tronco);
+  const t = geometriaPuntoEnTramo(entrada, productos, p);
   if (!t.ok) return t;
-  const { piece, product: troncoProd, def: defT, L, familia } = t;
-  if (!piece.puertos[p.desde_boca] || !['P1', 'P2'].includes(p.desde_boca)) return { ok: false, motivo: `el tronco no tiene la boca ${p.desde_boca}` };
-  if (!(p.distancia_mm >= 0) || !(p.distancia_mm <= L)) return { ok: false, motivo: `la distancia ${fmt(p.distancia_mm)} mm está fuera del tronco (0–${fmt(L)} mm)` };
+  const { piece, product: troncoProd, L, familia, F, s, up } = t;
   const ancho = p.ancho_mm;
   if (!(typeof ancho === 'number' && ancho > 0)) return { ok: false, motivo: 'elegí el ancho de la derivación' };
 
@@ -237,16 +306,6 @@ export function crearEnganche(entrada: TrayInput, productos: ReadonlyMap<string,
     if (solape > 1e-9) return { ok: false, motivo: `se superpone ${fmt(solape)} mm con el enganche ${e.id} del mismo lado` };
   }
 
-  // Geometría: eje hacia adentro desde la boca de referencia, lado, flanco.
-  const B = piece.puertos[p.desde_boca];
-  const u = unit(mul(B.direccion, -1));
-  const up = unit((B.orientacion_seccion_ws as V3 | undefined) ?? [0, 0, 1]);
-  const izq = unit(cross(up, u));
-  const s = p.lado === 'izquierda' ? izq : mul(izq, -1);
-  const portT = defT.ports.find((q) => q.name === p.desde_boca)!;
-  const A = add(B.posicion_mm, mul(u, p.distancia_mm));
-  const F = add(A, mul(s, portT.ancho_mm / 2));
-
   const ids = new Set(entrada.piezas.map((x) => x.instancia_id));
   const engId = idLibre(new Set(enganchesOf(entrada).map((e) => e.id)), 'ENG');
   let next: TrayInput = { ...entrada, piezas: [...entrada.piezas], conexiones: [...entrada.conexiones] };
@@ -278,14 +337,6 @@ export function crearEnganche(entrada: TrayInput, productos: ReadonlyMap<string,
     boca = { posicion_mm: F, direccion: s, orientacion_seccion_ws: up };
   }
 
-  const fotos: Record<string, BocaFoto> = {};
-  for (const [nombre, q] of Object.entries(piece.puertos)) {
-    fotos[nombre] = {
-      posicion_mm: [...q.posicion_mm] as V3,
-      direccion: [...q.direccion] as V3,
-      ...(q.orientacion_seccion_ws ? { orientacion_seccion_ws: [...q.orientacion_seccion_ws] as V3 } : {}),
-    };
-  }
   const sob = dcps ? sobreanchoDeBoca(findMasterById(dcps.def.patron), ancho) : null;
   const advertencias = sob && !sob.confirmado ? [avisoCotaNoConfirmada(String(dcps!.prod.sku), sob)] : [];
   const enganche: Enganche = {
@@ -293,7 +344,7 @@ export function crearEnganche(entrada: TrayInput, productos: ReadonlyMap<string,
     familia, ramal_ancho_mm: ancho, huella_mm, huella_procedencia, accesorio, salida,
     ...(boca ? { boca } : {}),
     ...(ref ? { ref_producto_id: ref.producto_id } : {}),
-    ref_tronco: { longitud_mm: L, bocas: fotos },
+    ref_tronco: fotoTronco(piece),
     ...(advertencias.length ? { advertencias } : {}),
     creado_iso: new Date().toISOString(),
   };
@@ -400,18 +451,7 @@ const TOL_MOV = 1e-6;
 /** ¿El enganche sigue valiendo? Si el tronco se movió, se acortó o se borró, o la DCPS ya no está: desactualizado con motivo. */
 export function estadoEnganche(entrada: TrayInput, productos: ReadonlyMap<string, Product> | null, e: Enganche): { vigente: true } | { vigente: false; motivos: string[] } {
   const motivos = validarEnganche(entrada, productos, e);
-  const t = entrada.piezas.find((p) => p.instancia_id === e.tronco);
-  if (!t) motivos.push(`el tronco ${e.tronco} ya no existe`);
-  else {
-    if (t.longitud_mm !== e.ref_tronco.longitud_mm) motivos.push(`el tronco cambió de largo (${fmt(e.ref_tronco.longitud_mm)} → ${fmt(t.longitud_mm ?? NaN)} mm)`);
-    for (const [b, f] of Object.entries(e.ref_tronco.bocas)) {
-      const q = t.puertos[b];
-      if (!q) { motivos.push(`el tronco ya no tiene la boca ${b}`); break; }
-      const d = norm(sub(q.posicion_mm, f.posicion_mm));
-      const g = Math.max(angDeg(q.direccion, f.direccion), f.orientacion_seccion_ws && q.orientacion_seccion_ws ? angDeg(q.orientacion_seccion_ws, f.orientacion_seccion_ws) : 0);
-      if (d > TOL_MOV || g > TOL_MOV) { motivos.push(`el tronco se movió o rotó (boca ${b}: ${d.toFixed(2)} mm, ${g.toFixed(2)}°)`); break; }
-    }
-  }
+  motivos.push(...motivosTronco(entrada, e.tronco, e.ref_tronco));
   // Escalera: si lo continuado desde la boca se borró, la boca vuelve a quedar libre (no es un error).
   // Un enganche de un proyecto anterior sin boca guardada (el ramal lo creaba la operación) sí lo informa.
   if (e.salida[0] && !entrada.piezas.some((p) => p.instancia_id === e.salida[0]) && e.accesorio.tipo !== 'producto' && !e.boca) {
@@ -444,8 +484,7 @@ export function bocasOcupadasPorEnganches(entrada: TrayInput | null | undefined)
 
 /** Longitud del tronco desde una de sus bocas hasta el enganche (persistida: distancia guardada y largo del tronco). */
 export function distanciaBocaAEnganche(tronco: Piece, boca: string, e: Enganche): number | null {
-  if (typeof tronco.longitud_mm !== 'number') return null;
-  return boca === e.desde_boca ? e.distancia_mm : tronco.longitud_mm - e.distancia_mm;
+  return distanciaBocaAPunto(tronco, boca, e);
 }
 
 /** Firma de un enganche para detectar cambios desde que un circuito lo atravesó. */

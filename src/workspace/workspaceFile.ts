@@ -4,8 +4,8 @@ import { assertInput } from '../tray/model';
 import { validateProjectDataV2 } from '../persistence/validate-v2';
 import type { ProductPortMapping } from './catalogPortMapping';
 import type { ImportedCatalog } from '../import/types';
+import { validarCircuitosDeArchivo } from './recorridos/circuitosGuardados';
 import {
-  libraryFromCatalogConfig,
   parseLibraryBlock,
   toLibraryBlock,
   type FileLibrary,
@@ -34,25 +34,6 @@ export const DEFAULT_PROJECT_META: ProjectMeta = {
   migrationIncidents: [],
 };
 
-/**
- * Workspace file format v1.
- *
- * Equipment and evidence are wrapped in a full ProjectDataV2 structure so they
- * can be validated with validateProjectDataV2 (strict per-datum validation,
- * quaternion normalization, parentId coherence, etc.).
- * projectOrigin, factories and all other graph entities survive the round-trip.
- *
- * Opcional desde v1: `catalogConfig` lleva los overrides declarados en el
- * Configurador de biblioteca (mapping boca-receta ↔ puerto-catálogo). Si está
- * ausente al importar, se interpreta como "sin overrides" — equivalente a
- * limpiar la configuración. Esto hace que un proyecto sea portable entre
- * computadoras incluyendo decisiones del Configurador, sin depender de
- * localStorage del equipo.
- */
-export interface CatalogConfigBlock {
-  version: 'codex:catalogConfig/1';
-  overrides: Record<string, ProductPortMapping>;
-}
 
 /**
  * Catálogo ELS-IMP-EQCX serializado como parte del proyecto (A11).
@@ -67,25 +48,24 @@ export interface ImportedCatalogBlock {
   catalog: ImportedCatalog;
 }
 
-export interface WorkspaceFileV1 {
-  fileVersion: 1;
-  exportedAt: string;
-  projectV2: ProjectDataV2;
-  trayInput: TrayInput;
-  catalogConfig?: CatalogConfigBlock;
-  importedCatalog?: ImportedCatalogBlock;
-}
-
 /**
- * Workspace file format v2 (hito 1).
+ * Formato de archivo de proyecto vigente: fileVersion 3 (2026-11-13, etapa 1 —
+ * circuitos de equipo a equipo).
  *
- * Igual que v1 pero con el bloque `library`: copia COMPLETA de la biblioteca del
- * usuario (overrides, approvals y aporteOverrides). Se omite si la biblioteca está
- * vacía. v2 ya no escribe `catalogConfig` (v1) — `library.overrides` lo reemplaza.
- * El lector acepta v1 y v2.
+ * El proyecto completo: equipos y evidencia dentro de un ProjectDataV2 (se
+ * validan con validateProjectDataV2), el trazado (`trayInput`, con sus claves
+ * workspace-only: definiciones, enganches, bajadas, circuitos guardados), el
+ * bloque `library` (copia COMPLETA de la biblioteca del usuario; se omite si
+ * está vacía) y el catálogo importado.
+ *
+ * CORTE LIMPIO (declarado por el operador, 2026-11-13: no hay proyectos
+ * guardados): un archivo de una versión anterior (fileVersion 1 ó 2) NO se abre.
+ * La app avisa que no es compatible y no intenta repararlo ni migrarlo.
  */
-export interface WorkspaceFileV2 {
-  fileVersion: 2;
+export const FILE_VERSION = 3;
+
+export interface WorkspaceFileV3 {
+  fileVersion: 3;
   exportedAt: string;
   projectV2: ProjectDataV2;
   trayInput: TrayInput;
@@ -94,19 +74,24 @@ export interface WorkspaceFileV2 {
 }
 
 /**
- * Resultado normalizado de leer un archivo v1 o v2. `library` es la biblioteca que
- * trae el archivo (completa en v2; parcial —sólo overrides— en v1); `null` si el
- * archivo no trae ninguna, en cuyo caso abrirlo no debe tocar la biblioteca local.
- * `catalogConfig` se conserva para archivos v1 (compatibilidad de lectura).
+ * Resultado de leer un archivo v3. `library` es la biblioteca que trae el
+ * archivo; `null` si no trae ninguna, en cuyo caso abrirlo no debe tocar la
+ * biblioteca local.
  */
 export interface ParsedWorkspaceFile {
-  fileVersion: 1 | 2;
+  fileVersion: 3;
   exportedAt: string;
   projectV2: ProjectDataV2;
   trayInput: TrayInput;
   library: FileLibrary | null;
-  catalogConfig?: CatalogConfigBlock;
   importedCatalog?: ImportedCatalogBlock;
+}
+
+/** Aviso al abrir un archivo de una versión anterior: no es compatible y no se repara. */
+export function motivoVersionNoCompatible(fileVersion: unknown): string {
+  return typeof fileVersion === 'number' && fileVersion < FILE_VERSION
+    ? `El archivo es de una versión anterior de la app (versión de archivo ${fileVersion}) y no es compatible con esta (versión ${FILE_VERSION}). No se intenta repararlo.`
+    : `Versión de archivo no soportada: ${String(fileVersion)}`;
 }
 
 export function exportWorkspace(
@@ -129,8 +114,8 @@ export function exportWorkspace(
     evidence,
     ...meta,
   };
-  const file: WorkspaceFileV2 = {
-    fileVersion: 2,
+  const file: WorkspaceFileV3 = {
+    fileVersion: 3,
     exportedAt: new Date().toISOString(),
     projectV2,
     trayInput,
@@ -166,63 +151,29 @@ export function importWorkspace(raw: string): ParsedWorkspaceFile {
   }
   const obj = parsed as Record<string, unknown>;
 
-  if (obj.fileVersion !== 1 && obj.fileVersion !== 2) {
-    throw new Error(`Versión de archivo no soportada: ${String(obj.fileVersion)}`);
-  }
-  const fileVersion: 1 | 2 = obj.fileVersion;
+  if (obj.fileVersion !== FILE_VERSION) throw new Error(motivoVersionNoCompatible(obj.fileVersion));
 
   // Validate equipment + evidence (and origin, factories, etc.) through validateProjectDataV2
   const projectV2 = validateProjectDataV2(obj.projectV2);
 
   // Validate tray input — assertInput throws on invalid contracts
   assertInput(obj.trayInput);
+  // Circuitos guardados: extremos de equipo (los de boca, formato anterior, se rechazan).
+  validarCircuitosDeArchivo(obj.trayInput);
 
-  // v1: sólo `catalogConfig` (overrides) → biblioteca parcial. v2: bloque `library`.
-  const catalogConfig = fileVersion === 1 ? parseCatalogConfig(obj.catalogConfig) : null;
-  const library: FileLibrary | null =
-    fileVersion === 2
-      ? parseLibraryBlock(obj.library)
-      : catalogConfig
-        ? libraryFromCatalogConfig(catalogConfig.overrides)
-        : null;
+  const library: FileLibrary | null = parseLibraryBlock(obj.library);
   const importedCatalog = parseImportedCatalog(obj.importedCatalog);
 
   return {
-    fileVersion,
+    fileVersion: FILE_VERSION,
     exportedAt: typeof obj.exportedAt === 'string' ? obj.exportedAt : '',
     projectV2,
     trayInput: obj.trayInput as TrayInput,
     library,
-    ...(catalogConfig ? { catalogConfig } : {}),
     ...(importedCatalog ? { importedCatalog } : {}),
   };
 }
 
-function parseCatalogConfig(raw: unknown): CatalogConfigBlock | null {
-  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
-  const obj = raw as Record<string, unknown>;
-  if (obj.version !== 'codex:catalogConfig/1') {
-    throw new Error(`catalogConfig: versión no soportada (${String(obj.version)})`);
-  }
-  if (!obj.overrides || typeof obj.overrides !== 'object' || Array.isArray(obj.overrides)) {
-    throw new Error('catalogConfig: overrides debe ser un objeto');
-  }
-  const overrides: Record<string, ProductPortMapping> = {};
-  for (const [productId, value] of Object.entries(obj.overrides)) {
-    if (!value || typeof value !== 'object') {
-      throw new Error(`catalogConfig: override "${productId}" inválido`);
-    }
-    const v = value as Record<string, unknown>;
-    if (v.source !== 'default' && v.source !== 'override') {
-      throw new Error(`catalogConfig: "${productId}".source inválido`);
-    }
-    if (!Array.isArray(v.entries)) {
-      throw new Error(`catalogConfig: "${productId}".entries debe ser array`);
-    }
-    overrides[productId] = value as unknown as ProductPortMapping;
-  }
-  return { version: 'codex:catalogConfig/1', overrides };
-}
 
 function parseImportedCatalog(raw: unknown): ImportedCatalogBlock | null {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;

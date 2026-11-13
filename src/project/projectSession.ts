@@ -35,6 +35,7 @@ import {
 import { emptyTrayInput } from './emptyProject';
 import {
   RECORD_SCHEMA,
+  RECORD_SCHEMAS_ANTERIORES,
   quarantineCurrentRecord,
   readCurrentRecord,
   writeCurrentRecord,
@@ -111,7 +112,7 @@ export function buildRecord(): ProjectRecord {
 
 type ParsedRecord =
   | { ok: true; project: ParsedWorkspaceFile; stored: StoredProject; session: SessionState }
-  | { ok: false; reason: string };
+  | { ok: false; reason: string; anterior?: true };
 
 interface StoredProject {
   projectV2: { elements: never[]; evidence: never[] } & Record<string, unknown>;
@@ -129,12 +130,15 @@ const isObj = (v: unknown): v is Record<string, unknown> =>
  */
 export function parseRecord(raw: unknown): ParsedRecord {
   try {
+    if (isObj(raw) && typeof raw.schema === 'string' && RECORD_SCHEMAS_ANTERIORES.includes(raw.schema)) {
+      return { ok: false, reason: 'es de una versión anterior de la app y no es compatible con esta', anterior: true };
+    }
     if (!isObj(raw) || raw.schema !== RECORD_SCHEMA || !isObj(raw.project)) {
       return { ok: false, reason: 'registro con formato desconocido' };
     }
     const p = raw.project as Record<string, unknown>;
     const asFile = JSON.stringify({
-      fileVersion: 2,
+      fileVersion: 3,
       exportedAt: typeof raw.savedAt === 'string' ? raw.savedAt : '',
       projectV2: p.projectV2,
       trayInput: p.trayInput,
@@ -208,7 +212,9 @@ async function doBoot(): Promise<void> {
       status({
         phase: 'idle',
         booted: true,
-        notice: `El proyecto guardado estaba dañado (${parsed.reason}); se apartó como "${key}" y se abrió un proyecto vacío.`,
+        notice: parsed.anterior
+          ? `El proyecto guardado en este equipo ${parsed.reason}: no se intentó repararlo. Se apartó como "${key}" y se abrió un proyecto vacío.`
+          : `El proyecto guardado estaba dañado (${parsed.reason}); se apartó como "${key}" y se abrió un proyecto vacío.`,
       });
     } catch (e) {
       status({
@@ -395,7 +401,7 @@ export function localLibrary(): LibrarySnapshot {
   };
 }
 
-/** Serializa el proyecto actual (fileVersion 2, con biblioteca completa). Funciona sin motor. */
+/** Serializa el proyecto actual (fileVersion 3, con biblioteca completa). Funciona sin motor. */
 export function buildProjectCopy(): { json: string; name: string } {
   const w = useWorkspaceStore.getState();
   const lib = localLibrary();
@@ -425,7 +431,8 @@ export type OpenResult =
   | { status: 'error'; error: string };
 
 /**
- * Abre un proyecto desde el texto de un archivo (fileVersion 1 ó 2).
+ * Abre un proyecto desde el texto de un archivo (fileVersion 3; uno anterior se
+ * rechaza con el aviso de que no es compatible, sin intentar repararlo).
  * Orden: validar → (si la biblioteca del archivo difiere) preguntar → recién
  * entonces aplicar. Cancelar o fallar no deja ningún cambio a medias.
  */

@@ -5,9 +5,11 @@
  *   recto 1 → curva plana 90 → recto 2000 → T (tronco) → recto 1500 por la derivación
  *     → curva vertical (CUPS) → recto 1000
  *
- * 1. En Conexiones el operador elige origen y destino, le pone nombre y lo
- *    guarda. En Resultados aparece una fila: nombre, origen, destino, longitud
- *    (mm) y piezas. "Copiar tabla" deja la tabla en el portapapeles.
+ * 1. Etapa 1: un equipo en cada punta (Tablero General A y Bomba 3), enlazados con
+ *    la bandeja en Conexiones. El operador elige los dos equipos, le pone nombre y
+ *    lo guarda. En Resultados aparece una fila: nombre, equipos de origen y destino,
+ *    longitud total (mm) desglosada en bandeja y bajadas, y piezas. "Copiar tabla"
+ *    deja la tabla en el portapapeles.
  * 2. Sobrevive a cerrar y abrir: recargar la página (autoguardado) y además
  *    guardar copia → Nuevo → abrir el archivo.
  * 3. Rotar una pieza del recorrido (herramienta Rotar, B-4) y borrar otra: el
@@ -32,7 +34,7 @@ type PiezaJs = {
   puertos: Record<string, { posicion_mm: V3 }>;
   colocacion?: { longitudes_eje?: Record<string, { mm: number }> };
 };
-type TrayW = { __codex: { trayStore: { getState: () => { entrada: { piezas: PiezaJs[] } & Record<string, unknown>; edit: (e: unknown) => void; undo: () => void } } } };
+type TrayW = { __codex: { trayStore: { getState: () => { entrada: { piezas: PiezaJs[]; bajadas_ws?: unknown[] } & Record<string, unknown>; edit: (e: unknown) => void; undo: () => void } } } };
 
 async function openBandejas(page: Page): Promise<void> {
   await page.goto('/?etapa=bandejas');
@@ -75,6 +77,44 @@ async function armarCadena(page: Page) {
   return piezas(page);
 }
 
+type ElementoJs = { id: string; name: string };
+const elementos = (page: Page) => page.evaluate(() => (window as unknown as { __codex: { workspaceStore: { getState: () => { elements: ElementoJs[] } } } }).__codex.workspaceStore.getState().elements);
+type BajadaJs = { id: string; longitud_mm: number };
+const bajadas = (page: Page) => page.evaluate(() => ((window as unknown as TrayW).__codex.trayStore.getState().entrada.bajadas_ws ?? []) as BajadaJs[]);
+
+/** "Nuevo equipo" (etapa Equipos), ubicado en (x, y, z), como caja. Devuelve su id. */
+async function crearEquipo(page: Page, nombre: string, pos: V3): Promise<string> {
+  await page.getByTestId('stage-tab-equipos').click();
+  const antes = (await elementos(page)).length;
+  await page.getByTestId('new-equipment').click();
+  const form = page.getByTestId('new-equipment-form');
+  await form.locator('#paf-cat').selectOption('electrical_panel');
+  await form.locator('#paf-name').fill(nombre);
+  await form.locator('input[value="placed"]').check();
+  await form.locator('#paf-x').fill(String(pos[0]));
+  await form.locator('#paf-y').fill(String(pos[1]));
+  await form.locator('#paf-z').fill(String(pos[2]));
+  await form.locator('#paf-geo').selectOption('box');
+  await form.locator('#paf-bw').fill('600');
+  await form.locator('#paf-bd').fill('400');
+  await form.locator('#paf-bh').fill('800');
+  await form.getByRole('button', { name: 'Crear' }).click();
+  await expect.poll(async () => (await elementos(page)).length).toBe(antes + 1);
+  return (await elementos(page)).find((e) => e.name === nombre)!.id;
+}
+
+/** Enlace equipo ↔ bandeja (Conexiones): tramo, distancia desde una boca, lado. */
+async function enlazar(page: Page, equipoId: string, tronco: string, desde: 'P1' | 'P2', distancia: number, lado: 'izquierda' | 'derecha') {
+  const form = page.getByTestId('baj-form');
+  await form.getByTestId('baj-equipo').selectOption(equipoId);
+  await form.getByTestId('baj-tronco').selectOption(tronco);
+  await form.getByTestId('baj-desde').selectOption(desde);
+  await form.getByTestId('baj-distancia').fill(String(distancia));
+  await form.getByTestId('baj-lado').selectOption(lado);
+  await form.getByTestId('baj-crear').click();
+  await expect(page.getByTestId('baj-msg')).toContainText('creado');
+}
+
 async function elegir(page: Page, testid: string, pieza: string, boca: string) {
   await page.getByTestId(testid).selectOption(`${pieza}\u0000${boca}`);
 }
@@ -94,16 +134,32 @@ test.describe('Circuitos guardados', () => {
       + tee.colocacion!.longitudes_eje!['boca_derivacion|tronco_P1'].mm + rDeriv.longitud_mm!
       + cups.colocacion!.longitudes_eje!['P1_horizontal|P2_vertical'].mm + rVert.longitud_mm!;
 
-    // 1. Guardar como circuito.
+    // 1. Un equipo en cada punta, enlazado en el extremo de la cadena (distancia 0):
+    //    la parte de bandeja es la cadena entera.
+    const tg = await crearEquipo(page, 'Tablero General A', [-500, 1200, 1500]);
+    const b3 = await crearEquipo(page, 'Bomba 3', [4000, -2500, 3000]);
     await page.getByTestId('stage-tab-conexiones').click();
+    await enlazar(page, tg, r1.instancia_id, 'P1', 0, 'izquierda');
+    await enlazar(page, b3, rVert.instancia_id, 'P2', 0, 'derecha');
+    const [bo, bd] = await bajadas(page);
+    const bajadasMm = bo.longitud_mm + bd.longitud_mm;
+    const total = esperado + bajadasMm;
+
+    // La medición entre bocas sigue dando la cadena (no se guarda).
     await elegir(page, 'recorrido-origen', r1.instancia_id, 'P1');
     await elegir(page, 'recorrido-destino', rVert.instancia_id, 'P2');
     await expect(page.getByTestId('recorrido-total')).toContainText(`Longitud total: ${fmt(esperado)} mm`);
-    await page.getByTestId('recorrido-guardar').click();
-    await expect(page.getByTestId('recorrido-guardado-msg')).toContainText('el circuito necesita un nombre');
-    await page.getByTestId('recorrido-nombre').fill('TG-1 → Bomba 3');
-    await page.getByTestId('recorrido-guardar').click();
-    await expect(page.getByTestId('recorrido-guardado-msg')).toContainText('Circuito "TG-1 → Bomba 3" guardado');
+
+    // Guardar como circuito, de equipo a equipo.
+    await page.getByTestId('circuito-origen').selectOption(tg);
+    await page.getByTestId('circuito-destino').selectOption(b3);
+    await expect(page.getByTestId('circuito-total')).toContainText(`Longitud total: ${fmt(total)} mm`);
+    await expect(page.getByTestId('circuito-desglose-bandeja')).toContainText(`Por bandeja: ${fmt(esperado)} mm (7 pieza(s))`);
+    await page.getByTestId('circuito-guardar').click();
+    await expect(page.getByTestId('circuito-guardado-msg')).toContainText('el circuito necesita un nombre');
+    await page.getByTestId('circuito-nombre-input').fill('TG-1 → Bomba 3');
+    await page.getByTestId('circuito-guardar').click();
+    await expect(page.getByTestId('circuito-guardado-msg')).toContainText('Circuito "TG-1 → Bomba 3" guardado');
 
     // Tabla en Resultados.
     await page.getByTestId('stage-tab-resultados').click();
@@ -111,16 +167,19 @@ test.describe('Circuitos guardados', () => {
     await expect(fila).toHaveCount(1);
     await expect(fila).toHaveAttribute('data-vigente', 'true');
     await expect(page.getByTestId('circuito-nombre')).toHaveText('TG-1 → Bomba 3');
-    await expect(page.getByTestId('circuito-longitud')).toHaveText(fmt(esperado));
+    await expect(page.getByTestId('circuito-longitud')).toHaveText(fmt(total));
+    await expect(page.getByTestId('circuito-bandeja')).toHaveText(fmt(esperado));
+    await expect(page.getByTestId('circuito-bajadas')).toHaveText(fmt(bajadasMm));
     await expect(page.getByTestId('circuito-piezas')).toHaveText('7');
-    await expect(fila).toContainText('1. TRPS-300-22-Z · Boca x_min');
-    await expect(fila).toContainText('7. TRPS-300-22-Z · Boca x_max');
+    await expect(page.getByTestId('circuito-origen-equipo')).toHaveText('Tablero General A');
+    await expect(page.getByTestId('circuito-destino-equipo')).toHaveText('Bomba 3');
     await page.getByTestId('circuitos-copiar').click();
     await expect(page.getByTestId('circuitos-msg')).toContainText('Tabla copiada (1 circuito(s))');
     const copiado = await page.evaluate(() => navigator.clipboard.readText());
+    const n = (x: number) => x.toLocaleString('es-AR', { maximumFractionDigits: 1, minimumFractionDigits: 1, useGrouping: false });
     expect(copiado.split(/\r?\n/)).toEqual([
-      'Nombre\tOrigen\tDestino\tLongitud (mm)\tPiezas\tEstado',
-      `TG-1 → Bomba 3\t1. TRPS-300-22-Z · Boca x_min\t7. TRPS-300-22-Z · Boca x_max\t${esperado.toLocaleString('es-AR', { maximumFractionDigits: 1, minimumFractionDigits: 1, useGrouping: false })}\t7\tvigente`,
+      'Nombre\tOrigen\tDestino\tLongitud total (mm)\tBandeja (mm)\tBajadas (mm)\tPiezas\tEstado',
+      `TG-1 → Bomba 3\tTablero General A\tBomba 3\t${n(total)}\t${n(esperado)}\t${n(bajadasMm)}\t7\tvigente`,
     ]);
     await page.screenshot({ path: resolve(OUT_DIR, 'circuitos-01-tabla.png') });
 
@@ -141,7 +200,7 @@ test.describe('Circuitos guardados', () => {
     // Proyecto vacío tras "Nuevo": abrir no pide confirmación.
     await page.getByTestId('project-open-input').setInputFiles(copia);
     await expect(page.getByTestId('circuito-nombre')).toHaveText('TG-1 → Bomba 3');
-    await expect(page.getByTestId('circuito-longitud')).toHaveText(fmt(esperado));
+    await expect(page.getByTestId('circuito-longitud')).toHaveText(fmt(total));
 
     // 3. Rotar una pieza del recorrido con la herramienta Rotar (ficha de la pieza, etapa
     //    Bandejas): desactualizado, con motivo.
@@ -161,12 +220,12 @@ test.describe('Circuitos guardados', () => {
     await expect(aviso).toContainText('la pieza 3. TRPS-300-22-Z se movió o rotó');
     await expect(aviso).toContainText('ya no existe'); // las uniones que la rotación descartó
     // Lo guardado no se recalculó.
-    await expect(page.getByTestId('circuito-longitud')).toHaveText(fmt(esperado));
+    await expect(page.getByTestId('circuito-longitud')).toHaveText(fmt(total));
     await page.screenshot({ path: resolve(OUT_DIR, 'circuitos-02-desactualizado.png') });
     // Recalcular es explícito; sin camino, lo dice y no toca lo guardado.
     await page.getByTestId('circuito-recalcular').click();
     await expect(page.getByTestId('circuitos-msg')).toContainText('No se pudo recalcular: no hay camino');
-    await expect(page.getByTestId('circuito-longitud')).toHaveText(fmt(esperado));
+    await expect(page.getByTestId('circuito-longitud')).toHaveText(fmt(total));
     await page.evaluate(() => (window as unknown as TrayW).__codex.trayStore.getState().undo());
     await expect(page.getByTestId('circuito-fila')).toHaveAttribute('data-vigente', 'true');
 

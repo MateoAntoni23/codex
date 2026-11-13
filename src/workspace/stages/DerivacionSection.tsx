@@ -14,8 +14,9 @@ import { anchosDeDerivacion, crearEnganche, dcpsHuerfanas, dcpsParaAncho, enganc
 import { placedOf } from '../placement/definitions';
 import { mezclaDeAcabados } from '../mezclaAcabados';
 import { MarcaMezcla } from './MarcaMezcla';
-import { indexProducts, pieceLabelById, portLabel } from './displayNames';
+import { indexProducts, pieceLabelById } from './displayNames';
 import { Empty, Section } from './shared';
+import { PuntoEnTramoCampos, troncosElegibles } from './PuntoEnTramoCampos';
 
 export function DerivacionForm({ onClose }: { onClose: () => void }) {
   const entrada = useTrayStore((s) => s.entrada);
@@ -23,9 +24,8 @@ export function DerivacionForm({ onClose }: { onClose: () => void }) {
   const trayEdit = useTrayStore((s) => s.edit);
   const markDirty = useWorkspaceStore((s) => s.markDirty);
   const productos = useMemo(() => new Map<string, Product>((context?.productos ?? []).map((p) => [p.producto_id, p])), [context]);
-  const idx = useMemo(() => indexProducts(context?.productos), [context]);
   const piezas = entrada?.piezas ?? [];
-  const troncos = piezas.filter((p) => productos.get(p.producto_id)?.tipo_pieza === 'recta' && typeof p.longitud_mm === 'number');
+  const troncos = troncosElegibles(piezas, productos);
 
   const [tronco, setTronco] = useState('');
   const [desde, setDesde] = useState('P1');
@@ -58,29 +58,12 @@ export function DerivacionForm({ onClose }: { onClose: () => void }) {
 
   return (
     <div data-testid="der-form">
-      <label className="stage-field">
-        Tramo principal (tronco)
-        <select className="inspector-input" data-testid="der-tronco" value={tronco} onChange={(e) => setTronco(e.target.value)}>
-          <option value="">Elegí un tramo recto…</option>
-          {troncos.map((p) => <option key={p.instancia_id} value={p.instancia_id}>{pieceLabelById(p.instancia_id, piezas, idx)} · {p.longitud_mm} mm</option>)}
-        </select>
-      </label>
-      <label className="stage-field">
-        Distancia desde la boca
-        <span style={{ display: 'flex', gap: 6 }}>
-          <select className="inspector-input" data-testid="der-desde" value={desde} onChange={(e) => setDesde(e.target.value)}>
-            {['P1', 'P2'].map((b) => <option key={b} value={b}>{t ? portLabel(t.producto_id, b, idx) : b}</option>)}
-          </select>
-          <input type="number" className="inspector-input" style={{ width: 90 }} data-testid="der-distancia" value={distancia} placeholder="mm" onChange={(e) => setDistancia(e.target.value)} />
-        </span>
-      </label>
-      <label className="stage-field">
-        Lado
-        <select className="inspector-input" data-testid="der-lado" value={lado} onChange={(e) => setLado(e.target.value as Lado)}>
-          <option value="izquierda">Izquierda (mirando desde la boca hacia el tramo)</option>
-          <option value="derecha">Derecha</option>
-        </select>
-      </label>
+      <PuntoEnTramoCampos
+        prefijo="der"
+        etiquetaTramo="Tramo principal (tronco)"
+        valor={{ tronco, desde, distancia, lado }}
+        onChange={(v) => { setTronco(v.tronco); setDesde(v.desde); setDistancia(v.distancia); setLado(v.lado); }}
+      />
       <label className="stage-field">
         Ancho de la derivación
         <select className="inspector-input" data-testid="der-ancho" value={ancho} onChange={(e) => setAncho(e.target.value)} disabled={!t}>

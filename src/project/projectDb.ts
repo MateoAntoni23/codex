@@ -18,7 +18,13 @@
 export const WORKSPACE_DB_NAME = 'codex-workspace-v1';
 export const WORKSPACE_STORE = 'project';
 export const CURRENT_KEY = 'current';
-export const RECORD_SCHEMA = 'codex:workspaceProject/1';
+/**
+ * Esquema del registro autoguardado. /2 desde la etapa 1 (2026-11-13), junto con
+ * el archivo v3: un registro /1 es de una versión anterior y no se abre (se aparta).
+ */
+export const RECORD_SCHEMA = 'codex:workspaceProject/2';
+/** Esquemas de versiones anteriores: no compatibles, no se reparan. */
+export const RECORD_SCHEMAS_ANTERIORES: readonly string[] = ['codex:workspaceProject/1'];
 
 export interface ProjectRecord {
   schema: typeof RECORD_SCHEMA;
