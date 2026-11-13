@@ -17,6 +17,8 @@ import * as THREE from 'three';
 import type { Piece, Product, TrayInput } from '../../tray/model';
 import { buildNominalRecipe, buildRecipeFromProduct, datosFaltantesParaMaestro, NOTA_NOMINAL, resolveParametricEntry, resolveRecipe, sentidoVerticalDe, tieneReglaNominal } from '../parametricBridge';
 import { calibracionVersion } from '../catalogPortMapping';
+import { RECETAS_ESLABONADAS } from '../../parametric/geometry/recipes';
+import { ANGULO_ESLABONADA_POR_DEFECTO } from '../../parametric/geometry/curvaEslabonada';
 import type { PieceKind } from '../../parametric/geometry/recipes';
 import { calibrarReceta } from './calibrarReceta';
 import { compararConGuardada } from './geometriaEquivalente';
@@ -116,13 +118,15 @@ export interface OpcionesDefinicion {
   readonly longitud_mm?: number | null;
   /** Sólo curvas verticales articuladas (CUS): se elige al colocar. */
   readonly sentido_vertical?: 'sube' | 'baja';
+  /** Sólo curvas eslabonadas (EPS, CUS): ángulo de la instancia; sin valor, 90° (por defecto del operador). */
+  readonly angulo_deg?: number | null;
 }
 
-function claveMemo(product: Product, longitud: number | null | undefined, sentido?: 'sube' | 'baja'): string {
+function claveMemo(product: Product, longitud: number | null | undefined, sentido?: 'sube' | 'baja', angulo?: number | null): string {
   const r = product as unknown as Record<string, unknown>;
   return JSON.stringify([
     calibracionVersion(), bibliotecaVersion(), product.producto_id, product.sku, r.familia_id, product.tipo_pieza, product.ancho_nominal_mm,
-    r.ala_nominal_mm, r.longitud_comercial_mm, r.angulo_grados, r.descripcion_original, r.observaciones, longitud ?? null, sentido ?? null,
+    r.ala_nominal_mm, r.longitud_comercial_mm, r.angulo_grados, r.descripcion_original, r.observaciones, longitud ?? null, sentido ?? null, angulo ?? null,
   ]);
 }
 
@@ -136,7 +140,7 @@ function claveMemo(product: Product, longitud: number | null | undefined, sentid
  * `longitud_mm` sólo aplica a tramos rectos (largo editable).
  */
 export function definicionEfectiva(product: Product, opts?: OpcionesDefinicion): DefinicionEfectiva {
-  const key = claveMemo(product, opts?.longitud_mm, opts?.sentido_vertical);
+  const key = claveMemo(product, opts?.longitud_mm, opts?.sentido_vertical, opts?.angulo_deg);
   const hit = MEMO.get(key);
   if (hit) return hit;
   const modelo = modeloDeProducto(product);
@@ -212,6 +216,7 @@ export function buildDefinition(product: Product, opts?: OpcionesDefinicion): De
     raw = buildRecipeFromProduct(product, entry, {
       ...(longitud ? { longitud_mm: longitud } : {}),
       ...(opts?.sentido_vertical ? { sentido_vertical: opts.sentido_vertical } : {}),
+      ...(typeof opts?.angulo_deg === 'number' ? { angulo_deg: opts.angulo_deg } : {}),
     });
   } catch (e) {
     return { ok: false, motivo: `no se pudo construir la receta: ${e instanceof Error ? e.message : String(e)}` };
@@ -233,6 +238,10 @@ export function buildDefinition(product: Product, opts?: OpcionesDefinicion): De
     params.sentido_vertical = 1;
   }
   if (typeof r.angulo_grados === 'number') params.angulo_deg = r.angulo_grados as number;
+  // Curva eslabonada: el ángulo es de la INSTANCIA (entra en la huella y en la verificación de giro).
+  if (RECETAS_ESLABONADAS.has(String(entry.recipe))) {
+    params.angulo_deg = typeof opts?.angulo_deg === 'number' ? opts.angulo_deg : ANGULO_ESLABONADA_POR_DEFECTO;
+  }
   const def = definitionFromRecipe({
     patron: master?.id ?? String(entry.recipe),
     revision: master ? String(master.revision) : String(entry.source_version ?? 'legacy'),
@@ -259,6 +268,16 @@ function masterIgnorandoAla(product: Product) {
     if (m) return m;
   }
   return null;
+}
+
+/** Opciones de la definición que dependen de la instancia, leídas de los parámetros guardados. */
+export function opcionesDeInstancia(params: Readonly<Record<string, number>>, product: Product): OpcionesDefinicion {
+  const entry = resolveRecipe(product);
+  const eslabonada = !!entry && RECETAS_ESLABONADAS.has(String(entry.recipe));
+  return {
+    longitud_mm: params.longitud_mm ?? null,
+    ...(eslabonada ? { angulo_deg: params.angulo_deg ?? null, sentido_vertical: params.sentido_vertical === 1 ? 'sube' as const : 'baja' as const } : {}),
+  };
 }
 
 /** Largo de un tramo a partir de su definición guardada (si aplica). */
@@ -309,7 +328,8 @@ export function outdatedPieces(entrada: TrayInput, products: ReadonlyMap<string,
     if (!c || c.estado !== 'resuelta') continue;
     const product = products.get(piece.producto_id);
     if (!product) continue;
-    const current = resolveDefinition(product, { longitud_mm: c.definicion.params.longitud_mm ?? null });
+    // Con los parámetros de la INSTANCIA (largo; ángulo y sentido de una curva eslabonada).
+    const current = resolveDefinition(product, opcionesDeInstancia(c.definicion.params, product));
     if (!current.ok || current.huella === c.definicion.huella) continue;
     const placed = placedOf(entrada, piece);
     if (!placed) continue;

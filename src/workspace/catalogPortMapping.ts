@@ -166,27 +166,6 @@ const VERTICAL_CURVE_MAPPING: readonly PortMappingEntry[] = [
   },
 ];
 
-/**
- * SKUs CUS escalera (40 variantes publicadas por SAMET) que comparten la
- * receta `buildCUPSRecipe` por equivalencia conceptual autorizada por el
- * usuario (2026-11-10). Todos usan el mismo mapping `VERTICAL_CURVE_MAPPING`
- * — se declara aquí de forma explícita para que el inspector del
- * configurador pueda enumerarlas sin descubrimiento dinámico.
- */
-const CUS_PRODUCT_IDS: readonly string[] = (() => {
-  const ids: string[] = [];
-  for (const ancho of [150, 300, 450, 600] as const) {
-    for (const ala of [65, 90, 115, 150] as const) {
-      // Espesor 18 publica Z y G; espesor 14 sólo publica G (snapshot catálogo).
-      const skuAncho = String(ancho).padStart(3, '0');
-      const skuAla = String(ala).padStart(3, '0');
-      ids.push(`SAM_CUS-${skuAncho}-5-${skuAla}-18-Z`);
-      ids.push(`SAM_CUS-${skuAncho}-5-${skuAla}-18-G`);
-      ids.push(`SAM_CUS-${skuAncho}-5-${skuAla}-14-G`);
-    }
-  }
-  return ids;
-})();
 
 /**
  * Defaults por producto. Sólo se declaran mappings NO triviales (recetas
@@ -230,10 +209,8 @@ const DEFAULT_MAPPINGS: Readonly<Record<string, readonly PortMappingEntry[]>> = 
   ],
   // ─── CUPS-300-A-Z (curva vertical interior perforada) ───────────────────
   'SAM_CUPS-300-A-Z': VERTICAL_CURVE_MAPPING,
-  // ─── CUS escalera (curva vertical articulada) ────────────────────────────
-  // 40 variantes que comparten receta y mapping con CUPS por equivalencia
-  // conceptual autorizada por el usuario (2026-11-10).
-  ...Object.fromEntries(CUS_PRODUCT_IDS.map((id) => [id, VERTICAL_CURVE_MAPPING])),
+  // CUS escalera: ya no comparte receta con la CUPS (equivalencia retirada,
+  // 2026-11-13). Su receta eslabonada nombra las bocas P1/P2 como el catálogo.
 };
 
 // ─── Store de overrides (in-memory, serializable) ───────────────────────────
