@@ -27,8 +27,19 @@ de la familia Z (curva vertical y X) sería cambiar esa decisión, no corregir u
   y no dice por qué. Un vacío silencioso parece un error del programa.
   - **Qué tiene que pasar:** decirle que la familia color no incluye ese tipo de pieza. Sólo tiene recto,
     curva plana 90°/45° y T.
-  - **Dónde:** en el selector de continuación y en la herramienta «Derivación en tramo». La DCPS se busca
-    hoy por ancho, sin mirar la familia.
+  - **Dónde:** en el selector de continuación y en la herramienta «Derivación en tramo».
+
+### Pendiente de datos y cómputo (NO es de interfaz): DCPS zincada sobre un tronco color
+- **Qué pasa:** la herramienta «Derivación en tramo» busca la DCPS sólo por ancho (`dcpsParaAncho` en
+  `derivacion/enganche.ts`), sin mirar la familia del tronco. Sobre un tronco de familia color (SAM-STP-ZN,
+  ZN/ZB) coloca una DCPS de la familia Z, zincada.
+- **Por qué importa:** esa DCPS es una pieza del trazado y llega al cómputo de materiales. Se computaría una
+  derivación con otro acabado que el del tronco, y REV-032 dice que no hay compatibilidad entre familias.
+- **Estado:** espera una decisión del operador sobre si en obra se mezclan acabados. Hasta entonces no se
+  cambia. Las salidas posibles:
+  - no ofrecer derivación sobre familia color, con el motivo a la vista;
+  - aceptarla como mezcla de acabados declarada.
+- Anotado el 2026-11-13.
 
 ### Prueba sobre el catálogo (`anchosOfrecibles.test.ts`)
 - **Por familia con modelo** (perforada Z, perforada color y las de escalera): cada (tipo de pieza, ancho)
