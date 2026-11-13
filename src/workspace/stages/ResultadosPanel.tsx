@@ -16,6 +16,7 @@ import { summarizeResultDe } from './resultPresentation';
 import { mezclasDelTrazado, PROCEDENCIA_MEZCLA } from '../mezclaAcabados';
 import { MarcaMezcla } from './MarcaMezcla';
 import { compraEslabones, curvasEslabonadas } from '../computoEslabonado';
+import { completarComponentesMezclas, PROCEDENCIA_COMPONENTES_MEZCLA } from '../componentesUnionMezcla';
 import { Section } from './shared';
 import { CircuitosTabla } from './CircuitosTabla';
 import { unionsOf } from '../workspaceOperation';
@@ -163,6 +164,36 @@ function CurvasEslabonadasList() {
   );
 }
 
+/**
+ * Componentes de unión: los que agregó la app para las mezclas de acabados
+ * (separados de los del motor) y la línea agrupada de las conexiones que quedan
+ * sin componentes determinables.
+ */
+function ComponentesUnionApp() {
+  const result = useTrayStore((s) => s.result);
+  const entrada = useTrayStore((s) => s.entrada);
+  const context = useTrayStore((s) => s.context);
+  if (!result || !context) return null;
+  const r = completarComponentesMezclas(result, entrada, new Map(context.productos.map((p) => [p.producto_id, p])), context.compatibilidades ?? [], context.componentesUnion ?? []);
+  if (!r.agregadas.length && !r.sinComponentes.length) return null;
+  return (
+    <Section title={`Componentes de unión agregados por la app (${r.agregadas.length})`} testid="computo-app">
+      {r.agregadas.length > 0 && (
+        <p className="stage-note">No los calculó el motor (dio la unión "no compatible"). Procedencia: {PROCEDENCIA_COMPONENTES_MEZCLA}.</p>
+      )}
+      {r.agregadas.map((l, i) => (
+        <div key={`${l.origen.conexion}:${l.producto_id}:${i}`} className="stage-card" data-testid="computo-linea-app" data-producto={l.producto_id} data-conexion={l.origen.conexion}>
+          <div><strong>[AGREGADA POR LA APP]</strong> {l.sku ?? l.producto_id}: {l.cantidad ?? 'sin cantidad'} {l.unidad ?? ''} — unión {l.origen.conexion} (componentes de {l.origen.compatibilidad})</div>
+          <div className="stage-row-sub" data-testid="computo-linea-app-procedencia">{l.procedencia}</div>
+        </div>
+      ))}
+      {r.sinComponentes.length > 0 && (
+        <p className="stage-note" data-testid="computo-sin-componentes">{r.sinComponentes.length} conexiones sin componentes de unión determinables ({r.sinComponentes.join(', ')}).</p>
+      )}
+    </Section>
+  );
+}
+
 /** A-9: uniones aceptadas como excepción, con su motivo. */
 function ExceptionsList() {
   const entrada = useTrayStore((s) => s.entrada);
@@ -269,6 +300,7 @@ export function ResultadosPanel() {
       <AvisosModeloList />
       <MezclasList />
       <CurvasEslabonadasList />
+      <ComponentesUnionApp />
 
       <Section title="Resultado">
         <ResultSummary />
