@@ -14,15 +14,16 @@ function makeProduct(partial: Partial<Product> & { producto_id: string; sku: str
 }
 
 describe('MASTER_MODELS inventory', () => {
-  it('tiene 16 maestros (9 perforada + 7 escalera)', () => {
+  it('tiene 17 maestros (9 perforada + 8 escalera)', () => {
     // 9 perforada = 6 geometrías medidas + DCPS lateral (STEP del operador) +
     // CUPS-D (comparte patrón con CUPS-A) + curva eslabonada EPS (regla del
     // operador, sin STEP).
-    // 7 escalera = 6 geometrías medidas + curva eslabonada CUS (regla del
-    // operador; antes compartía el perfil de la CUPS, equivalencia retirada).
-    expect(MASTER_MODELS.length).toBe(16);
+    // 8 escalera = 6 geometrías medidas + curva eslabonada CUS (regla del
+    // operador; antes compartía el perfil de la CUPS, equivalencia retirada) +
+    // curva ajustable CAS (regla del operador, 2026-11-14; sin STEP).
+    expect(MASTER_MODELS.length).toBe(17);
     expect(MASTER_MODELS.filter((m) => m.sistema === 'perforada').length).toBe(9);
-    expect(MASTER_MODELS.filter((m) => m.sistema === 'escalera').length).toBe(7);
+    expect(MASTER_MODELS.filter((m) => m.sistema === 'escalera').length).toBe(8);
   });
 
   it('cada maestro declara un id único', () => {
@@ -121,6 +122,10 @@ describe('MASTER_MODELS inventory', () => {
         m.sistema === 'escalera' &&
         m.pieceKind !== 'tramo_recto' &&
         m.pieceKind !== 'curva_vertical' &&
+        // CAS: como la CUS, no es un polígono medido escalado por hipótesis sino una
+        // regla del operador (radios y ángulo por instancia): sus variantes salen de la
+        // regla y se verifican en curvaAjustable.test.ts.
+        m.recipeKey !== 'escalera:curva_ajustable' &&
         m.variationRule.kind === 'ala-independent',
     );
     expect(estimados.length).toBeGreaterThan(0);

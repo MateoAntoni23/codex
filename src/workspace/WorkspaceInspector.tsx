@@ -11,8 +11,9 @@ import { useWorkspaceStore } from './useWorkspaceStore';
 import { useTrayStore } from '../tray/store';
 import { placedOf } from './placement/definitions';
 import { avisosDeModelo } from './placement/joins';
-import { esCurvaEslabonada } from './placement/anguloEslabonada';
+import { esCurvaAjustable, esCurvaEslabonada } from './placement/anguloEslabonada';
 import { AnguloEslabonadaField } from './stages/AnguloEslabonadaField';
+import { AnguloAjustableField } from './stages/AnguloAjustableField';
 import { mezclasDePieza } from './mezclaAcabados';
 import { MarcaMezcla } from './stages/MarcaMezcla';
 import { useRoutingStore } from './useRoutingStore';
@@ -679,6 +680,9 @@ export function PieceCard({ piece }: { piece: Piece }) {
 
       {esCurvaEslabonada(entrada, piece) && typeof product?.ancho_nominal_mm === 'number' && (
         <AnguloEslabonadaField key={piece.instancia_id} piece={piece} ancho={product.ancho_nominal_mm} />
+      )}
+      {esCurvaAjustable(entrada, piece) && typeof product?.ancho_nominal_mm === 'number' && (
+        <AnguloAjustableField key={piece.instancia_id} piece={piece} ancho={product.ancho_nominal_mm} />
       )}
 
       <div className="inspector-field">

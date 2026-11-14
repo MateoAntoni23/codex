@@ -40,7 +40,8 @@ import { chiralityForTurn, esVerticalArticulada } from './parametricBridge';
 import { definicionEfectiva, tieneDefinicion, modeloDeProducto } from './placement/definitions';
 import { placeDefinition, worldPorts } from './placement/placementCore';
 import { buildContinuationCandidates, esDerivacionLateral, type ContinuationCandidate } from './continuationCandidates';
-import { routingPlacementFromState } from './placement/routingPlacementState';
+import { eligeAnguloAlColocar, routingPlacementFromState } from './placement/routingPlacementState';
+import { ANGULO_AJUSTABLE_MAX, ANGULO_AJUSTABLE_MIN, ANGULO_AJUSTABLE_POR_DEFECTO, RANGO_AJUSTABLE_TEXTO } from '../parametric/reglaCurvaAjustable';
 import { UNIONS_KEY, unionsOf, type UnionRecord } from './workspaceOperation';
 import { indexProducts, pieceLabelById, portLabel } from './stages/displayNames';
 import { SelectorPieza } from './routing/SelectorPieza';
@@ -200,6 +201,11 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
   const snapToAxis        = useRoutingStore((s) => s.snapToAxis);
   const turnDirection     = useRoutingStore((s) => s.turnDirection);
   const sentidoVertical   = useRoutingStore((s) => s.sentidoVertical);
+  const anguloInstancia = useRoutingStore((s) => s.anguloInstancia);
+  const setAnguloInstancia = useRoutingStore((s) => s.setAnguloInstancia);
+  // Texto del campo de ángulo (CAS): vuelve al de por defecto al cambiar de pieza.
+  const [anguloTexto, setAnguloTexto] = useState(String(ANGULO_AJUSTABLE_POR_DEFECTO));
+  useEffect(() => { if (anguloInstancia === null) setAnguloTexto(String(ANGULO_AJUSTABLE_POR_DEFECTO)); }, [anguloInstancia]);
   const setSentidoVertical = useRoutingStore((s) => s.setSentidoVertical);
   const entryPortName     = useRoutingStore((s) => s.entryPortName);
   const setProduct        = useRoutingStore((s) => s.setProduct);
@@ -449,9 +455,9 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
   const step = useRoutingStore((s) => s.step);
   const placement = useMemo(
     () => routingPlacementFromState(context, entrada, {
-      startPort, selectedProductId, entryPortName, turnDirection, previewLengthMm, snapToAxis, step, sentidoVertical,
+      startPort, selectedProductId, entryPortName, turnDirection, previewLengthMm, snapToAxis, step, sentidoVertical, anguloInstancia,
     }),
-    [context, entrada, startPort, selectedProductId, entryPortName, turnDirection, previewLengthMm, snapToAxis, step, sentidoVertical],
+    [context, entrada, startPort, selectedProductId, entryPortName, turnDirection, previewLengthMm, snapToAxis, step, sentidoVertical, anguloInstancia],
   );
 
   const snapWarnAngle = useMemo(() => {
@@ -773,6 +779,32 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
             ))}
           </div>
           {!sentidoVertical && <div style={{ color: '#cc8844', fontSize: 10, marginTop: 4 }}>Elegí si la curva sube o baja para ver la pieza.</div>}
+        </div>
+      )}
+
+      {/* Curva ajustable (CAS): el ángulo se elige AL COLOCAR, antes de confirmar. Entra
+          en la vista previa y en la confirmación (el mismo cálculo); fuera del rango no
+          hay colocación y se muestra el motivo con el rango. */}
+      {selectedProduct && eligeAnguloAlColocar(selectedProduct) && (
+        <div style={{ marginBottom: 10 }} data-codex-routing-angulo-choice>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ color: '#8888aa' }}>Ángulo de la curva (°)</span>
+            <input
+              type="number"
+              className="inspector-input"
+              style={{ width: 70 }}
+              min={ANGULO_AJUSTABLE_MIN}
+              max={ANGULO_AJUSTABLE_MAX}
+              step={0.5}
+              data-codex-routing-angulo
+              value={anguloTexto}
+              onChange={(e) => {
+                setAnguloTexto(e.target.value);
+                setAnguloInstancia(e.target.value.trim() === '' ? Number.NaN : Number(e.target.value));
+              }}
+            />
+          </label>
+          <div style={{ color: '#8888aa', fontSize: 10, marginTop: 2 }}>Rango {RANGO_AJUSTABLE_TEXTO}.</div>
         </div>
       )}
 

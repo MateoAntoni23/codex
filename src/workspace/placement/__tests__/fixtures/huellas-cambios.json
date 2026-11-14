@@ -4,203 +4,203 @@
   "cambios": {
     "SAM_CAS-150-065-14-G": {
       "antes": "def-083ee1b4673553",
-      "despues": "(sin modelo)",
-      "motivo": "B-1.1: curva de ángulo ajustable (CAS). Sin angulo_grados ya no cae en el maestro de 45° por desempate ni toma 90° por defecto de la receta; queda sin definición con motivo."
+      "despues": "def-0517ef15675bf7",
+      "motivo": "2026-11-14: curva ajustable (CAS) con la regla declarada por el operador: maestro propio (master:escalera:curva_ajustable), radio interior = ancho, eje = 1,5 × ancho, ángulo por instancia (90° por defecto), rango 1°–90° provisional. Antes (B-1.1) quedaba sin definición por no tener ángulo."
     },
     "SAM_CAS-150-065-18-G": {
       "antes": "def-083ee1b4673553",
-      "despues": "(sin modelo)",
-      "motivo": "B-1.1: curva de ángulo ajustable (CAS). Sin angulo_grados ya no cae en el maestro de 45° por desempate ni toma 90° por defecto de la receta; queda sin definición con motivo."
+      "despues": "def-0517ef15675bf7",
+      "motivo": "2026-11-14: curva ajustable (CAS) con la regla declarada por el operador: maestro propio (master:escalera:curva_ajustable), radio interior = ancho, eje = 1,5 × ancho, ángulo por instancia (90° por defecto), rango 1°–90° provisional. Antes (B-1.1) quedaba sin definición por no tener ángulo."
     },
     "SAM_CAS-150-065-18-Z": {
       "antes": "def-083ee1b4673553",
-      "despues": "(sin modelo)",
-      "motivo": "B-1.1: curva de ángulo ajustable (CAS). Sin angulo_grados ya no cae en el maestro de 45° por desempate ni toma 90° por defecto de la receta; queda sin definición con motivo."
+      "despues": "def-0517ef15675bf7",
+      "motivo": "2026-11-14: curva ajustable (CAS) con la regla declarada por el operador: maestro propio (master:escalera:curva_ajustable), radio interior = ancho, eje = 1,5 × ancho, ángulo por instancia (90° por defecto), rango 1°–90° provisional. Antes (B-1.1) quedaba sin definición por no tener ángulo."
     },
     "SAM_CAS-150-090-14-G": {
       "antes": "def-05992ce6345911",
-      "despues": "(sin modelo)",
-      "motivo": "B-1.1: curva de ángulo ajustable (CAS). Sin angulo_grados ya no cae en el maestro de 45° por desempate ni toma 90° por defecto de la receta; queda sin definición con motivo."
+      "despues": "def-0a513a3689739a",
+      "motivo": "2026-11-14: curva ajustable (CAS) con la regla declarada por el operador: maestro propio (master:escalera:curva_ajustable), radio interior = ancho, eje = 1,5 × ancho, ángulo por instancia (90° por defecto), rango 1°–90° provisional. Antes (B-1.1) quedaba sin definición por no tener ángulo."
     },
     "SAM_CAS-150-090-18-G": {
       "antes": "def-05992ce6345911",
-      "despues": "(sin modelo)",
-      "motivo": "B-1.1: curva de ángulo ajustable (CAS). Sin angulo_grados ya no cae en el maestro de 45° por desempate ni toma 90° por defecto de la receta; queda sin definición con motivo."
+      "despues": "def-0a513a3689739a",
+      "motivo": "2026-11-14: curva ajustable (CAS) con la regla declarada por el operador: maestro propio (master:escalera:curva_ajustable), radio interior = ancho, eje = 1,5 × ancho, ángulo por instancia (90° por defecto), rango 1°–90° provisional. Antes (B-1.1) quedaba sin definición por no tener ángulo."
     },
     "SAM_CAS-150-090-18-Z": {
       "antes": "def-05992ce6345911",
-      "despues": "(sin modelo)",
-      "motivo": "B-1.1: curva de ángulo ajustable (CAS). Sin angulo_grados ya no cae en el maestro de 45° por desempate ni toma 90° por defecto de la receta; queda sin definición con motivo."
+      "despues": "def-0a513a3689739a",
+      "motivo": "2026-11-14: curva ajustable (CAS) con la regla declarada por el operador: maestro propio (master:escalera:curva_ajustable), radio interior = ancho, eje = 1,5 × ancho, ángulo por instancia (90° por defecto), rango 1°–90° provisional. Antes (B-1.1) quedaba sin definición por no tener ángulo."
     },
     "SAM_CAS-150-115-14-G": {
       "antes": "def-1386894484bfad",
-      "despues": "(sin modelo)",
-      "motivo": "B-1.1: curva de ángulo ajustable (CAS). Sin angulo_grados ya no cae en el maestro de 45° por desempate ni toma 90° por defecto de la receta; queda sin definición con motivo."
+      "despues": "def-0f28adc2bac731",
+      "motivo": "2026-11-14: curva ajustable (CAS) con la regla declarada por el operador: maestro propio (master:escalera:curva_ajustable), radio interior = ancho, eje = 1,5 × ancho, ángulo por instancia (90° por defecto), rango 1°–90° provisional. Antes (B-1.1) quedaba sin definición por no tener ángulo."
     },
     "SAM_CAS-150-115-18-G": {
       "antes": "def-1386894484bfad",
-      "despues": "(sin modelo)",
-      "motivo": "B-1.1: curva de ángulo ajustable (CAS). Sin angulo_grados ya no cae en el maestro de 45° por desempate ni toma 90° por defecto de la receta; queda sin definición con motivo."
+      "despues": "def-0f28adc2bac731",
+      "motivo": "2026-11-14: curva ajustable (CAS) con la regla declarada por el operador: maestro propio (master:escalera:curva_ajustable), radio interior = ancho, eje = 1,5 × ancho, ángulo por instancia (90° por defecto), rango 1°–90° provisional. Antes (B-1.1) quedaba sin definición por no tener ángulo."
     },
     "SAM_CAS-150-115-18-Z": {
       "antes": "def-1386894484bfad",
-      "despues": "(sin modelo)",
-      "motivo": "B-1.1: curva de ángulo ajustable (CAS). Sin angulo_grados ya no cae en el maestro de 45° por desempate ni toma 90° por defecto de la receta; queda sin definición con motivo."
+      "despues": "def-0f28adc2bac731",
+      "motivo": "2026-11-14: curva ajustable (CAS) con la regla declarada por el operador: maestro propio (master:escalera:curva_ajustable), radio interior = ancho, eje = 1,5 × ancho, ángulo por instancia (90° por defecto), rango 1°–90° provisional. Antes (B-1.1) quedaba sin definición por no tener ángulo."
     },
     "SAM_CAS-150-150-14-G": {
       "antes": "def-087e82cb03e0d6",
-      "despues": "(sin modelo)",
-      "motivo": "B-1.1: curva de ángulo ajustable (CAS). Sin angulo_grados ya no cae en el maestro de 45° por desempate ni toma 90° por defecto de la receta; queda sin definición con motivo."
+      "despues": "def-1217728d229f3d",
+      "motivo": "2026-11-14: curva ajustable (CAS) con la regla declarada por el operador: maestro propio (master:escalera:curva_ajustable), radio interior = ancho, eje = 1,5 × ancho, ángulo por instancia (90° por defecto), rango 1°–90° provisional. Antes (B-1.1) quedaba sin definición por no tener ángulo."
     },
     "SAM_CAS-300-065-14-G": {
       "antes": "def-07b263ca9db1b7",
-      "despues": "(sin modelo)",
-      "motivo": "B-1.1: curva de ángulo ajustable (CAS). Sin angulo_grados ya no cae en el maestro de 45° por desempate ni toma 90° por defecto de la receta; queda sin definición con motivo."
+      "despues": "def-1af23c7d255277",
+      "motivo": "2026-11-14: curva ajustable (CAS) con la regla declarada por el operador: maestro propio (master:escalera:curva_ajustable), radio interior = ancho, eje = 1,5 × ancho, ángulo por instancia (90° por defecto), rango 1°–90° provisional. Antes (B-1.1) quedaba sin definición por no tener ángulo."
     },
     "SAM_CAS-300-065-18-G": {
       "antes": "def-07b263ca9db1b7",
-      "despues": "(sin modelo)",
-      "motivo": "B-1.1: curva de ángulo ajustable (CAS). Sin angulo_grados ya no cae en el maestro de 45° por desempate ni toma 90° por defecto de la receta; queda sin definición con motivo."
+      "despues": "def-1af23c7d255277",
+      "motivo": "2026-11-14: curva ajustable (CAS) con la regla declarada por el operador: maestro propio (master:escalera:curva_ajustable), radio interior = ancho, eje = 1,5 × ancho, ángulo por instancia (90° por defecto), rango 1°–90° provisional. Antes (B-1.1) quedaba sin definición por no tener ángulo."
     },
     "SAM_CAS-300-065-18-Z": {
       "antes": "def-07b263ca9db1b7",
-      "despues": "(sin modelo)",
-      "motivo": "B-1.1: curva de ángulo ajustable (CAS). Sin angulo_grados ya no cae en el maestro de 45° por desempate ni toma 90° por defecto de la receta; queda sin definición con motivo."
+      "despues": "def-1af23c7d255277",
+      "motivo": "2026-11-14: curva ajustable (CAS) con la regla declarada por el operador: maestro propio (master:escalera:curva_ajustable), radio interior = ancho, eje = 1,5 × ancho, ángulo por instancia (90° por defecto), rango 1°–90° provisional. Antes (B-1.1) quedaba sin definición por no tener ángulo."
     },
     "SAM_CAS-300-090-14-G": {
       "antes": "def-143ca950a21006",
-      "despues": "(sin modelo)",
-      "motivo": "B-1.1: curva de ángulo ajustable (CAS). Sin angulo_grados ya no cae en el maestro de 45° por desempate ni toma 90° por defecto de la receta; queda sin definición con motivo."
+      "despues": "def-18cb33b384639b",
+      "motivo": "2026-11-14: curva ajustable (CAS) con la regla declarada por el operador: maestro propio (master:escalera:curva_ajustable), radio interior = ancho, eje = 1,5 × ancho, ángulo por instancia (90° por defecto), rango 1°–90° provisional. Antes (B-1.1) quedaba sin definición por no tener ángulo."
     },
     "SAM_CAS-300-090-18-G": {
       "antes": "def-143ca950a21006",
-      "despues": "(sin modelo)",
-      "motivo": "B-1.1: curva de ángulo ajustable (CAS). Sin angulo_grados ya no cae en el maestro de 45° por desempate ni toma 90° por defecto de la receta; queda sin definición con motivo."
+      "despues": "def-18cb33b384639b",
+      "motivo": "2026-11-14: curva ajustable (CAS) con la regla declarada por el operador: maestro propio (master:escalera:curva_ajustable), radio interior = ancho, eje = 1,5 × ancho, ángulo por instancia (90° por defecto), rango 1°–90° provisional. Antes (B-1.1) quedaba sin definición por no tener ángulo."
     },
     "SAM_CAS-300-090-18-Z": {
       "antes": "def-143ca950a21006",
-      "despues": "(sin modelo)",
-      "motivo": "B-1.1: curva de ángulo ajustable (CAS). Sin angulo_grados ya no cae en el maestro de 45° por desempate ni toma 90° por defecto de la receta; queda sin definición con motivo."
+      "despues": "def-18cb33b384639b",
+      "motivo": "2026-11-14: curva ajustable (CAS) con la regla declarada por el operador: maestro propio (master:escalera:curva_ajustable), radio interior = ancho, eje = 1,5 × ancho, ángulo por instancia (90° por defecto), rango 1°–90° provisional. Antes (B-1.1) quedaba sin definición por no tener ángulo."
     },
     "SAM_CAS-300-115-14-G": {
       "antes": "def-0cb88f19ed4811",
-      "despues": "(sin modelo)",
-      "motivo": "B-1.1: curva de ángulo ajustable (CAS). Sin angulo_grados ya no cae en el maestro de 45° por desempate ni toma 90° por defecto de la receta; queda sin definición con motivo."
+      "despues": "def-0dc5b8560eedee",
+      "motivo": "2026-11-14: curva ajustable (CAS) con la regla declarada por el operador: maestro propio (master:escalera:curva_ajustable), radio interior = ancho, eje = 1,5 × ancho, ángulo por instancia (90° por defecto), rango 1°–90° provisional. Antes (B-1.1) quedaba sin definición por no tener ángulo."
     },
     "SAM_CAS-300-115-18-G": {
       "antes": "def-0cb88f19ed4811",
-      "despues": "(sin modelo)",
-      "motivo": "B-1.1: curva de ángulo ajustable (CAS). Sin angulo_grados ya no cae en el maestro de 45° por desempate ni toma 90° por defecto de la receta; queda sin definición con motivo."
+      "despues": "def-0dc5b8560eedee",
+      "motivo": "2026-11-14: curva ajustable (CAS) con la regla declarada por el operador: maestro propio (master:escalera:curva_ajustable), radio interior = ancho, eje = 1,5 × ancho, ángulo por instancia (90° por defecto), rango 1°–90° provisional. Antes (B-1.1) quedaba sin definición por no tener ángulo."
     },
     "SAM_CAS-300-115-18-Z": {
       "antes": "def-0cb88f19ed4811",
-      "despues": "(sin modelo)",
-      "motivo": "B-1.1: curva de ángulo ajustable (CAS). Sin angulo_grados ya no cae en el maestro de 45° por desempate ni toma 90° por defecto de la receta; queda sin definición con motivo."
+      "despues": "def-0dc5b8560eedee",
+      "motivo": "2026-11-14: curva ajustable (CAS) con la regla declarada por el operador: maestro propio (master:escalera:curva_ajustable), radio interior = ancho, eje = 1,5 × ancho, ángulo por instancia (90° por defecto), rango 1°–90° provisional. Antes (B-1.1) quedaba sin definición por no tener ángulo."
     },
     "SAM_CAS-300-150-14-G": {
       "antes": "def-02a95917d2909b",
-      "despues": "(sin modelo)",
-      "motivo": "B-1.1: curva de ángulo ajustable (CAS). Sin angulo_grados ya no cae en el maestro de 45° por desempate ni toma 90° por defecto de la receta; queda sin definición con motivo."
+      "despues": "def-10b03b1fe9f068",
+      "motivo": "2026-11-14: curva ajustable (CAS) con la regla declarada por el operador: maestro propio (master:escalera:curva_ajustable), radio interior = ancho, eje = 1,5 × ancho, ángulo por instancia (90° por defecto), rango 1°–90° provisional. Antes (B-1.1) quedaba sin definición por no tener ángulo."
     },
     "SAM_CAS-450-065-14-G": {
       "antes": "def-1310f2580ed6ae",
-      "despues": "(sin modelo)",
-      "motivo": "B-1.1: curva de ángulo ajustable (CAS). Sin angulo_grados ya no cae en el maestro de 45° por desempate ni toma 90° por defecto de la receta; queda sin definición con motivo."
+      "despues": "def-1aff89742e7cb1",
+      "motivo": "2026-11-14: curva ajustable (CAS) con la regla declarada por el operador: maestro propio (master:escalera:curva_ajustable), radio interior = ancho, eje = 1,5 × ancho, ángulo por instancia (90° por defecto), rango 1°–90° provisional. Antes (B-1.1) quedaba sin definición por no tener ángulo."
     },
     "SAM_CAS-450-065-18-G": {
       "antes": "def-1310f2580ed6ae",
-      "despues": "(sin modelo)",
-      "motivo": "B-1.1: curva de ángulo ajustable (CAS). Sin angulo_grados ya no cae en el maestro de 45° por desempate ni toma 90° por defecto de la receta; queda sin definición con motivo."
+      "despues": "def-1aff89742e7cb1",
+      "motivo": "2026-11-14: curva ajustable (CAS) con la regla declarada por el operador: maestro propio (master:escalera:curva_ajustable), radio interior = ancho, eje = 1,5 × ancho, ángulo por instancia (90° por defecto), rango 1°–90° provisional. Antes (B-1.1) quedaba sin definición por no tener ángulo."
     },
     "SAM_CAS-450-065-18-Z": {
       "antes": "def-1310f2580ed6ae",
-      "despues": "(sin modelo)",
-      "motivo": "B-1.1: curva de ángulo ajustable (CAS). Sin angulo_grados ya no cae en el maestro de 45° por desempate ni toma 90° por defecto de la receta; queda sin definición con motivo."
+      "despues": "def-1aff89742e7cb1",
+      "motivo": "2026-11-14: curva ajustable (CAS) con la regla declarada por el operador: maestro propio (master:escalera:curva_ajustable), radio interior = ancho, eje = 1,5 × ancho, ángulo por instancia (90° por defecto), rango 1°–90° provisional. Antes (B-1.1) quedaba sin definición por no tener ángulo."
     },
     "SAM_CAS-450-090-14-G": {
       "antes": "def-05d85d0d53e535",
-      "despues": "(sin modelo)",
-      "motivo": "B-1.1: curva de ángulo ajustable (CAS). Sin angulo_grados ya no cae en el maestro de 45° por desempate ni toma 90° por defecto de la receta; queda sin definición con motivo."
+      "despues": "def-19458652c9d053",
+      "motivo": "2026-11-14: curva ajustable (CAS) con la regla declarada por el operador: maestro propio (master:escalera:curva_ajustable), radio interior = ancho, eje = 1,5 × ancho, ángulo por instancia (90° por defecto), rango 1°–90° provisional. Antes (B-1.1) quedaba sin definición por no tener ángulo."
     },
     "SAM_CAS-450-090-18-G": {
       "antes": "def-05d85d0d53e535",
-      "despues": "(sin modelo)",
-      "motivo": "B-1.1: curva de ángulo ajustable (CAS). Sin angulo_grados ya no cae en el maestro de 45° por desempate ni toma 90° por defecto de la receta; queda sin definición con motivo."
+      "despues": "def-19458652c9d053",
+      "motivo": "2026-11-14: curva ajustable (CAS) con la regla declarada por el operador: maestro propio (master:escalera:curva_ajustable), radio interior = ancho, eje = 1,5 × ancho, ángulo por instancia (90° por defecto), rango 1°–90° provisional. Antes (B-1.1) quedaba sin definición por no tener ángulo."
     },
     "SAM_CAS-450-090-18-Z": {
       "antes": "def-05d85d0d53e535",
-      "despues": "(sin modelo)",
-      "motivo": "B-1.1: curva de ángulo ajustable (CAS). Sin angulo_grados ya no cae en el maestro de 45° por desempate ni toma 90° por defecto de la receta; queda sin definición con motivo."
+      "despues": "def-19458652c9d053",
+      "motivo": "2026-11-14: curva ajustable (CAS) con la regla declarada por el operador: maestro propio (master:escalera:curva_ajustable), radio interior = ancho, eje = 1,5 × ancho, ángulo por instancia (90° por defecto), rango 1°–90° provisional. Antes (B-1.1) quedaba sin definición por no tener ángulo."
     },
     "SAM_CAS-450-115-14-G": {
       "antes": "def-07ab70e6bb15e9",
-      "despues": "(sin modelo)",
-      "motivo": "B-1.1: curva de ángulo ajustable (CAS). Sin angulo_grados ya no cae en el maestro de 45° por desempate ni toma 90° por defecto de la receta; queda sin definición con motivo."
+      "despues": "def-0f44429af5eeb5",
+      "motivo": "2026-11-14: curva ajustable (CAS) con la regla declarada por el operador: maestro propio (master:escalera:curva_ajustable), radio interior = ancho, eje = 1,5 × ancho, ángulo por instancia (90° por defecto), rango 1°–90° provisional. Antes (B-1.1) quedaba sin definición por no tener ángulo."
     },
     "SAM_CAS-450-115-18-G": {
       "antes": "def-07ab70e6bb15e9",
-      "despues": "(sin modelo)",
-      "motivo": "B-1.1: curva de ángulo ajustable (CAS). Sin angulo_grados ya no cae en el maestro de 45° por desempate ni toma 90° por defecto de la receta; queda sin definición con motivo."
+      "despues": "def-0f44429af5eeb5",
+      "motivo": "2026-11-14: curva ajustable (CAS) con la regla declarada por el operador: maestro propio (master:escalera:curva_ajustable), radio interior = ancho, eje = 1,5 × ancho, ángulo por instancia (90° por defecto), rango 1°–90° provisional. Antes (B-1.1) quedaba sin definición por no tener ángulo."
     },
     "SAM_CAS-450-115-18-Z": {
       "antes": "def-07ab70e6bb15e9",
-      "despues": "(sin modelo)",
-      "motivo": "B-1.1: curva de ángulo ajustable (CAS). Sin angulo_grados ya no cae en el maestro de 45° por desempate ni toma 90° por defecto de la receta; queda sin definición con motivo."
+      "despues": "def-0f44429af5eeb5",
+      "motivo": "2026-11-14: curva ajustable (CAS) con la regla declarada por el operador: maestro propio (master:escalera:curva_ajustable), radio interior = ancho, eje = 1,5 × ancho, ángulo por instancia (90° por defecto), rango 1°–90° provisional. Antes (B-1.1) quedaba sin definición por no tener ángulo."
     },
     "SAM_CAS-450-150-14-G": {
       "antes": "def-00aeaaada82c65",
-      "despues": "(sin modelo)",
-      "motivo": "B-1.1: curva de ángulo ajustable (CAS). Sin angulo_grados ya no cae en el maestro de 45° por desempate ni toma 90° por defecto de la receta; queda sin definición con motivo."
+      "despues": "def-019b12a2bcde87",
+      "motivo": "2026-11-14: curva ajustable (CAS) con la regla declarada por el operador: maestro propio (master:escalera:curva_ajustable), radio interior = ancho, eje = 1,5 × ancho, ángulo por instancia (90° por defecto), rango 1°–90° provisional. Antes (B-1.1) quedaba sin definición por no tener ángulo."
     },
     "SAM_CAS-600-065-14-G": {
       "antes": "def-119b0dc0bbc235",
-      "despues": "(sin modelo)",
-      "motivo": "B-1.1: curva de ángulo ajustable (CAS). Sin angulo_grados ya no cae en el maestro de 45° por desempate ni toma 90° por defecto de la receta; queda sin definición con motivo."
+      "despues": "def-018544925d15e4",
+      "motivo": "2026-11-14: curva ajustable (CAS) con la regla declarada por el operador: maestro propio (master:escalera:curva_ajustable), radio interior = ancho, eje = 1,5 × ancho, ángulo por instancia (90° por defecto), rango 1°–90° provisional. Antes (B-1.1) quedaba sin definición por no tener ángulo."
     },
     "SAM_CAS-600-065-18-G": {
       "antes": "def-119b0dc0bbc235",
-      "despues": "(sin modelo)",
-      "motivo": "B-1.1: curva de ángulo ajustable (CAS). Sin angulo_grados ya no cae en el maestro de 45° por desempate ni toma 90° por defecto de la receta; queda sin definición con motivo."
+      "despues": "def-018544925d15e4",
+      "motivo": "2026-11-14: curva ajustable (CAS) con la regla declarada por el operador: maestro propio (master:escalera:curva_ajustable), radio interior = ancho, eje = 1,5 × ancho, ángulo por instancia (90° por defecto), rango 1°–90° provisional. Antes (B-1.1) quedaba sin definición por no tener ángulo."
     },
     "SAM_CAS-600-065-18-Z": {
       "antes": "def-119b0dc0bbc235",
-      "despues": "(sin modelo)",
-      "motivo": "B-1.1: curva de ángulo ajustable (CAS). Sin angulo_grados ya no cae en el maestro de 45° por desempate ni toma 90° por defecto de la receta; queda sin definición con motivo."
+      "despues": "def-018544925d15e4",
+      "motivo": "2026-11-14: curva ajustable (CAS) con la regla declarada por el operador: maestro propio (master:escalera:curva_ajustable), radio interior = ancho, eje = 1,5 × ancho, ángulo por instancia (90° por defecto), rango 1°–90° provisional. Antes (B-1.1) quedaba sin definición por no tener ángulo."
     },
     "SAM_CAS-600-090-14-G": {
       "antes": "def-08495536f14d58",
-      "despues": "(sin modelo)",
-      "motivo": "B-1.1: curva de ángulo ajustable (CAS). Sin angulo_grados ya no cae en el maestro de 45° por desempate ni toma 90° por defecto de la receta; queda sin definición con motivo."
+      "despues": "def-133c39feedb9dd",
+      "motivo": "2026-11-14: curva ajustable (CAS) con la regla declarada por el operador: maestro propio (master:escalera:curva_ajustable), radio interior = ancho, eje = 1,5 × ancho, ángulo por instancia (90° por defecto), rango 1°–90° provisional. Antes (B-1.1) quedaba sin definición por no tener ángulo."
     },
     "SAM_CAS-600-090-18-G": {
       "antes": "def-08495536f14d58",
-      "despues": "(sin modelo)",
-      "motivo": "B-1.1: curva de ángulo ajustable (CAS). Sin angulo_grados ya no cae en el maestro de 45° por desempate ni toma 90° por defecto de la receta; queda sin definición con motivo."
+      "despues": "def-133c39feedb9dd",
+      "motivo": "2026-11-14: curva ajustable (CAS) con la regla declarada por el operador: maestro propio (master:escalera:curva_ajustable), radio interior = ancho, eje = 1,5 × ancho, ángulo por instancia (90° por defecto), rango 1°–90° provisional. Antes (B-1.1) quedaba sin definición por no tener ángulo."
     },
     "SAM_CAS-600-090-18-Z": {
       "antes": "def-08495536f14d58",
-      "despues": "(sin modelo)",
-      "motivo": "B-1.1: curva de ángulo ajustable (CAS). Sin angulo_grados ya no cae en el maestro de 45° por desempate ni toma 90° por defecto de la receta; queda sin definición con motivo."
+      "despues": "def-133c39feedb9dd",
+      "motivo": "2026-11-14: curva ajustable (CAS) con la regla declarada por el operador: maestro propio (master:escalera:curva_ajustable), radio interior = ancho, eje = 1,5 × ancho, ángulo por instancia (90° por defecto), rango 1°–90° provisional. Antes (B-1.1) quedaba sin definición por no tener ángulo."
     },
     "SAM_CAS-600-115-14-G": {
       "antes": "def-091ddd05d9d762",
-      "despues": "(sin modelo)",
-      "motivo": "B-1.1: curva de ángulo ajustable (CAS). Sin angulo_grados ya no cae en el maestro de 45° por desempate ni toma 90° por defecto de la receta; queda sin definición con motivo."
+      "despues": "def-095b9d4c6f312d",
+      "motivo": "2026-11-14: curva ajustable (CAS) con la regla declarada por el operador: maestro propio (master:escalera:curva_ajustable), radio interior = ancho, eje = 1,5 × ancho, ángulo por instancia (90° por defecto), rango 1°–90° provisional. Antes (B-1.1) quedaba sin definición por no tener ángulo."
     },
     "SAM_CAS-600-115-18-G": {
       "antes": "def-091ddd05d9d762",
-      "despues": "(sin modelo)",
-      "motivo": "B-1.1: curva de ángulo ajustable (CAS). Sin angulo_grados ya no cae en el maestro de 45° por desempate ni toma 90° por defecto de la receta; queda sin definición con motivo."
+      "despues": "def-095b9d4c6f312d",
+      "motivo": "2026-11-14: curva ajustable (CAS) con la regla declarada por el operador: maestro propio (master:escalera:curva_ajustable), radio interior = ancho, eje = 1,5 × ancho, ángulo por instancia (90° por defecto), rango 1°–90° provisional. Antes (B-1.1) quedaba sin definición por no tener ángulo."
     },
     "SAM_CAS-600-115-18-Z": {
       "antes": "def-091ddd05d9d762",
-      "despues": "(sin modelo)",
-      "motivo": "B-1.1: curva de ángulo ajustable (CAS). Sin angulo_grados ya no cae en el maestro de 45° por desempate ni toma 90° por defecto de la receta; queda sin definición con motivo."
+      "despues": "def-095b9d4c6f312d",
+      "motivo": "2026-11-14: curva ajustable (CAS) con la regla declarada por el operador: maestro propio (master:escalera:curva_ajustable), radio interior = ancho, eje = 1,5 × ancho, ángulo por instancia (90° por defecto), rango 1°–90° provisional. Antes (B-1.1) quedaba sin definición por no tener ángulo."
     },
     "SAM_CAS-600-150-14-G": {
       "antes": "def-120290448a5450",
-      "despues": "(sin modelo)",
-      "motivo": "B-1.1: curva de ángulo ajustable (CAS). Sin angulo_grados ya no cae en el maestro de 45° por desempate ni toma 90° por defecto de la receta; queda sin definición con motivo."
+      "despues": "def-08cb79b06e6603",
+      "motivo": "2026-11-14: curva ajustable (CAS) con la regla declarada por el operador: maestro propio (master:escalera:curva_ajustable), radio interior = ancho, eje = 1,5 × ancho, ángulo por instancia (90° por defecto), rango 1°–90° provisional. Antes (B-1.1) quedaba sin definición por no tener ángulo."
     },
     "SAM_CS-150-90-065-18-G": {
       "antes": "def-0fc5ec4397eb60",

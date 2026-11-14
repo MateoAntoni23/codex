@@ -17,7 +17,8 @@ import * as THREE from 'three';
 import type { Piece, Product, TrayInput } from '../../tray/model';
 import { buildNominalRecipe, buildRecipeFromProduct, datosFaltantesParaMaestro, NOTA_NOMINAL, resolveParametricEntry, resolveRecipe, sentidoVerticalDe, tieneReglaNominal } from '../parametricBridge';
 import { calibracionVersion } from '../catalogPortMapping';
-import { ANGULO_ESLABONADA_POR_DEFECTO, RECETAS_ESLABONADAS } from '../../parametric/reglaEslabones';
+import { RECETAS_ESLABONADAS } from '../../parametric/reglaEslabones';
+import { anguloPorDefecto, motivoAnguloInstancia, tieneAnguloInstancia } from '../../parametric/anguloInstancia';
 import type { PieceKind } from '../../parametric/geometry/recipes';
 import { calibrarReceta } from './calibrarReceta';
 import { compararConGuardada } from './geometriaEquivalente';
@@ -117,7 +118,7 @@ export interface OpcionesDefinicion {
   readonly longitud_mm?: number | null;
   /** Sólo curvas verticales articuladas (CUS): se elige al colocar. */
   readonly sentido_vertical?: 'sube' | 'baja';
-  /** Sólo curvas eslabonadas (EPS, CUS): ángulo de la instancia; sin valor, 90° (por defecto del operador). */
+  /** Curvas con ángulo por instancia (eslabonadas EPS/CUS, ajustable CAS); sin valor, 90° (por defecto del operador). */
   readonly angulo_deg?: number | null;
 }
 
@@ -210,6 +211,12 @@ export function buildDefinition(product: Product, opts?: OpcionesDefinicion): De
   }
   const takesLength = entry.piece_kind === 'tramo_recto' || entry.recipe === 'escalera:tramo_recto';
   const longitud = takesLength && opts?.longitud_mm && opts.longitud_mm > 0 ? opts.longitud_mm : null;
+  // Ángulo por instancia fuera del rango de su regla: no hay definición (ni vista previa,
+  // ni confirmación, ni corrección), con el motivo y el rango.
+  if (tieneAnguloInstancia(entry.recipe) && typeof opts?.angulo_deg === 'number') {
+    const motivo = motivoAnguloInstancia(entry.recipe, opts.angulo_deg);
+    if (motivo) return { ok: false, motivo };
+  }
   let raw;
   try {
     raw = buildRecipeFromProduct(product, entry, {
@@ -237,9 +244,10 @@ export function buildDefinition(product: Product, opts?: OpcionesDefinicion): De
     params.sentido_vertical = 1;
   }
   if (typeof r.angulo_grados === 'number') params.angulo_deg = r.angulo_grados as number;
-  // Curva eslabonada: el ángulo es de la INSTANCIA (entra en la huella y en la verificación de giro).
-  if (RECETAS_ESLABONADAS.has(String(entry.recipe))) {
-    params.angulo_deg = typeof opts?.angulo_deg === 'number' ? opts.angulo_deg : ANGULO_ESLABONADA_POR_DEFECTO;
+  // Curva eslabonada o ajustable (CAS): el ángulo es de la INSTANCIA (entra en la huella
+  // y en la verificación de giro).
+  if (tieneAnguloInstancia(entry.recipe)) {
+    params.angulo_deg = typeof opts?.angulo_deg === 'number' ? opts.angulo_deg : anguloPorDefecto(entry.recipe);
   }
   const def = definitionFromRecipe({
     patron: master?.id ?? String(entry.recipe),
@@ -273,9 +281,11 @@ function masterIgnorandoAla(product: Product) {
 export function opcionesDeInstancia(params: Readonly<Record<string, number>>, product: Product): OpcionesDefinicion {
   const entry = resolveRecipe(product);
   const eslabonada = !!entry && RECETAS_ESLABONADAS.has(String(entry.recipe));
+  const conAngulo = !!entry && tieneAnguloInstancia(entry.recipe);
   return {
     longitud_mm: params.longitud_mm ?? null,
-    ...(eslabonada ? { angulo_deg: params.angulo_deg ?? null, sentido_vertical: params.sentido_vertical === 1 ? 'sube' as const : 'baja' as const } : {}),
+    ...(conAngulo ? { angulo_deg: params.angulo_deg ?? null } : {}),
+    ...(eslabonada ? { sentido_vertical: params.sentido_vertical === 1 ? 'sube' as const : 'baja' as const } : {}),
   };
 }
 
