@@ -80,8 +80,10 @@ e incluye los commits del #6 hasta que se fusione.
   ancho. La ocupación de una bandeja segregada la calcula la **app**, marcada como «cálculo de la app». En
   «Cálculo del motor» y en el inspector de la pieza, la ocupación que el motor dio para esa pieza (sin banda)
   se reemplaza por la de la app, con el aviso de que no se usa.
+- **PE en el grupo de potencia — regla declarada por el operador (2026-11-14):** el PE va en el grupo de
+  potencia y cuenta como un cable más en el reparto: el conductor de protección va con el sistema de potencia y
+  ocupa ancho como cualquier cable. (En la primera entrega era un criterio de la app; el operador lo confirmó.)
 - **Criterios de la app** (declarados como tales, no del operador):
-  - el PE va en el grupo de potencia y cuenta como un cable;
   - ancho útil = el del catálogo si existe, si no el nominal (como D-04). Las rectas no publican útil: nominal;
   - ocupación por grupo W = Σ n·D (contacto, como D-02); reserva con el criterio D-05 sobre el ancho del grupo;
     altura contra el ala (D-08);

@@ -21,9 +21,12 @@
  * misma separación que los componentes de unión agregados por la app—. La
  * ocupación que el motor calcula para esa pieza (sin banda) no se usa.
  *
+ * Grupos: potencia | maniobra + instrumentación. El PE va en el grupo de
+ * potencia y cuenta como un cable: REGLA DECLARADA POR EL OPERADOR (2026-11-14,
+ * `CRITERIO_PE`): el conductor de protección va con el sistema de potencia y
+ * ocupa ancho como cualquier cable.
+ *
  * Criterios de la app (declarados, no del operador):
- *   - Grupos: potencia | maniobra + instrumentación. El PE va en el grupo de
- *     potencia y cuenta como un cable (`CRITERIO_PE`).
  *   - Ancho útil = el del catálogo si existe, si no el nominal (como el motor,
  *     D-04). Ocupación de cada grupo: cables en contacto en una capa
  *     (W = Σ n·D, como D-02). Reserva con el criterio del motor (D-05:
@@ -46,7 +49,8 @@ export const PROCEDENCIA_REGLA =
   'Regla declarada por el operador (2026-11-13): al ancho útil se le descuenta primero el espesor de la banda divisoria, y lo que queda se reparte entre los grupos según la cantidad de cables de cada grupo (no mitad y mitad).';
 export const PROCEDENCIA_CALCULO =
   'Cálculo de la app, no del motor: el motor no sabe que la banda existe (condición del operador); no se le declara, no se le cambia el ancho y no viaja en el trazado. La ocupación que el motor calcula para esta pieza (sin banda) no se usa.';
-export const CRITERIO_PE = 'El PE va en el grupo de potencia y cuenta como un cable (criterio de la app).';
+export const CRITERIO_PE =
+  'Regla declarada por el operador (2026-11-14): el PE va en el grupo de potencia y cuenta como un cable más en el reparto; el conductor de protección va con el sistema de potencia y ocupa ancho como cualquier cable.';
 export const CRITERIO_OCUPACION =
   'Cada grupo: cables en contacto en una sola capa, W = Σ n·D (como D-02 del motor); reserva con el criterio del motor (D-05: W ≤ (1 − r)·W_grupo) sobre el ancho del grupo; altura contra el ala nominal (D-08).';
 export const NOTA_COMPUTO =

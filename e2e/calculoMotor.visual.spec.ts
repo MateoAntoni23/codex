@@ -260,6 +260,7 @@ test.describe('Etapa 3 A — cálculo del motor', () => {
     const seg = page.getByTestId('segregadas');
     await expect(seg.getByTestId('segregadas-procedencia')).toContainText('Regla declarada por el operador');
     await expect(seg.getByTestId('segregadas-procedencia')).toContainText('el motor no sabe que la banda existe');
+    await expect(seg.getByTestId('segregadas-procedencia')).toContainText('Regla declarada por el operador (2026-11-14): el PE va en el grupo de potencia');
     const gPot = seg.locator('[data-testid="segregada-grupo"][data-grupo="potencia"]');
     const gCtl = seg.locator('[data-testid="segregada-grupo"][data-grupo="control"]');
     await expect(seg.getByTestId('segregada-ocupacion')).toHaveAttribute('data-origen', 'app');
