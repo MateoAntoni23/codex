@@ -563,6 +563,17 @@ function BrokenConnectionsModal() {
   );
 }
 
+
+/**
+ * Muestra una medida en mm redondeada a la milésima. Sólo la vista: el dato no cambia
+ * salvo que se edite. Evita que el ruido de coma flotante (p. ej. −6,39e−14 al
+ * recolocar una curva) se lea como «-6.3948846» en un campo angosto.
+ */
+function aMilesima(v: number): number {
+  const r = Math.round(v * 1000) / 1000;
+  return Object.is(r, -0) ? 0 : r;
+}
+
 export function PieceCard({ piece }: { piece: Piece }) {
   const context = useTrayStore((s) => s.context);
   const edit    = useTrayStore((s) => s.edit);
@@ -691,7 +702,7 @@ export function PieceCard({ piece }: { piece: Piece }) {
           type="number"
           className="inspector-input"
           style={{ width: 90 }}
-          value={piece.longitud_mm ?? piece.longitud_eje_mm ?? 0}
+          value={aMilesima(piece.longitud_mm ?? piece.longitud_eje_mm ?? 0)}
           onChange={(e) => updatePiece((p) => {
             const v = Number(e.target.value);
             if (p.longitud_mm !== undefined) p.longitud_mm = v;
@@ -710,7 +721,7 @@ export function PieceCard({ piece }: { piece: Piece }) {
                 <input
                   type="number"
                   className="inspector-input"
-                  value={v}
+                  value={aMilesima(v)}
                   onChange={(e) => updatePiece((p) => {
                     p.puertos[portId].posicion_mm[i] = Number(e.target.value);
                   })}

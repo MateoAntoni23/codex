@@ -434,7 +434,10 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
       const a = ports.find((p) => p.name === 'P1')!.pos;
       const b = ports.find((p) => p.name === 'P2')!.pos;
       const chord = Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]);
-      const angleDeg = ((selectedProduct as Record<string, unknown>).angulo_grados as number | undefined) ?? null;
+      // Curva ajustable (CAS): el catálogo no declara ángulo; vale el de la definición (el radio
+      // de línea central no depende del ángulo).
+      const angleDeg = ((selectedProduct as Record<string, unknown>).angulo_grados as number | undefined)
+        ?? (eligeAnguloAlColocar(selectedProduct) ? parametricEntry.def.params.angulo_deg ?? null : null);
       if (angleDeg === null) return { ok: false as const, reason: 'el catálogo no declara angulo_grados' };
       const θ = (angleDeg * Math.PI) / 180;
       const sinHalf = Math.sin(θ / 2);
@@ -726,7 +729,9 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
           borderLeft: `2px solid ${parametricEntry ? '#3355aa' : '#aa8822'}`,
         }}>
           <div style={{ fontWeight: 600, marginBottom: 2 }}>
-            {parametricEntry ? 'Ajuste geométrico — modelo medido' : 'Ajuste geométrico — sin modelo'}
+            {parametricEntry
+              ? (eligeAnguloAlColocar(selectedProduct) ? 'Ajuste geométrico — regla del operador (sin STEP)' : 'Ajuste geométrico — modelo medido')
+              : 'Ajuste geométrico — sin modelo'}
           </div>
           {parametricEntry && geometricFit?.ok && (
             <div style={{ color: '#aaaacc' }}>
