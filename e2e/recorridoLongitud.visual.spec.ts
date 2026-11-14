@@ -22,6 +22,8 @@ import { test, expect, type Page } from '@playwright/test';
 import { mkdirSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { elegirPieza } from './helpers/selectorPieza';
+import { abrirFormulario } from './helpers/interfaz';
 
 const OUT_DIR = resolve(dirname(fileURLToPath(import.meta.url)), 'output');
 
@@ -48,9 +50,7 @@ const piezas = (page: Page) => page.evaluate(() =>
 async function continueFrom(page: Page, freeEnd: RegExp, productoId: string, opts: { entryPort?: string; side?: 'left' | 'right'; length?: number } = {}) {
   const before = (await piezas(page)).length;
   await page.getByTestId('free-end').filter({ hasText: freeEnd }).first().click();
-  const select = page.locator('[data-codex-routing-product-select]');
-  await expect(select).toBeVisible();
-  await select.selectOption(productoId);
+  await elegirPieza(page, productoId);
   if (opts.entryPort) await page.locator(`[data-codex-routing-entry-port="${opts.entryPort}"]`).click();
   if (opts.side) await page.locator(`[data-codex-routing-hand="${opts.side}"]`).click();
   if (opts.length) await page.locator('[data-codex-routing-length-input]').fill(String(opts.length));
@@ -112,6 +112,7 @@ test.describe('Recorrido entre dos bocas', () => {
     const porCups = porDerivacion + LC.mm + rVert.longitud_mm!;
 
     await page.getByTestId('stage-tab-conexiones').click();
+    await abrirFormulario(page, 'medir');
     await expect(page.getByTestId('recorrido')).toBeVisible();
 
     // 1. Por el tronco: total.

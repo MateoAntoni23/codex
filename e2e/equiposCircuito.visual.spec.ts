@@ -16,6 +16,8 @@ import { test, expect, type Page } from '@playwright/test';
 import { mkdirSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { elegirPieza } from './helpers/selectorPieza';
+import { abrirFormulario } from './helpers/interfaz';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const OUT_DIR = resolve(HERE, 'output');
@@ -77,9 +79,7 @@ async function crearEquipo(page: Page, nombre: string, categoria: string, pos: V
 async function continueFrom(page: Page, freeEnd: RegExp, productoId: string, opts: { side?: 'left' | 'right'; length?: number } = {}) {
   const before = (await piezas(page)).length;
   await page.getByTestId('free-end').filter({ hasText: freeEnd }).first().click();
-  const select = page.locator('[data-codex-routing-product-select]');
-  await expect(select).toBeVisible();
-  await select.selectOption(productoId);
+  await elegirPieza(page, productoId);
   if (opts.side) await page.locator(`[data-codex-routing-hand="${opts.side}"]`).click();
   if (opts.length) await page.locator('[data-codex-routing-length-input]').fill(String(opts.length));
   await page.locator('text=Confirmar continuación').click();
@@ -88,6 +88,7 @@ async function continueFrom(page: Page, freeEnd: RegExp, productoId: string, opt
 
 /** Enlace equipo ↔ bandeja en Conexiones: tramo, distancia desde una boca y lado. */
 async function enlazar(page: Page, equipoId: string, tronco: string, desde: 'P1' | 'P2', distancia: number, lado: 'izquierda' | 'derecha') {
+  await abrirFormulario(page, 'enlace');
   const form = page.getByTestId('baj-form');
   await form.getByTestId('baj-equipo').selectOption(equipoId);
   await form.getByTestId('baj-tronco').selectOption(tronco);
@@ -121,12 +122,14 @@ test.describe('Etapa 1 — equipos como extremos del circuito', () => {
 
     // 3. Conexiones: sin enlaces todavía, el circuito dice por qué no hay camino.
     await page.getByTestId('stage-tab-conexiones').click();
+    await abrirFormulario(page, 'circuito');
     await page.getByTestId('circuito-origen').selectOption(tg);
     await page.getByTestId('circuito-destino').selectOption(b3);
     await expect(page.getByTestId('circuito-sin-camino')).toContainText('el equipo Tablero General A no tiene enlace con la bandeja');
 
     // Un enlace en cada punta.
     await enlazar(page, tg, r1.instancia_id, 'P1', 200, 'izquierda');
+    await abrirFormulario(page, 'circuito'); // el borrador conserva origen y destino
     await expect(page.getByTestId('circuito-sin-camino')).toContainText('el equipo Bomba 3 no tiene enlace con la bandeja');
     await enlazar(page, b3, r2.instancia_id, 'P2', 300, 'derecha');
     const [bo, bd] = await bajadas(page);
@@ -145,6 +148,7 @@ test.describe('Etapa 1 — equipos como extremos del circuito', () => {
     const bandeja = (r1.longitud_mm! - 200) + curva.longitud_eje_mm! + (r2.longitud_mm! - 300);
     const bajadasMm = bo.longitud_mm + bd.longitud_mm;
     const total = bandeja + bajadasMm;
+    await abrirFormulario(page, 'circuito');
     await expect(page.getByTestId('circuito-sin-camino')).toHaveCount(0);
     await expect(page.getByTestId('circuito-total')).toContainText(`Longitud total: ${fmt(total)} mm`);
     await expect(page.getByTestId('circuito-desglose-bandeja')).toContainText(`Por bandeja: ${fmt(bandeja)} mm (3 pieza(s))`);
@@ -200,6 +204,7 @@ test.describe('Etapa 1 — equipos como extremos del circuito', () => {
     await expect(filaB3.getByTestId('bajada-estado')).toContainText('el equipo Bomba 3 se movió (500.0 mm)');
     await expect(page.locator('[data-testid="bajada-row"][data-bajada="BAJ-1"]')).toHaveAttribute('data-vigente', 'true');
     // Con el enlace desactualizado no se arma un circuito nuevo: se dice por qué.
+    await abrirFormulario(page, 'circuito');
     await page.getByTestId('circuito-origen').selectOption(tg);
     await page.getByTestId('circuito-destino').selectOption(b3);
     await expect(page.getByTestId('circuito-sin-camino')).toContainText('el enlace BAJ-2 del equipo Bomba 3 está desactualizado: el equipo Bomba 3 se movió (500.0 mm)');

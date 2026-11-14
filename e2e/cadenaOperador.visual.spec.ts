@@ -10,6 +10,8 @@
  * la cadena y todas sus uniones dan COHERENTE.
  */
 import { test, expect, type Page } from '@playwright/test';
+import { elegirPieza } from './helpers/selectorPieza';
+import { verPestana } from './helpers/interfaz';
 
 async function openBandejas(page: Page): Promise<void> {
   await page.goto('/?etapa=bandejas');
@@ -27,9 +29,7 @@ const count = (page: Page) => page.evaluate(() =>
 async function continueFrom(page: Page, freeEnd: RegExp, productoId: string, opts: { entryPort?: string; side?: 'left' | 'right'; length?: number; motive?: string } = {}) {
   const before = await count(page);
   await page.getByTestId('free-end').filter({ hasText: freeEnd }).first().click();
-  const select = page.locator('[data-codex-routing-product-select]');
-  await expect(select).toBeVisible();
-  await select.selectOption(productoId);
+  await elegirPieza(page, productoId);
   if (opts.entryPort) await page.locator(`[data-codex-routing-entry-port="${opts.entryPort}"]`).click();
   if (opts.side) await page.locator(`[data-codex-routing-hand="${opts.side}"]`).click();
   if (opts.length) await page.locator('[data-codex-routing-length-input]').fill(String(opts.length));
@@ -119,6 +119,7 @@ test.describe('PA4 / PA8 — cadena del operador', () => {
 
     // Resultados: ninguna unión por excepción.
     await page.getByTestId('stage-tab-resultados').click();
+    await verPestana(page, 'avisos');
     await expect(page.getByTestId('aviso-modelo-row')).toHaveCount(2);
     await expect(page.getByTestId('exception-row')).toHaveCount(0);
     await expect(page.getByTestId('exceptions-list')).toContainText('Ninguna');

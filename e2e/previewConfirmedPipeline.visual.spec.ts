@@ -37,6 +37,7 @@ import { test, expect, type Page, type Download } from '@playwright/test';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { elegirPieza, esperarSelectorPieza } from './helpers/selectorPieza';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -153,15 +154,15 @@ async function startRoutingAt(page: Page, pieceId: string, portName: string, pos
     r.selectStartPort({ pieceId: args.pieceId, portName: args.portName, pos: args.pos, dir: args.dir });
   }, { pieceId, portName, pos, dir });
 
-  await page.locator('[data-codex-routing-product-select]').waitFor({ state: 'visible', timeout: 10_000 });
+  await esperarSelectorPieza(page);
 }
 
 async function selectRoutingProduct(page: Page, productoId: string): Promise<void> {
   await page.waitForFunction((pid) => {
-    const sel = document.querySelector('[data-codex-routing-product-select]') as HTMLSelectElement | null;
-    return !!sel && Array.from(sel.options).some((o) => o.value === pid);
+    const sel = document.querySelector('[data-codex-routing-pieza-tipo]') as HTMLSelectElement | null;
+    return !!sel && Array.from(sel.options).some((o) => (o.getAttribute('data-productos') ?? '').split(' ').includes(pid));
   }, productoId, { timeout: 15_000 });
-  await page.locator('[data-codex-routing-product-select]').selectOption(productoId);
+  await elegirPieza(page, productoId);
   await page.waitForTimeout(250);
 }
 

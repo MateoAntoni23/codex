@@ -154,7 +154,28 @@
 .stage-error { padding: 4px 12px; font-size: 12px; }
 
 /* ── Paneles de etapa ──────────────────────────────────────────────────────── */
-.unified-workspace .unified-workspace-body { grid-template-columns: 300px 1fr 340px; }
+.unified-workspace .unified-workspace-body { grid-template-columns: 260px 1fr 320px; }
+
+/* ── Panel inferior (tablas anchas, interfaz 2026-11-14) ───────────────────── */
+.panel-inferior { flex-shrink: 0; border-top: 1px solid var(--ws-border); display: flex; flex-direction: column; }
+.panel-inferior-barra { display: flex; gap: 2px; padding: 3px 8px; align-items: center; }
+.panel-inferior-pestana, .panel-inferior-toggle {
+  padding: 3px 10px; font-size: 12px; border: 1px solid var(--ws-border); border-radius: 4px 4px 0 0; cursor: pointer;
+  background: var(--ws-surface); color: var(--ws-fg);
+}
+.panel-inferior-pestana.is-active { background: var(--ws-accent-bg); color: var(--ws-accent-fg); font-weight: 700; }
+.panel-inferior-toggle { margin-left: auto; border-radius: 4px; }
+.panel-inferior-cuerpo { height: 36vh; overflow: auto; padding: 6px 12px; font-size: 12px; border-top: 1px solid var(--ws-border); }
+.panel-inferior-cuerpo .stage-section { max-width: none; }
+.panel-inferior-cuerpo .stage-table { width: 100%; }
+
+/* Acciones de la pieza seleccionada (A1) */
+.inspector-acciones { display: flex; flex-wrap: wrap; gap: 4px; padding: 6px 12px; border-bottom: 1px solid var(--ws-border); }
+.inspector-acciones button { font-size: 12px; padding: 3px 8px; }
+
+/* Lista de piezas agrupada (A3) */
+.grupo-piezas > summary { cursor: pointer; font-weight: 700; font-size: 12px; padding: 3px 0; }
+.grupo-piezas .stage-row { padding-left: 14px; }
 .stage-panel { display: flex; flex-direction: column; gap: 8px; font-size: 12px; }
 .stage-tools { display: flex; flex-wrap: wrap; gap: 4px; padding-bottom: 6px; border-bottom: 1px solid var(--ws-border); }
 .stage-actions { display: flex; gap: 6px; flex-wrap: wrap; }

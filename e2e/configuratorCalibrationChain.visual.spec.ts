@@ -41,6 +41,7 @@ import { test, expect } from '@playwright/test';
 import { mkdirSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { elegirPieza } from './helpers/selectorPieza';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -142,13 +143,13 @@ async function insertTpsFromT1P2(page: import('@playwright/test').Page) {
   }, TRAY_TRPS_ONLY);
 
   // 2) Seleccionar SAM_TPS-300-Z en el selector de producto.
-  const productSelect = page.locator('[data-codex-routing-product-select]');
+  const productSelect = page.locator('[data-codex-routing-pieza-tipo]');
   await productSelect.waitFor({ state: 'visible', timeout: 10_000 });
   await page.waitForFunction(() => {
-    const sel = document.querySelector('[data-codex-routing-product-select]') as HTMLSelectElement | null;
-    return !!sel && Array.from(sel.options).some((o) => o.value === 'SAM_TPS-300-Z');
+    const sel = document.querySelector('[data-codex-routing-pieza-tipo]') as HTMLSelectElement | null;
+    return !!sel && Array.from(sel.options).some((o) => (o.getAttribute('data-productos') ?? '').split(' ').includes('SAM_TPS-300-Z'));
   }, { timeout: 15_000 });
-  await productSelect.selectOption('SAM_TPS-300-Z');
+  await elegirPieza(page, 'SAM_TPS-300-Z');
 
   // 3) Confirmar entry port = tronco_P1 (default). Hacer click para afirmar
   //    el estado — algunos controles sólo inicializan selección tras un click.

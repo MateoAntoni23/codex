@@ -14,6 +14,8 @@ import { test, expect, type Page } from '@playwright/test';
 import { mkdirSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { elegirPieza } from './helpers/selectorPieza';
+import { verPestana } from './helpers/interfaz';
 
 const OUT_DIR = resolve(dirname(fileURLToPath(import.meta.url)), 'output');
 type V3 = [number, number, number];
@@ -42,7 +44,7 @@ async function continuar(page: Page, extremo: RegExp, productoId: string, opts: 
   const antes = (await piezas(page)).length;
   await page.getByTestId('tool-bandejas-seleccionar').click();
   await page.getByTestId('free-end').filter({ hasText: extremo }).first().click();
-  await page.locator('[data-codex-routing-product-select]').selectOption(productoId);
+  await elegirPieza(page, productoId);
   if (opts.sentido) {
     await page.locator('[data-codex-routing-entry-port="P1"]').click();
     await page.locator(`[data-codex-routing-vertical="${opts.sentido}"]`).click();
@@ -86,6 +88,7 @@ test.describe('Curvas eslabonadas', () => {
 
     // Resultados: 5 eslabones → 5 × EPS-300-Z.
     await page.getByTestId('stage-tab-resultados').click();
+    await verPestana(page, 'computo');
     await expect(page.getByTestId('eslabonada-curva-row')).toHaveAttribute('data-eslabones', '5');
     await expect(page.getByTestId('eslabonada-compra-row')).toHaveAttribute('data-codigos', '5');
     await expect(page.getByTestId('eslabonada-compra-row')).toContainText('EPS-300-Z: 5');
@@ -106,6 +109,7 @@ test.describe('Curvas eslabonadas', () => {
     await expect(page.getByTestId('join-row').nth(1)).toContainText('no cumple');
 
     await page.getByTestId('stage-tab-resultados').click();
+    await verPestana(page, 'computo');
     await expect(page.getByTestId('eslabonada-compra-row')).toHaveAttribute('data-codigos', '3');
     // El motor real acepta la curva eslabonada y calcula; su línea de 1 pieza queda marcada como reemplazada.
     await page.getByTestId('reserva-input').fill('20');
@@ -129,6 +133,7 @@ test.describe('Curvas eslabonadas', () => {
       extremo = new RegExp(`^↗ ${k + 2}\\. CUS-300-5-065-18-Z · Boca de salida`);
     }
     await page.getByTestId('stage-tab-resultados').click();
+    await verPestana(page, 'computo');
     const filas = page.getByTestId('eslabonada-curva-row');
     await expect(filas).toHaveCount(4);
     for (let k = 0; k < 4; k++) await expect(filas.nth(k)).toHaveAttribute('data-eslabones', '3');

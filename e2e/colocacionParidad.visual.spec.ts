@@ -12,6 +12,7 @@
  * producto, boca de entrada y Confirmar continuación.
  */
 import { test, expect, type Page } from '@playwright/test';
+import { elegirPieza } from './helpers/selectorPieza';
 
 async function openBandejas(page: Page): Promise<void> {
   await page.goto('/?etapa=bandejas');
@@ -104,9 +105,7 @@ async function previewThenConfirm(page: Page, opts: {
 }): Promise<{ preview: number[][]; confirmed: number[][]; previewMatrix: number[]; confirmedMatrix: number[] }> {
   const before = (await pieceIds(page)).map((p) => p.instancia_id);
   await page.getByTestId('free-end').filter({ hasText: opts.freeEnd }).first().click();
-  const select = page.locator('[data-codex-routing-product-select]');
-  await expect(select).toBeVisible();
-  await select.selectOption(opts.productoId);
+  await elegirPieza(page, opts.productoId);
   if (opts.entryPort) await page.locator(`[data-codex-routing-entry-port="${opts.entryPort}"]`).click();
   if (opts.side) await page.locator(`[data-codex-routing-hand="${opts.side}"]`).click();
   const motive = page.locator('[data-codex-routing-exception-motive]');

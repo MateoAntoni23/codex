@@ -4,6 +4,7 @@ import { useWorkspaceStore } from '../useWorkspaceStore';
 import { STAGES, type StageId } from './stageModel';
 import { useUiStore } from './uiStore';
 import { summarizeResultDe } from './resultPresentation';
+import { circuitosOf } from '../recorridos/circuitosGuardados';
 
 function useStageStatus(): Record<StageId, string> {
   const elements = useWorkspaceStore((s) => s.elements);
@@ -22,7 +23,8 @@ function useStageStatus(): Record<StageId, string> {
   const infra = elements.length - own.length;
   const piezas = entrada?.piezas.length ?? 0;
   const cx = catalog?.conexiones.length ?? 0;
-  const circ = entrada?.circuitos.length ?? 0;
+  // A5: cuenta los circuitos guardados entre equipos (no los del motor).
+  const circ = circuitosOf(entrada).length;
   const view = summarizeResultDe(result, entrada, productos);
   const resultados = status === 'calculando'
     ? 'calculando…'

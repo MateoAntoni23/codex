@@ -23,6 +23,7 @@ import { indexProducts, pieceLabelById, portLabel } from './displayNames';
 import { Empty, Section } from './shared';
 import { PuntoEnTramoCampos, type ValorPuntoEnTramo } from './PuntoEnTramoCampos';
 import { CABLE_VACIO, CableCircuitoCampos, cableDesdeValor, useCatalogoCables, type ValorCable } from './CableCircuitoCampos';
+import { create } from 'zustand';
 
 export const mmTexto = (x: number) => `${x.toLocaleString('es-AR', { maximumFractionDigits: 1, minimumFractionDigits: 1 })} mm`;
 
@@ -43,7 +44,11 @@ function useEquipos() {
 
 const VACIO: ValorPuntoEnTramo = { tronco: '', desde: 'P1', distancia: '', lado: 'izquierda' };
 
-export function BajadasSection() {
+/**
+ * Formulario de enlace equipo ↔ bandeja (inspector). `tronco` y `equipo` llegan
+ * ya elegidos cuando se abre desde una pieza o un equipo seleccionado (A1).
+ */
+export function BajadaForm({ tronco, equipo: equipoInicial }: { tronco?: string; equipo?: string }) {
   const entrada = useTrayStore((s) => s.entrada);
   const context = useTrayStore((s) => s.context);
   const trayEdit = useTrayStore((s) => s.edit);
@@ -54,20 +59,15 @@ export function BajadasSection() {
   const productos = useMemo(() => new Map<string, Product>((context?.productos ?? []).map((p) => [p.producto_id, p])), [context]);
   const idx = useMemo(() => indexProducts(context?.productos), [context]);
   const piezas = entrada?.piezas ?? [];
-  const bajadas = bajadasOf(entrada);
 
-  // Por defecto, el equipo seleccionado en la escena.
-  const [equipoElegido, setEquipo] = useState<string | null>(null);
+  // Por defecto, el equipo indicado o el seleccionado en la escena.
+  const [equipoElegido, setEquipo] = useState<string | null>(equipoInicial ?? null);
   const equipo = equipoElegido ?? (selectedEquipId && equipos.some((e) => e.id === selectedEquipId) ? selectedEquipId : '');
-  const [punto, setPunto] = useState<ValorPuntoEnTramo>(VACIO);
+  const [punto, setPunto] = useState<ValorPuntoEnTramo>({ ...VACIO, tronco: tronco ?? '' });
   const [msg, setMsg] = useState<{ ok: boolean; texto: string } | null>(null);
 
   const nombreEquipo = (id: string) => elements.find((e) => e.id === id)?.name ?? id;
   const etiquetaPieza = (id: string) => (piezas.some((p) => p.instancia_id === id) ? pieceLabelById(id, piezas, idx) : id);
-  const etiquetaBoca = (pieza: string, boca: string) => {
-    const p = piezas.find((x) => x.instancia_id === pieza);
-    return p ? portLabel(p.producto_id, boca, idx) : boca;
-  };
 
   const crear = () => {
     if (!entrada) return;
@@ -79,7 +79,46 @@ export function BajadasSection() {
     markDirty();
     setMsg({ ok: true, texto: `Enlace ${r.bajada.id} creado: ${nombreEquipo(r.bajada.equipo)} baja ${mmTexto(r.bajada.longitud_mm)} desde ${etiquetaPieza(r.bajada.tronco)}.` });
     setEquipo(null);
-    setPunto(VACIO);
+    setPunto({ ...VACIO, tronco: tronco ?? '' });
+  };
+
+  if (equipos.length === 0) return <Empty>Sin equipos: crealos o importalos en la etapa Equipos.</Empty>;
+  return (
+    <div data-testid="baj-form">
+      <label className="stage-field">
+        Equipo
+        <select className="inspector-input" data-testid="baj-equipo" value={equipo} onChange={(e) => setEquipo(e.target.value)}>
+          <option value="">Elegí un equipo…</option>
+          {equipos.map((e) => <option key={e.id} value={e.id}>{e.name}{e.tag ? ` (${e.tag})` : ''}</option>)}
+        </select>
+      </label>
+      <PuntoEnTramoCampos prefijo="baj" etiquetaTramo="Tramo desde donde baja el cable" valor={punto} onChange={setPunto} />
+      <p className="stage-note" style={{ whiteSpace: 'normal' }}>
+        La bajada es un tramo recto desde el punto de salida hasta el centro del equipo. Es cable al aire o por caño, no bandeja: cuenta en la longitud del circuito y no computa ninguna pieza.
+      </p>
+      <button type="button" className="stage-primary" data-testid="baj-crear" onClick={crear} disabled={!equipo || !punto.tronco || punto.distancia === ''}>
+        Crear enlace
+      </button>
+      {msg && <p className={`stage-note${msg.ok ? '' : ' tone-warn'}`} role="status" data-testid="baj-msg">{msg.texto}</p>}
+    </div>
+  );
+}
+
+/** Lista de enlaces equipo ↔ bandeja (panel izquierdo de Conexiones). */
+export function BajadasSection() {
+  const entrada = useTrayStore((s) => s.entrada);
+  const context = useTrayStore((s) => s.context);
+  const trayEdit = useTrayStore((s) => s.edit);
+  const elements = useWorkspaceStore((s) => s.elements);
+  const markDirty = useWorkspaceStore((s) => s.markDirty);
+  const idx = useMemo(() => indexProducts(context?.productos), [context]);
+  const piezas = entrada?.piezas ?? [];
+  const bajadas = bajadasOf(entrada);
+  const nombreEquipo = (id: string) => elements.find((e) => e.id === id)?.name ?? id;
+  const etiquetaPieza = (id: string) => (piezas.some((p) => p.instancia_id === id) ? pieceLabelById(id, piezas, idx) : id);
+  const etiquetaBoca = (pieza: string, boca: string) => {
+    const p = piezas.find((x) => x.instancia_id === pieza);
+    return p ? portLabel(p.producto_id, boca, idx) : boca;
   };
   const borrar = (id: string) => {
     if (!entrada) return;
@@ -89,26 +128,7 @@ export function BajadasSection() {
 
   return (
     <Section title={`Equipos enlazados con la bandeja (${bajadas.length})`} testid="bajadas">
-      {equipos.length === 0 && <Empty>Sin equipos: crealos o importalos en la etapa Equipos.</Empty>}
-      {equipos.length > 0 && (
-        <div className="stage-card" data-testid="baj-form">
-          <label className="stage-field">
-            Equipo
-            <select className="inspector-input" data-testid="baj-equipo" value={equipo} onChange={(e) => setEquipo(e.target.value)}>
-              <option value="">Elegí un equipo…</option>
-              {equipos.map((e) => <option key={e.id} value={e.id}>{e.name}{e.tag ? ` (${e.tag})` : ''}</option>)}
-            </select>
-          </label>
-          <PuntoEnTramoCampos prefijo="baj" etiquetaTramo="Tramo desde donde baja el cable" valor={punto} onChange={setPunto} />
-          <p className="stage-note" style={{ whiteSpace: 'normal' }}>
-            La bajada es un tramo recto desde el punto de salida hasta el centro del equipo. Es cable al aire o por caño, no bandeja: cuenta en la longitud del circuito y no computa ninguna pieza.
-          </p>
-          <button type="button" className="stage-primary" data-testid="baj-crear" onClick={crear} disabled={!equipo || !punto.tronco || punto.distancia === ''}>
-            Crear enlace
-          </button>
-          {msg && <p className={`stage-note${msg.ok ? '' : ' tone-warn'}`} role="status" data-testid="baj-msg">{msg.texto}</p>}
-        </div>
-      )}
+      {bajadas.length === 0 && <Empty>Sin enlaces. Creá uno desde el inspector o desde un tramo seleccionado.</Empty>}
       {bajadas.map((b) => {
         const est = entrada ? estadoBajada(entrada, elements, b) : { vigente: true as const };
         return (
@@ -135,6 +155,11 @@ export function BajadasSection() {
   );
 }
 
+/** Borrador del circuito que se está armando (interfaz): no se pierde al pasar a otro formulario. */
+export const useBorradorCircuito = create<{ origen: string; destino: string; nombre: string; cable: ValorCable }>(() => ({
+  origen: '', destino: '', nombre: '', cable: CABLE_VACIO,
+}));
+
 export function CircuitoEquiposSection() {
   const entrada = useTrayStore((s) => s.entrada);
   const context = useTrayStore((s) => s.context);
@@ -144,10 +169,12 @@ export function CircuitoEquiposSection() {
   const equipos = useEquipos();
   const idx = useMemo(() => indexProducts(context?.productos), [context]);
   const piezas = entrada?.piezas ?? [];
-  const [origen, setOrigen] = useState('');
-  const [destino, setDestino] = useState('');
-  const [nombre, setNombre] = useState('');
-  const [cable, setCable] = useState<ValorCable>(CABLE_VACIO);
+  // El borrador sobrevive a cerrar el formulario (p. ej. para crear un enlace y volver).
+  const { origen, destino, nombre, cable } = useBorradorCircuito();
+  const setOrigen = (origen: string) => useBorradorCircuito.setState({ origen });
+  const setDestino = (destino: string) => useBorradorCircuito.setState({ destino });
+  const setNombre = (nombre: string) => useBorradorCircuito.setState({ nombre });
+  const setCable = (cable: ValorCable) => useBorradorCircuito.setState({ cable });
   const { cables } = useCatalogoCables();
   const [msg, setMsg] = useState<{ ok: boolean; texto: string } | null>(null);
 

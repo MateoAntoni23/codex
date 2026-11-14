@@ -16,6 +16,20 @@ import { indexProducts, pieceLabelById } from './displayNames';
 import { reservaOf, ResultSummary } from './ResultadosPanel';
 import { StageSummary } from './shared';
 import { OcupacionSegregadaView, useOcupacionSegregada } from './BandaDivisoria';
+import { FormularioInspector } from './FormularioInspector';
+import { circuitosOf } from '../recorridos/circuitosGuardados';
+import { bajadasOf } from '../equipos/bajada';
+
+/** Botones de acción del inspector sin selección: abren su formulario acá mismo. */
+function Acciones({ items }: { items: Array<[string, string, () => void, boolean?]> }) {
+  return (
+    <div className="inspector-acciones" data-testid="acciones-etapa">
+      {items.map(([id, label, fn, disabled]) => (
+        <button key={id} type="button" data-testid={`accion-${id}`} disabled={disabled} onClick={fn}>{label}</button>
+      ))}
+    </div>
+  );
+}
 
 function EquiposSummary() {
   const elements = useWorkspaceStore((s) => s.elements);
@@ -36,7 +50,9 @@ function EquiposSummary() {
       title="Equipos"
       rows={[['Ubicados', placed], ['Sin ubicar', importedPending + unplacedOwn], ['Del Excel', catalog ? catalog.equipos.length : 'Sin Excel']]}
       next={next}
-    />
+    >
+      <Acciones items={[['equipo-nuevo', 'Nuevo equipo', () => useUiStore.getState().abrirFormulario({ tipo: 'equipo-nuevo' })]]} />
+    </StageSummary>
   );
 }
 
@@ -60,24 +76,41 @@ function BandejasSummary() {
   const next = piezas.length === 0
     ? 'Usá Tramo nuevo para crear la primera pieza.'
     : `Continuá el trazado desde un extremo libre (${free}) o pasá a Resultados para calcular.`;
+  const abrir = useUiStore.getState().abrirFormulario;
   return (
     <StageSummary
       title="Bandejas"
-      rows={[['Piezas', piezas.length], ['Uniones', entrada?.conexiones.length ?? 0], ['Extremos libres', free], ['Soportes', entrada?.soportes.length ?? 0], ['Cable PE', entrada?.pe.cable_id || 'PE sin definir']]}
+      rows={[['Piezas', piezas.length], ['Uniones', entrada?.conexiones.length ?? 0], ['Extremos libres', free], ['Soportes', entrada?.soportes.length ?? 0]]}
       next={next}
-    />
+    >
+      <Acciones items={[
+        ['tramo', 'Tramo nuevo', () => abrir({ tipo: 'tramo' })],
+        ['derivacion', 'Derivación en tramo', () => abrir({ tipo: 'derivacion' }), piezas.length === 0],
+        ['soporte', 'Soporte', () => abrir({ tipo: 'soporte' }), piezas.length === 0],
+      ]} />
+      <p className="stage-note">Elegí una pieza (en la lista o en la escena) para ver lo que se puede hacer con ella.</p>
+    </StageSummary>
   );
 }
 
 function ConexionesSummary() {
   const catalog = useWorkspaceStore((s) => s.importedCatalog);
-  const circuitos = useTrayStore((s) => s.entrada?.circuitos.length ?? 0);
+  const entrada = useTrayStore((s) => s.entrada);
+  const circuitos = circuitosOf(entrada).length;
+  const enlaces = bajadasOf(entrada).length;
+  const abrir = useUiStore.getState().abrirFormulario;
   return (
     <StageSummary
       title="Conexiones"
-      rows={[['Del Excel (sin recorrido)', catalog ? catalog.conexiones.length : 'Sin Excel'], ['Circuitos del trazado', circuitos]]}
-      next={catalog ? 'Revisá los circuitos. Asignar recorridos a las conexiones llega en un hito posterior.' : 'Importá el Excel en la etapa Equipos para ver sus conexiones.'}
-    />
+      rows={[['Equipos enlazados', enlaces], ['Circuitos guardados', circuitos], ['Del Excel (sin recorrido)', catalog ? catalog.conexiones.length : 'Sin Excel']]}
+      next={enlaces < 2 ? 'Enlazá cada equipo con la bandeja; después armá el circuito entre dos equipos.' : 'Armá un circuito entre dos equipos enlazados.'}
+    >
+      <Acciones items={[
+        ['enlace', 'Enlazar un equipo', () => abrir({ tipo: 'enlace' })],
+        ['circuito', 'Nuevo circuito', () => abrir({ tipo: 'circuito' })],
+        ['medir', 'Medir entre dos bocas', () => abrir({ tipo: 'medir' }), (entrada?.piezas.length ?? 0) === 0],
+      ]} />
+    </StageSummary>
   );
 }
 
@@ -157,13 +190,16 @@ export function StageInspector() {
   const elements = useWorkspaceStore((s) => s.elements);
   const entrada = useTrayStore((s) => s.entrada);
   const routingActive = useRoutingStore((s) => s.active);
+  const formulario = useUiStore((s) => s.formulario);
 
   const element = selectedEquipId ? elements.find((e) => e.id === selectedEquipId) ?? null : null;
   const piece = selectedTrayId ? entrada?.piezas.find((p) => p.instancia_id === selectedTrayId) ?? null : null;
   const support = selectedSupportId ? entrada?.soportes.find((s) => s.soporte_id === selectedSupportId) ?? null : null;
 
   let body: React.ReactNode;
-  switch (stage) {
+  // Interfaz (2026-11-14): un formulario abierto ocupa el inspector (la continuación de trazado, primero).
+  if (formulario && !(stage === 'bandejas' && routingActive)) body = <FormularioInspector f={formulario} />;
+  else switch (stage) {
     case 'equipos':
       body = selectedImportedId ? <ImportedEquipmentInspector />
         : element && element.category !== 'infrastructure' ? <EquipmentCard />

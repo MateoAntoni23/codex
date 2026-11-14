@@ -18,7 +18,8 @@ import { indexProducts, pieceLabelById } from './displayNames';
 import { Empty, Section } from './shared';
 import { PuntoEnTramoCampos, troncosElegibles } from './PuntoEnTramoCampos';
 
-export function DerivacionForm({ onClose }: { onClose: () => void }) {
+/** `tronco`: ya elegido cuando la derivación se lanza desde el tramo seleccionado (A1). */
+export function DerivacionForm({ onClose, tronco: troncoInicial }: { onClose: () => void; tronco?: string }) {
   const entrada = useTrayStore((s) => s.entrada);
   const context = useTrayStore((s) => s.context);
   const trayEdit = useTrayStore((s) => s.edit);
@@ -27,7 +28,7 @@ export function DerivacionForm({ onClose }: { onClose: () => void }) {
   const piezas = entrada?.piezas ?? [];
   const troncos = troncosElegibles(piezas, productos);
 
-  const [tronco, setTronco] = useState('');
+  const [tronco, setTronco] = useState(troncoInicial ?? '');
   const [desde, setDesde] = useState('P1');
   const [distancia, setDistancia] = useState('');
   const [lado, setLado] = useState<Lado>('izquierda');

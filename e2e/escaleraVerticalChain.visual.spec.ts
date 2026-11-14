@@ -21,6 +21,7 @@ import { test, expect, type Page, type Download } from '@playwright/test';
 import { readFileSync, mkdirSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { elegirPieza, esperarSelectorPieza } from './helpers/selectorPieza';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -89,20 +90,20 @@ async function bootstrap(page: Page): Promise<void> {
     });
   }, FIXTURE_TRAY);
 
-  await page.locator('[data-codex-routing-product-select]').waitFor({ state: 'visible', timeout: 10_000 });
+  await esperarSelectorPieza(page);
 }
 
 async function insertCus(page: Page): Promise<void> {
-  const productSelect = page.locator('[data-codex-routing-product-select]');
+  const productSelect = page.locator('[data-codex-routing-pieza-tipo]');
   // El SKU debe aparecer en el selector gracias a la entrada sintética que
   // deriva del master `master:escalera:curva_eslabonada` (receta
   // escalera:curva_eslabonada). Si falla acá significa que el
   // dispatcher o la resolución a maestro se rompió.
   await page.waitForFunction(() => {
-    const sel = document.querySelector('[data-codex-routing-product-select]') as HTMLSelectElement | null;
-    return !!sel && Array.from(sel.options).some((o) => o.value === 'SAM_CUS-300-5-065-18-Z');
+    const sel = document.querySelector('[data-codex-routing-pieza-tipo]') as HTMLSelectElement | null;
+    return !!sel && Array.from(sel.options).some((o) => (o.getAttribute('data-productos') ?? '').split(' ').includes('SAM_CUS-300-5-065-18-Z'));
   }, { timeout: 15_000 });
-  await productSelect.selectOption('SAM_CUS-300-5-065-18-Z');
+  await elegirPieza(page, 'SAM_CUS-300-5-065-18-Z');
   // CUS articulada: hay que elegir el sentido (sin elección no hay previa ni confirmación).
   // Esta cadena se escribió con la curva bajando (orientación de referencia del perfil).
   await page.locator('[data-codex-routing-vertical="baja"]').click();
@@ -163,13 +164,13 @@ async function selectVerticalExitAndContinueStraight(page: Page, lengthMm: numbe
   expect(started, 'P2 de la CUS localizada y routing arrancado').toBeTruthy();
   expect(started!.startPort?.portName).toBe('P2');
 
-  const productSelect = page.locator('[data-codex-routing-product-select]');
+  const productSelect = page.locator('[data-codex-routing-pieza-tipo]');
   await productSelect.waitFor({ state: 'visible', timeout: 10_000 });
   await page.waitForFunction(() => {
-    const sel = document.querySelector('[data-codex-routing-product-select]') as HTMLSelectElement | null;
-    return !!sel && Array.from(sel.options).some((o) => o.value === 'SAM_TRES-300-065-18-Z');
+    const sel = document.querySelector('[data-codex-routing-pieza-tipo]') as HTMLSelectElement | null;
+    return !!sel && Array.from(sel.options).some((o) => (o.getAttribute('data-productos') ?? '').split(' ').includes('SAM_TRES-300-065-18-Z'));
   }, { timeout: 15_000 });
-  await productSelect.selectOption('SAM_TRES-300-065-18-Z');
+  await elegirPieza(page, 'SAM_TRES-300-065-18-Z');
   await page.waitForTimeout(200);
 
   const lenInput = page.locator('[data-codex-routing-length-input]');

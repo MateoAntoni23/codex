@@ -35,7 +35,6 @@ import {
   isInteractivelyInsertable,
   isWalkable,
   getLimitationReason,
-  formatProductOption,
 } from './pieceClassification';
 import { chiralityForTurn, esVerticalArticulada } from './parametricBridge';
 import { definicionEfectiva, tieneDefinicion, modeloDeProducto } from './placement/definitions';
@@ -44,6 +43,7 @@ import { buildContinuationCandidates, esDerivacionLateral, type ContinuationCand
 import { routingPlacementFromState } from './placement/routingPlacementState';
 import { UNIONS_KEY, unionsOf, type UnionRecord } from './workspaceOperation';
 import { indexProducts, pieceLabelById, portLabel } from './stages/displayNames';
+import { SelectorPieza } from './routing/SelectorPieza';
 
 // ─── PE extension proposal widget ────────────────────────────────────────────
 
@@ -292,20 +292,6 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
     [compatibleProducts],
   );
 
-  // Group compatible products by family for <optgroup> display
-  const familyGroups = useMemo(() => {
-    const groups = new Map<string, { name: string; acabado: string | null; products: typeof compatibleProducts }>();
-    for (const p of compatibleProducts) {
-      const famId = (p as Record<string, unknown>).familia_id as string | undefined ?? '__other__';
-      if (!groups.has(famId)) {
-        const fam = context?.familias?.find((f) => f.familia_id === famId);
-        groups.set(famId, { name: fam?.nombre_familia ?? famId, acabado: fam?.acabado_normalizado ?? null, products: [] });
-      }
-      groups.get(famId)!.products.push(p);
-    }
-    return groups;
-  }, [compatibleProducts, context?.familias]);
-
   // Candidatos clasificados con razones explícitas — base del selector
   // ampliado ("Recomendados" / "Otros productos"). Mantiene disjunción con
   // compatibleProducts: los "recommended" son un subconjunto estricto.
@@ -323,15 +309,6 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
     () => continuationCandidates.filter((c) => c.category === 'other'),
     [continuationCandidates],
   );
-  const otherCandidatesByTipo = useMemo(() => {
-    const m = new Map<string, ContinuationCandidate[]>();
-    for (const c of otherCandidates) {
-      const k = c.product.tipo_pieza || 'sin tipo';
-      (m.get(k) ?? m.set(k, []).get(k)!).push(c);
-    }
-    return new Map([...m.entries()].sort(([a], [b]) => a.localeCompare(b)));
-  }, [otherCandidates]);
-
   const otherCandidateById = useMemo(() => {
     const m = new Map<string, ContinuationCandidate>();
     for (const c of otherCandidates) m.set(c.product.producto_id, c);
@@ -644,71 +621,22 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
             Cancelá y usá "+ Agregar tramo recto" para iniciar un principal perforado.
           </div>
         )}
-        {compatibleProducts.length === 0 && otherCandidates.length === 0 ? (
-          <div style={{ padding: '6px 8px', background: '#2a1a1a', borderRadius: 3, color: '#ff9955', fontSize: 10 }}>
-            Sin continuaciones insertables para este puerto en el trazado interactivo.
-            {!context?.compatibilidades?.length && ' (Catálogo no disponible)'}
-          </div>
-        ) : (
-          <select
-            data-codex-routing-product-select
-            className="inspector-input"
-            style={{ width: '100%' }}
-            value={selectedProductId}
-            onChange={(e) => {
-              setProduct(e.target.value);
-              setError(null);
-              setExceptionMotive('');
-            }}
-          >
-            {!selectedProductId && <option value="">— Elegí un producto —</option>}
-            {compatibleProducts.length > 0 && (
-              // Optgroups planos por familia (prefijo "Recomendados · ") en vez
-              // de anidar optgroups — el HTML no permite optgroup dentro de
-              // optgroup y el DOM resultante esconde opciones de select.options,
-              // bloqueando Playwright selectOption y la navegación por teclado.
-              <>
-                {Array.from(familyGroups.entries()).map(([famId, { name, acabado, products }]) => (
-                  <optgroup
-                    key={famId}
-                    label={`Recomendados · ${acabado ? `${name} (${acabado})` : name}`}
-                  >
-                    {products.map((p) => (
-                      <option key={p.producto_id} value={p.producto_id}>
-                        {tieneDefinicion(p) ? '◆ ' : '○ '}{formatProductOption(p)}
-                      </option>
-                    ))}
-                  </optgroup>
-                ))}
-              </>
-            )}
-            {/* A-9: excepciones agrupadas por tipo de pieza (el catálogo no
-                documenta pares accesorio–accesorio; se piden con motivo). */}
-            {Array.from(otherCandidatesByTipo.entries()).map(([tipo, group]) => (
-              <optgroup key={tipo} label={`Excepción con motivo · ${tipo}`}>
-                {group.map((c) => (
-                  <option
-                    key={c.product.producto_id}
-                    value={c.product.producto_id}
-                    disabled={!c.insertionSupported}
-                  >
-                    {c.insertionSupported ? '⚠ ' : '⏳ '}{formatProductOption(c.product)}
-                    {' — '}
-                    {c.reasonCode === 'compat_no_documentada' && 'compat. no documentada'}
-                    {c.reasonCode === 'kind_pendiente_insercion' && 'inserción pendiente'}
-                    {c.reasonCode === 'sin_modelo_geometrico' && 'sin modelo'}
-                    {c.reasonCode === 'boca_dimension_divergente' && 'bocas divergentes'}
-                  </option>
-                ))}
-              </optgroup>
-            ))}
-          </select>
-        )}
-        {(compatibleProducts.length > 0 || otherCandidates.length > 0) && (
-          <div style={{ fontSize: 9, color: '#667788', marginTop: 2 }}>
-            ◆ modelo paramétrico · ○ sin modelo · ⚠ excepción (sin compat SAMET) · ⏳ inserción pendiente
-          </div>
-        )}
+        {/* A2 (interfaz, 2026-11-14): tipo → ancho → variante, con espesor y acabado dentro. */}
+        <SelectorPieza
+          origen={existingProduct}
+          candidatos={[
+            ...compatibleProducts.map((p) => ({ product: p, sinModelo: !tieneDefinicion(p) })),
+            ...otherCandidates.filter((c) => c.insertionSupported).map((c) => ({ product: c.product, excepcion: true })),
+          ]}
+          catalogo={context?.productos ?? []}
+          pendientes={[...nonInsertableCompatible, ...otherCandidates.filter((c) => !c.insertionSupported).map((c) => c.product)]}
+          seleccionado={selectedProductId}
+          onElegir={(id) => {
+            setProduct(id);
+            setError(null);
+            setExceptionMotive('');
+          }}
+        />
         {selectedOtherCandidate && (
           <div style={{
             marginTop: 8, padding: '6px 8px', borderRadius: 3, fontSize: 10,
