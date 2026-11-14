@@ -26,10 +26,14 @@
  * calcular (`trazado_entrada.py`: funcion, cable_id, cantidad, separado). Se
  * elige al guardar o después, y se guarda con el circuito. Un circuito sin cable
  * NO es un error: queda incompleto y se dice qué le falta (`faltaParaCalcular`).
- * No hay cable por defecto, y `separado` tampoco se presume (el motor lo exige
- * explícito: «no se presume la disposición»). La función es siempre "potencia":
- * el motor no acepta otra en los circuitos, y el PE se declara aparte. Enviar el
- * circuito al motor es la etapa 3.
+ * No hay cable por defecto.
+ *
+ * Etapa 3 (2026-11-13): la FUNCIÓN se elige — potencia, maniobra o
+ * instrumentación. Sólo los de potencia viajan al motor (D-11: mando y señal sin
+ * reglas); los otros se trazan, se miden y llevan su cable igual. `separado` va
+ * en false para todos (confirmado por el operador: dentro de cada grupo los
+ * cables van agrupados, en contacto — D-02); el dato queda por compatibilidad y
+ * no se elige (`motor/paraMotor.ts`).
  */
 import type { TrayInput } from '../../tray/model';
 import type { EquipmentElement } from '../../types/domain-v2';
@@ -58,19 +62,30 @@ export interface ExtremoEquipo { readonly equipo: string }
 /** Bajada usada por un circuito, congelada al guardar. */
 export interface BajadaGuardada { readonly id: string; readonly firma: string; readonly longitud_mm: number }
 
-/** Función del circuito: siempre "potencia" (única que acepta el motor; el PE va aparte). */
-export const FUNCION_CIRCUITO = 'potencia' as const;
-export const MOTIVO_FUNCION_FIJA =
-  'Siempre potencia: el motor sólo acepta circuitos de potencia; el conductor de protección (PE) se declara aparte, en su propia sección, para no contarlo dos veces.';
+/** Funciones de un circuito. Sólo "potencia" viaja al motor (D-11). El PE no es un circuito: va en su propia sección. */
+export const FUNCIONES_CIRCUITO = ['potencia', 'maniobra', 'instrumentacion'] as const;
+export type FuncionCircuito = (typeof FUNCIONES_CIRCUITO)[number];
+export const TEXTO_FUNCION: Readonly<Record<FuncionCircuito, string>> = {
+  potencia: 'Potencia',
+  maniobra: 'Maniobra',
+  instrumentacion: 'Instrumentación',
+};
+/** Por qué un circuito de maniobra o instrumentación no va al motor (cita la decisión del motor). */
+export const MOTIVO_D11 =
+  'D-11 del motor: los circuitos de mando y señal no tienen reglas de disposición ni de ocupación acordadas; el motor sólo calcula potencia. Se traza, se mide y lleva su cable igual.';
+export const NOTA_PE_APARTE = 'El conductor de protección (PE) no es un circuito: se declara aparte, en su propia sección, para no contarlo dos veces.';
 
 /** Cable del circuito (etapa 2). */
 export interface CableDeCircuito {
   readonly cable_id: string;
   /** Cantidad de cables de ese tipo en el circuito: entero positivo. */
   readonly cantidad: number;
-  /** Disposición en la bandeja: true separados (un diámetro libre entre cables), false juntos; null sin elegir. */
+  /**
+   * Disposición en la bandeja. Desde la etapa 3 es siempre false (en contacto, D-02, confirmado por el
+   * operador); se conserva el campo para los circuitos guardados en la etapa 2.
+   */
   readonly separado: boolean | null;
-  readonly funcion: typeof FUNCION_CIRCUITO;
+  readonly funcion: FuncionCircuito;
 }
 
 export interface CircuitoGuardado {
@@ -233,8 +248,8 @@ export function motivoCableInvalido(c: CableDeCircuito, idsCables?: readonly str
   if (typeof c.cable_id !== 'string' || !c.cable_id) return 'elegí el cable';
   if (idsCables && !idsCables.includes(c.cable_id)) return `el cable ${c.cable_id} no está en el catálogo de cables`;
   if (!Number.isInteger(c.cantidad) || c.cantidad < 1) return 'la cantidad tiene que ser un entero positivo';
-  if (c.separado !== null && typeof c.separado !== 'boolean') return 'indicá si los cables van separados o juntos';
-  if (c.funcion !== FUNCION_CIRCUITO) return 'la función del circuito es siempre potencia';
+  if (c.separado !== null && typeof c.separado !== 'boolean') return 'el dato de disposición del cable no es válido';
+  if (!(FUNCIONES_CIRCUITO as readonly string[]).includes(c.funcion)) return 'la función tiene que ser potencia, maniobra o instrumentación';
   return null;
 }
 
@@ -265,7 +280,6 @@ export function faltaParaCalcular(c: CircuitoGuardado, idsCables?: readonly stri
   if (!c.cable) return ['le falta el cable para poder calcular'];
   const out: string[] = [];
   if (idsCables && !idsCables.includes(c.cable.cable_id)) out.push(`el cable ${c.cable.cable_id} no está en el catálogo de cables`);
-  if (c.cable.separado === null) out.push('falta indicar si los cables van separados o juntos');
   return out;
 }
 
@@ -376,7 +390,7 @@ export function validarCircuitosDeArchivo(trayInput: unknown): void {
       const k = c.cable;
       const valido = esObj(k) && typeof k.cable_id === 'string' && k.cable_id.length > 0
         && Number.isInteger(k.cantidad) && (k.cantidad as number) >= 1
-        && (k.separado === null || typeof k.separado === 'boolean') && k.funcion === FUNCION_CIRCUITO;
+        && (k.separado === null || typeof k.separado === 'boolean') && (FUNCIONES_CIRCUITO as readonly unknown[]).includes(k.funcion);
       if (!valido) throw new Error(`el circuito ${nombre} tiene un cable con datos inválidos`);
     }
   }

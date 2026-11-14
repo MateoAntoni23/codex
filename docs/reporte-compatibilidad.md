@@ -62,7 +62,7 @@ CMP-01941, CMP-01942.
 | CMP-01242 | SAM_TXS-900-18-G | null | tapa | pendiente | No hay pieza de destino publicada para ancho 900 en la línea G. |
 | CMP-01387 | SAM_CU-TRES-TRL-G | null | con kit | pendiente | Transición documentada a nivel de línea (escalera Smarttray ↔ tradicional) sin indicar a qué TRES. |
 
-La app las ignora: no tienen par.
+La app las ignora: no tienen par. **IGNORADAS por decisión del operador (2026-11-13):** no son un pendiente.
 
 ## Filas «directa» que la regla deja de usar
 De las 1699 filas «directa», las únicas que no cumplen la regla son **180 entre rectos y reducciones**

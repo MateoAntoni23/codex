@@ -19,6 +19,11 @@
  * marcó como mezcla (`conexionesMezcla`), "conexiones no compatibles" sale de los
  * incumplimientos y esas conexiones se informan aparte (`mezclaNotes`). Si queda
  * alguna NO_COMPATIBLE por otro motivo, el incumplimiento se mantiene.
+ *
+ * RECORRIDOS DISCONTINUOS (discontinuidades.ts, 2026-11-14): una derivación en
+ * tramo no es una conexión para el motor. El incumplimiento NO se quita ni se
+ * traduce: se EXPLICA en el propio texto (si todas las discontinuidades son
+ * derivaciones en tramo, o cuáles no lo son).
  */
 export type Tone = 'ok' | 'neutral' | 'warn';
 
@@ -43,10 +48,22 @@ const isPeIssue = (s: string) => /\bPE\b/.test(s);
 
 import type { Product, TrayInput } from '../../tray/model';
 import { conexionesConMezcla } from '../mezclaAcabados';
+import { explicarDiscontinuos, incumplimientosExplicados } from './discontinuidades';
+import { indexProducts, pieceLabelById } from './displayNames';
+import { circuitosOf } from '../recorridos/circuitosGuardados';
 
 /** summarizeResult con las mezclas de acabados del trazado (lo que usan las vistas). */
 export function summarizeResultDe(result: unknown, entrada: TrayInput | null | undefined, productos: readonly Product[] | undefined): ResultSummaryView | null {
-  return summarizeResult(result, conexionesConMezcla(entrada, new Map((productos ?? []).map((p) => [p.producto_id, p]))));
+  return summarizeResult(result, conexionesConMezcla(entrada, new Map((productos ?? []).map((p) => [p.producto_id, p]))), explicacionDiscontinuosDe(result, entrada, productos));
+}
+
+/** El incumplimiento «recorridos discontinuos» explicado con los nombres visibles del proyecto. */
+export function explicacionDiscontinuosDe(result: unknown, entrada: TrayInput | null | undefined, productos: readonly Product[] | undefined): string | null {
+  const piezas = entrada?.piezas ?? [];
+  const idx = indexProducts(productos as Product[] | undefined);
+  const etiqueta = (id: string) => (piezas.some((p) => p.instancia_id === id) ? pieceLabelById(id, piezas, idx) : id);
+  const nombres = new Map(circuitosOf(entrada).map((c) => [c.id, `circuito "${c.nombre}"`]));
+  return explicarDiscontinuos(result, entrada, etiqueta, (id) => nombres.get(id) ?? (id.startsWith('PE-') ? `conductor ${id}` : `circuito ${id}`));
 }
 
 export const INCUMPLIMIENTO_NO_COMPATIBLES = 'conexiones no compatibles';
@@ -61,7 +78,7 @@ function noCompatiblePorREV032(c: unknown): boolean {
 
 const legible = (estado: string) => estado.split('_').join(' ').toLowerCase().replace(/^./, (c) => c.toUpperCase());
 
-export function summarizeResult(result: unknown, conexionesMezcla: ReadonlySet<string> = new Set()): ResultSummaryView | null {
+export function summarizeResult(result: unknown, conexionesMezcla: ReadonlySet<string> = new Set(), explicacionDiscontinuos: string | null = null): ResultSummaryView | null {
   if (!isObj(result) || !isObj(result.resumen)) return null;
   const resumen = result.resumen;
   const estado = typeof resumen.estado_trazado === 'string' ? resumen.estado_trazado : '';
@@ -70,7 +87,7 @@ export function summarizeResult(result: unknown, conexionesMezcla: ReadonlySet<s
     : [];
   const peUndefined = isObj(result.pe) && result.pe.estado_requisito === 'SIN_PE_DEFINIDO';
   const peNotes = peUndefined ? issues.filter(isPeIssue) : [];
-  let designIssues = peUndefined ? issues.filter((s) => !isPeIssue(s)) : issues;
+  let designIssues = incumplimientosExplicados(peUndefined ? issues.filter((s) => !isPeIssue(s)) : issues, explicacionDiscontinuos);
 
   // Mezcla de acabados declarada: NO_COMPATIBLE por REV-032 → aviso, sólo si son TODAS las NO_COMPATIBLE.
   const conex = isObj(result.conexiones) ? Object.entries(result.conexiones) : [];

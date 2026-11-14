@@ -15,6 +15,7 @@ import { useUiStore } from './uiStore';
 import { indexProducts, pieceLabelById } from './displayNames';
 import { reservaOf, ResultSummary } from './ResultadosPanel';
 import { StageSummary } from './shared';
+import { OcupacionSegregadaView, useOcupacionSegregada } from './BandaDivisoria';
 
 function EquiposSummary() {
   const elements = useWorkspaceStore((s) => s.elements);
@@ -108,9 +109,12 @@ function PieceResult({ id }: { id: string }) {
   const entrada = useTrayStore((s) => s.entrada);
   const context = useTrayStore((s) => s.context);
   const label = pieceLabelById(id, entrada?.piezas ?? [], indexProducts(context?.productos));
+  // Bandeja segregada (parte B): el motor no conoce la banda; su ocupación de esta pieza no se usa.
+  const segregada = useOcupacionSegregada()(id);
   const blocks: Array<[string, unknown]> = [];
   if (result) {
     for (const [k, v] of Object.entries(result)) {
+      if (segregada && k === 'ocupacion') continue;
       if (object(v) && id in v) blocks.push([k, v[id]]);
     }
     const pe = result.pe;
@@ -126,6 +130,13 @@ function PieceResult({ id }: { id: string }) {
       </div>
       {!result && <p className="stage-note">Sin resultados. Calculá el trazado.</p>}
       {result && status !== 'vigente' && <p className="stage-note tone-warn">Resultado no vigente: recalcular.</p>}
+      {segregada && (
+        <details open className="stage-card" data-testid="piece-result-segregada">
+          <summary>ocupación (bandeja segregada — cálculo de la app)</summary>
+          <p className="stage-note" style={{ whiteSpace: 'normal' }}>La del motor (sin la banda) no se usa: el motor no sabe que la banda existe.</p>
+          <OcupacionSegregadaView o={segregada} />
+        </details>
+      )}
       {result && blocks.length === 0 && <p className="stage-note">El motor no informa datos propios de esta pieza.</p>}
       {blocks.map(([k, v]) => (
         <details key={k} open className="stage-card">

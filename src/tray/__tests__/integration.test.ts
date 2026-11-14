@@ -75,12 +75,15 @@ describe('Catálogo estático y motor opcional (hito 1)',()=>{
   expect(mocks.transport).not.toHaveBeenCalled();
   expect(useTrayStore.getState().error).toMatch(/No hay piezas/);
  });
- it('toMotorEntrada omite el pe neutro en un proyecto con un tramo (el motor rechaza cable_id vacío)',()=>{
+ it('etapa 3: con piezas, el pe neutro NO viaja tal cual (el motor rechaza cable_id vacío): viaja el PE del trazado',()=>{
   const t=emptyTrayInput();
   t.piezas.push({instancia_id:'R1',producto_id:'SAM_TRPS-300-22-Z',longitud_mm:3000,puertos:{P1:{posicion_mm:[0,0,0],direccion:[-1,0,0]},P2:{posicion_mm:[3000,0,0],direccion:[1,0,0]}}});
   const out=toMotorEntrada(t);
-  expect('pe' in out).toBe(false);
+  expect(out.pe).toEqual(expect.objectContaining({seccion_requerida_mm2:16,cable_id:'PRY-SASTFLEX-CU-1x16',conductores:[{conductor_id:'PE-1',recorrido:['R1'],inicio:'SP-1',fin:null}]}));
+  expect((out.equipotencial as {puntos:unknown[]}).puntos).toEqual([expect.objectContaining({punto_id:'SP-1',tipo:'sistema_proteccion',conductores:['PE-1']})]);
   expect((out.piezas as unknown[]).length).toBe(1);
+  // Las claves del espacio de trabajo no viajan (incluidas las bajadas de la etapa 1).
+  expect(Object.keys(toMotorEntrada({...t,bajadas_ws:[],circuitos_ws:[]} as never)).filter(k=>k.endsWith('_ws'))).toEqual([]);
   // Con un PE definido sí viaja completo.
   t.pe={...t.pe,cable_id:'PRY-SASTFLEX-CU-1x16',seccion_requerida_mm2:16,conductores:[{conductor_id:'PE1',recorrido:['R1'],inicio:null,fin:null}]};
   expect('pe' in toMotorEntrada(t)).toBe(true);

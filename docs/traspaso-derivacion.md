@@ -32,8 +32,8 @@ de 10 vértices extruida 50 mm (ala 50).
 - **Boca medida: 451,584** (sobreancho 1,584). No coincidió con ninguna predicción: constante 451,315,
   sigue a la chapa 451,648, dos espesores 451,780.
 - **Ala:** venía extruida con **ala 65**, un error del operador. La perforada se fabrica en un solo ala
-  (50) y la fila del catálogo está bien. Se va a reexportar con ala 50; hasta entonces no se mide nada más
-  de ese archivo.
+  (50) y la fila del catálogo está bien. **La reexportación quedó IGNORADA por decisión del operador
+  (2026-11-13):** no se mide nada más de ese archivo y la 450 sigue sin STEP propio.
 - **Es un dibujo distinto, no la misma planta escalada:** todas sus cotas se corren una o dos décimas
   (profundidad 80,654; escalón de pestaña 5,001; huella N + 179,426) y ninguna corrida es múltiplo del
   cambio de chapa.

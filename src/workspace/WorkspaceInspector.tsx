@@ -30,6 +30,7 @@ import type { Piece, Support, TrayInput } from '../tray/model';
 import { object } from '../tray/model';
 import { rotatePiece, rotatePieceAroundAxis, normalizeDeg, type AxisKey, type PivotRef } from './pieceTransforms';
 import { indexProducts, pieceLabelById, portLabel, productLabel } from './stages/displayNames';
+import { BandaDivisoriaControl } from './stages/BandaDivisoria';
 
 /** Renders a Python result value as readable text, handling nested objects and arrays. */
 function formatResultValue(v: unknown, depth = 0): string {
@@ -754,6 +755,8 @@ export function PieceCard({ piece }: { piece: Piece }) {
           </div>
         </fieldset>
       ))}
+
+      <BandaDivisoriaControl piece={piece} />
 
       <RotatePieceControls piece={piece} entrada={entrada} />
 

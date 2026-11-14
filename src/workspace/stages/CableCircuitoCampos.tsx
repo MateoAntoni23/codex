@@ -1,31 +1,28 @@
 /**
  * Campos del cable de un circuito (etapa 2): selector en cascada línea → tipo →
- * formación, cantidad (entero positivo, por defecto 1), disposición en la bandeja
- * (separados / juntos, sin valor por defecto: el motor no la presume) y la
- * función, fija en potencia. Los usan el circuito entre equipos (al guardar) y la
- * tabla de Resultados (al editar).
+ * formación, cantidad (entero positivo, por defecto 1) y función (potencia,
+ * maniobra o instrumentación; sólo potencia va al motor, D-11). La disposición
+ * no se elige: en contacto para todos (D-02, confirmado por el operador). Los usan
+ * el circuito entre equipos (al guardar) y la tabla de Resultados (al editar).
  */
 import { useMemo } from 'react';
 import { useTrayStore } from '../../tray/store';
 import { formacionesDe, lineaCorta, lineas, textoFormacion, tiposDe, claveTipo, type CableCatalogo } from '../cables/catalogoCables';
-import { FUNCION_CIRCUITO, MOTIVO_FUNCION_FIJA, type CableDeCircuito } from '../recorridos/circuitosGuardados';
+import { FUNCIONES_CIRCUITO, MOTIVO_D11, NOTA_PE_APARTE, TEXTO_FUNCION, type CableDeCircuito, type FuncionCircuito } from '../recorridos/circuitosGuardados';
 
 export interface ValorCable {
   readonly linea: string;
   readonly tipo: string;
   readonly cable_id: string;
   readonly cantidad: string;
-  readonly separado: boolean | null;
+  readonly funcion: FuncionCircuito;
 }
 
-export const CABLE_VACIO: ValorCable = { linea: '', tipo: '', cable_id: '', cantidad: '1', separado: null };
+export const CABLE_VACIO: ValorCable = { linea: '', tipo: '', cable_id: '', cantidad: '1', funcion: 'potencia' };
 
-/** Etiquetas de `separado` en palabras del operador (D-01 / D-02 del motor). */
-export const TEXTO_SEPARADO = {
-  si: 'Separados: un diámetro de cable libre entre cada uno',
-  no: 'Juntos: tocándose, uno al lado del otro',
-  nota: 'Siempre en una sola capa (apilados no se calcula). Decide el ancho que ocupan en la bandeja.',
-} as const;
+/** Disposición de los cables en la bandeja, en palabras del operador (D-02 del motor). */
+export const TEXTO_DISPOSICION =
+  'Juntos, en contacto, en una sola capa (D-02). Confirmado por el operador para todos los grupos: no se elige.';
 
 /** Catálogo del contexto, o el motivo por el que no está. */
 export function useCatalogoCables(): { cables: readonly CableCatalogo[]; motivo: string | null } {
@@ -41,7 +38,7 @@ export function useCatalogoCables(): { cables: readonly CableCatalogo[]; motivo:
 export function valorDesdeCable(cables: readonly CableCatalogo[], c: CableDeCircuito | undefined): ValorCable {
   if (!c) return CABLE_VACIO;
   const k = cables.find((x) => x.cable_id === c.cable_id);
-  return { linea: k?.linea ?? '', tipo: k ? claveTipo(k) : '', cable_id: c.cable_id, cantidad: String(c.cantidad), separado: c.separado };
+  return { linea: k?.linea ?? '', tipo: k ? claveTipo(k) : '', cable_id: c.cable_id, cantidad: String(c.cantidad), funcion: c.funcion };
 }
 
 /** El dato a guardar, o el motivo por el que todavía no se puede. Sin cable elegido → null (circuito sin cable). */
@@ -49,7 +46,7 @@ export function cableDesdeValor(v: ValorCable): { ok: true; cable: CableDeCircui
   if (!v.cable_id) return { ok: true, cable: null };
   const n = Number(v.cantidad);
   if (!Number.isInteger(n) || n < 1) return { ok: false, motivo: 'la cantidad tiene que ser un entero positivo' };
-  return { ok: true, cable: { cable_id: v.cable_id, cantidad: n, separado: v.separado, funcion: FUNCION_CIRCUITO } };
+  return { ok: true, cable: { cable_id: v.cable_id, cantidad: n, separado: false, funcion: v.funcion } };
 }
 
 export function CableCircuitoCampos({ prefijo, valor, onChange }: { prefijo: string; valor: ValorCable; onChange: (v: ValorCable) => void }) {
@@ -89,20 +86,18 @@ export function CableCircuitoCampos({ prefijo, valor, onChange }: { prefijo: str
         <input type="number" min={1} step={1} className="inspector-input" style={{ width: 90 }} data-testid={`${prefijo}-cable-cantidad`}
           value={valor.cantidad} onChange={(e) => set({ cantidad: e.target.value })} />
       </label>
-      <fieldset className="stage-field" style={{ border: 0, padding: 0, margin: 0 }} data-testid={`${prefijo}-cable-separado`}>
-        <legend>Cómo van en la bandeja</legend>
-        <label className="stage-check">
-          <input type="radio" name={`${prefijo}-separado`} data-testid={`${prefijo}-cable-separado-si`} checked={valor.separado === true} onChange={() => set({ separado: true })} />
-          {TEXTO_SEPARADO.si}
-        </label>
-        <label className="stage-check">
-          <input type="radio" name={`${prefijo}-separado`} data-testid={`${prefijo}-cable-separado-no`} checked={valor.separado === false} onChange={() => set({ separado: false })} />
-          {TEXTO_SEPARADO.no}
-        </label>
-        <div className="stage-row-sub" style={{ whiteSpace: 'normal' }}>{TEXTO_SEPARADO.nota}</div>
-      </fieldset>
+      <label className="stage-field">
+        Función
+        <select className="inspector-input" data-testid={`${prefijo}-cable-funcion-select`} value={valor.funcion}
+          onChange={(e) => set({ funcion: e.target.value as FuncionCircuito })}>
+          {FUNCIONES_CIRCUITO.map((f) => <option key={f} value={f}>{TEXTO_FUNCION[f]}</option>)}
+        </select>
+      </label>
       <div className="stage-row-sub" style={{ whiteSpace: 'normal' }} data-testid={`${prefijo}-cable-funcion`}>
-        <strong>Función:</strong> potencia. {MOTIVO_FUNCION_FIJA}
+        {valor.funcion === 'potencia' ? 'Se calcula en el motor.' : `No va al motor: ${MOTIVO_D11}`} {NOTA_PE_APARTE}
+      </div>
+      <div className="stage-row-sub" style={{ whiteSpace: 'normal' }} data-testid={`${prefijo}-cable-disposicion`}>
+        <strong>En la bandeja:</strong> {TEXTO_DISPOSICION}
       </div>
     </div>
   );

@@ -130,18 +130,11 @@ persistido, ahora también desde esa nueva fuente.
 1. Elegir origen y destino haciendo clic en la escena, con el recorrido resaltado en 3D.
 2. Mover el grupo unido al rotar una pieza (hoy se pide confirmación y se descartan las uniones que dejan
    de cumplir).
-3. **Ángulo por instancia de las CAS — CONGELADO, no descartado.** Las 40 CAS (curvas de ángulo ajustable)
-   se usan y hoy quedan sin definición, así que no se pueden colocar. Se destraba cuando el operador
-   exporte **dos STEP de la misma CAS a ángulos distintos**. Lo que hay que hacer entonces (solo código):
-   - ángulo declarado al colocar, sin rango inventado, registrando quién lo declaró;
-   - el ángulo entra en la huella;
-   - sin modelo, el motivo es "curva de ángulo ajustable sin modelo geométrico; falta el STEP de la
-     pieza";
-   - no construir la CAS desde la curva de 90°.
-4. **DCPS-450 reexportada con ala 50.** La primera exportación vino con ala 65, un error del operador. Al
-   recibirla: extraerla, agregarla a `DCPS_LATERAL_MEDIDOS` y a `sobreanchoBoca.porModeloMedido` con su
-   sobreancho medido, como datos. La 450 pasa a ser medida y la 600 toma la 450 como su medido más
-   cercano. Ver `traspaso-derivacion.md`.
-5. **Procedencia de los STEP (abierto).** Hay que distinguir cuáles vienen de SAMET y cuáles dibujó el
-   operador, porque de eso depende si «lo medido» manda sobre «lo nominal». **Hasta aclararlo, ninguna
-   regla nueva puede apoyarse en diferencias menores a 0,5 mm entre dos modelos distintos.**
+
+## Cerrados o ignorados por decisión del operador (2026-11-13)
+- **Procedencia de los STEP — CERRADO.** El operador los dibujó a partir de los CAD que le dio SAMET. La
+  geometría medida tiene autoridad **al milímetro**, porque viene del fabricante, pero **no a la décima**,
+  porque pasó por un redibujo. La guarda queda **confirmada, no provisoria**: ninguna regla puede apoyarse
+  en diferencias menores a 0,5 mm entre dos modelos distintos.
+- **Ignorados (no son pendientes; no retomarlos):** la reexportación de la DCPS-450 con ala 50, el ángulo por
+  instancia de la curva ajustable CAS y las 3 filas de compatibilidad con producto nulo.
