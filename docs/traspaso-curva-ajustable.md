@@ -105,3 +105,15 @@ las pruebas tienen que fallar.
   - `masterModels`: inventario 16 → 17 maestros (escalera 7 → 8). La regla «variantes = parcial» es para
     polígonos medidos escalados por hipótesis: la CAS queda fuera, como la CUS (es regla del operador);
   - `huellas-cambios.json`: las 40 CAS pasan de «sin modelo» a su huella nueva, con el motivo.
+
+## Verify de cierre (2026-11-14, sobre `9ca105c`)
+
+Por pasos y en primer plano (en segundo plano el sistema lo corta por falta de memoria):
+tipos OK; vitest 1877/1877 (forks, 2 procesos: fijo en `vite.config.ts`); motor 190 OK (2 omitidas);
+Playwright en 8 tandas **129/129**, 0 fallos, 0 inestables.
+
+## Pendiente
+- Confirmar o ampliar el rango provisional 1°–90° (`ANGULO_AJUSTABLE_MAX`).
+- El ángulo al colocar se habilitó sólo para la CAS. La eslabonada sigue colocándose a 90° y
+  corrigiéndose después; habilitarlo también ahí es pasarle `anguloInstancia` en
+  `routingPlacementFromState` y mostrar el campo (el resto del camino ya es común).
