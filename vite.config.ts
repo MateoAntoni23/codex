@@ -36,5 +36,13 @@ export default defineConfig({
     environment: 'node',
     include: ['src/**/*.test.{ts,tsx}'],
     setupFiles: ['./src/test-setup.ts'],
+    // Procesos acotados a 2 (2026-11-14). Con los de por defecto (uno por núcleo, aislados
+    // por archivo: 122 archivos), el pico de memoria tiró el equipo de 8 GB: los procesos
+    // morían al arrancar (salida 3221225794, STATUS_DLL_INIT_FAILED) y la corrida de
+    // `npm run verify` se cortó por falta de memoria. La corrida limpia sobre 0e97bef
+    // (1841/1841) fue con forks y 2 procesos; queda escrita acá para que `npm test` y
+    // `npm run verify` corran igual. No subir sin medir la memoria del equipo.
+    pool: 'forks',
+    maxWorkers: 2,
   },
 })
