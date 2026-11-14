@@ -234,3 +234,18 @@
 .stage-summary-row { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; }
 .stage-summary-row dd { margin: 0; font-weight: 600; }
 .stage-next { margin-top: 10px; padding: 6px 8px; border: 1px solid var(--ws-border); border-radius: 4px; font-size: 12px; }
+
+/* ── Leyenda de colores por tipo (interfaz B5, 2026-11-14) ─────────────────── */
+.unified-workspace-canvas { position: relative; }
+.leyenda-colores, .leyenda-colores-mostrar {
+  position: absolute; left: 8px; bottom: 8px; z-index: 6; font-size: 11px;
+  background: var(--ws-panel); color: var(--ws-fg); border: 1px solid var(--ws-border); border-radius: 4px;
+}
+.leyenda-colores { padding: 4px 8px 6px; display: flex; flex-direction: column; gap: 3px; max-width: 240px; }
+.leyenda-colores-cabecera { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-weight: 700; color: var(--ws-fg-muted); }
+.leyenda-colores-cabecera button { background: transparent; color: var(--ws-fg); border: 0; cursor: pointer; font-size: 14px; line-height: 1; padding: 0 2px; }
+.leyenda-colores-fila { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+.leyenda-colores-fila input[type="color"] { width: 18px; height: 14px; padding: 0; border: 1px solid var(--ws-border); background: none; cursor: pointer; }
+.leyenda-colores-aviso { margin: 2px 0 0; color: var(--ws-warn); white-space: normal; }
+.leyenda-colores-restablecer, .leyenda-colores-mostrar { cursor: pointer; padding: 2px 8px; }
+.leyenda-colores-restablecer { background: var(--ws-surface); color: var(--ws-fg); border: 1px solid var(--ws-border); border-radius: 3px; font-size: 11px; align-self: flex-start; }

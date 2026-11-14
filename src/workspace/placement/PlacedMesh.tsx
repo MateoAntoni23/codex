@@ -12,6 +12,8 @@
 import { useLayoutEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import type { ThreeEvent } from '@react-three/fiber';
+import { Edges } from '@react-three/drei';
+import { COLOR_CONTORNO_SELECCION, EMISIVO_BASE, EMISIVO_SELECCION } from '../colores/coloresTipo';
 import { buildDefinitionGeometry, poseMatrix, worldPorts, type Mano, type Pose, type StoredDefinition } from './placementCore';
 import { buildLadderDefinitionGeometry } from './ladderDefinitionGeometry';
 
@@ -28,7 +30,7 @@ export function placedMeshMatrix(pose: Pose): THREE.Matrix4 {
 }
 
 export function PlacedMesh({
-  def, huella, mano, pose, userData, color, opacity, onClick, depthWrite = true, estilo = 'macizo',
+  def, huella, mano, pose, userData, color, opacity, onClick, depthWrite = true, estilo = 'macizo', selected = false,
 }: {
   def: StoredDefinition;
   huella: string;
@@ -40,6 +42,8 @@ export function PlacedMesh({
   onClick?: () => void;
   depthWrite?: boolean;
   estilo?: 'macizo' | 'escalera';
+  /** Selección (B3): contorno y realce; el color de relleno no cambia. */
+  selected?: boolean;
 }) {
   const geom = useMemo(
     () => (estilo === 'escalera' ? buildLadderDefinitionGeometry(def, mano) : buildDefinitionGeometry(def, mano)),
@@ -55,6 +59,8 @@ export function PlacedMesh({
     const ports = worldPorts(def, mano, pose);
     m.userData.codex = {
       ...userData,
+      color,
+      selected,
       huella,
       mano,
       mirrored: false, // la pose es siempre una rotación; la mano vive en la definición
@@ -64,7 +70,7 @@ export function PlacedMesh({
       placedP1: (ports.find((p) => p.name === 'P1') ?? ports[0])?.pos,
       placedP2: (ports.find((p) => p.name === 'P2') ?? ports[1] ?? ports[0])?.pos,
     };
-  }, [matrix, def, mano, pose, huella, userData]);
+  }, [matrix, def, mano, pose, huella, userData, color, selected]);
   useLayoutEffect(() => () => { geom.dispose?.(); }, [geom]);
   return (
     <mesh
@@ -73,7 +79,12 @@ export function PlacedMesh({
       onClick={onClick ? (e: ThreeEvent<MouseEvent>) => { e.stopPropagation(); onClick(); } : undefined}
     >
       <primitive object={geom} attach="geometry" />
-      <meshStandardMaterial color={color} transparent opacity={opacity} depthWrite={depthWrite} side={estilo === 'escalera' ? THREE.DoubleSide : THREE.FrontSide} />
+      <meshStandardMaterial
+        color={color} transparent opacity={opacity} depthWrite={depthWrite}
+        side={estilo === 'escalera' ? THREE.DoubleSide : THREE.FrontSide}
+        toneMapped={false} emissive={color} emissiveIntensity={selected ? EMISIVO_SELECCION : EMISIVO_BASE}
+      />
+      {selected && <Edges threshold={20} lineWidth={2.5} color={COLOR_CONTORNO_SELECCION} />}
     </mesh>
   );
 }

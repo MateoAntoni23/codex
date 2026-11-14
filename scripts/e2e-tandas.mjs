@@ -9,7 +9,8 @@
  * terminar: el techo de memoria queda acotado. No cambia qué se verifica.
  *
  * Uso:
- *   node scripts/e2e-tandas.mjs                 # 4 tandas, todas
+ *   node scripts/e2e-tandas.mjs                 # 8 tandas, todas (con 4, 116 pruebas no
+ *                                               # entraron en memoria: 2026-11-14)
  *   node scripts/e2e-tandas.mjs --tandas 5      # otra cantidad de tandas
  *   node scripts/e2e-tandas.mjs --solo 3        # solo la tanda 3 (1-based)
  *   node scripts/e2e-tandas.mjs --archivos a.spec.ts b.spec.ts   # tanda explícita
@@ -29,7 +30,7 @@ const valor = (flag) => {
   const i = args.indexOf(flag);
   return i >= 0 ? args[i + 1] : undefined;
 };
-const nTandas = Number(valor('--tandas') ?? 4);
+const nTandas = Number(valor('--tandas') ?? 8);
 const solo = valor('--solo') ? Number(valor('--solo')) : undefined;
 const iArch = args.indexOf('--archivos');
 const archivosExplicitos = iArch >= 0 ? args.slice(iArch + 1).filter((a) => !a.startsWith('--')) : undefined;

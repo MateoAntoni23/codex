@@ -22,6 +22,7 @@ import { isHorizontalCurve } from './pieceClassification';
 import { tieneDefinicion } from './placement/definitions';
 import { isPortDiagEnabled } from './portFrameDiag';
 import { PlacedMesh } from './placement/PlacedMesh';
+import { tipoColorDe, useColoresStore } from './colores/coloresTipo';
 import { isLadderFamily } from './ladderGeometry';
 import { routingPlacementFromState } from './placement/routingPlacementState';
 
@@ -97,19 +98,22 @@ function PreviewMesh({
   len,
   widthMm,
   alaMm,
+  color,
 }: {
   center: Point3;
   dirV: Point3;
   len: number;
   widthMm: number;
   alaMm: number;
+  color: string;
 }) {
   const quat = useMemo(() => alignToDir(dirV), [dirV[0], dirV[1], dirV[2]]);
   return (
     <mesh position={center} quaternion={quat}>
       <boxGeometry args={[len, alaMm / 1000, widthMm / 1000]} />
       <meshStandardMaterial
-        color="#ff9900"
+        color={color}
+        toneMapped={false}
         transparent
         opacity={0.35}
         depthWrite={false}
@@ -125,7 +129,7 @@ function PreviewMesh({
 
 // ─── Curve arc preview ────────────────────────────────────────────────────────
 
-function CurvePreviewMesh({ arcPoints, widthMm }: { arcPoints: THREE.Vector3[]; widthMm: number }) {
+function CurvePreviewMesh({ arcPoints, widthMm, color }: { arcPoints: THREE.Vector3[]; widthMm: number; color: string }) {
   const geometry = useMemo(() => {
     if (arcPoints.length < 2) return null;
     const curve = new THREE.CatmullRomCurve3(arcPoints);
@@ -135,7 +139,7 @@ function CurvePreviewMesh({ arcPoints, widthMm }: { arcPoints: THREE.Vector3[]; 
   if (!geometry) return null;
   return (
     <mesh geometry={geometry}>
-      <meshStandardMaterial color="#ff9900" transparent opacity={0.35} depthWrite={false} side={THREE.DoubleSide} />
+      <meshStandardMaterial color={color} toneMapped={false} transparent opacity={0.35} depthWrite={false} side={THREE.DoubleSide} />
     </mesh>
   );
 }
@@ -167,6 +171,10 @@ export function RoutingObjects() {
     () => context?.productos.find((p) => p.producto_id === selectedProductId),
     [context?.productos, selectedProductId],
   );
+  // B3: la vista previa sigue translúcida, con el color de SU tipo (no un naranja fijo).
+  const colores = useColoresStore((s) => s.colores);
+  const tipoPreview = tipoColorDe(selectedProduct, context?.familias);
+  const colorPreview = colores[tipoPreview];
 
   // A-1: la colocación del preview es EL cálculo (el mismo que guarda confirmar).
   const placement = useMemo(
@@ -274,12 +282,13 @@ export function RoutingObjects() {
           huella={placement.huella}
           mano={placement.colocacion.mano}
           pose={placement.colocacion.pose}
-          color="#ff9900"
+          color={colorPreview}
           opacity={isPortDiagEnabled() ? 0.2 : 0.35}
           depthWrite={false}
           userData={{
             kind: 'parametric-preview',
             sku: selectedProduct.sku,
+            tipoColor: tipoPreview,
             turnDirection,
             entryPortName: placement.entryPortName,
           }}
@@ -306,11 +315,12 @@ export function RoutingObjects() {
             len={previewData.len}
             widthMm={selectedProduct?.ancho_nominal_mm ?? 150}
             alaMm={ala}
+            color={colorPreview}
           />
         );
       })()}
       {previewData?.type === 'curve' && (
-        <CurvePreviewMesh arcPoints={previewData.arcPoints} widthMm={previewData.widthMm} />
+        <CurvePreviewMesh arcPoints={previewData.arcPoints} widthMm={previewData.widthMm} color={colorPreview} />
       )}
     </group>
   );

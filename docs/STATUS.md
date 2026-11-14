@@ -31,6 +31,14 @@ Rama `feat/m2-colocacion-persistida` (base `b5c444a`). Una página: qué funcion
   marca en la escena desde su fila.
 - **Selección de otra etapa**: cambia de etapa automáticamente (una pieza en Resultados se queda).
 - **Tema oscuro/claro** guardado por navegador, fuera del archivo; contraste AA medido en E2E.
+- **Color por tipo de bandeja** (interfaz B, `docs/traspaso-interfaz.md`): perforada celeste, escalera
+  rojo, alambre ámbar, herrajes y soportes gris; por tipo constructivo de la familia, no por acabado.
+  Configurable desde la leyenda de la escena (ocultable); preferencia por navegador, fuera del
+  archivo. Selección = contorno blanco + realce, sin cambiar el relleno; vista previa translúcida con
+  el color de su tipo. Distinción medida sobre píxeles dibujados (ΔE2000 y contraste, también con
+  protanopía y deuteranopía): `e2e/output/interfaz-B-colores.json`.
+- **Paneles al alcance real a 1366×768**: el inspector y la lista se desplazan; cabecera y botón de
+  confirmar siempre a la vista; probado sin desplazamiento programático (`interfazAlcance`).
 - **Nombres visibles**: SKU con número de orden en lugar de `instancia_id`; `physicalLabel` del
   maestro para las bocas; "Sin dato" para datos ausentes; conflictos del Excel abiertos y visibles.
 - **Resultados**: "PE sin definir" en tono neutro cuando el motor informa `SIN_PE_DEFINIDO`.

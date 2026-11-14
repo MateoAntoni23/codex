@@ -282,17 +282,21 @@ test.describe('Hito 1b — interfaz por etapas', () => {
     await expect(pieceRow).toBeInViewport();
     await expect(page.getByTestId('piece-title')).toBeVisible();
 
-    // B4 pieza: clic en la lista → color de selección en la escena.
+    // B4 pieza: clic en la lista → selección marcada en la escena. (Interfaz B3, 2026-11-14:
+    // la selección ya no es relleno amarillo sino contorno + realce sobre el color del tipo;
+    // se verifica lo mismo —que la pieza elegida en la lista queda marcada en la escena— por
+    // su contorno, y que el contorno está SÓLO en ella.)
     const other = await page.evaluate(() => (window as unknown as { __codex: { trayStore: { getState: () => { entrada: { piezas: Array<{ instancia_id: string }> } } } } }).__codex.trayStore.getState().entrada.piezas[1].instancia_id);
     await clickOwn(page, 'bandejas', page.locator(`[data-row-key="piece:${other}"]`));
-    await expect.poll(() => page.evaluate((id) => {
-      let ok = false;
+    await expect.poll(() => page.evaluate(() => {
+      const marcadas = new Set<string>();
       (window as unknown as { __codex: { scene: { traverse: (f: (o: unknown) => void) => void } } }).__codex.scene.traverse((o) => {
-        const m = o as { userData?: { codex?: { instanciaId?: string } }; material?: { color?: { getHexString: () => string } } };
-        if (m.userData?.codex?.instanciaId === id && m.material?.color?.getHexString() === 'ffcf33') ok = true;
+        const m = o as { userData?: { codex?: { instanciaId?: string } }; material?: unknown; children?: Array<{ type: string }> };
+        const id = m.userData?.codex?.instanciaId;
+        if (id && m.material && m.children?.some((c) => /Line/.test(c.type))) marcadas.add(id);
       });
-      return ok;
-    }, other)).toBe(true);
+      return [...marcadas];
+    })).toEqual([other]);
   });
 
   test('B5 — tema: cambia, persiste al recargar, no altera el archivo; contraste AA', async ({ page }) => {

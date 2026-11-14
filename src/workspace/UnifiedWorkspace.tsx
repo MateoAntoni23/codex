@@ -14,6 +14,7 @@ import { PlantaPanel } from './stages/PlantaPanel';
 import { BandejasPanel } from './stages/BandejasPanel';
 import { ConexionesPanel } from './stages/ConexionesPanel';
 import { ResultadosPanel } from './stages/ResultadosPanel';
+import { LeyendaColores } from './colores/LeyendaColores';
 import { PanelInferior } from './stages/PanelInferior';
 import { useUiStore } from './stages/uiStore';
 import './stages/stages.css';
@@ -293,6 +294,7 @@ export function UnifiedWorkspace() {
             <WorkspaceScene />
             <OrbitControls makeDefault />
           </Canvas>
+          <LeyendaColores />
         </main>
 
         <aside className="unified-workspace-inspector ws-panel" aria-label="Inspector">
