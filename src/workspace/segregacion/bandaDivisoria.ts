@@ -6,7 +6,9 @@
  * familia SAM-SMT-ACC, compatibles SÓLO con rectas, «accesorio interior»):
  *   - escalera: BDS090G / BDS115G (espesor 1,24 mm), BDS090Z / BDS115Z (0,71 mm),
  *     por ala (90 / 115);
- *   - perforada: BDS01Z, código único SIN espesor publicado.
+ *   - perforada: BDS01Z, código único SIN espesor publicado en el catálogo. Su
+ *     espesor es 0,71 mm DECLARADO POR EL OPERADOR (2026-11-14) por analogía con
+ *     la chapa de la bandeja perforada — no medido (`ESPESORES_DECLARADOS`).
  *
  * REGLA DEL OPERADOR, declarada con esa procedencia (`PROCEDENCIA_REGLA`):
  *   - al ancho útil se le descuenta primero el espesor de la banda;
@@ -32,7 +34,9 @@
  *     (W = Σ n·D, como D-02). Reserva con el criterio del motor (D-05:
  *     W ≤ (1 − r)·W_grupo) sobre el ancho del grupo. Altura: el diámetro mayor
  *     contra el ala nominal (como el motor, D-08).
- *   - Sin espesor publicado (BDS01Z) no se calcula: NO VERIFICABLE, con el motivo.
+ *   - Espesor: el del catálogo; si no lo publica, el declarado por el operador
+ *     con su procedencia (BDS01Z). Sin ninguno de los dos no se calcula: NO
+ *     VERIFICABLE, con el motivo.
  *
  * Cómputo: una banda por tramo segregado (la banda SÍ se computa). El catálogo no
  * publica longitud comercial ni unidad de compra: se informa la longitud a cubrir.
@@ -55,6 +59,25 @@ export const CRITERIO_OCUPACION =
   'Cada grupo: cables en contacto en una sola capa, W = Σ n·D (como D-02 del motor); reserva con el criterio del motor (D-05: W ≤ (1 − r)·W_grupo) sobre el ancho del grupo; altura contra el ala nominal (D-08).';
 export const NOTA_COMPUTO =
   'Una banda por tramo segregado. El catálogo no publica longitud comercial ni unidad de compra de la banda: se informa la longitud a cubrir. La fijación (JB-CC-M6 en escalera) no declara cantidad.';
+
+/**
+ * Espesores de banda que el catálogo no publica, declarados por el operador.
+ * BDS01Z: 0,71 mm por analogía con la chapa de la bandeja perforada; no es una medida.
+ */
+export const ESPESORES_DECLARADOS: Readonly<Record<string, { readonly mm: number; readonly procedencia: string }>> = {
+  SAM_BDS01Z: {
+    mm: 0.71,
+    procedencia: 'declarado por el operador (2026-11-14) por analogía con la chapa de la bandeja perforada; no medido',
+  },
+};
+
+/** Espesor de una banda: el del catálogo o, si no lo publica, el declarado por el operador. null si no hay ninguno. */
+export function espesorDeBanda(p: Product | undefined): { mm: number; procedencia: string } | null {
+  if (!p) return null;
+  const e = (p as Record<string, unknown>).espesor_chapa_mm;
+  if (typeof e === 'number' && e > 0) return { mm: e, procedencia: 'catálogo' };
+  return ESPESORES_DECLARADOS[p.producto_id] ?? null;
+}
 
 export interface Banda { readonly pieza: string; readonly producto_id: string; readonly creado_iso: string }
 
@@ -124,7 +147,7 @@ export interface OcupacionGrupo {
 export type OcupacionSegregada =
   | {
       readonly pieza: string; readonly banda: string; readonly calculada: true;
-      readonly espesor_banda_mm: number; readonly ancho_util_mm: number; readonly base_ancho: 'util' | 'nominal';
+      readonly espesor_banda_mm: number; readonly espesor_procedencia: string; readonly ancho_util_mm: number; readonly base_ancho: 'util' | 'nominal';
       readonly ancho_disponible_mm: number; readonly ala_mm: number | null; readonly reserva_solicitada_pct: number | null;
       readonly grupos: readonly OcupacionGrupo[];
       readonly excluidos: ReadonlyArray<{ nombre: string; motivo: string }>;
@@ -151,10 +174,11 @@ export function ocupacionSegregada(
   const p = entrada.piezas.find((x) => x.instancia_id === pieza);
   const tp = p ? productos.get(p.producto_id) : undefined;
   if (!p || !tp) return { pieza, banda: sku, calculada: false, motivo: 'la pieza ya no está en el trazado' };
-  const e = (bp as Record<string, unknown> | undefined)?.espesor_chapa_mm;
-  if (typeof e !== 'number' || !(e > 0)) {
+  const esp = espesorDeBanda(bp);
+  if (!esp) {
     return { pieza, banda: sku, calculada: false, motivo: `NO VERIFICABLE: el catálogo no publica el espesor de la ${sku}, y la regla del operador lo descuenta primero del ancho útil` };
   }
+  const e = esp.mm;
   const util = (tp as Record<string, unknown>).ancho_util_mm;
   const base: 'util' | 'nominal' = typeof util === 'number' ? 'util' : 'nominal';
   const W = typeof util === 'number' ? util : tp.ancho_nominal_mm;
@@ -205,7 +229,7 @@ export function ocupacionSegregada(
     return { grupo: g, cables: cables[g], n_cables: ng, ancho_asignado_mm: red(asignado), ancho_ocupado_mm: red(ocupado), diametro_max_mm: dMax,
       reserva_libre_pct: red(libre), cabe, cumple_reserva: cumple, estado };
   });
-  return { pieza, banda: sku, calculada: true, espesor_banda_mm: e, ancho_util_mm: W, base_ancho: base, ancho_disponible_mm: red(disponible),
+  return { pieza, banda: sku, calculada: true, espesor_banda_mm: e, espesor_procedencia: esp.procedencia, ancho_util_mm: W, base_ancho: base, ancho_disponible_mm: red(disponible),
     ala_mm: ala, reserva_solicitada_pct: rPct, grupos, excluidos };
 }
 

@@ -301,5 +301,28 @@ test.describe('Etapa 3 A — cálculo del motor', () => {
     await expect(page.getByTestId('piece-result').locator('summary', { hasText: /^ocupacion$/ })).toHaveCount(0);
     await page.screenshot({ path: resolve(OUT_DIR, 'calculo-motor-03-segregada.png'), fullPage: true });
   });
+
+  test('perforada segregada con BDS01Z: espesor 0,71 mm declarado por el operador por analogía, con esa procedencia', async ({ page }) => {
+    await abrir(page);
+    await page.getByTestId('stage-tab-bandejas').click();
+    await page.getByTestId('tool-bandejas-tramo').click();
+    await page.getByTestId('add-product-select').selectOption('SAM_TRPS-300-22-Z');
+    await page.getByRole('button', { name: 'Crear tramo' }).click();
+    await expect.poll(async () => (await piezas(page)).length).toBe(1);
+    const [r1] = await piezas(page);
+    await page.getByTestId('tool-bandejas-seleccionar').click();
+    await page.evaluate((id) => {
+      (window as unknown as { __codex: { workspaceStore: { getState: () => { selectTray: (id: string) => void } } } }).__codex.workspaceStore.getState().selectTray(id);
+    }, r1.instancia_id);
+    await expect(page.getByTestId('banda-producto').locator('option')).toHaveText([
+      'BDS01Z (espesor 0.71 mm, declarado por el operador (2026-11-14) por analogía con la chapa de la bandeja perforada; no medido)',
+    ]);
+    await page.getByTestId('banda-colocar').click();
+    await page.getByTestId('stage-tab-resultados').click();
+    const seg = page.getByTestId('segregadas');
+    await expect(seg.getByTestId('segregada-no-verificable')).toHaveCount(0);
+    await expect(seg.getByTestId('segregada-espesor-procedencia')).toHaveText('(declarado por el operador (2026-11-14) por analogía con la chapa de la bandeja perforada; no medido)');
+    await expect(seg.getByTestId('segregada-ocupacion')).toContainText('− espesor 0,71 mm');
+  });
 });
 
