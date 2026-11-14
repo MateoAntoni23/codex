@@ -46,7 +46,7 @@ export function FormularioInspector({ f }: { f: Formulario }) {
   }
   return (
     <div className="inspector-panel" data-testid={`formulario-${f.tipo}`}>
-      <div className="inspector-header" style={{ display: 'flex', alignItems: 'center' }}>
+      <div className="inspector-header inspector-fijo-arriba" style={{ display: 'flex', alignItems: 'center' }}>
         <span className="inspector-title" style={{ flex: 1 }}>{TITULO[f.tipo]}</span>
         <button type="button" data-testid="formulario-cerrar" onClick={cerrar} title="Cerrar (Esc)">Cerrar</button>
       </div>

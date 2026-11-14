@@ -96,10 +96,12 @@ export function BajadaForm({ tronco, equipo: equipoInicial }: { tronco?: string;
       <p className="stage-note" style={{ whiteSpace: 'normal' }}>
         La bajada es un tramo recto desde el punto de salida hasta el centro del equipo. Es cable al aire o por caño, no bandeja: cuenta en la longitud del circuito y no computa ninguna pieza.
       </p>
-      <button type="button" className="stage-primary" data-testid="baj-crear" onClick={crear} disabled={!equipo || !punto.tronco || punto.distancia === ''}>
-        Crear enlace
-      </button>
-      {msg && <p className={`stage-note${msg.ok ? '' : ' tone-warn'}`} role="status" data-testid="baj-msg">{msg.texto}</p>}
+      <div className="inspector-fijo-abajo">
+        <button type="button" className="stage-primary" data-testid="baj-crear" onClick={crear} disabled={!equipo || !punto.tronco || punto.distancia === ''}>
+          Crear enlace
+        </button>
+        {msg && <p className={`stage-note${msg.ok ? '' : ' tone-warn'}`} role="status" data-testid="baj-msg">{msg.texto}</p>}
+      </div>
     </div>
   );
 }
@@ -271,7 +273,7 @@ export function CircuitoEquiposSection() {
             <summary>Cable del circuito (se puede elegir después; sin cable queda incompleto)</summary>
             <CableCircuitoCampos prefijo="circuito" valor={cable} onChange={setCable} />
           </details>
-          <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+          <div className="inspector-fijo-abajo" style={{ display: 'flex', gap: 6, marginTop: 6 }}>
             <input
               type="text"
               className="inspector-input"

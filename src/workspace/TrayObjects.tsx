@@ -178,7 +178,7 @@ function PieceVisual({
     return (
       <group>
         <LadderPiece piece={piece} product={product} selected={selected} onClick={onClick} />
-        {colocacion?.estado === 'sin_resolver' && <UnresolvedMarker piece={piece} motivo={colocacion.motivo} />}
+        {colocacion?.estado === 'sin_resolver' && <UnresolvedMarker piece={piece} selected={selected} motivo={colocacion.motivo} />}
       </group>
     );
   }
@@ -187,7 +187,7 @@ function PieceVisual({
     const nominal = placed.def.procedencia?.tipo === 'nominal';
     return (
       <group>
-      {nominal && <UnresolvedMarker piece={piece} motivo={placed.def.procedencia!.nota} titulo="Geometría nominal" tipo="nominal" />}
+      {nominal && <UnresolvedMarker piece={piece} selected={selected} motivo={placed.def.procedencia!.nota} titulo="Geometría nominal" tipo="nominal" />}
       <PlacedMesh
         def={placed.def}
         huella={placed.colocacion.definicion.huella}
@@ -236,8 +236,8 @@ function PieceVisual({
   return (
     <group>
       {fallback}
-      {colocacion?.estado === 'sin_resolver' && <UnresolvedMarker piece={piece} motivo={colocacion.motivo} />}
-      {angleIssue && <UnresolvedMarker piece={piece} motivo={angleIssue.motivo} titulo="Modelo no resuelto" />}
+      {colocacion?.estado === 'sin_resolver' && <UnresolvedMarker piece={piece} selected={selected} motivo={colocacion.motivo} />}
+      {angleIssue && <UnresolvedMarker piece={piece} selected={selected} motivo={angleIssue.motivo} titulo="Modelo no resuelto" />}
     </group>
   );
 }
@@ -245,9 +245,11 @@ function PieceVisual({
 /**
  * A-10: marcador visible de una pieza "sin resolver" (no encajó al migrar) o
  * con modelo no resuelto (giro medido ≠ declarado): conserva sus bocas y se
- * dibuja con este aviso y su motivo en su centro.
+ * dibuja con este aviso en su centro. En la escena sólo la etiqueta corta (con
+ * varias piezas, los motivos completos tapaban la escena, 2026-11-14); el motivo
+ * se despliega al seleccionar la pieza. Queda por debajo de los paneles.
  */
-function UnresolvedMarker({ piece, motivo, titulo = 'Sin resolver', tipo = 'unresolved' }: { piece: Piece; motivo: string; titulo?: string; tipo?: 'unresolved' | 'nominal' }) {
+function UnresolvedMarker({ piece, motivo, titulo = 'Sin resolver', tipo = 'unresolved', selected = false }: { piece: Piece; motivo: string; titulo?: string; tipo?: 'unresolved' | 'nominal'; selected?: boolean }) {
   const nominal = tipo === 'nominal';
   const ports = Object.values(piece.puertos);
   if (!ports.length) return null;
@@ -261,14 +263,19 @@ function UnresolvedMarker({ piece, motivo, titulo = 'Sin resolver', tipo = 'unre
         <octahedronGeometry args={[0.18, 0]} />
         <meshBasicMaterial color={nominal ? '#e0b040' : '#ff5a4f'} wireframe />
       </mesh>
-      <Html center style={{ pointerEvents: 'none' }} position={[0, 0.3, 0]}>
+      <Html center zIndexRange={[5, 0]} style={{ pointerEvents: 'none' }} position={[0, 0.3, 0]}>
         <div
           data-testid={nominal ? 'nominal-marker' : 'unresolved-marker'}
+          data-desplegado={selected ? 'true' : 'false'}
           title={motivo}
-          style={{ background: nominal ? 'rgba(50,40,0,0.85)' : 'rgba(60,0,0,0.85)', color: nominal ? '#ffe9b0' : '#ffd0cc', fontSize: 10, padding: '2px 6px', borderRadius: 3, maxWidth: 260 }}
+          style={{
+            background: nominal ? 'rgba(50,40,0,0.8)' : 'rgba(60,0,0,0.8)', color: nominal ? '#ffe9b0' : '#ffd0cc',
+            fontSize: 10, lineHeight: 1.25, padding: selected ? '2px 6px' : '1px 5px', borderRadius: 3,
+            maxWidth: selected ? 260 : undefined, whiteSpace: selected ? 'normal' : 'nowrap',
+          }}
         >
-          <strong>{titulo}</strong>
-          <div style={{ fontSize: 9, opacity: 0.9 }}>{motivo}</div>
+          <strong>⚠ {titulo}</strong>
+          {selected && <div style={{ fontSize: 9, opacity: 0.9 }} data-testid="marker-motivo">{motivo}</div>}
         </div>
       </Html>
     </group>

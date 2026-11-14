@@ -901,12 +901,13 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
         </>
       )}
 
+      <div className="inspector-fijo-abajo" data-testid="routing-pie">
       {error && (
         <div style={{ color: '#ff7755', marginBottom: 8, fontSize: 11 }}>{error}</div>
       )}
-
       <div style={{ display: 'flex', gap: 6 }}>
         <button
+          data-testid="routing-confirmar"
           style={{
             flex: 1, padding: '5px 0', fontSize: 12, background: '#1f3322',
             color: 'white', border: '1px solid #336644', borderRadius: 3, cursor: 'pointer',
@@ -927,6 +928,7 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
         >
           Cancelar
         </button>
+      </div>
       </div>
     </div>
   );
@@ -1347,7 +1349,7 @@ export function RoutingPanel() {
 
   return (
     <div className="inspector-panel" style={{ padding: 0 }}>
-      <div className="inspector-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div className="inspector-header inspector-fijo-arriba" data-testid="routing-cabecera" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <span style={{ fontSize: 11, fontWeight: 600, color: '#ff9900' }}>
           ● Continuando trazado
         </span>

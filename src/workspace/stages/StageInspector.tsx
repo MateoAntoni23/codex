@@ -225,7 +225,7 @@ export function StageInspector() {
   return (
     <div className="panel panel-right stage-inspector" data-testid={`inspector-${stage}`}>
       <div className="panel-title">Inspector</div>
-      {body}
+      <div className="stage-inspector-cuerpo" data-testid="inspector-cuerpo">{body}</div>
     </div>
   );
 }

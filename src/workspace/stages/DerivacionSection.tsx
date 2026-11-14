@@ -79,7 +79,7 @@ export function DerivacionForm({ onClose, tronco: troncoInicial }: { onClose: ()
       <p className="stage-note" style={{ whiteSpace: 'normal' }}>
         Se coloca sólo la derivación y su boca queda libre: lo que sigue se continúa desde esa boca, como desde cualquier accesorio.
       </p>
-      <div style={{ display: 'flex', gap: 6 }}>
+      <div className="inspector-fijo-abajo" style={{ display: 'flex', gap: 6 }}>
         <button type="button" className="stage-primary" data-testid="der-crear" onClick={crear} disabled={!tronco || !ancho || distancia === ''}>Crear derivación</button>
         <button type="button" onClick={onClose}>Cerrar</button>
       </div>

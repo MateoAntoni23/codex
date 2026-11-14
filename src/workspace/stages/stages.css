@@ -120,10 +120,16 @@
 /* ── Barra de proyecto ─────────────────────────────────────────────────────── */
 .ws-chrome { flex-shrink: 0; border-bottom: 1px solid var(--ws-border); }
 .project-bar {
-  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
-  padding: 6px 12px; min-height: 40px; font-size: 12px;
+  /* Una fila siempre (1366 incluido): lo que no entra se recorta con «…», no salta de línea. */
+  display: flex; align-items: center; gap: 10px; flex-wrap: nowrap; white-space: nowrap;
+  padding: 6px 12px; min-height: 40px; font-size: 12px; min-width: 0;
 }
-.project-name { font-weight: 700; font-size: 14px; max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.project-bar > * { flex-shrink: 0; }
+.project-name { font-weight: 700; font-size: 14px; max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex-shrink: 1 !important; min-width: 80px; }
+.project-dirty { font-weight: 700; font-size: 12px; margin-left: -6px; }
+.unified-workspace .project-controls { flex-wrap: nowrap; flex-shrink: 1 !important; min-width: 0; }
+.unified-workspace .project-controls > * { flex-shrink: 0; }
+.unified-workspace .project-controls > .project-message { flex-shrink: 1; min-width: 40px; overflow: hidden; text-overflow: ellipsis; }
 .project-bar-spacer { flex: 1; }
 .project-bar button, .history-controls button, .theme-toggle, .dev-menu summary, .stage-actions button,
 .stage-tools button, .stage-panel .stage-primary {
@@ -154,7 +160,12 @@
 .stage-error { padding: 4px 12px; font-size: 12px; }
 
 /* ── Paneles de etapa ──────────────────────────────────────────────────────── */
-.unified-workspace .unified-workspace-body { grid-template-columns: 260px 1fr 320px; }
+.unified-workspace .unified-workspace-body { grid-template-columns: 260px 1fr 320px; grid-template-rows: minmax(0, 1fr); }
+/* Los costados se achican por debajo de su contenido y se desplazan (sin min-height:0, un hijo
+   de grid/flex nunca se achica y lo que no entra queda fuera de alcance). */
+.unified-workspace .unified-workspace-body > aside { min-height: 0; }
+.unified-workspace .unified-workspace-tree { overflow-y: auto; overscroll-behavior: contain; }
+.unified-workspace .unified-workspace-inspector { overflow: hidden; display: flex; flex-direction: column; }
 
 /* ── Panel inferior (tablas anchas, interfaz 2026-11-14) ───────────────────── */
 .panel-inferior { flex-shrink: 0; border-top: 1px solid var(--ws-border); display: flex; flex-direction: column; }
@@ -205,7 +216,18 @@
 .import-filters input { width: 100%; padding: 3px 6px; }
 
 /* ── Inspector ─────────────────────────────────────────────────────────────── */
-.stage-inspector { height: 100%; }
+.stage-inspector {
+  /* Inspector (2026-11-14): título fijo, cuerpo que se desplaza. `.panel` (global.css) trae
+     overflow:hidden y height:100%: sin esto el contenido que no entra queda recortado. */
+  flex: 1; min-height: 0; height: auto !important; display: flex; flex-direction: column; overflow: hidden;
+}
+.stage-inspector > .panel-title { flex-shrink: 0; }
+.stage-inspector-cuerpo { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+/* Cabecera (qué se está haciendo, Cancelar) y pie (confirmar) siempre visibles: lo que se desplaza es el medio. */
+.inspector-fijo-arriba { position: sticky; top: 0; z-index: 2; }
+.inspector-fijo-abajo { position: sticky; bottom: 0; z-index: 2; padding: 6px 0; border-top: 1px solid var(--ws-border); }
+.unified-workspace .ws-panel .inspector-fijo-arriba,
+.unified-workspace .ws-panel .inspector-fijo-abajo { background-color: var(--ws-panel) !important; }
 .stage-summary { padding: 8px 12px; }
 .stage-summary-title { font-size: 14px; font-weight: 700; margin: 0 0 6px; }
 .stage-summary-rows { display: grid; gap: 2px; margin: 0; }
