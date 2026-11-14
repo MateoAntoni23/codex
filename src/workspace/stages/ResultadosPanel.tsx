@@ -20,6 +20,7 @@ import { completarComponentesMezclas, PROCEDENCIA_COMPONENTES_MEZCLA } from '../
 import { Section } from './shared';
 import { CircuitosTabla } from './CircuitosTabla';
 import { CalculoMotorSection, CircuitosAlMotor } from './CalculoMotor';
+import { BandejasSegregadasSection } from './BandaDivisoria';
 import { unionsOf } from '../workspaceOperation';
 import { indexProducts, pieceLabelById } from './displayNames';
 import { placedOf } from '../placement/definitions';
@@ -298,6 +299,7 @@ export function ResultadosPanel() {
       <ExceptionsList />
       <CircuitosTabla />
       <CircuitosAlMotor />
+      <BandejasSegregadasSection />
       <CalculoMotorSection />
       <NominalList />
       <AvisosModeloList />

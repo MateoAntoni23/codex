@@ -67,3 +67,40 @@ e incluye los commits del #6 hasta que se fusione.
     pantalla; PE con cobertura completa; maniobra con su longitud y D-11;
   - `etapas` B6 reescrita: sin PE declarado, el motor da preselección condicionada;
   - `cablesCircuito`: elige la función; la disposición es fija.
+
+## Parte B — segregación con banda divisoria (`workspace/segregacion/bandaDivisoria.ts`)
+- **Piezas:** BDS090G y BDS115G (espesor 1,24 mm), BDS090Z y BDS115Z (0,71 mm) para escalera de ala 90 y 115;
+  BDS01Z para perforada. Todas tipo «separador», compatibles **sólo con rectas** («accesorio interior»). Ala 65 y
+  ala 150 no tienen banda. Se coloca desde la ficha del tramo (Bandejas → «Banda divisoria»): una por tramo,
+  sólo si el catálogo declara la compatibilidad.
+- **Regla del operador**, con esa procedencia en pantalla: al ancho útil se le descuenta primero el espesor de
+  la banda, y lo que queda se reparte entre los grupos **según la cantidad de cables** de cada grupo. Grupos:
+  potencia | maniobra + instrumentación.
+- **El motor no sabe que la banda existe:** `bandas_ws` no viaja, no se declara como accesorio y no cambia el
+  ancho. La ocupación de una bandeja segregada la calcula la **app**, marcada como «cálculo de la app». En
+  «Cálculo del motor» y en el inspector de la pieza, la ocupación que el motor dio para esa pieza (sin banda)
+  se reemplaza por la de la app, con el aviso de que no se usa.
+- **Criterios de la app** (declarados como tales, no del operador):
+  - el PE va en el grupo de potencia y cuenta como un cable;
+  - ancho útil = el del catálogo si existe, si no el nominal (como D-04). Las rectas no publican útil: nominal;
+  - ocupación por grupo W = Σ n·D (contacto, como D-02); reserva con el criterio D-05 sobre el ancho del grupo;
+    altura contra el ala (D-08);
+  - un circuito sin cable o desactualizado que cruza la pieza no se cuenta y se nombra.
+- **BDS01Z (perforada) no publica espesor:** la ocupación de una perforada segregada queda **NO VERIFICABLE**,
+  con el motivo. Hace falta el **espesor de la BDS01Z en mm** para calcularla.
+- **Cómputo:** la banda SÍ se computa, «[AGREGADA POR LA APP]», una por tramo segregado, con la longitud a cubrir.
+  El catálogo no publica longitud comercial ni unidad de compra, y la fijación (JB-CC-M6) no declara cantidad.
+- **Controles negativos:**
+  - el reparto mitad y mitad hace fallar la unitaria y la E2E;
+  - la ocupación de la pieza segregada tomada del motor hace fallar la E2E.
+  Los dos se verificaron saboteando el código.
+
+## Pruebas (parte B)
+- Unitarias `segregacion/__tests__/bandaDivisoria.test.ts`: compatibilidad, colocar y quitar, regla (espesor y
+  reparto por cantidad, PE con potencia), BDS01Z no verificable, la banda no viaja al motor, cómputo.
+- E2E `calculoMotor` (parte B, con gestos reales): escalera 300 ala 90 Z con BDS090Z, potencia 3×50 × 2 y
+  maniobra 4×2,5 × 1:
+  - la app reparte (300 − 0,71) en 3/4 y 1/4;
+  - la ocupación y la reserva de cada grupo las informa la app;
+  - la banda aparece en el cómputo;
+  - con el motor, la ocupación de esa pieza no sale de él (ni en Resultados ni en el inspector).

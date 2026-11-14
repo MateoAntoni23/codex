@@ -215,4 +215,90 @@ test.describe('Etapa 3 A — cálculo del motor', () => {
     await expect(page.locator(`[data-testid="motor-pieza"][data-pieza="${ramal.instancia_id}"] [data-testid="motor-ocupacion"]`)).toContainText('reserva libre');
     await page.screenshot({ path: resolve(OUT_DIR, 'calculo-motor-02-derivacion.png'), fullPage: true });
   });
+
+  test('parte B: bandeja segregada con banda divisoria — reparto por cantidad de cables, ocupación de la app, banda en el cómputo', async ({ page }) => {
+    await abrir(page);
+    const tg = await crearEquipo(page, 'Tablero General A', [200, 1500, 1200]);
+    const b3 = await crearEquipo(page, 'Bomba 3', [2700, 1500, 1200]);
+    // Un tramo de escalera 300, ala 90, zincado: lleva la BDS090Z.
+    await page.getByTestId('stage-tab-bandejas').click();
+    await page.getByTestId('tool-bandejas-tramo').click();
+    await page.getByTestId('add-product-select').selectOption('SAM_TRES-300-090-18-Z');
+    await page.getByRole('button', { name: 'Crear tramo' }).click();
+    await expect.poll(async () => (await piezas(page)).length).toBe(1);
+    const [r1] = await piezas(page);
+    await page.getByTestId('tool-bandejas-seleccionar').click();
+    await page.evaluate((id) => {
+      (window as unknown as { __codex: { workspaceStore: { getState: () => { selectTray: (id: string) => void } } } }).__codex.workspaceStore.getState().selectTray(id);
+    }, r1.instancia_id);
+    await expect(page.getByTestId('banda-producto')).toHaveValue('SAM_BDS090Z');
+    await expect(page.getByTestId('banda-producto').locator('option')).toHaveText(['BDS090Z (espesor 0.71 mm)']);
+    await page.getByTestId('banda-colocar').click();
+    await expect(page.getByTestId('banda-actual')).toContainText('Con banda BDS090Z');
+
+    // Un circuito de potencia (3×50 × 2) y uno de maniobra (4×2,5 × 1) por la bandeja.
+    await page.getByTestId('stage-tab-conexiones').click();
+    await enlazar(page, tg, r1.instancia_id, 'P1', 200, 'izquierda');
+    await enlazar(page, b3, r1.instancia_id, 'P2', 300, 'izquierda');
+    await guardarCircuito(page, 'Fuerza B3', tg, b3, { tipo: 'Tripolar · cobre', formacion: 'PRY-SVALIO-CU-3x50', cantidad: 2, funcion: 'potencia' });
+    await guardarCircuito(page, 'Mando B3', b3, tg, { tipo: 'Tetrapolar · cobre', formacion: 'PRY-SVALIO-CU-4x2.5', cantidad: 1, funcion: 'maniobra' });
+
+    // Resultados: la app calcula la bandeja segregada con la regla del operador.
+    await page.getByTestId('stage-tab-resultados').click();
+    await page.getByTestId('reserva-input').fill('20');
+    const D = await page.evaluate(() => {
+      const k = (window as unknown as { __codex: { trayStore: { getState: () => { context: { catalogoCables: { cables: Array<{ cable_id: string; diametro_exterior_mm: number }> } } } } } }).__codex.trayStore.getState().context.catalogoCables.cables;
+      return Object.fromEntries(k.map((c) => [c.cable_id, c.diametro_exterior_mm]));
+    });
+    const disponible = 300 - 0.71;
+    const nPot = 2 + 1; // 2 cables + PE
+    const nCtl = 1;
+    const asigPot = (disponible * nPot) / (nPot + nCtl);
+    const asigCtl = (disponible * nCtl) / (nPot + nCtl);
+    const ocPot = 2 * D['PRY-SVALIO-CU-3x50'] + D['PRY-SASTFLEX-CU-1x16'];
+    const librePot = ((asigPot - ocPot) / asigPot) * 100;
+    const seg = page.getByTestId('segregadas');
+    await expect(seg.getByTestId('segregadas-procedencia')).toContainText('Regla declarada por el operador');
+    await expect(seg.getByTestId('segregadas-procedencia')).toContainText('el motor no sabe que la banda existe');
+    const gPot = seg.locator('[data-testid="segregada-grupo"][data-grupo="potencia"]');
+    const gCtl = seg.locator('[data-testid="segregada-grupo"][data-grupo="control"]');
+    await expect(seg.getByTestId('segregada-ocupacion')).toHaveAttribute('data-origen', 'app');
+    await expect(gPot).toHaveAttribute('data-n', '3');
+    await expect(gCtl).toHaveAttribute('data-n', '1');
+    expect(Number(await gPot.getAttribute('data-asignado'))).toBeCloseTo(asigPot, 2);
+    expect(Number(await gCtl.getAttribute('data-asignado'))).toBeCloseTo(asigCtl, 2);
+    // Control negativo: mitad y mitad no.
+    expect(Number(await gPot.getAttribute('data-asignado'))).not.toBeCloseTo(disponible / 2, 0);
+    expect(Number(await gPot.getAttribute('data-ocupado'))).toBeCloseTo(ocPot, 3);
+    expect(Number(await gPot.getAttribute('data-reserva-libre'))).toBeCloseTo(librePot, 2);
+    // La banda aparece en el cómputo (agregada por la app).
+    const banda = seg.getByTestId('computo-banda');
+    await expect(banda).toHaveAttribute('data-producto', 'SAM_BDS090Z');
+    await expect(banda).toHaveAttribute('data-piezas', '1');
+    await expect(banda).toContainText('[AGREGADA POR LA APP] BDS090Z: 1 banda(s)');
+
+    // Con el motor: no sabe de la banda, y la ocupación de esa pieza que se muestra es la de la app.
+    await page.getByTestId('calculate-tray').click();
+    await expect.poll(async () => page.evaluate(() => (window as unknown as Codex).__codex.trayStore.getState().status), { timeout: 60_000 }).toBe('vigente');
+    const res = (await resultado(page))!;
+    expect(JSON.stringify(res.entrada)).not.toContain('BDS');
+    const motorR1 = (res.ocupacion as Record<string, { secciones: { pieza: { ancho_referencia_mm: number; reserva: { reserva_libre_pct: number } } } }>)[r1.instancia_id].secciones.pieza;
+    expect(motorR1.ancho_referencia_mm).toBe(300); // el motor calculó con el ancho entero (sin banda)
+    const piezaMotor = page.locator(`[data-testid="calculo-motor"] [data-testid="motor-pieza"][data-pieza="${r1.instancia_id}"]`);
+    await expect(piezaMotor.getByTestId('motor-ocupacion')).toHaveCount(0); // control negativo: no sale del motor
+    await expect(piezaMotor.getByTestId('motor-ocupacion-reemplazada')).toBeVisible();
+    await expect(piezaMotor.getByTestId('segregada-ocupacion')).toHaveAttribute('data-origen', 'app');
+    const librePantalla = Number(await piezaMotor.locator('[data-testid="segregada-grupo"][data-grupo="potencia"]').getAttribute('data-reserva-libre'));
+    expect(librePantalla).toBeCloseTo(librePot, 2);
+    expect(librePantalla).not.toBeCloseTo(motorR1.reserva.reserva_libre_pct, 0);
+    // El inspector de la pieza tampoco muestra la ocupación del motor: muestra la de la app.
+    await page.evaluate((id) => {
+      (window as unknown as { __codex: { workspaceStore: { getState: () => { selectTray: (id: string) => void } } } }).__codex.workspaceStore.getState().selectTray(id);
+    }, r1.instancia_id);
+    await expect(page.getByTestId('piece-result-segregada')).toBeVisible();
+    await expect(page.getByTestId('piece-result-segregada').getByTestId('segregada-ocupacion')).toHaveAttribute('data-origen', 'app');
+    await expect(page.getByTestId('piece-result').locator('summary', { hasText: /^ocupacion$/ })).toHaveCount(0);
+    await page.screenshot({ path: resolve(OUT_DIR, 'calculo-motor-03-segregada.png'), fullPage: true });
+  });
 });
+

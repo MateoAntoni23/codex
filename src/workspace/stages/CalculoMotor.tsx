@@ -22,6 +22,7 @@ import { indexProducts, pieceLabelById } from './displayNames';
 import { Empty, Section } from './shared';
 import { explicacionDiscontinuosDe } from './resultPresentation';
 import { incumplimientosExplicados } from './discontinuidades';
+import { OcupacionSegregadaView, useOcupacionSegregada } from './BandaDivisoria';
 
 type R = Record<string, unknown>;
 const obj = (v: unknown): R => (object(v) ? v : {});
@@ -77,6 +78,7 @@ export function CalculoMotorSection() {
   const entrada = useTrayStore((s) => s.entrada);
   const context = useTrayStore((s) => s.context);
   const idx = useMemo(() => indexProducts(context?.productos), [context]);
+  const segregada = useOcupacionSegregada();
   if (!result) return null;
   const piezas = entrada?.piezas ?? [];
   const etiqueta = (id: string) => (piezas.some((p) => p.instancia_id === id) ? pieceLabelById(id, piezas, idx) : id);
@@ -133,10 +135,18 @@ export function CalculoMotorSection() {
       {Object.entries(ocupacion).map(([id, o0]) => {
         const secs = obj(obj(o0).secciones);
         const q = obj(cargas[id]);
+        // Bandeja segregada: el motor no conoce la banda; su ocupación (sin banda) no se usa. La informa la app.
+        const seg = segregada(id);
         return (
           <div key={id} className="stage-card" data-testid="motor-pieza" data-pieza={id}>
             <div><strong>{etiqueta(id)}</strong> · masa {typeof q.q_kg_m === 'number' ? `${q.q_kg_m} kg/m` : '—'} (cables {str(q.cables_potencia_kg_m)} + PE {str(q.pe_kg_m)} kg/m)</div>
-            {Object.entries(secs).map(([nom, s0]) => {
+            {seg && (
+              <div className="stage-row-sub" style={{ whiteSpace: 'normal' }} data-testid="motor-ocupacion-reemplazada">
+                Bandeja segregada: la ocupación de esta pieza la calcula la app; la del motor (sin la banda) no se usa.
+              </div>
+            )}
+            {seg && <OcupacionSegregadaView o={seg} />}
+            {!seg && Object.entries(secs).map(([nom, s0]) => {
               const s = obj(s0);
               const rsv = obj(s.reserva);
               const disp = obj(s.disposicion_potencia);
