@@ -2,6 +2,7 @@ import { GestorSolicitudes } from '../../vendor/motor_bandejas/integracion/ts/ge
 import type { Solicitud } from '../../vendor/motor_bandejas/integracion/ts/contrato';
 import { catalogFingerprint } from '../catalog/staticCatalog';
 import { object, readResult, type Context, type Product, type CatalogPort, type CatalogCompatibility, type CatalogUnionComponent, type CatalogFamily } from './model';
+import { construirCatalogoCables } from '../workspace/cables/catalogoCables';
 export async function getJson(path:string,init?:RequestInit):Promise<unknown>{
  const response=await fetch(`/api/motor/v1/${path}`,{...init,signal:init?.signal??AbortSignal.timeout(30000)});
  let data:unknown;try{data=await response.json()}catch{throw Error(`HTTP_${response.status}: respuesta no JSON`)}
@@ -76,7 +77,7 @@ export async function loadContext():Promise<Context>{
          !!f && typeof (f as CatalogFamily).familia_id === 'string'
      )
    : [];
- return {productos:products as Product[],cables:[...cables].sort(),puertos,compatibilidades,componentesUnion,familias,ejemplos:examples.ejemplos as Context['ejemplos'],versions:JSON.stringify({health,decisiones_sha256:catalog.decisiones_sha256})};
+ return {productos:products as Product[],cables:[...cables].sort(),puertos,compatibilidades,componentesUnion,familias,ejemplos:examples.ejemplos as Context['ejemplos'],versions:JSON.stringify({health,decisiones_sha256:catalog.decisiones_sha256}),catalogoCables:construirCatalogoCables(catalog.datasets_cables,catalog.cable_ids as string[])};
 }
 /** Estado de salud del motor (`GET /v1/salud`). Lanza si el motor no responde. */
 export async function fetchEngineHealth():Promise<unknown>{return getJson('salud')}

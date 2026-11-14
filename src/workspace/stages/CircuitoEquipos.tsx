@@ -22,6 +22,7 @@ import type { FuenteLongitud } from '../recorridos/caminoEntreBocas';
 import { indexProducts, pieceLabelById, portLabel } from './displayNames';
 import { Empty, Section } from './shared';
 import { PuntoEnTramoCampos, type ValorPuntoEnTramo } from './PuntoEnTramoCampos';
+import { CABLE_VACIO, CableCircuitoCampos, cableDesdeValor, useCatalogoCables, type ValorCable } from './CableCircuitoCampos';
 
 export const mmTexto = (x: number) => `${x.toLocaleString('es-AR', { maximumFractionDigits: 1, minimumFractionDigits: 1 })} mm`;
 
@@ -146,6 +147,8 @@ export function CircuitoEquiposSection() {
   const [origen, setOrigen] = useState('');
   const [destino, setDestino] = useState('');
   const [nombre, setNombre] = useState('');
+  const [cable, setCable] = useState<ValorCable>(CABLE_VACIO);
+  const { cables } = useCatalogoCables();
   const [msg, setMsg] = useState<{ ok: boolean; texto: string } | null>(null);
 
   // Una elección que ya no está (se abrió otro proyecto, se borró el equipo) cuenta como "sin elegir".
@@ -165,12 +168,18 @@ export function CircuitoEquiposSection() {
 
   const guardar = () => {
     if (!entrada || !o || !d) return;
-    const g = guardarCircuito(entrada, elements, nombre, { equipo: o }, { equipo: d });
+    const k = cableDesdeValor(cable);
+    if (!k.ok) { setMsg({ ok: false, texto: k.motivo }); return; }
+    const g = guardarCircuito(entrada, elements, nombre, { equipo: o }, { equipo: d }, k.cable ?? undefined, cables.map((x) => x.cable_id));
     if (!g.ok) { setMsg({ ok: false, texto: g.motivo }); return; }
     trayEdit(g.entrada);
     markDirty();
     setNombre('');
-    setMsg({ ok: true, texto: `Circuito "${g.circuito.nombre}" guardado. Está en Resultados.` });
+    setCable(CABLE_VACIO);
+    setMsg({
+      ok: true,
+      texto: `Circuito "${g.circuito.nombre}" guardado. Está en Resultados.${g.circuito.cable ? '' : ' Sin cable: queda incompleto hasta elegirlo.'}`,
+    });
   };
 
   return (
@@ -231,6 +240,10 @@ export function CircuitoEquiposSection() {
               </li>
             ))}
           </ol>
+          <details className="stage-card" style={{ marginTop: 6 }} open data-testid="circuito-cable">
+            <summary>Cable del circuito (se puede elegir después; sin cable queda incompleto)</summary>
+            <CableCircuitoCampos prefijo="circuito" valor={cable} onChange={setCable} />
+          </details>
           <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
             <input
               type="text"

@@ -13,7 +13,10 @@ import { conLongitudesEje } from '../../placement/longitudesEje';
 import { placeDefinition, puertosFromWorld, type V3, type WorldPort } from '../../placement/placementCore';
 import { translatePiece } from '../../trayMovement';
 import { rotarEnTrazado } from '../../trayRotation';
-import { borrarCircuito, caminoEntreEquipos, circuitosOf, estadoCircuito, guardarCircuito, recalcularCircuito, validarCircuitosDeArchivo } from '../circuitosGuardados';
+import {
+  asignarCable, borrarCircuito, caminoEntreEquipos, circuitosOf, estadoCircuito, faltaParaCalcular, guardarCircuito, quitarCable, recalcularCircuito,
+  validarCircuitosDeArchivo, type CableDeCircuito,
+} from '../circuitosGuardados';
 import { borrarBajada, crearBajada } from '../../equipos/bajada';
 import { geometriaPuntoEnTramo } from '../../derivacion/enganche';
 import type { EquipmentElement } from '../../../types/domain-v2';
@@ -259,6 +262,73 @@ describe('circuitos guardados — de un equipo a otro', () => {
   it('un archivo con circuitos de boca a boca (formato anterior) se rechaza sin repararlo', () => {
     const viejo = { ...cadena(true), circuitos_ws: [{ id: 'CIR-1', nombre: 'Viejo', origen: O, destino: D, cruces: [], uniones: [], sumaMm: 0, completa: true, guardado_iso: '' }] };
     expect(() => validarCircuitosDeArchivo(viejo)).toThrow('el circuito "Viejo" va de una boca de bandeja a otra (formato anterior): no es compatible con esta versión, que une equipos. No se intenta repararlo.');
+  });
+});
+
+describe('cable del circuito (etapa 2)', () => {
+  const IDS = ['PRY-SVALIO-CU-3x50', 'PRY-SVALIO-CU-4x25-NI'];
+  const TRI: CableDeCircuito = { cable_id: 'PRY-SVALIO-CU-3x50', cantidad: 2, separado: false, funcion: 'potencia' };
+
+  it('sin cable no es un error: queda incompleto y dice que le falta el cable; no hay cable por defecto', () => {
+    const { t, elements } = proyecto();
+    const g = guardado(t, elements);
+    expect(g.circuito.cable).toBeUndefined();
+    expect(faltaParaCalcular(g.circuito, IDS)).toEqual(['le falta el cable para poder calcular']);
+    expect(estadoCircuito(g.entrada, elements, g.circuito)).toEqual({ vigente: true });
+  });
+
+  it('se guarda con el circuito (al guardar o después) y sobrevive a guardar y abrir', () => {
+    const { t, elements } = proyecto();
+    const g = guardarCircuito(t, elements, 'Con cable', EO, ED, TRI, IDS);
+    if (!g.ok) throw new Error(g.motivo);
+    expect(g.circuito.cable).toEqual(TRI);
+    expect(faltaParaCalcular(g.circuito, IDS)).toEqual([]);
+    const reabierto = JSON.parse(JSON.stringify(g.entrada)) as TrayInput;
+    expect(() => validarCircuitosDeArchivo(reabierto)).not.toThrow();
+    expect(circuitosOf(reabierto)[0].cable).toEqual(TRI);
+
+    const sin = guardado(t, elements);
+    const a = asignarCable(sin.entrada, 'CIR-1', { ...TRI, cable_id: 'PRY-SVALIO-CU-4x25-NI', cantidad: 1 }, IDS);
+    if (!a.ok) throw new Error(a.motivo);
+    expect(circuitosOf(a.entrada)[0].cable).toMatchObject({ cable_id: 'PRY-SVALIO-CU-4x25-NI', cantidad: 1 });
+    // Cambiar el cable no toca el recorrido ni su estado.
+    expect(circuitosOf(a.entrada)[0].cruces).toEqual(sin.circuito.cruces);
+    expect(circuitosOf(quitarCable(a.entrada, 'CIR-1'))[0].cable).toBeUndefined();
+  });
+
+  it('valida: cable del catálogo, cantidad entero positivo, función siempre potencia; "separado" sin elegir queda incompleto', () => {
+    const { t, elements } = proyecto();
+    const sin = guardado(t, elements);
+    expect(asignarCable(sin.entrada, 'CIR-1', { ...TRI, cable_id: 'NO-EXISTE' }, IDS)).toEqual({ ok: false, motivo: 'el cable NO-EXISTE no está en el catálogo de cables' });
+    for (const cantidad of [0, -1, 1.5, Number.NaN]) {
+      expect(asignarCable(sin.entrada, 'CIR-1', { ...TRI, cantidad }, IDS)).toEqual({ ok: false, motivo: 'la cantidad tiene que ser un entero positivo' });
+    }
+    expect(asignarCable(sin.entrada, 'CIR-1', { ...TRI, funcion: 'mando' as 'potencia' }, IDS)).toEqual({ ok: false, motivo: 'la función del circuito es siempre potencia' });
+    const sinDisp = asignarCable(sin.entrada, 'CIR-1', { ...TRI, separado: null }, IDS);
+    if (!sinDisp.ok) throw new Error(sinDisp.motivo);
+    expect(faltaParaCalcular(circuitosOf(sinDisp.entrada)[0], IDS)).toEqual(['falta indicar si los cables van separados o juntos']);
+    // Un cable que el catálogo ya no tiene se informa (no se borra).
+    expect(faltaParaCalcular(circuitosOf(sinDisp.entrada)[0], ['OTRO'])).toContain('el cable PRY-SVALIO-CU-3x50 no está en el catálogo de cables');
+  });
+
+  it('recalcular el recorrido conserva el cable', () => {
+    const { t, elements } = proyecto();
+    const g = guardarCircuito(t, elements, 'Con cable', EO, ED, TRI, IDS);
+    if (!g.ok) throw new Error(g.motivo);
+    const otro = structuredClone(g.entrada);
+    otro.piezas.find((p) => p.instancia_id === 'R2')!.longitud_mm = 1200;
+    const rec = recalcularCircuito(otro, elements, 'CIR-1');
+    if (!rec.ok) throw new Error(rec.motivo);
+    expect(circuitosOf(rec.entrada)[0].cable).toEqual(TRI);
+  });
+
+  it('un archivo con un cable de datos inválidos se rechaza', () => {
+    const { t, elements } = proyecto();
+    const g = guardarCircuito(t, elements, 'Con cable', EO, ED, TRI, IDS);
+    if (!g.ok) throw new Error(g.motivo);
+    const malo = JSON.parse(JSON.stringify(g.entrada));
+    malo.circuitos_ws[0].cable.cantidad = 0;
+    expect(() => validarCircuitosDeArchivo(malo)).toThrow('el circuito "Con cable" tiene un cable con datos inválidos');
   });
 });
 
