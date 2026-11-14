@@ -41,8 +41,20 @@ e incluye los commits del #6 hasta que se fusione.
   Un bloqueo se muestra con su código y su `decision_id`.
 - **Defecto de la etapa 1 corregido:** `bajadas_ws` no estaba en las claves que no viajan al motor. Calcular un
   proyecto con enlaces fallaba con «claves desconocidas».
-- **Limitación conocida:** una derivación en un tramo no es una `conexion` del trazado. Un circuito de potencia
-  que la atraviese llega al motor con el recorrido partido, y el motor lo informa DISCONTINUO.
+- **Derivación en tramo y «recorridos discontinuos» (2026-11-14):** para el motor una derivación en tramo no es
+  una `conexion`. Un circuito de potencia que la atraviesa llega partido y el motor lo informa DISCONTINUO, con
+  el incumplimiento «recorridos discontinuos». **No se oculta ni se traduce, y el resultado no se modifica:** se
+  explica en el propio incumplimiento (`stages/discontinuidades.ts`), con el criterio de las mezclas:
+  - si todas las discontinuidades (`saltos_sin_conexion` de circuitos y conductores PE) son pares tronco ↔
+    ramal de una derivación que la app conoce: «las N discontinuidades corresponden a derivaciones en tramo; el
+    motor no las modela como conexión (no afecta ocupación, reserva ni curvatura)»;
+  - **ajuste a lo pedido, para no afirmar de más:** en perforada la DCPS es una «T» para el motor, y en la pieza
+    del salto deja la curvatura NO_EVALUADO_EXTREMO_DE_RECORRIDO. En ese caso el texto dice «no afecta ocupación
+    ni reserva; el motor no evaluó la curvatura en <pieza>». Sólo dice «ni curvatura» cuando el resultado lo
+    confirma;
+  - si alguna discontinuidad no es una derivación, el incumplimiento queda y se nombra cuál
+    («K de N no corresponden a una derivación en tramo: circuito … entre … y …»);
+  - control negativo en `stages/__tests__/discontinuidades.test.ts`. E2E con el motor real en `calculoMotor`.
 
 ## Pruebas (parte A)
 - Unitarias:

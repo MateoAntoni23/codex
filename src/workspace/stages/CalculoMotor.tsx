@@ -20,6 +20,8 @@ import { useCatalogoCables } from './CableCircuitoCampos';
 import { textoCable } from '../cables/catalogoCables';
 import { indexProducts, pieceLabelById } from './displayNames';
 import { Empty, Section } from './shared';
+import { explicacionDiscontinuosDe } from './resultPresentation';
+import { incumplimientosExplicados } from './discontinuidades';
 
 type R = Record<string, unknown>;
 const obj = (v: unknown): R => (object(v) ? v : {});
@@ -98,7 +100,9 @@ export function CalculoMotorSection() {
 
       <div className="stage-card" data-testid="motor-resumen" data-estado={str(resumen.estado_trazado)}>
         <div><strong>Estado del trazado (motor):</strong> {str(resumen.estado_trazado)}</div>
-        {arr(resumen.incumplimientos).map((x) => <div key={String(x)} className="tone-warn" data-testid="motor-incumplimiento">Incumplimiento: {String(x)}</div>)}
+        {incumplimientosExplicados(arr(resumen.incumplimientos).map(String), explicacionDiscontinuosDe(result, entrada, context?.productos)).map((x) => (
+          <div key={x} className="tone-warn" style={{ whiteSpace: 'normal' }} data-testid="motor-incumplimiento">Incumplimiento: {x}</div>
+        ))}
         {arr(resumen.decisiones_que_bloquean).map((x) => <div key={String(x)} className="tone-warn" data-testid="motor-decision-bloquea">Pendiente de decisión: {String(x)}</div>)}
         {arr(resumen.verificaciones_bloqueadas).map((x) => <div key={String(x)} className="tone-warn" data-testid="motor-verificacion-bloqueada">Sin verificar: {String(x)}</div>)}
         <div className="stage-row-sub" style={{ whiteSpace: 'normal' }}>{str(resumen.aviso)}</div>

@@ -163,4 +163,56 @@ test.describe('Etapa 3 A — cálculo del motor', () => {
     await expect(page.getByTestId('circuito-no-motor-motivo')).toContainText('D-11');
     await page.screenshot({ path: resolve(OUT_DIR, 'calculo-motor-01.png'), fullPage: true });
   });
+
+  test('circuito por una derivación en tramo: el motor lo da discontinuo y el incumplimiento lo explica (sin modificar el resultado)', async ({ page }) => {
+    await abrir(page);
+    const tg = await crearEquipo(page, 'Tablero General A', [2800, -1200, 800]);
+    const b3 = await crearEquipo(page, 'Bomba 3', [1200, 2600, 500]);
+    // Tronco perforada 300, derivación de 100 a 1500 mm de P1 (DCPS-100), y un recto de 100 desde su boca.
+    await page.getByTestId('stage-tab-bandejas').click();
+    await page.getByTestId('tool-bandejas-tramo').click();
+    await page.getByTestId('add-product-select').selectOption('SAM_TRPS-300-22-Z');
+    await page.getByRole('button', { name: 'Crear tramo' }).click();
+    await expect.poll(async () => (await piezas(page)).length).toBe(1);
+    const [tronco] = await piezas(page);
+    await page.getByTestId('tool-bandejas-derivacion').click();
+    await page.getByTestId('der-tronco').selectOption(tronco.instancia_id);
+    await page.getByTestId('der-desde').selectOption('P1');
+    await page.getByTestId('der-distancia').fill('1500');
+    await page.getByTestId('der-lado').selectOption('izquierda');
+    await page.getByTestId('der-ancho').selectOption('100');
+    await page.getByTestId('der-crear').click();
+    await expect.poll(async () => (await piezas(page)).length).toBe(2);
+    await page.getByTestId('tool-bandejas-seleccionar').click();
+    await page.getByTestId('free-end').filter({ hasText: /DCPS-100-Z/ }).first().click();
+    await page.locator('[data-codex-routing-product-select]').selectOption('SAM_TRPS-100-22-Z');
+    await page.locator('[data-codex-routing-length-input]').fill('1000');
+    await page.locator('text=Confirmar continuación').click();
+    await expect.poll(async () => (await piezas(page)).length).toBe(3);
+    const [, dcps, ramal] = await piezas(page);
+
+    await page.getByTestId('stage-tab-conexiones').click();
+    await enlazar(page, tg, tronco.instancia_id, 'P2', 200, 'derecha');
+    await enlazar(page, b3, ramal.instancia_id, 'P2', 100, 'derecha');
+    await guardarCircuito(page, 'Fuerza por derivación', tg, b3, { tipo: 'Tripolar · cobre', formacion: 'PRY-SVALIO-CU-3x10', cantidad: 1, funcion: 'potencia' });
+
+    await page.getByTestId('stage-tab-resultados').click();
+    await page.getByTestId('reserva-input').fill('20');
+    await page.getByTestId('calculate-tray').click();
+    await expect.poll(async () => page.evaluate(() => (window as unknown as Codex).__codex.trayStore.getState().status), { timeout: 60_000 }).toBe('vigente');
+    const res = (await resultado(page))!;
+    // Para el motor ES discontinuo: el resultado no se toca.
+    const resumen = res.resumen as { incumplimientos: string[] };
+    expect(resumen.incumplimientos).toContain('recorridos discontinuos');
+    const rec = (res.circuitos as Record<string, { recorrido: { estado: string; saltos_sin_conexion: string[][] } }>)['CIR-1'].recorrido;
+    expect(rec.estado).toBe('DISCONTINUO');
+    expect(rec.saltos_sin_conexion).toEqual([[tronco.instancia_id, dcps.instancia_id]]);
+    // En pantalla, el propio incumplimiento lo explica.
+    const explicado = /^recorridos discontinuos: la discontinuidad corresponde a una derivación en tramo; el motor no la modela como conexión \(no afecta ocupación ni reserva/;
+    await expect(page.getByTestId('result-issues').locator('li')).toHaveText([explicado]);
+    await expect(page.getByTestId('motor-incumplimiento')).toContainText(['corresponde a una derivación en tramo']);
+    // Ocupación y reserva del ramal: calculadas igual por el motor.
+    await expect(page.locator(`[data-testid="motor-pieza"][data-pieza="${ramal.instancia_id}"] [data-testid="motor-ocupacion"]`)).toContainText('reserva libre');
+    await page.screenshot({ path: resolve(OUT_DIR, 'calculo-motor-02-derivacion.png'), fullPage: true });
+  });
 });
