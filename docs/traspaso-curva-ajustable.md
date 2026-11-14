@@ -15,8 +15,18 @@ como ignorada. Se retoma.
   de eslabones.
 
 ## Reglas del operador (con esa procedencia)
-- Radio de giro = **PENDIENTE** (el encargo llegó con `<RADIO>` sin completar).
-- Rango de ángulo ajustable = de **PENDIENTE**° a **PENDIENTE**° (llegó `<MIN>` / `<MAX>` sin completar).
+El encargo llegó con `<RADIO>`, `<MIN>` y `<MAX>` sin completar; los valores se declararon después
+(2026-11-14), respondiendo a la pregunta:
+
+- **Radio interior = ancho de la bandeja.** El radio del eje es el interior más la mitad del ancho:
+  **R_eje = 1,5 × ancho** (CAS-300 → interior 300 mm, eje 450 mm). Los centros de boca y la longitud de eje
+  van sobre el eje.
+- **Rango de ángulo: de 1° a 90°, PROVISIONAL**, declarado por el operador. El catálogo dice «Ángulo
+  ajustable: rango no declarado».
+  - Está elegido **corto a propósito**: rechazar un ángulo válido se ve en el momento; aceptar uno
+    imposible recién se descubre en obra.
+  - Si el operador necesita un ángulo mayor, el rango se amplía cambiando ese único valor (ver notas de
+    implementación: dónde está).
 
 ## Qué se pide
 1. Ángulo por instancia, igual que las eslabonadas. Por defecto 90°.
