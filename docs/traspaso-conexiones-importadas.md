@@ -135,3 +135,34 @@ Regla de casado en `src/conexiones/casarCable.ts` (naturaleza, conductores, secc
 - **Ningún tendido trae diámetro exterior:** el aviso de diámetro de la etapa 2 no va a aparecer con este
   Excel.
 - 104 tendidos traen Iz de referencia y 237 metraje de compra.
+
+### Etapa 1 — lista de trabajo (2026-11-15)
+**Dónde se guarda lo del operador.** En `conexiones_ws`, clave workspace-only del trazado (`src/conexiones/declarado.ts`,
+sumada a `WS_ONLY`: nunca viaja al motor). Emparejados por `conexionId` + extremo y vínculos circuito → conexión, con
+`procedencia: 'operador'` y fecha. Sobrevive a reimportar porque está indexado por ids del Excel y vive fuera de
+`importedCatalog`. Se descartaron dos lugares por pérdida en silencio en una app anterior:
+- dentro del circuito: `recalcularCircuito` de main rearma el circuito y sólo conserva `cable`;
+- un bloque nuevo del archivo de proyecto: main lo descarta al guardar (habría que subir la versión).
+Una app anterior que abra un archivo con `conexiones_ws` lo conserva (sus ediciones copian `...entrada`), pero NO lo
+saca de lo que manda al motor: calcular ahí falla con error del motor (ruidoso, sin pérdida). Una con circuitos de
+función «comunicación» se niega a abrir el archivo (su validación de cable). Ninguno de los dos casos pierde datos en
+silencio; no se subió la versión.
+
+**Circuitos ligados:** id `CIR-<conexionId>`. Main numera `CIR-<n>`, así que nunca reusa el id de un ligado borrado
+para otro circuito: un vínculo no puede quedar pegado al circuito equivocado. Borrar el circuito borra su vínculo.
+
+**Estado** (`estadoConexion.ts`): no se traza → trazada/desactualizada (si tiene circuito) → equipos sin resolver →
+sin ubicar → sin enlace → sin trazar. Desactualizada junta los motivos del recorrido (`estadoCircuito`), los campos de
+la conexión que cambiaron en el Excel (contra la copia guardada al trazar) y un extremo que ahora es otro equipo.
+«Retrazar» (y «Recalcular» en Resultados, para un ligado) toma los equipos y la conexión de ahora.
+
+**Extremos:** el `equipoId` del Excel manda; el emparejado manual sólo cuenta si el Excel no lo trae, y se elige entre
+los equipos ubicados en la escena. Camino no tomado: emparejar contra un equipo del catálogo importado (todavía sin
+ubicar).
+
+**Servicios:** COMUNICACION es una función nueva del circuito (`comunicacion`); en la segregación ya cae en el grupo
+que no es potencia; no viaja al motor (D-11). EQUIPOTENCIALIDAD y PUESTA_A_TIERRA: el PE lo arma el motor desde su
+propia sección (D-20). NEUMATICA: es un tubo, no un cable.
+
+**E2E tocadas por el encargo:** `cablesCircuito` y `circuitosGuardados` esperaban la tabla copiable sin la columna
+«Excel»; se les sumó (el encargo pide «fuera del Excel» en Resultados).

@@ -171,9 +171,9 @@ test.describe('Etapa 2 — el cable del circuito', () => {
     await verResultados();
     await page.getByTestId('circuitos-copiar').click();
     const copiado = (await page.evaluate(() => navigator.clipboard.readText())).split(/\r?\n/);
-    expect(copiado[0]).toBe('Nombre\tOrigen\tDestino\tCable\tCantidad\tLongitud total (mm)\tBandeja (mm)\tBajadas (mm)\tPiezas\tEstado');
-    expect(copiado[1]).toMatch(/^TG-A → Bomba 3\tTablero General A\tBomba 3\tSintenax Valio · Tripolar · cobre · 3 × 50 mm²\t2\t[\d,]+\t[\d,]+\t[\d,]+\t3\tvigente$/);
-    expect(copiado[2]).toMatch(/^Sin cable\tBomba 3\tTablero General A\tsin cable\t\t[\d,]+\t[\d,]+\t[\d,]+\t3\tvigente; incompleto: le falta el cable para poder calcular$/);
+    expect(copiado[0]).toBe('Nombre\tExcel\tOrigen\tDestino\tCable\tCantidad\tLongitud total (mm)\tBandeja (mm)\tBajadas (mm)\tPiezas\tEstado');
+    expect(copiado[1]).toMatch(/^TG-A → Bomba 3\tfuera del Excel\tTablero General A\tBomba 3\tSintenax Valio · Tripolar · cobre · 3 × 50 mm²\t2\t[\d,]+\t[\d,]+\t[\d,]+\t3\tvigente$/);
+    expect(copiado[2]).toMatch(/^Sin cable\tfuera del Excel\tBomba 3\tTablero General A\tsin cable\t\t[\d,]+\t[\d,]+\t[\d,]+\t3\tvigente; incompleto: le falta el cable para poder calcular$/);
     await page.screenshot({ path: resolve(OUT_DIR, 'cables-02-resultados.png') });
 
     // Sobrevive a recargar.
