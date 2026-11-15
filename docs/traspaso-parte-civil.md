@@ -82,4 +82,46 @@ cálculo, y **NUNCA viaja al motor** (ya pasó con las bajadas de equipos: el mo
 Soportes anclados a vigas, avisos por atravesar un muro, editar la geometría civil, DXF, y editar el piso y
 la nave viejos.
 
-## Notas de implementación (se completan al avanzar)
+## Notas de implementación
+
+### A0 — dónde corre la conversión
+El Python del servicio (3.12.10, el mismo que levantan `npm run dev:trays` y Playwright) importa
+**CadQuery 2.7.0** → la conversión va en `server/` (`server/civil_step.py`), nunca en `vendor/`.
+`server/tray_service.py` atiende `POST /v1/civil/convertir` (cuerpo `application/octet-stream`, tope 200 MB)
+dentro de `_manejar`, el mismo control de acceso (Host/Origin) del motor; el resto sigue al motor. CadQuery
+se importa recién al primer pedido. Las pruebas de `server/` (que antes no corría nadie) se suman al verify
+(`npm run test:servidor`).
+
+### Decisiones tomadas (camino más chico; el otro, anotado)
+- **Bloque propio, fuera del trazado** (`src/civil/`, bloque `parteCivil` del archivo): nunca llega a lo que
+  se manda al motor. Alternativa no tomada: elementos `infrastructure` de `domain-v2` con geometría `asset`
+  (faltan roles para viga y losa, y esos elementos pasan por la lógica de equipos).
+- **Archivo de proyecto versión 4**; la 3 se sigue abriendo. Se subió porque una app anterior ignoraría el
+  bloque civil sin avisar y lo perdería al guardar.
+- **Desplazamiento x, y, z y giro en planta.** El encargo dice «desplazamiento y giro en planta»; se sumó z
+  (por defecto 0) para pisos modelados cada uno en su origen. La cota del nivel es un dato declarado (agrupa y
+  filtra): no mueve la geometría, porque por defecto se respetan las coordenadas del archivo.
+- **Eje de la altura:** por defecto Z (el de la app); el operador lo cambia mirando la caja. No se deduce de
+  la geometría.
+- **Triangulación gruesa:** tolerancia lineal 0,5 % de la diagonal (mínimo 2 mm), angular 0,5 rad.
+
+### A5 — medición (2026-11-15, este equipo: Intel Iris Xe, Chromium sin ventana con ANGLE D3D11)
+Script `tools/civil_fixture/medir_peso.mjs` (con la app levantada). Naves sintéticas de prismas, un archivo,
+cámara girando 4 s. Sin las opciones de GPU, Chromium sin ventana usa SwiftShader (software) y no representa
+al operador.
+
+| triángulos | fps (mediana) | p95 cuadro | carga | malla en el archivo | autoguardado |
+|---|---|---|---|---|---|
+| 250.000 | 59,9 | 16,8 ms | 0,4 s | 6,4 MB | 0,1 s |
+| 500.000 | 59,9 | 16,8 ms | 0,4 s | 12,7 MB | 0,2 s |
+| 1.000.000 | 59,9 | 16,7 ms | 0,7 s | 25,4 MB | 0,3 s |
+| 2.000.000 | 59,9 | 16,8 ms | 1,4 s | 50,9 MB | 0,7 s |
+| 4.000.000 | 59,9 | 16,7 ms | 2,3 s | 101,7 MB | 1,4 s |
+| 8.000.000 | 59,9 | 16,7 ms | 4,3 s | 203,5 MB | — |
+
+- **El giro no es el límite** en este equipo: 60 fps (tope de la pantalla) hasta 8 millones.
+- **Lo que crece es el peso:** ~25 MB de archivo y ~0,3 s de autoguardado (en CADA cambio) por millón.
+- **Umbral: 1.000.000 de triángulos** (`src/civil/peso.ts`): archivo ~25 MB, autoguardado ~0,3 s.
+- Dos errores de la medición, corregidos: (1) un caché que retenía todas las mallas decodificadas (ahora se
+  libera con la malla); (2) pasar ~100 MB por el protocolo de depuración tiraba la pestaña en 4 millones: no
+  representa el uso real (la malla llega por `fetch` o IndexedDB); se arma dentro de la página.
