@@ -103,4 +103,35 @@ Sin preguntas de decisión salvo que algo sea imposible o se pierdan datos del o
 el más chico, y anotar el otro.
 
 ## Notas de implementación
-(se completan por etapa)
+
+### Etapa 0 — reconocimiento (Excel de ejemplo `ELS-IMP-EQCX_v1.0_Rev0.xlsx`, 2026-11-15)
+272 conexiones, 279 tendidos, 276 equipos. Ningún tendido sin conexión; ningún equipoId que no exista.
+
+| servicio | conexiones | con los dos equipoId | con más de un tendido | con longitud ref. | con corriente de diseño |
+|---|---|---|---|---|---|
+| POTENCIA | 104 | 103 | 5 | 104 | 104 |
+| CONTROL | 67 | 67 | 0 | 67 | 35 |
+| INSTRUMENTACION | 50 | 50 | 0 | 50 | 0 |
+| COMUNICACION | 7 | 7 | 0 | 7 | 0 |
+| EQUIPOTENCIALIDAD | 2 | 0 | 0 | 2 | 0 |
+| NEUMATICA | 42 | 42 | 0 | 42 | 0 |
+| PUESTA_A_TIERRA | 0 | — | — | — | — |
+
+| naturaleza | tendidos | con sección | un candidato | varios | ninguno |
+|---|---|---|---|---|---|
+| CABLE_MULTIPOLAR | 215 | 215 | 63 | 27 | 125 |
+| CONDUCTOR_UNIPOLAR | 15 | 15 | 0 | 15 | 0 |
+| CABLE_DATOS | 7 | 0 | 0 | 0 | 7 |
+| TUBO | 42 | 0 | 0 | 0 | 42 |
+
+Regla de casado en `src/conexiones/casarCable.ts` (naturaleza, conductores, sección; el conductor reducido
+«a/b» sólo casa con la sección de PE que declara el Excel). Lo que se ve:
+- **Todos los «varios» son cobre contra aluminio** de la misma formación (y un 1×16 Sintenax contra
+  Superastic). El Excel no trae material como campo. Camino no tomado: deducir cobre de la designación o la
+  marca; sería completar en silencio.
+- **«Ninguno» en multipolar:** 114 son de 1 mm² (2, 3 y 4 conductores: control e instrumentación; el
+  catálogo empieza en 1,5 mm²), 8 de 5 conductores (3F+N+PE), 3 de 7 y 27 conductores.
+- **Potencia:** 63 tendidos con un candidato, 40 con varios (Cu/Al), 8 sin ninguno (los 3F+N+PE).
+- **Ningún tendido trae diámetro exterior:** el aviso de diámetro de la etapa 2 no va a aparecer con este
+  Excel.
+- 104 tendidos traen Iz de referencia y 237 metraje de compra.
