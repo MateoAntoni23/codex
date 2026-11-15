@@ -327,6 +327,7 @@ test.describe('Etapa 3 A — cálculo del motor', () => {
     ]);
     await page.getByTestId('banda-colocar').click();
     await page.getByTestId('stage-tab-resultados').click();
+    await verPestana(page, 'motor');
     const seg = page.getByTestId('segregadas');
     await expect(seg.getByTestId('segregada-no-verificable')).toHaveCount(0);
     await expect(seg.getByTestId('segregada-espesor-procedencia')).toHaveText('(declarado por el operador (2026-11-14) por analogía con la chapa de la bandeja perforada; no medido)');
