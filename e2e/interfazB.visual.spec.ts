@@ -168,7 +168,9 @@ test.describe('Interfaz — parte B: color por tipo de bandeja', () => {
     const archivo = readFileSync((await descarga.path())!, 'utf-8');
     expect(archivo).not.toContain('#aa2266');
     expect(archivo).not.toContain('colores-tipo');
-    // Sobrevive a recargar (preferencia por navegador, como el tema).
+    // Sobrevive a recargar (preferencia por navegador, como el tema). Antes, que el proyecto quede
+    // guardado: si no, al recargar no está la pieza y no hay color que mirar (carrera de la prueba).
+    await expect(page.getByTestId('project-save-status')).toHaveAttribute('data-phase', 'saved', { timeout: 10_000 });
     await page.reload();
     await abrir(page);
     await expect.poll(() => colorDe(page, esc.instancia_id), { timeout: 20_000 }).toBe('#aa2266');
