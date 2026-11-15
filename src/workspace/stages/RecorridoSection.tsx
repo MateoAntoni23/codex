@@ -8,15 +8,14 @@
  * y se dice cuál y por qué. Longitud incompleta → se dice qué pieza falta.
  * El cálculo está en `recorridos/caminoEntreBocas.ts`.
  *
- * Para proyectos guardados antes de que las piezas guardaran su longitud de eje hay
- * una acción explícita (`recorridos/longitudesAnteriores.ts`).
+ * Interfaz (2026-11-14): vive en el inspector; «Medir desde acá» la abre con la
+ * boca de origen ya elegida. Se retiró la acción «Guardar longitudes con las reglas
+ * vigentes»: con el corte limpio ya no llegan proyectos anteriores.
  */
 import { useMemo, useState } from 'react';
 import { useTrayStore } from '../../tray/store';
-import { useWorkspaceStore } from '../useWorkspaceStore';
 import { caminoEntreBocas, type Boca } from '../recorridos/caminoEntreBocas';
 import { FUENTE_LONGITUD as FUENTE } from './CircuitoEquipos';
-import { guardarLongitudesAnteriores, necesitaLongitudes } from '../recorridos/longitudesAnteriores';
 import { indexProducts, pieceLabelById, portLabel } from './displayNames';
 import { Empty, Section } from './shared';
 
@@ -28,17 +27,13 @@ const deClave = (k: string): Boca | null => {
   return pieza && boca ? { pieza, boca } : null;
 };
 
-export function RecorridoSection() {
+export function RecorridoSection({ origen: origenInicial }: { origen?: Boca } = {}) {
   const entrada = useTrayStore((s) => s.entrada);
   const context = useTrayStore((s) => s.context);
   const idx = useMemo(() => indexProducts(context?.productos), [context]);
-  const [origen, setOrigen] = useState('');
+  const [origen, setOrigen] = useState(origenInicial ? clave(origenInicial) : '');
   const [destino, setDestino] = useState('');
-  const [msgLongitudes, setMsgLongitudes] = useState<{ actualizadas: string[]; noPudo: Array<{ pieza: string; motivo: string }> } | null>(null);
-  const trayEdit = useTrayStore((s) => s.edit);
-  const markDirty = useWorkspaceStore((s) => s.markDirty);
   const piezas = entrada?.piezas ?? [];
-  const sinLongitud = piezas.filter(necesitaLongitudes).length;
 
   const opciones = useMemo(
     () => piezas.flatMap((p) => Object.keys(p.puertos).map((b) => ({
@@ -62,39 +57,10 @@ export function RecorridoSection() {
   const d = deClave(destinoSel);
   const r = useMemo(() => (entrada && o && d ? caminoEntreBocas(entrada, o, d) : null), [entrada, origenSel, destinoSel]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const guardarLongitudes = () => {
-    if (!entrada) return;
-    const res = guardarLongitudesAnteriores(entrada);
-    if (res.actualizadas.length) { trayEdit(res.entrada); markDirty(); }
-    setMsgLongitudes({ actualizadas: res.actualizadas, noPudo: res.noPudo });
-  };
 
   return (
     <Section title="Medir entre dos bocas" testid="recorrido">
       {piezas.length === 0 && <Empty>Sin piezas colocadas.</Empty>}
-      {(sinLongitud > 0 || msgLongitudes) && (
-        <div className="stage-card" data-testid="longitudes-anteriores">
-          {sinLongitud > 0 && (
-            <>
-              <div className="tone-warn">{sinLongitud} pieza(s) sin longitud de eje guardada (proyecto anterior a la regla).</div>
-              <button type="button" data-testid="longitudes-anteriores-aplicar" onClick={guardarLongitudes}>
-                Guardar longitudes con las reglas vigentes
-              </button>
-            </>
-          )}
-          {msgLongitudes && (
-            <div role="status" data-testid="longitudes-anteriores-resultado">
-              <div>{msgLongitudes.actualizadas.length} pieza(s) actualizada(s){msgLongitudes.actualizadas.length ? `: ${msgLongitudes.actualizadas.map(etiquetaPieza).join(', ')}` : ''}.</div>
-              {msgLongitudes.noPudo.length > 0 && <div className="tone-warn">No se pudo en {msgLongitudes.noPudo.length}:</div>}
-              {msgLongitudes.noPudo.map((x) => (
-                <div key={x.pieza} className="stage-row-sub" style={{ whiteSpace: 'normal' }} data-testid="longitudes-anteriores-no-pudo">
-                  {etiquetaPieza(x.pieza)}: {x.motivo}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
       {piezas.length > 0 && (
         <>
           <label className="stage-field">

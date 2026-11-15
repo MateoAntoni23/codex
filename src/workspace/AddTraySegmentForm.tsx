@@ -411,6 +411,7 @@ export function AddTraySegmentForm({ onClose }: { onClose: () => void }) {
         {dist < 1 && dist > 0 && <span style={{ color: '#ff9955' }}> (mínimo 1 mm)</span>}
       </div>
 
+      <div className="inspector-fijo-abajo">
       {error && (
         <div style={{ fontSize: 11, color: '#ff7755', marginBottom: 6, lineHeight: 1.4 }}>
           {error}
@@ -430,6 +431,7 @@ export function AddTraySegmentForm({ onClose }: { onClose: () => void }) {
         >
           Cancelar
         </button>
+      </div>
       </div>
     </div>
   );

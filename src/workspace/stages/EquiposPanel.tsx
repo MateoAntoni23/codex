@@ -13,9 +13,9 @@ import { useMemo, useState } from 'react';
 import { useWorkspaceStore } from '../useWorkspaceStore';
 import { mapImportCategoria } from '../../import/placement';
 import { nextDefaultPositionForCategoria } from '../../import/ImportedEquipmentInspector';
-import { PreviewAddForm } from '../../preview/PreviewAddForm';
 import type { Category, EquipmentElement } from '../../types/domain-v2';
 import { CATEGORY_LABEL } from './labels';
+import { useUiStore } from './uiStore';
 import { Empty, ToolBar, useRevealSelected } from './shared';
 
 type PlacementFilter = 'todos' | 'sin-ubicar' | 'ubicados';
@@ -68,7 +68,10 @@ export function EquiposPanel({ onOpenImportWizard }: { onOpenImportWizard: () =>
   const [filter, setFilter] = useState<PlacementFilter>('todos');
   const [showRetirados, setShowRetirados] = useState(false);
   const [collapsed, setCollapsed] = useState<Set<Category>>(new Set());
-  const [adding, setAdding] = useState(false);
+  // Interfaz (2026-11-14): el formulario de equipo nuevo se abre en el inspector.
+  const formulario = useUiStore((s) => s.formulario);
+  const abrirFormulario = useUiStore((s) => s.abrirFormulario);
+  const adding = formulario?.tipo === 'equipo-nuevo';
   const [listEl, setListEl] = useState<HTMLElement | null>(null);
   const [rotateMsg, setRotateMsg] = useState<string | null>(null);
 
@@ -224,22 +227,11 @@ export function EquiposPanel({ onOpenImportWizard }: { onOpenImportWizard: () =>
 
       <div className="stage-actions">
         <button type="button" onClick={onOpenImportWizard} data-testid="open-import-wizard">Importar Excel</button>
-        <button type="button" onClick={() => setAdding((v) => !v)} data-testid="new-equipment" aria-expanded={adding}>
+        <button type="button" onClick={() => abrirFormulario(adding ? null : { tipo: 'equipo-nuevo' })} data-testid="new-equipment" aria-expanded={adding}>
           Nuevo equipo
         </button>
       </div>
 
-      {adding && (
-        <div className="stage-inline-form" data-testid="new-equipment-form">
-          <PreviewAddForm
-            onCreated={(el) => {
-              useWorkspaceStore.getState().addElement(el);
-              setAdding(false);
-            }}
-            onCancel={() => setAdding(false)}
-          />
-        </div>
-      )}
 
       <section className="workspace-tree-section imported-tree-section stage-section" ref={setListEl} data-testid="equipment-list">
         <h3 className="stage-section-title">

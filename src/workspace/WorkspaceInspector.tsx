@@ -31,6 +31,7 @@ import { object } from '../tray/model';
 import { rotatePiece, rotatePieceAroundAxis, normalizeDeg, type AxisKey, type PivotRef } from './pieceTransforms';
 import { indexProducts, pieceLabelById, portLabel, productLabel } from './stages/displayNames';
 import { BandaDivisoriaControl } from './stages/BandaDivisoria';
+import { AccionesPieza } from './stages/AccionesPieza';
 
 /** Renders a Python result value as readable text, handling nested objects and arrays. */
 function formatResultValue(v: unknown, depth = 0): string {
@@ -566,10 +567,7 @@ export function PieceCard({ piece }: { piece: Piece }) {
   const edit    = useTrayStore((s) => s.edit);
   const entrada = useTrayStore((s) => s.entrada);
   const markDirty = useWorkspaceStore((s) => s.markDirty);
-  const trayMoveMode     = useWorkspaceStore((s) => s.trayMoveMode);
-  const setTrayMoveMode  = useWorkspaceStore((s) => s.setTrayMoveMode);
   const trayRotateMode   = useWorkspaceStore((s) => s.trayRotateMode);
-  const setTrayRotateMode = useWorkspaceStore((s) => s.setTrayRotateMode);
 
   if (!entrada) return null;
 
@@ -627,6 +625,7 @@ export function PieceCard({ piece }: { piece: Piece }) {
         <span className="inspector-category">Pieza de bandeja</span>
         <span className="inspector-title" data-testid="piece-title">{title}</span>
       </div>
+      <AccionesPieza piece={piece} />
       {(() => {
         const def = placedOf(entrada, piece)?.def;
         return def?.procedencia?.tipo === 'nominal'
@@ -645,44 +644,6 @@ export function PieceCard({ piece }: { piece: Piece }) {
 
       <BrokenConnectionsModal />
 
-      <div style={{ padding: '4px 12px', display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-        <button
-          className={trayMoveMode ? 'tone-ok' : undefined}
-          data-testid="tray-move-toggle"
-          onClick={() => setTrayMoveMode(!trayMoveMode)}
-          title="Mostrar/ocultar gizmo XYZ para mover la pieza completa en planta y altura"
-          style={{
-            fontSize: 11,
-            padding: '3px 10px',
-            background: trayMoveMode ? '#a97014' : '#3c4967',
-            color: 'white',
-            border: `1px solid ${trayMoveMode ? '#f0b65e' : '#5566aa'}`,
-            borderRadius: 3,
-            cursor: 'pointer',
-            fontWeight: trayMoveMode ? 600 : 400,
-          }}
-        >
-          {trayMoveMode ? '✥ Mover tramo (activo — Esc)' : '✥ Mover tramo'}
-        </button>
-        <button
-          className={trayRotateMode ? 'tone-ok' : undefined}
-          data-testid="tray-rotate-toggle"
-          onClick={() => setTrayRotateMode(!trayRotateMode)}
-          title="Mostrar/ocultar el gizmo de rotación (anillos por eje) sobre la pieza"
-          style={{
-            fontSize: 11,
-            padding: '3px 10px',
-            background: trayRotateMode ? '#1f5a8a' : '#3c4967',
-            color: 'white',
-            border: `1px solid ${trayRotateMode ? '#7fc0f0' : '#5566aa'}`,
-            borderRadius: 3,
-            cursor: 'pointer',
-            fontWeight: trayRotateMode ? 600 : 400,
-          }}
-        >
-          {trayRotateMode ? '⟳ Rotar tramo (activo — Esc)' : '⟳ Rotar tramo'}
-        </button>
-      </div>
       {trayRotateMode && <TrayRotatePanel piece={piece} />}
 
       <TrayCentroidEditor

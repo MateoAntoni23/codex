@@ -209,7 +209,7 @@ export function PreviewAddForm({ onCreated, onCancel }: Props) {
           </>
         )}
 
-        <div className="inspector-actions">
+        <div className="inspector-actions inspector-fijo-abajo">
           <button type="button" className="btn-secondary" onClick={onCancel}>Cancelar</button>
           <button type="button" className="btn-primary"   onClick={handleCreate}>Crear</button>
         </div>

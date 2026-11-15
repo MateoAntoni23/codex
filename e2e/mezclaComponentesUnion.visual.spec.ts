@@ -11,6 +11,8 @@ import { test, expect, type Page } from '@playwright/test';
 import { mkdirSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { elegirPieza } from './helpers/selectorPieza';
+import { verPestana } from './helpers/interfaz';
 
 const OUT_DIR = resolve(dirname(fileURLToPath(import.meta.url)), 'output');
 const PROCEDENCIA = 'unión entre acabados distintos, componentes tomados de la unión del mismo acabado; declarado por el operador';
@@ -31,7 +33,7 @@ async function tramoYContinuacion(page: Page, tronco: string, siguiente: string)
   await expect.poll(() => piezas(page)).toBe(1);
   await page.getByTestId('tool-bandejas-seleccionar').click();
   await page.getByTestId('free-end').filter({ hasText: /Boca x_max/ }).first().click();
-  await page.locator('[data-codex-routing-product-select]').selectOption(siguiente);
+  await elegirPieza(page, siguiente);
   await page.locator('[data-codex-routing-length-input]').fill('1000');
   await page.locator('text=Confirmar continuación').click();
   await expect.poll(() => piezas(page)).toBe(2);
@@ -39,6 +41,7 @@ async function tramoYContinuacion(page: Page, tronco: string, siguiente: string)
 
 async function calcular(page: Page) {
   await page.getByTestId('stage-tab-resultados').click();
+  await verPestana(page, 'computo');
   await page.getByTestId('reserva-input').fill('20');
   await expect(page.getByTestId('engine-state')).toHaveAttribute('data-engine', 'conectado', { timeout: 20_000 });
   await page.getByTestId('calculate-tray').click();

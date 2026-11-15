@@ -15,6 +15,8 @@ import { test, expect, type Page } from '@playwright/test';
 import { mkdirSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { elegirPieza } from './helpers/selectorPieza';
+import { abrirFormulario } from './helpers/interfaz';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const OUT_DIR = resolve(HERE, 'output');
@@ -61,9 +63,7 @@ async function crearEquipo(page: Page, nombre: string, pos: V3): Promise<string>
 async function continueFrom(page: Page, freeEnd: RegExp, productoId: string, opts: { side?: 'left' | 'right'; length?: number } = {}) {
   const before = (await piezas(page)).length;
   await page.getByTestId('free-end').filter({ hasText: freeEnd }).first().click();
-  const select = page.locator('[data-codex-routing-product-select]');
-  await expect(select).toBeVisible();
-  await select.selectOption(productoId);
+  await elegirPieza(page, productoId);
   if (opts.side) await page.locator(`[data-codex-routing-hand="${opts.side}"]`).click();
   if (opts.length) await page.locator('[data-codex-routing-length-input]').fill(String(opts.length));
   await page.locator('text=Confirmar continuación').click();
@@ -71,6 +71,7 @@ async function continueFrom(page: Page, freeEnd: RegExp, productoId: string, opt
 }
 
 async function enlazar(page: Page, equipoId: string, tronco: string, desde: 'P1' | 'P2', distancia: number, lado: 'izquierda' | 'derecha') {
+  await abrirFormulario(page, 'enlace');
   const form = page.getByTestId('baj-form');
   await form.getByTestId('baj-equipo').selectOption(equipoId);
   await form.getByTestId('baj-tronco').selectOption(tronco);
@@ -119,6 +120,7 @@ test.describe('Etapa 2 — el cable del circuito', () => {
     await enlazar(page, b3, r2.instancia_id, 'P2', 300, 'derecha');
 
     // 2. Circuito con cable: cascada de tres listas cortas.
+    await abrirFormulario(page, 'circuito');
     await page.getByTestId('circuito-origen').selectOption(tg);
     await page.getByTestId('circuito-destino').selectOption(b3);
     await expect(page.getByTestId('circuito-cable-tipo')).toBeDisabled();
@@ -139,6 +141,7 @@ test.describe('Etapa 2 — el cable del circuito', () => {
 
     // 3. Otro circuito sin cable: se guarda, queda incompleto. El formulario volvió a vacío.
     await expect(page.getByTestId('circuito-cable-formacion')).toHaveValue('');
+    await abrirFormulario(page, 'circuito');
     await page.getByTestId('circuito-origen').selectOption(b3);
     await page.getByTestId('circuito-destino').selectOption(tg);
     await page.getByTestId('circuito-nombre-input').fill('Sin cable');

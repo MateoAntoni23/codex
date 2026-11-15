@@ -82,8 +82,9 @@ export function ProjectBar() {
     <header className="project-bar" data-testid="project-bar">
       <span className="project-name" data-testid="project-name" title={fileName ?? undefined}>
         {name}
-        {dirty && <span className="workspace-dirty" title="Hay cambios que no están en un archivo"> ● sin copia</span>}
       </span>
+      {/* Fuera del nombre: si el nombre se recorta con «…», esta marca nunca se pierde. */}
+      {dirty && <span className="workspace-dirty project-dirty" title="Hay cambios que no están en un archivo">● sin copia</span>}
       <ProjectControls />
       <TrayHistoryControls />
       <span className="project-bar-spacer" />

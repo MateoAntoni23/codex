@@ -14,6 +14,8 @@ import { test, expect, type Page } from '@playwright/test';
 import { mkdirSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { elegirPieza } from './helpers/selectorPieza';
+import { abrirFormulario, verPestana } from './helpers/interfaz';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const OUT_DIR = resolve(HERE, 'output');
@@ -57,9 +59,7 @@ async function crearEquipo(page: Page, nombre: string, pos: V3): Promise<string>
 async function continueFrom(page: Page, freeEnd: RegExp, productoId: string, opts: { side?: 'left' | 'right'; length?: number } = {}) {
   const before = (await piezas(page)).length;
   await page.getByTestId('free-end').filter({ hasText: freeEnd }).first().click();
-  const select = page.locator('[data-codex-routing-product-select]');
-  await expect(select).toBeVisible();
-  await select.selectOption(productoId);
+  await elegirPieza(page, productoId);
   if (opts.side) await page.locator(`[data-codex-routing-hand="${opts.side}"]`).click();
   if (opts.length) await page.locator('[data-codex-routing-length-input]').fill(String(opts.length));
   await page.locator('text=Confirmar continuación').click();
@@ -67,6 +67,7 @@ async function continueFrom(page: Page, freeEnd: RegExp, productoId: string, opt
 }
 
 async function enlazar(page: Page, equipoId: string, tronco: string, desde: 'P1' | 'P2', distancia: number, lado: 'izquierda' | 'derecha') {
+  await abrirFormulario(page, 'enlace');
   const form = page.getByTestId('baj-form');
   await form.getByTestId('baj-equipo').selectOption(equipoId);
   await form.getByTestId('baj-tronco').selectOption(tronco);
@@ -78,6 +79,7 @@ async function enlazar(page: Page, equipoId: string, tronco: string, desde: 'P1'
 }
 
 async function guardarCircuito(page: Page, nombre: string, o: string, d: string, cable: { tipo: string; formacion: string; cantidad: number; funcion: string }) {
+  await abrirFormulario(page, 'circuito');
   await page.getByTestId('circuito-origen').selectOption(o);
   await page.getByTestId('circuito-destino').selectOption(d);
   await page.getByTestId('circuito-cable-linea').selectOption({ label: 'Sintenax Valio' });
@@ -133,6 +135,7 @@ test.describe('Etapa 3 A — cálculo del motor', () => {
     expect(entradaMotor.circuitos).toEqual([expect.objectContaining({ funcion: 'potencia', separado: false, cantidad: 2, cable_id: 'PRY-SVALIO-CU-3x50', recorrido: [r1.instancia_id, curva.instancia_id, r2.instancia_id] })]);
     expect(entradaMotor.pe).toMatchObject({ cable_id: 'PRY-SASTFLEX-CU-1x16', seccion_requerida_mm2: 16 });
 
+    await verPestana(page, 'motor');
     const calc = page.getByTestId('calculo-motor');
     await expect(calc.getByTestId('calculo-motor-procedencia')).toContainText('Calculado por el motor motor_bandejas');
     await expect(calc.getByTestId('motor-circuito')).toHaveCount(1);
@@ -159,7 +162,8 @@ test.describe('Etapa 3 A — cálculo del motor', () => {
     await expect(calc.getByTestId('motor-incumplimiento')).toHaveCount(resumen.incumplimientos.length);
     expect(resumen.incumplimientos).not.toContain('cobertura del PE incompleta');
     expect(resumen.incumplimientos).not.toContain('PE sin conexión al sistema de protección');
-    // La maniobra sigue con su motivo después de calcular.
+    // La maniobra sigue con su motivo después de calcular (pestaña Circuitos).
+    await verPestana(page, 'circuitos');
     await expect(page.getByTestId('circuito-no-motor-motivo')).toContainText('D-11');
     await page.screenshot({ path: resolve(OUT_DIR, 'calculo-motor-01.png'), fullPage: true });
   });
@@ -185,7 +189,7 @@ test.describe('Etapa 3 A — cálculo del motor', () => {
     await expect.poll(async () => (await piezas(page)).length).toBe(2);
     await page.getByTestId('tool-bandejas-seleccionar').click();
     await page.getByTestId('free-end').filter({ hasText: /DCPS-100-Z/ }).first().click();
-    await page.locator('[data-codex-routing-product-select]').selectOption('SAM_TRPS-100-22-Z');
+    await elegirPieza(page, 'SAM_TRPS-100-22-Z');
     await page.locator('[data-codex-routing-length-input]').fill('1000');
     await page.locator('text=Confirmar continuación').click();
     await expect.poll(async () => (await piezas(page)).length).toBe(3);
@@ -210,6 +214,7 @@ test.describe('Etapa 3 A — cálculo del motor', () => {
     // En pantalla, el propio incumplimiento lo explica.
     const explicado = /^recorridos discontinuos: la discontinuidad corresponde a una derivación en tramo; el motor no la modela como conexión \(no afecta ocupación ni reserva/;
     await expect(page.getByTestId('result-issues').locator('li')).toHaveText([explicado]);
+    await verPestana(page, 'motor');
     await expect(page.getByTestId('motor-incumplimiento')).toContainText(['corresponde a una derivación en tramo']);
     // Ocupación y reserva del ramal: calculadas igual por el motor.
     await expect(page.locator(`[data-testid="motor-pieza"][data-pieza="${ramal.instancia_id}"] [data-testid="motor-ocupacion"]`)).toContainText('reserva libre');
@@ -257,6 +262,7 @@ test.describe('Etapa 3 A — cálculo del motor', () => {
     const asigCtl = (disponible * nCtl) / (nPot + nCtl);
     const ocPot = 2 * D['PRY-SVALIO-CU-3x50'] + D['PRY-SASTFLEX-CU-1x16'];
     const librePot = ((asigPot - ocPot) / asigPot) * 100;
+    await verPestana(page, 'motor');
     const seg = page.getByTestId('segregadas');
     await expect(seg.getByTestId('segregadas-procedencia')).toContainText('Regla declarada por el operador');
     await expect(seg.getByTestId('segregadas-procedencia')).toContainText('el motor no sabe que la banda existe');
@@ -273,10 +279,12 @@ test.describe('Etapa 3 A — cálculo del motor', () => {
     expect(Number(await gPot.getAttribute('data-ocupado'))).toBeCloseTo(ocPot, 3);
     expect(Number(await gPot.getAttribute('data-reserva-libre'))).toBeCloseTo(librePot, 2);
     // La banda aparece en el cómputo (agregada por la app).
-    const banda = seg.getByTestId('computo-banda');
+    await verPestana(page, 'computo');
+    const banda = page.getByTestId('segregadas-computo').getByTestId('computo-banda');
     await expect(banda).toHaveAttribute('data-producto', 'SAM_BDS090Z');
     await expect(banda).toHaveAttribute('data-piezas', '1');
     await expect(banda).toContainText('[AGREGADA POR LA APP] BDS090Z: 1 banda(s)');
+    await verPestana(page, 'motor');
 
     // Con el motor: no sabe de la banda, y la ocupación de esa pieza que se muestra es la de la app.
     await page.getByTestId('calculate-tray').click();

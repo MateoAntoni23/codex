@@ -25,6 +25,7 @@ import { test, expect } from '@playwright/test';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { elegirPieza } from './helpers/selectorPieza';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -134,7 +135,7 @@ test.describe('Preview swap de producto — debe cambiar de curva a recto sin es
     // Esperar a que StepConfiguringSegment monte su <select>. Usamos el
     // selector específico de panel de routing (data-codex-routing-product-select)
     // para evitar confundirlo con otros selects del inspector (cables, etc).
-    const productSelect = page.locator('[data-codex-routing-product-select]');
+    const productSelect = page.locator('[data-codex-routing-pieza-tipo]');
     await productSelect.waitFor({ state: 'visible', timeout: 10_000 });
 
     // Esperar a que el catálogo de compatibilidades esté cargado — si no, el
@@ -142,9 +143,9 @@ test.describe('Preview swap de producto — debe cambiar de curva a recto sin es
     // construye del paramétrico, sin fetch). TRPS entra a "Recomendados" sólo
     // cuando compatibleIds trae la compat SAMET para CPS-90.P2.
     await page.waitForFunction(() => {
-      const sel = document.querySelector('[data-codex-routing-product-select]') as HTMLSelectElement | null;
+      const sel = document.querySelector('[data-codex-routing-pieza-tipo]') as HTMLSelectElement | null;
       if (!sel) return false;
-      return Array.from(sel.options).some((o) => o.value === 'SAM_TRPS-300-22-Z');
+      return Array.from(sel.options).some((o) => (o.getAttribute('data-productos') ?? '').split(' ').includes('SAM_TRPS-300-22-Z'));
     }, { timeout: 15_000 });
 
     // Capturar todas las opciones disponibles en el dropdown — crítico para
@@ -193,7 +194,7 @@ test.describe('Preview swap de producto — debe cambiar de curva a recto sin es
 
     // ─── Paso 2: cambiar a TRPS via UI real (el SWAP sí es DOM-driven) ───
     console.log('\nEjecutando selectOption("SAM_TRPS-300-22-Z")...');
-    await productSelect.selectOption('SAM_TRPS-300-22-Z', { timeout: 5_000 });
+    await elegirPieza(page, 'SAM_TRPS-300-22-Z', { timeout: 5_000 });
     console.log('selectOption OK.');
 
     // Pequeño tick para que React aplique el nuevo render.

@@ -1,7 +1,10 @@
 /**
  * Etapa 5 — Resultados.
  *
- * Estado del servicio de cálculo, Reconectar, Calcular y los resultados del motor.
+ * Panel izquierdo: estado del servicio de cálculo, Reconectar, reserva, Calcular y
+ * el estado del resultado. Las tablas (circuitos, cómputo, lo que devuelve el motor,
+ * avisos) viven en el panel inferior (`PanelInferior.tsx`); las listas de este
+ * archivo se exportan para sus pestañas.
  *
  * Reserva solicitada: el motor exige `tipo_circuito` y `reserva_solicitada_pct`
  * en la entrada del trazado. Un proyecto nuevo no los trae (el proyecto vacío
@@ -11,16 +14,13 @@
  */
 import { useTrayStore } from '../../tray/store';
 import { useWorkspaceStore } from '../useWorkspaceStore';
-import { TrayResults } from '../TrayResults';
 import { summarizeResultDe } from './resultPresentation';
 import { mezclasDelTrazado, PROCEDENCIA_MEZCLA } from '../mezclaAcabados';
 import { MarcaMezcla } from './MarcaMezcla';
 import { compraEslabones, curvasEslabonadas } from '../computoEslabonado';
 import { completarComponentesMezclas, PROCEDENCIA_COMPONENTES_MEZCLA } from '../componentesUnionMezcla';
 import { Section } from './shared';
-import { CircuitosTabla } from './CircuitosTabla';
-import { CalculoMotorSection, CircuitosAlMotor } from './CalculoMotor';
-import { BandejasSegregadasSection } from './BandaDivisoria';
+import { useUiStore, type PestanaInferior } from './uiStore';
 import { unionsOf } from '../workspaceOperation';
 import { indexProducts, pieceLabelById } from './displayNames';
 import { placedOf } from '../placement/definitions';
@@ -71,7 +71,7 @@ export function ResultSummary() {
 }
 
 /** Decisión 2 (B-2): piezas colocadas con geometría nominal del catálogo. */
-function NominalList() {
+export function NominalList() {
   const entrada = useTrayStore((s) => s.entrada);
   const context = useTrayStore((s) => s.context);
   const idx = indexProducts(context?.productos);
@@ -94,7 +94,7 @@ function NominalList() {
  * B-3: avisos de modelo — bocas cuya ala medida difiere de la que declara el
  * catálogo (caso CUPS). No invalidan las uniones; se informan.
  */
-function AvisosModeloList() {
+export function AvisosModeloList() {
   const entrada = useTrayStore((s) => s.entrada);
   const context = useTrayStore((s) => s.context);
   const idx = indexProducts(context?.productos);
@@ -117,7 +117,7 @@ function AvisosModeloList() {
  * Mezclas de acabados del trazado (uniones y derivaciones): avisos que no pueden
  * pasar desapercibidos en el cómputo. No invalidan; la validez la decide B-3.
  */
-function MezclasList() {
+export function MezclasList() {
   const entrada = useTrayStore((s) => s.entrada);
   const context = useTrayStore((s) => s.context);
   const idx = indexProducts(context?.productos);
@@ -140,7 +140,7 @@ function MezclasList() {
  * Curvas eslabonadas (EPS, CUS): eslabones por curva y códigos a comprar. El
  * motor cuenta 1 pieza por instancia (D-18); esta cuenta la reemplaza.
  */
-function CurvasEslabonadasList() {
+export function CurvasEslabonadasList() {
   const entrada = useTrayStore((s) => s.entrada);
   const context = useTrayStore((s) => s.context);
   const idx = indexProducts(context?.productos);
@@ -171,7 +171,7 @@ function CurvasEslabonadasList() {
  * (separados de los del motor) y la línea agrupada de las conexiones que quedan
  * sin componentes determinables.
  */
-function ComponentesUnionApp() {
+export function ComponentesUnionApp() {
   const result = useTrayStore((s) => s.result);
   const entrada = useTrayStore((s) => s.entrada);
   const context = useTrayStore((s) => s.context);
@@ -197,7 +197,7 @@ function ComponentesUnionApp() {
 }
 
 /** A-9: uniones aceptadas como excepción, con su motivo. */
-function ExceptionsList() {
+export function ExceptionsList() {
   const entrada = useTrayStore((s) => s.entrada);
   const context = useTrayStore((s) => s.context);
   const idx = indexProducts(context?.productos);
@@ -296,21 +296,26 @@ export function ResultadosPanel() {
         {error && <p className="workspace-error" role="alert">⚠ {error}</p>}
       </Section>
 
-      <ExceptionsList />
-      <CircuitosTabla />
-      <CircuitosAlMotor />
-      <BandejasSegregadasSection />
-      <CalculoMotorSection />
-      <NominalList />
-      <AvisosModeloList />
-      <MezclasList />
-      <CurvasEslabonadasList />
-      <ComponentesUnionApp />
-
       <Section title="Resultado">
         <ResultSummary />
-        <TrayResults />
+        <TablasInferiores />
       </Section>
+    </div>
+  );
+}
+
+const TABLAS: Array<[PestanaInferior, string]> = [
+  ['circuitos', 'Circuitos'], ['computo', 'Cómputo de materiales'], ['motor', 'Cálculo del motor'], ['avisos', 'Avisos'],
+];
+
+/** Accesos a las tablas del panel inferior. */
+function TablasInferiores() {
+  const ver = useUiStore((s) => s.verPestana);
+  return (
+    <div className="stage-actions" data-testid="resultados-tablas">
+      {TABLAS.map(([id, label]) => (
+        <button key={id} type="button" data-testid={`ver-${id}`} onClick={() => ver(id)}>{label} ▾</button>
+      ))}
     </div>
   );
 }

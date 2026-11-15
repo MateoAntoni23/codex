@@ -19,6 +19,7 @@ import { test, expect, type Page } from '@playwright/test';
 import { mkdirSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { elegirPieza } from './helpers/selectorPieza';
 
 const OUT_DIR = resolve(dirname(fileURLToPath(import.meta.url)), 'output');
 
@@ -68,9 +69,7 @@ async function crearTramo(page: Page): Promise<void> {
 async function continuarDesde(page: Page, extremo: RegExp): Promise<void> {
   const before = await count(page);
   await page.getByTestId('free-end').filter({ hasText: extremo }).first().click();
-  const select = page.locator('[data-codex-routing-product-select]');
-  await expect(select).toBeVisible();
-  await select.selectOption('SAM_TRPS-300-22-Z');
+  await elegirPieza(page, 'SAM_TRPS-300-22-Z');
   await page.locator('[data-codex-routing-length-input]').fill('1500');
   await page.locator('text=Confirmar continuación').click();
   await expect.poll(() => count(page)).toBe(before + 1);

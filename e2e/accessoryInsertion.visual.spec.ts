@@ -16,6 +16,7 @@
  * Requiere dev server activo en http://localhost:5173.
  */
 import { test, expect } from '@playwright/test';
+import { elegirPieza, esperarSelectorPieza } from './helpers/selectorPieza';
 
 const FIXTURE_TRAY_WITH_FREE_P2 = {
   version_contrato: 'trazado/1',
@@ -71,7 +72,7 @@ async function bootstrap(page: import('@playwright/test').Page) {
     });
   }, FIXTURE_TRAY_WITH_FREE_P2);
 
-  const productSelect = page.locator('[data-codex-routing-product-select]');
+  const productSelect = page.locator('[data-codex-routing-pieza-tipo]');
   await productSelect.waitFor({ state: 'visible', timeout: 20_000 }); // 10 s se quedaba corto en corridas completas lentas
   return productSelect;
 }
@@ -84,11 +85,11 @@ test.describe('Inserción interactiva de accesorios (TPS/XPS/CUPS)', () => {
 
     // Esperar a que TPS esté disponible en el selector.
     await page.waitForFunction(() => {
-      const sel = document.querySelector('[data-codex-routing-product-select]') as HTMLSelectElement | null;
-      return !!sel && Array.from(sel.options).some((o) => o.value === 'SAM_TPS-300-Z');
+      const sel = document.querySelector('[data-codex-routing-pieza-tipo]') as HTMLSelectElement | null;
+      return !!sel && Array.from(sel.options).some((o) => (o.getAttribute('data-productos') ?? '').split(' ').includes('SAM_TPS-300-Z'));
     }, { timeout: 15_000 });
 
-    await productSelect.selectOption('SAM_TPS-300-Z');
+    await elegirPieza(page, 'SAM_TPS-300-Z');
     await page.waitForTimeout(300);
 
     // Deben aparecer los 3 botones de boca.
@@ -186,11 +187,11 @@ test.describe('Inserción interactiva de accesorios (TPS/XPS/CUPS)', () => {
     const productSelect = await bootstrap(page);
 
     await page.waitForFunction(() => {
-      const sel = document.querySelector('[data-codex-routing-product-select]') as HTMLSelectElement | null;
-      return !!sel && Array.from(sel.options).some((o) => o.value === 'SAM_TPS-300-Z');
+      const sel = document.querySelector('[data-codex-routing-pieza-tipo]') as HTMLSelectElement | null;
+      return !!sel && Array.from(sel.options).some((o) => (o.getAttribute('data-productos') ?? '').split(' ').includes('SAM_TPS-300-Z'));
     }, { timeout: 15_000 });
 
-    await productSelect.selectOption('SAM_TPS-300-Z');
+    await elegirPieza(page, 'SAM_TPS-300-Z');
     await page.waitForTimeout(300);
 
     // Entrada por tronco_P2 → tronco_P1 y boca_derivacion quedan libres.
@@ -246,7 +247,7 @@ test.describe('Inserción interactiva de accesorios (TPS/XPS/CUPS)', () => {
       expect(openedSelector, `routing arranca desde ${portName}`).toBe(true);
 
       // El panel vuelve a montar el selector de producto en modo configuración.
-      await page.locator('[data-codex-routing-product-select]').waitFor({ state: 'visible', timeout: 10_000 });
+      await esperarSelectorPieza(page);
 
       // Post-fix mapping explícito: el compat lookup de tronco_P1 y
       // boca_derivacion ahora SÍ encuentra productos (traduce a P1/P3 del
@@ -254,9 +255,9 @@ test.describe('Inserción interactiva de accesorios (TPS/XPS/CUPS)', () => {
       // placeholder "— elegir —" (option sin value). Antes del fix, la lista
       // quedaba vacía porque el catálogo desconocía esos nombres.
       const compatCount = await page.evaluate(() => {
-        const sel = document.querySelector('[data-codex-routing-product-select]') as HTMLSelectElement | null;
+        const sel = document.querySelector('[data-codex-routing-pieza-tipo]') as HTMLSelectElement | null;
         if (!sel) return -1;
-        return Array.from(sel.options).filter((o) => !!o.value).length;
+        return new Set(Array.from(sel.options).flatMap((o) => (o.getAttribute('data-productos') ?? '').split(' ').filter(Boolean))).size;
       });
       expect(compatCount, `compat list for ${portName} not empty`).toBeGreaterThan(0);
     }
@@ -267,11 +268,11 @@ test.describe('Inserción interactiva de accesorios (TPS/XPS/CUPS)', () => {
 
     // Asegurarnos de que XPS está en el selector (puede estar como "Otros").
     await page.waitForFunction(() => {
-      const sel = document.querySelector('[data-codex-routing-product-select]') as HTMLSelectElement | null;
-      return !!sel && Array.from(sel.options).some((o) => o.value === 'SAM_XPS-300-Z');
+      const sel = document.querySelector('[data-codex-routing-pieza-tipo]') as HTMLSelectElement | null;
+      return !!sel && Array.from(sel.options).some((o) => (o.getAttribute('data-productos') ?? '').split(' ').includes('SAM_XPS-300-Z'));
     }, { timeout: 15_000 });
 
-    await productSelect.selectOption('SAM_XPS-300-Z');
+    await elegirPieza(page, 'SAM_XPS-300-Z');
     await page.waitForTimeout(300);
 
     const btns = page.locator('[data-codex-routing-entry-port]');
@@ -359,11 +360,11 @@ test.describe('Inserción interactiva de accesorios (TPS/XPS/CUPS)', () => {
     const productSelect = await bootstrap(page);
 
     await page.waitForFunction(() => {
-      const sel = document.querySelector('[data-codex-routing-product-select]') as HTMLSelectElement | null;
-      return !!sel && Array.from(sel.options).some((o) => o.value === 'SAM_CUPS-300-A-Z');
+      const sel = document.querySelector('[data-codex-routing-pieza-tipo]') as HTMLSelectElement | null;
+      return !!sel && Array.from(sel.options).some((o) => (o.getAttribute('data-productos') ?? '').split(' ').includes('SAM_CUPS-300-A-Z'));
     }, { timeout: 15_000 });
 
-    await productSelect.selectOption('SAM_CUPS-300-A-Z');
+    await elegirPieza(page, 'SAM_CUPS-300-A-Z');
     await page.waitForTimeout(300);
 
     // El puente paramétrico ahora acepta el marco completo del puerto; ambas

@@ -27,6 +27,7 @@
  * Requiere `npm run dev` en http://localhost:5173.
  */
 import { test, expect, type Page } from '@playwright/test';
+import { elegirPieza, esperarSelectorPieza } from './helpers/selectorPieza';
 
 type Vec3 = [number, number, number];
 
@@ -102,7 +103,7 @@ async function bootstrap(page: Page, straightProductId: string): Promise<void> {
     });
   }, { productoId: straightProductId });
 
-  await page.locator('[data-codex-routing-product-select]').waitFor({ state: 'visible', timeout: 10_000 });
+  await esperarSelectorPieza(page);
 }
 
 async function readTrayState(page: Page): Promise<TrayState> {
@@ -157,15 +158,15 @@ async function selectPort(page: Page, port: PortSnapshot): Promise<void> {
     r.activate();
     r.selectStartPort(p);
   }, port);
-  await page.locator('[data-codex-routing-product-select]').waitFor({ state: 'visible', timeout: 10_000 });
+  await esperarSelectorPieza(page);
 }
 
 async function waitForOptionAndSelect(page: Page, productoId: string): Promise<void> {
   await page.waitForFunction((pid) => {
-    const sel = document.querySelector('[data-codex-routing-product-select]') as HTMLSelectElement | null;
-    return !!sel && Array.from(sel.options).some((o) => o.value === pid);
+    const sel = document.querySelector('[data-codex-routing-pieza-tipo]') as HTMLSelectElement | null;
+    return !!sel && Array.from(sel.options).some((o) => (o.getAttribute('data-productos') ?? '').split(' ').includes(pid));
   }, productoId, { timeout: 15_000 });
-  await page.locator('[data-codex-routing-product-select]').selectOption(productoId);
+  await elegirPieza(page, productoId);
   await page.waitForTimeout(250);
 }
 
@@ -296,15 +297,15 @@ async function runFullChain(page: Page, cfg: FamilyConfig): Promise<void> {
     // El selector debe ofrecer al menos un candidato compatible — típicamente
     // el recto de la familia.
     const compatCount = await page.evaluate(() => {
-      const sel = document.querySelector('[data-codex-routing-product-select]') as HTMLSelectElement | null;
+      const sel = document.querySelector('[data-codex-routing-pieza-tipo]') as HTMLSelectElement | null;
       if (!sel) return -1;
-      return Array.from(sel.options).filter((o) => !!o.value).length;
+      return new Set(Array.from(sel.options).flatMap((o) => (o.getAttribute('data-productos') ?? '').split(' ').filter(Boolean))).size;
     });
     expect(compatCount, `[${cfg.label}] T.${freeName}: lista compatible no vacía`).toBeGreaterThan(0);
     // El recto de la familia debe estar presente.
     const hasRecto = await page.evaluate((pid) => {
-      const sel = document.querySelector('[data-codex-routing-product-select]') as HTMLSelectElement | null;
-      return !!sel && Array.from(sel.options).some((o) => o.value === pid);
+      const sel = document.querySelector('[data-codex-routing-pieza-tipo]') as HTMLSelectElement | null;
+      return !!sel && Array.from(sel.options).some((o) => (o.getAttribute('data-productos') ?? '').split(' ').includes(pid));
     }, cfg.recto);
     expect(hasRecto, `[${cfg.label}] T.${freeName}: recto ofrecido`).toBe(true);
   }

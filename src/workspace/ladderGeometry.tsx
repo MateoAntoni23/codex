@@ -15,7 +15,8 @@
  * No se mapean SKUs de escalera a recetas paramétricas de la perforada (STP-Z).
  */
 import { useMemo } from 'react';
-import { Html, Line } from '@react-three/drei';
+import { Edges, Html, Line } from '@react-three/drei';
+import { COLOR_CONTORNO_SELECCION, EMISIVO_BASE, EMISIVO_SELECCION, OPACIDAD_PIEZA } from './colores/coloresTipo';
 import * as THREE from 'three';
 import type { Piece, Product } from '../tray/model';
 
@@ -27,10 +28,9 @@ const DEFAULT_RAIL_THICKNESS_MM = 1.24;
 const DEFAULT_RUNG_THICKNESS_MM = 2;
 const DEFAULT_RUNG_WIDTH_MM = 25;
 const ARC_SAMPLES_PER_90 = 24;
-const COLOR_RAIL = '#4f9bd1';
-const COLOR_RUNG = '#9fc6e6';
-const COLOR_SEL = '#ffcf33';
-const COLOR_PENDING = '#ff9955';
+// Color por tipo (interfaz B1): largueros y travesaños llevan el color del tipo
+// (escalera) que pasa TrayObjects; la selección es contorno (B3), no otro relleno.
+const COLOR_PENDING_TEXTO = '#ffd9b0';
 
 // ─── Marco de pieza y utilidades geométricas ─────────────────────────────────
 
@@ -106,10 +106,11 @@ function OrientedBox({
       position={toViewer(centerMm)}
       quaternion={quat}
       onClick={onClick ? (e) => { e.stopPropagation(); onClick(); } : undefined}
-      onUpdate={(m) => { m.userData.codex = codex; }}
+      onUpdate={(m) => { m.userData.codex = { ...codex, color, selected }; }}
     >
       <boxGeometry args={[lx, ly, lz]} />
-      <meshStandardMaterial color={selected ? COLOR_SEL : color} transparent opacity={0.85} />
+      <meshStandardMaterial color={color} transparent opacity={OPACIDAD_PIEZA} toneMapped={false} emissive={color} emissiveIntensity={selected ? EMISIVO_SELECCION : EMISIVO_BASE} />
+      {selected && <Edges lineWidth={2.5} color={COLOR_CONTORNO_SELECCION} />}
     </mesh>
   );
 }
@@ -143,8 +144,8 @@ function PolylineRails({
 // ─── Recto ───────────────────────────────────────────────────────────────────
 
 function LadderStraight({
-  piece, product, selected, onClick,
-}: { piece: Piece; product: Product; selected: boolean; onClick: () => void }) {
+  piece, product, selected, onClick, color,
+}: { piece: Piece; product: Product; selected: boolean; onClick: () => void; color: string }) {
   const p1 = piece.puertos.P1;
   const p2 = piece.puertos.P2;
   if (!p1 || !p2) return null;
@@ -163,7 +164,7 @@ function LadderStraight({
   // Si falta alguna medida crítica → representación conceptual.
   if (anchoMm == null || alaMm == null) {
     return (
-      <ConceptualMissing
+      <ConceptualMissing color={color}
         piece={piece} product={product}
         portsMm={[P1, P2]}
         reason="dimensiones de ala o ancho ausentes en catálogo"
@@ -208,14 +209,14 @@ function LadderStraight({
       <OrientedBox
         aMm={railLeftA} bMm={railLeftB}
         sectYMm={espMm} sectZMm={alaMm}
-        color={COLOR_RAIL} selected={selected}
+        color={color} selected={selected}
         codex={{ ...codexBase, part: 'rail-left' }}
       />
       {/* Larguero derecho */}
       <OrientedBox
         aMm={railRightA} bMm={railRightB}
         sectYMm={espMm} sectZMm={alaMm}
-        color={COLOR_RAIL} selected={selected}
+        color={color} selected={selected}
         codex={{ ...codexBase, part: 'rail-right' }}
       />
       {/* Travesaños — barras planas a altura media del perfil */}
@@ -230,7 +231,7 @@ function LadderStraight({
             aMm={rungA} bMm={rungB}
             sectYMm={DEFAULT_RUNG_WIDTH_MM}
             sectZMm={DEFAULT_RUNG_THICKNESS_MM}
-            color={COLOR_RUNG} selected={selected}
+            color={color} selected={selected}
             codex={{ ...codexBase, part: `rung-${i}` }}
             offsetZMm={offsetZ}
           />
@@ -298,8 +299,8 @@ function sweepTheta(start: number, end: number, chirality: 1 | -1): { start: num
 }
 
 function LadderCurve({
-  piece, product, selected, onClick,
-}: { piece: Piece; product: Product; selected: boolean; onClick: () => void }) {
+  piece, product, selected, onClick, color,
+}: { piece: Piece; product: Product; selected: boolean; onClick: () => void; color: string }) {
   const p1 = piece.puertos.P1;
   const p2 = piece.puertos.P2;
   if (!p1 || !p2) return null;
@@ -320,7 +321,7 @@ function LadderCurve({
 
   if (anchoMm == null || alaMm == null || !arc) {
     return (
-      <ConceptualMissing
+      <ConceptualMissing color={color}
         piece={piece} product={product}
         portsMm={[P1, P2]}
         reason={arc ? 'ala o ancho ausentes en catálogo' : 'no se pudo derivar el centro del arco desde los puertos almacenados'}
@@ -373,7 +374,7 @@ function LadderCurve({
         aMm={inner} bMm={outer}
         sectYMm={DEFAULT_RUNG_WIDTH_MM}
         sectZMm={DEFAULT_RUNG_THICKNESS_MM}
-        color={COLOR_RUNG}
+        color={color}
         selected={selected}
         codex={{ ...codexBase, part: `rung-${i}` }}
         offsetZMm={offsetZ}
@@ -389,13 +390,13 @@ function LadderCurve({
       <PolylineRails
         samples={innerArc}
         sectYMm={espMm} sectZMm={alaMm}
-        color={COLOR_RAIL} selected={selected}
+        color={color} selected={selected}
         codex={{ ...codexBase, part: 'rail-inner' }}
       />
       <PolylineRails
         samples={outerArc}
         sectYMm={espMm} sectZMm={alaMm}
-        color={COLOR_RAIL} selected={selected}
+        color={color} selected={selected}
         codex={{ ...codexBase, part: 'rail-outer' }}
       />
       {rungs}
@@ -406,14 +407,14 @@ function LadderCurve({
 // ─── Tee ─────────────────────────────────────────────────────────────────────
 
 function LadderTee({
-  piece, product, selected, onClick,
-}: { piece: Piece; product: Product; selected: boolean; onClick: () => void }) {
+  piece, product, selected, onClick, color,
+}: { piece: Piece; product: Product; selected: boolean; onClick: () => void; color: string }) {
   const p1 = piece.puertos.P1;
   const p2 = piece.puertos.P2;
   const p3 = piece.puertos.P3;
   if (!p1 || !p2 || !p3) {
     return (
-      <ConceptualMissing
+      <ConceptualMissing color={color}
         piece={piece} product={product}
         portsMm={Object.values(piece.puertos).map((p) => p.posicion_mm as V3)}
         reason="Tee incompleta — se esperan tres puertos (P1, P2, P3)"
@@ -431,7 +432,7 @@ function LadderTee({
 
   if (anchoMm == null || alaMm == null) {
     return (
-      <ConceptualMissing
+      <ConceptualMissing color={color}
         piece={piece} product={product}
         portsMm={[P1, P2, P3]}
         reason="ala o ancho ausentes en catálogo"
@@ -443,7 +444,7 @@ function LadderTee({
   const troncoLen = len(troncoAxis);
   if (troncoLen < 1e-6) {
     return (
-      <ConceptualMissing
+      <ConceptualMissing color={color}
         piece={piece} product={product}
         portsMm={[P1, P2, P3]}
         reason="P1 y P2 del tronco coinciden"
@@ -513,7 +514,7 @@ function LadderTee({
         aMm={rungA} bMm={rungB}
         sectYMm={DEFAULT_RUNG_WIDTH_MM}
         sectZMm={DEFAULT_RUNG_THICKNESS_MM}
-        color={COLOR_RUNG}
+        color={color}
         selected={selected}
         codex={{ ...codexBase, part: `tronco-rung-${i}` }}
         offsetZMm={offsetZ}
@@ -538,7 +539,7 @@ function LadderTee({
           aMm={rungA} bMm={rungB}
           sectYMm={DEFAULT_RUNG_WIDTH_MM}
           sectZMm={DEFAULT_RUNG_THICKNESS_MM}
-          color={COLOR_RUNG}
+          color={color}
           selected={selected}
           codex={{ ...codexBase, part: `ramal-rung-${i}` }}
           offsetZMm={offsetZ}
@@ -556,26 +557,26 @@ function LadderTee({
       <OrientedBox
         aMm={troncoLeftA} bMm={troncoLeftB}
         sectYMm={espMm} sectZMm={alaMm}
-        color={COLOR_RAIL} selected={selected}
+        color={color} selected={selected}
         codex={{ ...codexBase, part: 'tronco-rail-left' }}
       />
       <OrientedBox
         aMm={troncoRightA} bMm={troncoRightB}
         sectYMm={espMm} sectZMm={alaMm}
-        color={COLOR_RAIL} selected={selected}
+        color={color} selected={selected}
         codex={{ ...codexBase, part: 'tronco-rail-right' }}
       />
       {/* Ramal: dos largueros desde el tronco hasta P3. */}
       <OrientedBox
         aMm={ramalP3Left} bMm={ramalEndLeft}
         sectYMm={espMm} sectZMm={alaMm}
-        color={COLOR_RAIL} selected={selected}
+        color={color} selected={selected}
         codex={{ ...codexBase, part: 'ramal-rail-left' }}
       />
       <OrientedBox
         aMm={ramalP3Right} bMm={ramalEndRight}
         sectYMm={espMm} sectZMm={alaMm}
-        color={COLOR_RAIL} selected={selected}
+        color={color} selected={selected}
         codex={{ ...codexBase, part: 'ramal-rail-right' }}
       />
       {troncoRungs}
@@ -587,8 +588,8 @@ function LadderTee({
 // ─── Representación conceptual cuando faltan datos ──────────────────────────
 
 function ConceptualMissing({
-  piece, product, portsMm, reason,
-}: { piece: Piece; product: Product; portsMm: V3[]; reason: string }) {
+  piece, product, portsMm, reason, color,
+}: { piece: Piece; product: Product; portsMm: V3[]; reason: string; color: string }) {
   if (portsMm.length < 1) return null;
   const pts = portsMm.map((p) => toViewer(p));
   const center = pts[0];
@@ -606,7 +607,7 @@ function ConceptualMissing({
       <Line
         key={i}
         points={[pts[0], pts[i]]}
-        color={COLOR_PENDING}
+        color={color}
         lineWidth={2}
         dashed
         dashSize={0.15}
@@ -619,7 +620,7 @@ function ConceptualMissing({
       {lines}
       <Html position={center} style={{ pointerEvents: 'none' }}>
         <div style={{
-          background: 'rgba(0,0,0,0.85)', color: COLOR_PENDING, fontSize: 10,
+          background: 'rgba(0,0,0,0.85)', color: COLOR_PENDING_TEXTO, fontSize: 10,
           padding: '2px 6px', borderRadius: 3, whiteSpace: 'nowrap',
         }}>
           {piece.instancia_id} · pendiente · {reason}
@@ -632,20 +633,20 @@ function ConceptualMissing({
 // ─── Entry point ─────────────────────────────────────────────────────────────
 
 export function LadderPiece({
-  piece, product, selected, onClick,
-}: { piece: Piece; product: Product; selected: boolean; onClick: () => void }) {
+  piece, product, selected, onClick, color,
+}: { piece: Piece; product: Product; selected: boolean; onClick: () => void; color: string }) {
   const tipo = product.tipo_pieza;
 
   // Sólo para piezas SIN definición (las que tienen definición se dibujan
   // desde ella en TrayObjects). Antes se buscaba aquí un contorno medido por
   // SKU (getEscaleraOutline): nunca coincidía (el índice usa el producto_id
   // `SAM_…` y se consultaba con el sku) y, con definición, sobra.
-  if (tipo === 'recta') return <LadderStraight piece={piece} product={product} selected={selected} onClick={onClick} />;
-  if (tipo === 'T') return <LadderTee piece={piece} product={product} selected={selected} onClick={onClick} />;
-  if (tipo === 'curva horizontal') return <LadderCurve piece={piece} product={product} selected={selected} onClick={onClick} />;
+  if (tipo === 'recta') return <LadderStraight piece={piece} product={product} selected={selected} onClick={onClick} color={color} />;
+  if (tipo === 'T') return <LadderTee piece={piece} product={product} selected={selected} onClick={onClick} color={color} />;
+  if (tipo === 'curva horizontal') return <LadderCurve piece={piece} product={product} selected={selected} onClick={onClick} color={color} />;
   // Tipos no soportados aún (curva vertical escalera, cruz, etc.) → representación conceptual.
   return (
-    <ConceptualMissing
+    <ConceptualMissing color={color}
       piece={piece} product={product}
       portsMm={Object.values(piece.puertos).map((p) => p.posicion_mm as V3)}
       reason={`tipo_pieza "${tipo}" aún no implementado en el generador de escalera`}

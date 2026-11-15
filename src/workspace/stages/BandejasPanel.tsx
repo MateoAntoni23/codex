@@ -1,24 +1,26 @@
 /**
  * Etapa 3 — Bandejas.
  *
- * Izquierda: pieza nueva (producto y extremos), piezas, extremos libres,
- * uniones, soportes y PE. Herramientas: Seleccionar, Continuar, Tramo nuevo,
- * Unir extremos, Soporte. Reutiliza los formularios existentes
- * (AddTraySegmentForm, AddSupportForm) y el panel de continuación (RoutingPanel,
- * en el inspector).
+ * Izquierda (interfaz, 2026-11-14): lo que EXISTE — herramientas, piezas
+ * agrupadas por tipo con filtro (`ListaPiezas`), extremos libres, derivaciones,
+ * uniones y visibilidad. Los formularios (tramo nuevo, soporte, derivación) se
+ * abren en el inspector (`FormularioInspector`), igual que el panel de
+ * continuación (RoutingPanel). El PE no se elige acá: lo arma la app desde el
+ * trazado (D-20, D-21; etapa 3).
  */
 import { extremosLibres } from '../derivacion/extremosLibres';
 import { useMemo, useState } from 'react';
 import { useWorkspaceStore, type LayerKey } from '../useWorkspaceStore';
 import { useTrayStore } from '../../tray/store';
 import { useRoutingStore } from '../useRoutingStore';
-import { AddTraySegmentForm } from '../AddTraySegmentForm';
-import { AddSupportForm } from '../AddSupportForm';
 import { RoutingStatusBadge } from '../RoutingPanel';
 import { useUiStore, type BandejasTool } from './uiStore';
-import { indexProducts, pieceLabel, pieceLabelById, portLabel, productLabel } from './displayNames';
-import { DerivacionForm, EnganchesSection } from './DerivacionSection';
-import { Empty, Section, ToolBar, useRevealSelected } from './shared';
+import { indexProducts, pieceLabelById, portLabel } from './displayNames';
+import { EnganchesSection } from './DerivacionSection';
+import { Empty, Section, ToolBar } from './shared';
+import { ListaPiezas } from './ListaPiezas';
+import { PE_CABLE_ID, PE_SECCION_MM2 } from '../motor/paraMotor';
+import { isNeutralPe } from '../../project/emptyProject';
 import { useCatalogConfigStore } from '../../configurator/catalogConfigStore';
 import { outdatedPieces, updateOutdatedPieces } from '../placement/definitions';
 import { AVISO_MEZCLA_PREFIJO, checkConnection, formatJoin, invalidConnections } from '../placement/joins';
@@ -37,10 +39,6 @@ export function BandejasPanel() {
   const entrada = useTrayStore((s) => s.entrada);
   const context = useTrayStore((s) => s.context);
   const trayEdit = useTrayStore((s) => s.edit);
-  const selectedTrayId = useWorkspaceStore((s) => s.selectedTrayId);
-  const selectedSupportId = useWorkspaceStore((s) => s.selectedSupportId);
-  const selectTray = useWorkspaceStore((s) => s.selectTray);
-  const selectSupport = useWorkspaceStore((s) => s.selectSupport);
   const layers = useWorkspaceStore((s) => s.layers);
   const toggleLayer = useWorkspaceStore((s) => s.toggleLayer);
   const markDirty = useWorkspaceStore((s) => s.markDirty);
@@ -50,13 +48,11 @@ export function BandejasPanel() {
   const startPort = useRoutingStore((s) => s.startPort);
   const formTool = useUiStore((s) => s.bandejasTool);
   const setFormTool = useUiStore((s) => s.setBandejasTool);
-  const [listEl, setListEl] = useState<HTMLElement | null>(null);
 
   const piezas = entrada?.piezas ?? [];
   const conexiones = entrada?.conexiones ?? [];
   const pIdx = useMemo(() => indexProducts(context?.productos), [context]);
   const freeEnds = useMemo(() => extremosLibres(entrada), [entrada]);
-  useRevealSelected(listEl, selectedTrayId ? `piece:${selectedTrayId}` : null);
 
   const activeTool: BandejasTool = routingActive
     ? 'continuar'
@@ -156,21 +152,6 @@ export function BandejasPanel() {
         </p>
       )}
 
-      {activeTool === 'tramo' && (
-        <Section title="Pieza nueva" testid="new-piece">
-          <AddTraySegmentForm onClose={() => setFormTool('seleccionar')} />
-        </Section>
-      )}
-      {activeTool === 'derivacion' && (
-        <Section title="Derivación en un tramo" testid="new-derivacion">
-          <DerivacionForm onClose={() => setFormTool('seleccionar')} />
-        </Section>
-      )}
-      {activeTool === 'soporte' && (
-        <Section title="Soporte nuevo" testid="new-support">
-          <AddSupportForm onClose={() => setFormTool('seleccionar')} />
-        </Section>
-      )}
 
       {outdated.length > 0 && (
         <div className="stage-card tone-warn" role="status" data-testid="outdated-notice">
@@ -185,26 +166,12 @@ export function BandejasPanel() {
       )}
       {updateMsg && <p className="stage-note" role="status" data-testid="update-outdated-result">{updateMsg}</p>}
 
-      <section className="stage-section" ref={setListEl} data-testid="piece-list">
-        <h4 className="stage-section-title">Piezas ({piezas.length})</h4>
-        {noPieces && <Empty testid="tray-empty">Sin piezas todavía</Empty>}
-        {piezas.map((p, i) => {
-          const isSel = selectedTrayId === p.instancia_id;
-          return (
-            <button
-              key={p.instancia_id}
-              type="button"
-              data-row-key={`piece:${p.instancia_id}`}
-              className={`workspace-tree-item stage-row${isSel ? ' active' : ''}`}
-              aria-current={isSel ? 'true' : undefined}
-              title={typeof pIdx.get(p.producto_id)?.descripcion_original === 'string' ? String(pIdx.get(p.producto_id)?.descripcion_original) : undefined}
-              onClick={() => selectTray(p.instancia_id)}
-            >
-              {pieceLabel(p, i + 1, pIdx)}
-            </button>
-          );
-        })}
-      </section>
+
+      {(activeTool === 'tramo' || activeTool === 'soporte' || activeTool === 'derivacion') && (
+        <p className="stage-note" role="status" data-testid="form-hint">El formulario está abierto en el inspector (a la derecha).</p>
+      )}
+
+      <ListaPiezas />
 
       <Section title={`Extremos libres (${freeEnds.length})`} testid="free-ends">
         {freeEnds.length === 0 && <Empty>Sin extremos libres.</Empty>}
@@ -250,36 +217,13 @@ export function BandejasPanel() {
         })}
       </Section>
 
-      <Section title={`Soportes (${entrada?.soportes.length ?? 0})`} testid="supports">
-        {(entrada?.soportes.length ?? 0) === 0 && <Empty>Sin soportes.</Empty>}
-        {entrada?.soportes.map((s) => {
-          const isSel = selectedSupportId === s.soporte_id;
-          return (
-            <button
-              key={s.soporte_id}
-              type="button"
-              className={`workspace-tree-item stage-row${isSel ? ' active' : ''}`}
-              onClick={() => selectSupport(s.soporte_id)}
-            >
-              {productLabel(s.producto_id, pIdx)} · {pieceLabelById(s.instancia_id, piezas, pIdx)} · {s.distancia_desde_P1_mm} mm
-            </button>
-          );
-        })}
-      </Section>
-
       {entrada && (
-        <Section title="PE requerido" testid="pe">
-          <p className="stage-note">Modelo candidato; admisibilidad pendiente. Contacto con ala ≠ conexión eléctrica.</p>
-          <select
-            className="inspector-input"
-            aria-label="Cable PE"
-            value={entrada.pe.cable_id}
-            onChange={(e) => editTray((inp) => { inp.pe.cable_id = e.target.value; })}
-            data-testid="pe-cable"
-          >
-            <option value="">PE sin definir</option>
-            {context?.cables.map((id) => <option key={id} value={id}>{id}</option>)}
-          </select>
+        <Section title="PE" testid="pe">
+          <p className="stage-note" style={{ whiteSpace: 'normal' }} data-testid="pe-info">
+            {isNeutralPe(entrada.pe)
+              ? `Lo arma la app desde el trazado al calcular: ${PE_SECCION_MM2} mm² (D-20), ${PE_CABLE_ID} verde/amarillo (D-21), por todas las piezas.`
+              : `PE propio del proyecto: ${entrada.pe.cable_id}.`}
+          </p>
         </Section>
       )}
 
