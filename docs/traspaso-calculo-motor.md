@@ -88,8 +88,10 @@ e incluye los commits del #6 hasta que se fusione.
   - ocupación por grupo W = Σ n·D (contacto, como D-02); reserva con el criterio D-05 sobre el ancho del grupo;
     altura contra el ala (D-08);
   - un circuito sin cable o desactualizado que cruza la pieza no se cuenta y se nombra.
-- **BDS01Z (perforada) no publica espesor:** la ocupación de una perforada segregada queda **NO VERIFICABLE**,
-  con el motivo. Hace falta el **espesor de la BDS01Z en mm** para calcularla.
+- **BDS01Z (perforada) — CERRADO (2026-11-14):** el catálogo no publica su espesor. El operador lo declara en
+  **0,71 mm por analogía con la chapa de la bandeja perforada; no es una medida**. Se registra con esa
+  procedencia (`ESPESORES_DECLARADOS`): se usa sólo si el catálogo no publica espesor, y en pantalla figura junto
+  al número. Una banda sin espesor en el catálogo ni declarado sigue sin calcularse (NO VERIFICABLE).
 - **Cómputo:** la banda SÍ se computa, «[AGREGADA POR LA APP]», una por tramo segregado, con la longitud a cubrir.
   El catálogo no publica longitud comercial ni unidad de compra, y la fijación (JB-CC-M6) no declara cantidad.
 - **Controles negativos:**

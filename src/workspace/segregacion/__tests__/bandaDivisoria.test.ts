@@ -13,7 +13,7 @@ import { crearBajada } from '../../equipos/bajada';
 import { guardarCircuito } from '../../recorridos/circuitosGuardados';
 import { construirCatalogoCables } from '../../cables/catalogoCables';
 import { toMotorEntrada } from '../../../tray/store';
-import { bandasCompatibles, colocarBanda, computoBandas, ocupacionSegregada, quitarBanda } from '../bandaDivisoria';
+import { bandasCompatibles, colocarBanda, computoBandas, espesorDeBanda, ocupacionSegregada, quitarBanda } from '../bandaDivisoria';
 import type { CatalogCompatibility, Product, TrayInput } from '../../../tray/model';
 import type { EquipmentElement } from '../../../types/domain-v2';
 
@@ -113,13 +113,24 @@ describe('banda divisoria', () => {
     expect(pot.ancho_asignado_mm + ctl.ancho_asignado_mm).toBeCloseTo(300 - 0.71, 2);
   });
 
-  it('sin espesor publicado (BDS01Z, perforada) no se calcula: NO VERIFICABLE con el motivo', () => {
+  it('BDS01Z (perforada): el catálogo no publica espesor; se usa 0,71 mm declarado por el operador por analogía, con esa procedencia', () => {
+    expect((productos.get('SAM_BDS01Z') as Record<string, unknown>).espesor_chapa_mm).toBeNull();
+    expect(espesorDeBanda(productos.get('SAM_BDS01Z'))).toEqual({
+      mm: 0.71, procedencia: 'declarado por el operador (2026-11-14) por analogía con la chapa de la bandeja perforada; no medido',
+    });
+    expect(espesorDeBanda(productos.get('SAM_BDS090Z'))).toEqual({ mm: 0.71, procedencia: 'catálogo' });
     const r = colocarBanda(proyecto('SAM_TRPS-300-22-Z'), 'R1', 'SAM_BDS01Z', compat, productos);
     if (!r.ok) throw new Error(r.motivo);
-    expect(ocupacionSegregada(r.entrada, ELS, productos, D, 'R1')).toEqual({
-      pieza: 'R1', banda: 'BDS01Z', calculada: false,
-      motivo: 'NO VERIFICABLE: el catálogo no publica el espesor de la BDS01Z, y la regla del operador lo descuenta primero del ancho útil',
-    });
+    const o = ocupacionSegregada(r.entrada, ELS, productos, D, 'R1')!;
+    if (!o.calculada) throw new Error(o.motivo);
+    expect(o).toMatchObject({ banda: 'BDS01Z', espesor_banda_mm: 0.71, espesor_procedencia: expect.stringContaining('por analogía'), ancho_disponible_mm: 299.29 });
+    expect(o.grupos[0].ancho_asignado_mm).toBeCloseTo((299.29 * 3) / 4, 3);
+  });
+
+  it('una banda sin espesor en el catálogo ni declarado sigue sin calcularse: NO VERIFICABLE', () => {
+    const sinNada = new Map(productos);
+    sinNada.set('SAM_BDS01Z', { ...productos.get('SAM_BDS01Z')!, producto_id: 'SAM_BDS01Z-X' } as Product);
+    expect(espesorDeBanda(sinNada.get('SAM_BDS01Z'))).toBeNull();
   });
 
   it('el motor no sabe que la banda existe; la banda sí va al cómputo (de la app)', () => {

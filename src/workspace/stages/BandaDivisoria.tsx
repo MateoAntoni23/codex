@@ -10,7 +10,7 @@ import { useWorkspaceStore } from '../useWorkspaceStore';
 import type { Piece, Product } from '../../tray/model';
 import {
   bandaDePieza, bandasCompatibles, bandasOf, colocarBanda, computoBandas, CRITERIO_OCUPACION, CRITERIO_PE, NOTA_COMPUTO,
-  ocupacionSegregada, PROCEDENCIA_CALCULO, PROCEDENCIA_REGLA, quitarBanda, TEXTO_GRUPO, type OcupacionSegregada,
+  espesorDeBanda, ocupacionSegregada, PROCEDENCIA_CALCULO, PROCEDENCIA_REGLA, quitarBanda, TEXTO_GRUPO, type OcupacionSegregada,
 } from '../segregacion/bandaDivisoria';
 import { useCatalogoCables } from './CableCircuitoCampos';
 import { indexProducts, pieceLabelById } from './displayNames';
@@ -63,7 +63,10 @@ export function BandaDivisoriaControl({ piece }: { piece: Piece }) {
           <select className="inspector-input" data-testid="banda-producto" value={sel} onChange={(e) => setElegida(e.target.value)}>
             {compat.map((b) => (
               <option key={b.producto_id} value={b.producto_id}>
-                {String(b.sku)}{typeof (b as Record<string, unknown>).espesor_chapa_mm === 'number' ? ` (espesor ${String((b as Record<string, unknown>).espesor_chapa_mm)} mm)` : ' (espesor no publicado)'}
+                {String(b.sku)}{(() => {
+                  const e = espesorDeBanda(b);
+                  return !e ? ' (espesor no publicado)' : e.procedencia === 'catálogo' ? ` (espesor ${e.mm} mm)` : ` (espesor ${e.mm} mm, ${e.procedencia})`;
+                })()}
               </option>
             ))}
           </select>
@@ -87,7 +90,8 @@ export function OcupacionSegregadaView({ o }: { o: OcupacionSegregada }) {
   return (
     <div data-testid="segregada-ocupacion" data-origen="app" data-pieza={o.pieza}>
       <div className="stage-row-sub" style={{ whiteSpace: 'normal' }}>
-        <strong>Cálculo de la app</strong> — banda {o.banda}: ancho útil {mm(o.ancho_util_mm)} ({o.base_ancho}) − espesor {mm(o.espesor_banda_mm)} = {mm(o.ancho_disponible_mm)} a repartir por cantidad de cables.
+        <strong>Cálculo de la app</strong> — banda {o.banda}: ancho útil {mm(o.ancho_util_mm)} ({o.base_ancho}) − espesor {o.espesor_banda_mm.toLocaleString('es-AR', { maximumFractionDigits: 2 })} mm{' '}
+        <span data-testid="segregada-espesor-procedencia">({o.espesor_procedencia})</span> = {mm(o.ancho_disponible_mm)} a repartir por cantidad de cables.
       </div>
       {o.grupos.map((g) => (
         <div key={g.grupo} className={`stage-row-sub${g.estado === 'CUMPLE' || g.estado === 'SIN_CABLES' ? '' : ' tone-warn'}`} style={{ whiteSpace: 'normal' }}
