@@ -23,6 +23,7 @@ import { textoCable } from '../cables/catalogoCables';
 import { CableCircuitoCampos, cableDesdeValor, useCatalogoCables, valorDesdeCable, type ValorCable } from './CableCircuitoCampos';
 import { indexProducts, pieceLabelById } from './displayNames';
 import { Empty, Section } from './shared';
+import { useUiStore } from './uiStore';
 import { relacionConExcel } from '../../conexiones/estadoConexion';
 import { recalcularConExcel } from '../../conexiones/acciones';
 import { cablesDelCircuito, faltaConExcel, TEXTO_PROCEDENCIA, type CableEnCircuito } from '../../conexiones/tendidos';
@@ -41,6 +42,8 @@ export function CircuitosTabla() {
   const catalog = useWorkspaceStore((s) => s.importedCatalog);
   const idx = useMemo(() => indexProducts(context?.productos), [context]);
   const [msg, setMsg] = useState<string | null>(null);
+  const resaltado = useUiStore((s) => s.circuitoResaltado);
+  const resaltar = useUiStore((s) => s.resaltarCircuito);
   const [editando, setEditando] = useState<{ id: string; valor: ValorCable } | null>(null);
   const { cables, motivo: sinCatalogo } = useCatalogoCables();
   const ids = sinCatalogo ? undefined : cables.map((c) => c.cable_id);
@@ -168,7 +171,8 @@ export function CircuitosTabla() {
               <tbody>
                 {filas.map(({ c, estado, falta, excel }) => (
                   <Fragment key={c.id}>
-                  <tr data-testid="circuito-fila" data-vigente={estado.vigente ? 'true' : 'false'} data-excel={excel.tipo === 'ligado' ? excel.conexionId : 'fuera'} data-completo={falta.length ? 'false' : 'true'} data-cable={c.cable?.cable_id ?? ''}>
+                  <tr data-testid="circuito-fila" data-vigente={estado.vigente ? 'true' : 'false'} data-excel={excel.tipo === 'ligado' ? excel.conexionId : 'fuera'} data-circuito={c.id} data-resaltado={resaltado === c.id ? 'true' : 'false'}
+                    className={resaltado === c.id ? 'is-resaltado' : undefined} data-completo={falta.length ? 'false' : 'true'} data-cable={c.cable?.cable_id ?? ''}>
                     <td>
                       <strong data-testid="circuito-nombre">{c.nombre}</strong>
                       <div className="stage-row-sub" data-testid="circuito-excel">{excel.tipo === 'fuera-del-excel' ? 'fuera del Excel' : `Excel: ${excel.conexionId}`}</div>
@@ -193,6 +197,9 @@ export function CircuitosTabla() {
                           </button>
                         )}
                         {(!estado.vigente || (excel.tipo === 'ligado' && excel.enElExcel && excel.motivos.length > 0)) && <button type="button" data-testid="circuito-recalcular" onClick={() => recalcular(c.id)}>Recalcular</button>}
+                        <button type="button" data-testid="circuito-resaltar" aria-pressed={resaltado === c.id} onClick={() => resaltar(resaltado === c.id ? null : c.id)}>
+                          {resaltado === c.id ? 'Quitar resaltado' : 'Ver en la escena'}
+                        </button>
                         <button type="button" data-testid="circuito-borrar" onClick={() => borrar(c.id)}>Borrar</button>
                       </div>
                     </td>

@@ -50,6 +50,9 @@ interface UiState {
   formulario: Formulario | null;
   panelInferior: boolean;
   pestanaInferior: PestanaInferior;
+  /** Circuito guardado cuyo recorrido se resalta en la escena (etapa 4 de conexiones importadas). */
+  circuitoResaltado: string | null;
+  resaltarCircuito: (id: string | null) => void;
   setStage: (s: StageId) => void;
   abrirFormulario: (f: Formulario | null) => void;
   setPanelInferior: (abierto: boolean) => void;
@@ -66,6 +69,8 @@ export const useUiStore = create<UiState>((set, get) => ({
   formulario: null,
   panelInferior: initialStage() === 'resultados',
   pestanaInferior: 'circuitos',
+  circuitoResaltado: null,
+  resaltarCircuito: (circuitoResaltado) => set({ circuitoResaltado }),
   // Cambiar de etapa cierra el formulario; Resultados abre el panel inferior.
   setStage: (stage) => set({ stage, formulario: null, ...(stage === 'resultados' ? { panelInferior: true } : {}) }),
   abrirFormulario: (formulario) => {

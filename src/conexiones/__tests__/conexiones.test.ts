@@ -404,3 +404,44 @@ describe('etapa 3 — contraste', () => {
     expect(contrasteDeCircuito(g.entrada, elements, conRef({}), g.circuito)).toEqual([]);
   });
 });
+
+// ─── Etapa 4: qué pasa por cada bandeja ──────────────────────────────────────
+
+describe('etapa 4 — por cada bandeja', () => {
+  it('lista circuitos y tendidos que atraviesan la pieza, con función, cable y cantidad; suma diámetros por grupo', async () => {
+    const { porBandeja } = await import('../porBandeja');
+    const { puntosDelRecorrido } = await import('../RecorridoResaltado');
+    const tendidos = [
+      tend('CB-001', { seccionMm2: 150, cantidadUnidades: 6 }),
+      tend('CB-004', { naturaleza: 'CABLE_MULTIPOLAR', funcion: '3F+N+PE', conductoresPorUnidad: 5, seccionMm2: 6 }),
+    ];
+    const cat = { ...CAT, tendidos };
+    const { t, elements } = proyecto();
+    const r = trazarConexion(t, elements, estadoDe(t, elements, 'CX-0001', cat));
+    if (!r.ok) throw new Error(r.motivo);
+    // Más un circuito a mano, de mando, con su cable.
+    const g = guardarCircuito(r.entrada, elements, 'Mando', { equipo: 'EQ-0011' }, { equipo: 'EQ-0009' }, { cable_id: 'PRY-SVALIO-CU-2x1.5', cantidad: 2, separado: false, funcion: 'maniobra' });
+    if (!g.ok) throw new Error(g.motivo);
+    const p = porBandeja(g.entrada, elements, cat, CABLES, 'R2');
+    expect(p.circuitos.map((x) => x.circuito.id)).toEqual(['CIR-CX-0001', 'CIR-2']);
+    const items = p.circuitos.flatMap((x) => x.items);
+    expect(items.map((k) => [k.tendidoId, k.funcion, k.cable_id, k.cantidad, k.grupo])).toEqual([
+      ['CB-001', 'potencia', 'PRY-SVALIO-CU-1x150', 6, 'potencia'],
+      ['CB-004', 'potencia', null, 1, 'potencia'],
+      [null, 'maniobra', 'PRY-SVALIO-CU-2x1.5', 2, 'resto'],
+    ]);
+    const d = (id: string) => CABLES.find((c) => c.cable_id === id)!.diametro_exterior_mm;
+    expect(p.sumas.potencia).toEqual({ diametrosMm: d('PRY-SVALIO-CU-1x150') * 6, cables: 6 });
+    expect(p.sumas.resto).toEqual({ diametrosMm: d('PRY-SVALIO-CU-2x1.5') * 2, cables: 2 });
+    expect(p.fueraDeLaSuma).toBe(1);
+    expect(items[1].fueraDeLaSuma).toMatch(/sin cable de catálogo.*no hay diámetro/);
+    // Una pieza que no atraviesa nadie.
+    expect(porBandeja(g.entrada, elements, cat, CABLES, 'NO-EXISTE').circuitos).toEqual([]);
+    // El recorrido resaltado: bajada de origen → bocas de R1 y R2 en orden → bajada de destino.
+    const pts = puntosDelRecorrido(g.entrada, 'CIR-CX-0001')!;
+    const bo = (g.entrada as unknown as { bajadas_ws: Array<{ punto_equipo_mm: number[]; punto_salida_mm: number[] }> }).bajadas_ws[0];
+    expect(pts[0]).toEqual(bo.punto_equipo_mm);
+    expect(pts[1]).toEqual(bo.punto_salida_mm);
+    expect(pts.length).toBeGreaterThanOrEqual(5);
+  });
+});

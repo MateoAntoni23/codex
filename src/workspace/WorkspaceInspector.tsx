@@ -27,6 +27,7 @@ import { EquipmentEditorPanel } from '../preview/EquipmentEditorPanel';
 import { TrayResults } from './TrayResults';
 import { ImportedEquipmentInspector } from '../import/ImportedEquipmentInspector';
 import { FichaTecnica } from '../conexiones/FichaTecnica';
+import { PorEstaBandeja } from '../conexiones/PorEstaBandeja';
 import { checkDeleteDependencies, duplicateElement } from '../preview/previewCrud';
 import type { Piece, Support, TrayInput } from '../tray/model';
 import { object } from '../tray/model';
@@ -732,6 +733,8 @@ export function PieceCard({ piece }: { piece: Piece }) {
           </div>
         </fieldset>
       ))}
+
+      <PorEstaBandeja pieza={piece.instancia_id} />
 
       <BandaDivisoriaControl piece={piece} />
 
