@@ -61,16 +61,24 @@ resto del gráfico (3, 4, 6…10) no se usa para elegir radio. No depende del an
 
 - **EPS: cierra** (N = 4…10: L entre 98 y 108 mm, ≈102 ± 6 %; N = 3 queda fuera, 114,8). Las filas 7 y 9
   se apartan ≈6 %, compatible con valores leídos de un gráfico.
-- **CUS Z: NO cierra tal cual**: L crece siempre (95,7 → 122,9). **Sí cierra si las articulaciones están
-  ~41 mm por fuera del radio tabulado**: con R + 41,4 mm, L = 130,5 ± 0,3 mm en N = 4…10 (N = 3 da 127,4).
-  Es decir, el radio del gráfico de la CUS se mide unos 41 mm por dentro de la línea de articulaciones,
-  coherente con «al interior» (decisión 3), aunque no coincide con ala/2 (32,5 mm en ala 65). **No cambia
-  lo decidido** (294 interior para 22,5°); queda anotado para el operador.
+- **CUS Z: no cierra tal cual** (L crece de 95,7 a 122,9), **pero cierra con un solo desplazamiento
+  constante**: con R + 41,4 mm, L = 130,5 ± 0,3 mm en todas las filas N = 4…10 (N = 3 da 127,4).
+- **Conclusión (operador, 2026-11-15) — punto cerrado:** que el largo del eslabón de la CUS cierre en
+  130,5 ± 0,3 mm en todas las filas con un único desplazamiento constante **confirma** la lectura del gráfico
+  como curva de 90° armada con N eslabones. Los ~41 mm son el radio del **círculo de pivotes**, que en una
+  curva vertical van abulonados por fuera del codo; no tienen por qué coincidir con ala/2, que es por donde
+  corre el cable. La longitud de eje sigue en radio interior + ala/2: no cambia nada.
 
-### 2. N = 2 (θ ≤ 22,5°): se rechaza, sin callejón
-El ángulo tiene que ser **mayor que 22,5°** (3 eslabones o más). El motivo dice el ángulo mínimo, que el
-gráfico del catálogo arranca en 3 eslabones, y que para un giro horizontal menor está la curva ajustable
-CAS (1° a 90°).
+### 2. N = 2 (θ ≤ 22,5°): se rechaza, sin callejón — el motivo según el PLANO del giro
+El ángulo tiene que ser **mayor que 22,5°** (3 eslabones o más). El motivo dice el ángulo mínimo y el porqué
+(el gráfico del catálogo arranca en 3 eslabones), y después depende del plano, porque la CAS gira en
+horizontal y la eslabonada sube o baja: no son intercambiables.
+- **Giro VERTICAL** (el de la eslabonada, que sube o baja): «Para un cambio de nivel menor, el catálogo no
+  publica ninguna pieza.» Nada más: no se inventa una alternativa ni se sugiere una pieza de otro plano.
+- **Giro HORIZONTAL**: «Para un giro horizontal menor está la curva ajustable CAS, de 1° a 90°.»
+- El plano sale de la geometría de la pieza colocada (eje de giro entre P1 y P2: vertical → giro
+  horizontal). Al colocar una nueva vale el tipo del catálogo, «curva vertical articulada». Hoy la app
+  coloca las eslabonadas siempre subiendo o bajando, así que en la práctica el texto es el vertical.
 
 ### 3. CUS línea G: se parte según coincida la GEOMETRÍA, no el acabado
 Verificado contra el catálogo por el operador (y por una prueba): las 12 combinaciones de ancho, ala y
@@ -131,11 +139,17 @@ tabla sigue sin estar declarada.
   ajustó, la prueba no; huellas de las 47 eslabonadas declaradas con su motivo.
 
 ## Pendiente para el operador
-- El gráfico de la CUS Z cierra con un eslabón de largo fijo sólo si el radio tabulado está ~41 mm por dentro
-  de la línea de articulaciones (ver la verificación arriba). No cambia lo decidido; vale aclararlo si se
-  vuelve a medir el radio.
-- El texto del rechazo de N = 2 sugiere la CAS «para un giro horizontal menor», como pidió el operador. Las
-  eslabonadas son curvas verticales: para un giro VERTICAL menor de 22,5° no hay alternativa en el catálogo.
+- (Cerrado) Los ~41 mm de la CUS Z: radio del círculo de pivotes, ver la conclusión en la decisión 1.
+- (Cerrado) El texto del rechazo de N = 2 ya distingue el plano del giro: vertical → no hay pieza; horizontal
+  → CAS.
+
+## Corrección del texto del rechazo por plano (2026-11-15)
+- `motivoAnguloEslabonada(ángulo, plano)` y `planoDeGiro(dirP1, dirP2)` en `reglaEslabones.ts`; la
+  corrección del ángulo y la lista de piezas sin definición usan el plano de la pieza colocada.
+- Pruebas: texto vertical (por defecto) sin mención de la CAS ni de otro plano; texto horizontal con la CAS;
+  plano por geometría; una EPS colocada girando en planta (sección acostada) recibe el texto horizontal.
+  E2E: la ficha de una EPS que sube muestra «el catálogo no publica ninguna pieza» y no menciona la CAS.
+- **Control negativo, verificado:** si el texto sugiere siempre la CAS, fallan 3 pruebas.
 
 ## Verify de cierre (2026-11-15, sobre `b4fd29a`)
 Por pasos y en primer plano: tipos OK; vitest 1883/1883 (forks, 2 procesos); motor 190 OK (2 omitidas);

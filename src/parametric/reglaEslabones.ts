@@ -41,14 +41,40 @@ export const PROCEDENCIA_ESLABONADA =
 
 const grados = (g: number) => `${String(g).replace('.', ',')}°`;
 
-/** null si el ángulo es aceptable; si no, el motivo con el mínimo y la alternativa. */
-export function motivoAnguloEslabonada(anguloDeg: number): string | null {
+/** Plano en que gira la curva: VERTICAL (sube o baja: cambio de nivel) u HORIZONTAL (a izquierda o derecha). */
+export type PlanoDeGiro = 'vertical' | 'horizontal';
+
+/**
+ * null si el ángulo es aceptable; si no, el motivo. Por debajo del mínimo, el motivo
+ * depende del PLANO del giro, porque las alternativas no son intercambiables:
+ *   - horizontal: está la curva ajustable CAS (gira en horizontal), de 1° a 90°;
+ *   - vertical (sube o baja; el caso de la eslabonada, que es una curva vertical
+ *     articulada): para un cambio de nivel menor el catálogo no publica ninguna pieza.
+ *     No se sugiere una pieza de otro plano.
+ */
+export function motivoAnguloEslabonada(anguloDeg: number, plano: PlanoDeGiro = 'vertical'): string | null {
   if (!Number.isFinite(anguloDeg)) return `ángulo inválido: la curva eslabonada acepta más de ${grados(ANGULO_ESLABONADA_MIN)} y hasta ${grados(ANGULO_ESLABONADA_MAX)}`;
   if (anguloDeg <= ANGULO_ESLABONADA_MIN) {
-    return `ángulo ${grados(anguloDeg)}: la curva eslabonada necesita más de ${grados(ANGULO_ESLABONADA_MIN)} (3 eslabones o más), porque el gráfico de radios del catálogo arranca en 3 eslabones. Para un giro horizontal menor está la curva ajustable CAS, de 1° a 90°.`;
+    const base = `ángulo ${grados(anguloDeg)}: la curva eslabonada necesita más de ${grados(ANGULO_ESLABONADA_MIN)} (3 eslabones o más), porque el gráfico de radios del catálogo arranca en 3 eslabones.`;
+    return plano === 'horizontal'
+      ? `${base} Para un giro horizontal menor está la curva ajustable CAS, de 1° a 90°.`
+      : `${base} Para un cambio de nivel menor, el catálogo no publica ninguna pieza.`;
   }
   if (anguloDeg > ANGULO_ESLABONADA_MAX) return `ángulo ${grados(anguloDeg)}: la curva eslabonada acepta hasta ${grados(ANGULO_ESLABONADA_MAX)}`;
   return null;
+}
+
+/**
+ * Plano del giro de una pieza COLOCADA, por su geometría: el eje de giro entre la
+ * dirección de entrada y la de salida. Eje vertical (±Z) → giro horizontal; si no,
+ * vertical. Con bocas paralelas (sin giro) no se puede decir: null.
+ */
+export function planoDeGiro(direccionP1: readonly number[], direccionP2: readonly number[]): PlanoDeGiro | null {
+  const [a, b] = [direccionP1, direccionP2];
+  const eje = [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+  const n = Math.hypot(eje[0], eje[1], eje[2]);
+  if (n < 1e-9) return null;
+  return Math.abs(eje[2]) / n > 0.999 ? 'horizontal' : 'vertical';
 }
 
 /** Eslabones de una curva de θ grados: techo(θ/22,5°) + 1 (sólo para el cómputo). Valida el rango. */

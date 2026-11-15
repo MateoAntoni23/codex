@@ -15,13 +15,20 @@ import { definicionEfectiva, placedOf, withDefinition } from './definitions';
 import { placeDefinition, puertosFromWorld, type V3 } from './placementCore';
 import { conLongitudesEje, PATRONES_CURVA_ESLABONADA } from './longitudesEje';
 import { invalidConnections } from './joins';
-import { eslabonesPara, RECETAS_ESLABONADAS } from '../../parametric/reglaEslabones';
+import { eslabonesPara, motivoAnguloEslabonada, planoDeGiro } from '../../parametric/reglaEslabones';
 import { PATRON_CURVA_AJUSTABLE, RECETA_CURVA_AJUSTABLE } from '../../parametric/reglaCurvaAjustable';
 import { motivoAnguloInstancia } from '../../parametric/anguloInstancia';
 
 export function esCurvaEslabonada(entrada: TrayInput | null | undefined, piece: Piece): boolean {
   const placed = placedOf(entrada, piece);
   return !!placed && PATRONES_CURVA_ESLABONADA.has(placed.def.patron);
+}
+
+/** Plano en que gira una pieza colocada de dos bocas (por las direcciones de P1 y P2). */
+export function planoDePieza(piece: Piece) {
+  const a = piece.puertos.P1?.direccion;
+  const b = piece.puertos.P2?.direccion;
+  return a && b ? planoDeGiro(a as number[], b as number[]) : null;
 }
 
 /** Curva ajustable de escalera (CAS) colocada con su definición. */
@@ -62,8 +69,10 @@ function cambiarAnguloInstancia(
   const placed = placedOf(entrada, piece);
   const esDeLaClase = !!placed && (clase === 'eslabonada' ? PATRONES_CURVA_ESLABONADA.has(placed.def.patron) : placed.def.patron === PATRON_CURVA_AJUSTABLE);
   if (!placed || !esDeLaClase) return { ok: false, motivo: clase === 'eslabonada' ? 'la pieza no es una curva eslabonada' : 'la pieza no es una curva ajustable' };
-  const receta = clase === 'eslabonada' ? [...RECETAS_ESLABONADAS][0] : RECETA_CURVA_AJUSTABLE;
-  const fueraDeRango = motivoAnguloInstancia(receta, anguloDeg);
+  // Eslabonada: el motivo depende del plano en que gira ESTA pieza (vertical u horizontal).
+  const fueraDeRango = clase === 'eslabonada'
+    ? motivoAnguloEslabonada(anguloDeg, planoDePieza(piece) ?? 'vertical')
+    : motivoAnguloInstancia(RECETA_CURVA_AJUSTABLE, anguloDeg);
   if (fueraDeRango) return { ok: false, motivo: fueraDeRango };
   const product = productos.get(piece.producto_id);
   if (!product) return { ok: false, motivo: `producto ${piece.producto_id} no está en el catálogo` };

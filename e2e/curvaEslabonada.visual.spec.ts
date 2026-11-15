@@ -117,7 +117,9 @@ test.describe('Curvas eslabonadas', () => {
     await page.getByTestId('eslabonada-aplicar').click();
     await expect(page.getByTestId('eslabonada-msg')).toContainText('más de 22,5°');
     await expect(page.getByTestId('eslabonada-msg')).toContainText('el gráfico de radios del catálogo arranca en 3 eslabones');
-    await expect(page.getByTestId('eslabonada-msg')).toContainText('curva ajustable CAS, de 1° a 90°');
+    // La curva sube (giro VERTICAL): no hay pieza para un cambio de nivel menor; no se sugiere la CAS (gira en horizontal).
+    await expect(page.getByTestId('eslabonada-msg')).toContainText('Para un cambio de nivel menor, el catálogo no publica ninguna pieza.');
+    await expect(page.getByTestId('eslabonada-msg')).not.toContainText('CAS');
     await expect(page.getByTestId('eslabonada-resumen')).toHaveAttribute('data-angulo', '45');
     await page.getByTestId('tool-bandejas-seleccionar').click();
     await expect(page.getByTestId('join-row').nth(1)).toHaveAttribute('data-join-ok', 'false');
@@ -200,6 +202,8 @@ test.describe('Curvas eslabonadas', () => {
     // A 20°: sin definición vigente, listada con su motivo (no se puede actualizar).
     const sin = page.locator('[data-testid="sin-definicion-motivo"][data-pieza="E20"]');
     await expect(sin).toContainText('más de 22,5°');
+    await expect(sin).toContainText('el catálogo no publica ninguna pieza');
+    await expect(sin).not.toContainText('CAS');
     await page.screenshot({ path: resolve(OUT_DIR, 'eslabonada-03-regla-radio.png') });
 
     // Actualizar: la de 90° pasa a la regla nueva (longitud de eje sobre radio de eje 285).

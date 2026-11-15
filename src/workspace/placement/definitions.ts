@@ -17,7 +17,7 @@ import * as THREE from 'three';
 import type { Piece, Product, TrayInput } from '../../tray/model';
 import { buildNominalRecipe, buildRecipeFromProduct, datosFaltantesParaMaestro, NOTA_NOMINAL, radioDeEslabonada, resolveParametricEntry, resolveRecipe, sentidoVerticalDe, tieneReglaNominal } from '../parametricBridge';
 import { calibracionVersion } from '../catalogPortMapping';
-import { RECETAS_ESLABONADAS } from '../../parametric/reglaEslabones';
+import { motivoAnguloEslabonada, planoDeGiro, RECETAS_ESLABONADAS } from '../../parametric/reglaEslabones';
 import { anguloPorDefecto, motivoAnguloInstancia, tieneAnguloInstancia } from '../../parametric/anguloInstancia';
 import type { PieceKind } from '../../parametric/geometry/recipes';
 import { calibrarReceta } from './calibrarReceta';
@@ -396,9 +396,22 @@ export function piezasSinDefinicionVigente(entrada: TrayInput, products: Readonl
     const product = products.get(piece.producto_id);
     if (!product) continue;
     const current = resolveDefinition(product, opcionesDeInstancia(c.definicion.params, product));
-    if (!current.ok) out.push({ id: piece.instancia_id, motivo: current.motivo });
+    if (current.ok) continue;
+    // Eslabonada con un ángulo que hoy se rechaza: el motivo según el plano en que gira ESTA pieza.
+    const ang = c.definicion.params.angulo_deg;
+    const placed = placedOf(entrada, piece);
+    const porAngulo = placed && PATRONES_ESLABONADA.has(placed.def.patron) && typeof ang === 'number'
+      ? motivoAnguloEslabonada(ang, planoDeGiroDePieza(piece) ?? 'vertical')
+      : null;
+    out.push({ id: piece.instancia_id, motivo: porAngulo ?? current.motivo });
   }
   return out;
+}
+
+function planoDeGiroDePieza(piece: Piece) {
+  const a = piece.puertos.P1?.direccion;
+  const b = piece.puertos.P2?.direccion;
+  return a && b ? planoDeGiro(a as number[], b as number[]) : null;
 }
 
 /**

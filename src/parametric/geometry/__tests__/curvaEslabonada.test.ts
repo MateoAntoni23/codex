@@ -10,7 +10,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import * as THREE from 'three';
 import { buildCurvaEslabonadaRecipe, eslabonesPara, medidasEslabonada, ANGULO_ESLABONADA_POR_DEFECTO } from '../curvaEslabonada';
-import { motivoAnguloEslabonada, radioEslabonadaDe, RADIO_INTERIOR_CUS_MM, RADIO_INTERIOR_EPS_MM } from '../../reglaEslabones';
+import { motivoAnguloEslabonada, planoDeGiro, radioEslabonadaDe, RADIO_INTERIOR_CUS_MM, RADIO_INTERIOR_EPS_MM } from '../../reglaEslabones';
 import { seedStaticCatalog } from '../../../catalog/staticCatalog';
 import { clearCatalogPortIndex, clearPortMappingOverrides, clearProductCatalogIndex, setMasterResolver } from '../../../workspace/catalogPortMapping';
 import { definicionEfectiva, modeloDeProducto, outdatedPieces, piezasSinDefinicionVigente, withDefinition } from '../../../workspace/placement/definitions';
@@ -47,19 +47,33 @@ describe('regla de eslabones (operador)', () => {
     expect(() => eslabonesPara(0)).toThrow();
   });
 
-  it('N = 2 (θ ≤ 22,5°) se rechaza sin callejón: el motivo dice el mínimo, que el gráfico arranca en 3 eslabones y la alternativa (CAS)', () => {
+  it('N = 2 (θ ≤ 22,5°) se rechaza sin callejón, según el PLANO del giro: vertical → el catálogo no publica pieza; horizontal → CAS', () => {
     for (const a of [1, 10, 22.5]) {
-      const m = motivoAnguloEslabonada(a);
-      expect(m, `${a}°`).not.toBeNull();
-      expect(m).toMatch(/más de 22,5°/);
-      expect(m).toMatch(/3 eslabones/);
-      expect(m).toMatch(/gráfico de radios del catálogo/);
-      expect(m).toMatch(/curva ajustable CAS, de 1° a 90°/);
+      // Vertical (la eslabonada sube o baja; también por defecto): mínimo, porqué y que no hay pieza. Sin otra pieza sugerida.
+      const v = motivoAnguloEslabonada(a);
+      expect(v, `${a}°`).toBe(motivoAnguloEslabonada(a, 'vertical'));
+      expect(v).toMatch(/más de 22,5°/);
+      expect(v).toMatch(/3 eslabones/);
+      expect(v).toMatch(/gráfico de radios del catálogo/);
+      expect(v).toMatch(/Para un cambio de nivel menor, el catálogo no publica ninguna pieza\.$/);
+      expect(v).not.toMatch(/CAS|ajustable|horizontal/);
+      // Horizontal: la curva ajustable CAS, que gira en horizontal.
+      const h = motivoAnguloEslabonada(a, 'horizontal');
+      expect(h).toMatch(/más de 22,5°.*3 eslabones.*gráfico de radios del catálogo/);
+      expect(h).toMatch(/Para un giro horizontal menor está la curva ajustable CAS, de 1° a 90°\.$/);
+      expect(h).not.toMatch(/cambio de nivel/);
       expect(() => eslabonesPara(a)).toThrow(/más de 22,5°/);
     }
     expect(motivoAnguloEslabonada(22.6)).toBeNull();
     expect(motivoAnguloEslabonada(180)).toBeNull();
     expect(motivoAnguloEslabonada(180.5)).toMatch(/hasta 180°/);
+  });
+
+  it('plano del giro por la geometría: eje de giro vertical → horizontal; si no, vertical', () => {
+    expect(planoDeGiro([-1, 0, 0], [0, 1, 0])).toBe('horizontal'); // gira en planta
+    expect(planoDeGiro([-1, 0, 0], [0, 0, 1])).toBe('vertical'); // sube
+    expect(planoDeGiro([-1, 0, 0], [0, 0, -1])).toBe('vertical'); // baja
+    expect(planoDeGiro([-1, 0, 0], [1, 0, 0])).toBeNull(); // sin giro
   });
 
   it('longitud de eje = N−1 cuerdas sobre el radio del EJE (interior + ala/2), no el arco', () => {
@@ -232,10 +246,31 @@ describe('cambiar el ángulo de una curva colocada', () => {
   it('fuera de rango o sobre otra pieza: no se cambia, con motivo', () => {
     const t = conCurva('SAM_EPS-300-Z', 90, 'baja');
     expect(cambiarAnguloEslabonada(t, productos, 'C', 0)).toMatchObject({ ok: false });
+    // Esta pieza baja (giro VERTICAL): no hay pieza para un cambio de nivel menor; no se sugiere la CAS.
     const n2 = cambiarAnguloEslabonada(t, productos, 'C', 20);
     expect(n2.ok).toBe(false);
-    if (!n2.ok) expect(n2.motivo).toMatch(/más de 22,5°.*CAS/);
+    if (!n2.ok) {
+      expect(n2.motivo).toMatch(/más de 22,5°.*el catálogo no publica ninguna pieza/);
+      expect(n2.motivo).not.toMatch(/CAS/);
+    }
     expect(cambiarAnguloEslabonada(t, productos, 'X', 45)).toMatchObject({ ok: false });
+  });
+
+  it('una eslabonada colocada girando en HORIZONTAL (sección acostada): el rechazo sugiere la CAS', () => {
+    const d = definicionEfectiva(P('SAM_EPS-300-Z'), { angulo_deg: 90, sentido_vertical: 'sube' });
+    if (!d.ok) throw new Error(d.motivo);
+    // "Arriba" de sección hacia +Y del mundo: la curva gira en planta.
+    const pl = placeDefinition({ def: d.def, huella: d.huella, mano: 'nativa', entryPortName: 'P1', startPos: [0, 0, 0], entryDir: [1, 0, 0], sectionUp: [0, 1, 0] });
+    const base = withDefinition({ version_contrato: 'trazado/1', piezas: [], conexiones: [], circuitos: [], soportes: [], pe: {} } as unknown as TrayInput, d.huella, d.def);
+    const t = { ...base, piezas: [{ instancia_id: 'H', producto_id: 'SAM_EPS-300-Z', puertos: puertosFromWorld(pl.ports), colocacion: pl.colocacion } as never] };
+    const bocas = puertosFromWorld(pl.ports);
+    expect(planoDeGiro(bocas.P1.direccion, bocas.P2.direccion)).toBe('horizontal');
+    const r = cambiarAnguloEslabonada(t, productos, 'H', 20);
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.motivo).toMatch(/Para un giro horizontal menor está la curva ajustable CAS, de 1° a 90°/);
+      expect(r.motivo).not.toMatch(/cambio de nivel/);
+    }
   });
 });
 
@@ -308,6 +343,9 @@ describe('piezas colocadas con la regla anterior (radio = ancho)', () => {
     const s = piezasSinDefinicionVigente(t, productos);
     expect(s.map((x) => x.id)).toEqual(['C']);
     expect(s[0].motivo).toMatch(/más de 22,5°/);
+    // Sube: giro vertical → sin sugerir piezas de otro plano.
+    expect(s[0].motivo).toMatch(/el catálogo no publica ninguna pieza/);
+    expect(s[0].motivo).not.toMatch(/CAS/);
     // Se sigue computando como está (2 eslabones), sin romper Resultados.
     expect(curvasEslabonadas(t, productos)[0]).toMatchObject({ anguloDeg: 20, eslabones: 2 });
   });
