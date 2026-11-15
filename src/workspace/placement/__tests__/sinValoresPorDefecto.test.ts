@@ -13,7 +13,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { seedStaticCatalog } from '../../../catalog/staticCatalog';
 import { clearCatalogPortIndex, clearPortMappingOverrides, clearProductCatalogIndex, setMasterResolver } from '../../catalogPortMapping';
-import { findMasterForProduct } from '../../../configurator/masterModels';
+import { findMasterById, findMasterForProduct } from '../../../configurator/masterModels';
 import { buildRecipeByKey, buildRecipeFor, ParametroFaltanteError } from '../../../parametric/geometry/recipes';
 import { MOTIVO_ANGULO_AJUSTABLE, resolveDefinition } from '../definitions';
 import type { Product } from '../../../tray/model';
@@ -80,13 +80,24 @@ describe('definición de un producto del catálogo al que le falta un dato', () 
     if (!r.ok) expect(r.motivo).toMatch(/longitud_comercial_mm/);
   });
 
-  it('curva de ángulo ajustable (CAS): sin definición, con el motivo del montaje', () => {
+  // 2026-11-14: la CAS dejó de quedar sin definición. El ángulo no se inventa: lo
+  // declara el operador (90° por defecto, por instancia, rango 1°–90° provisional) y
+  // queda escrito con esa procedencia en la definición. Lo que esta prueba protegía
+  // —que el catálogo no aporta un ángulo— sigue: el ángulo viene de la regla, no del
+  // producto, y fuera del rango no hay definición.
+  it('curva de ángulo ajustable (CAS): el ángulo viene de la regla del operador, no del catálogo; fuera de rango, sin definición', () => {
     const cas = snapshot.PRODUCTOS.filter((p) => String(p.sku).startsWith('CAS-'));
     expect(cas.length).toBe(40);
     for (const p of cas) {
+      expect((p as Record<string, unknown>).angulo_grados ?? null, p.sku).toBeNull();
       const r = resolveDefinition(p);
-      expect(r.ok, p.sku).toBe(false);
-      if (!r.ok) expect(r.motivo).toBe(MOTIVO_ANGULO_AJUSTABLE);
+      if (!r.ok) throw new Error(`${p.sku}: ${r.motivo}`);
+      expect(r.def.patron, p.sku).toBe('master:escalera:curva_ajustable');
+      expect(r.def.params.angulo_deg, p.sku).toBe(90);
+      expect(findMasterById(r.def.patron)?.variationRule.rationale, p.sku).toMatch(/declarada por el operador/);
+      const fuera = resolveDefinition(p, { angulo_deg: 91 });
+      expect(fuera.ok, p.sku).toBe(false);
+      if (!fuera.ok) expect(fuera.motivo).toMatch(/fuera de rango.*de 1° a 90°/);
     }
   });
 

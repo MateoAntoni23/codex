@@ -26,6 +26,7 @@ import {
   buildXSRecipe,
 } from './escaleraRecipes';
 import { buildCurvaEslabonadaRecipe } from './curvaEslabonada';
+import { buildCurvaAjustableRecipe } from './curvaAjustable';
 export { RECETAS_ESLABONADAS } from '../reglaEslabones';
 
 export type PieceKind =
@@ -125,6 +126,9 @@ export function buildRecipeFor(
  *                                       operador 2026-11-13). La CUS dejó de usar
  *                                       el perfil de la CUPS ("equivalencia
  *                                       autorizada" retirada: es otra pieza).
+ *   - 'escalera:curva_ajustable'     → `buildCurvaAjustableRecipe` (CAS: banda curva con
+ *                                       ángulo por instancia; regla declarada por el
+ *                                       operador 2026-11-14).
  *   - 'escalera:derivacion_lateral'  → `buildTSRecipe`
  *   - 'escalera:cruz'                → `buildXSRecipe`
  *   - 'escalera:reduccion_lateral'   → `buildRISRecipe`
@@ -155,6 +159,8 @@ export function buildRecipeByKey(recipeKey: string, params: RawParams): Geometry
     case 'curva_eslabonada':
     case 'escalera:curva_eslabonada':
       return buildCurvaEslabonadaRecipe({ ancho_mm, ala_mm, angulo_deg: requireNumber(params, 'angulo_deg', recipeKey), sentido: sentidoDe(params, recipeKey) });
+    case 'escalera:curva_ajustable':
+      return buildCurvaAjustableRecipe({ ancho_mm, ala_mm, angulo_deg: requireNumber(params, 'angulo_deg', recipeKey) });
     case 'escalera:derivacion_lateral':
       return buildTSRecipe({ ancho_mm, ala_mm });
     case 'escalera:cruz':

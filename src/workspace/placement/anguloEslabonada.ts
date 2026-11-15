@@ -1,5 +1,7 @@
 /**
- * Cambiar el ángulo de una curva ESLABONADA ya colocada (EPS, CUS).
+ * Cambiar el ángulo de una curva con ÁNGULO POR INSTANCIA ya colocada: eslabonadas
+ * (EPS, CUS) y ajustable de escalera (CAS, 2026-11-14). Cada una con su rango
+ * (`motivoAnguloInstancia`).
  *
  * El ángulo es de la instancia (por defecto 90°, declarado por el operador). Al
  * cambiarlo se recalculan la definición (bocas, polígono), la longitud de eje y
@@ -13,11 +15,18 @@ import { definicionEfectiva, placedOf, withDefinition } from './definitions';
 import { placeDefinition, puertosFromWorld, type V3 } from './placementCore';
 import { conLongitudesEje, PATRONES_CURVA_ESLABONADA } from './longitudesEje';
 import { invalidConnections } from './joins';
-import { ANGULO_ESLABONADA_MAX, ANGULO_ESLABONADA_MIN, eslabonesPara } from '../../parametric/reglaEslabones';
+import { eslabonesPara, RECETAS_ESLABONADAS } from '../../parametric/reglaEslabones';
+import { PATRON_CURVA_AJUSTABLE, RECETA_CURVA_AJUSTABLE } from '../../parametric/reglaCurvaAjustable';
+import { motivoAnguloInstancia } from '../../parametric/anguloInstancia';
 
 export function esCurvaEslabonada(entrada: TrayInput | null | undefined, piece: Piece): boolean {
   const placed = placedOf(entrada, piece);
   return !!placed && PATRONES_CURVA_ESLABONADA.has(placed.def.patron);
+}
+
+/** Curva ajustable de escalera (CAS) colocada con su definición. */
+export function esCurvaAjustable(entrada: TrayInput | null | undefined, piece: Piece): boolean {
+  return placedOf(entrada, piece)?.def.patron === PATRON_CURVA_AJUSTABLE;
 }
 
 export function anguloDe(entrada: TrayInput | null | undefined, piece: Piece): number | null {
@@ -26,22 +35,41 @@ export function anguloDe(entrada: TrayInput | null | undefined, piece: Piece): n
 }
 
 export type CambioAngulo =
-  | { ok: true; entrada: TrayInput; eslabones: number; unionesQueNoCumplen: string[] }
+  | {
+      ok: true; entrada: TrayInput;
+      /** Eslabones de la curva eslabonada; null en la ajustable (una pieza por código). */
+      eslabones: number | null;
+      unionesQueNoCumplen: string[];
+    }
   | { ok: false; motivo: string };
 
+/** Cambiar el ángulo de una curva eslabonada (EPS, CUS). Ver `cambiarAnguloInstancia`. */
 export function cambiarAnguloEslabonada(entrada: TrayInput, productos: ReadonlyMap<string, Product>, piezaId: string, anguloDeg: number): CambioAngulo {
+  return cambiarAnguloInstancia(entrada, productos, piezaId, anguloDeg, 'eslabonada');
+}
+
+/** Cambiar el ángulo de una curva ajustable de escalera (CAS). Ver `cambiarAnguloInstancia`. */
+export function cambiarAnguloAjustable(entrada: TrayInput, productos: ReadonlyMap<string, Product>, piezaId: string, anguloDeg: number): CambioAngulo {
+  return cambiarAnguloInstancia(entrada, productos, piezaId, anguloDeg, 'ajustable');
+}
+
+function cambiarAnguloInstancia(
+  entrada: TrayInput, productos: ReadonlyMap<string, Product>, piezaId: string, anguloDeg: number, clase: 'eslabonada' | 'ajustable',
+): CambioAngulo {
   const idx = entrada.piezas.findIndex((p) => p.instancia_id === piezaId);
   const piece = entrada.piezas[idx];
   if (!piece) return { ok: false, motivo: `la pieza ${piezaId} no existe` };
   const placed = placedOf(entrada, piece);
-  if (!placed || !PATRONES_CURVA_ESLABONADA.has(placed.def.patron)) return { ok: false, motivo: 'la pieza no es una curva eslabonada' };
-  if (!(anguloDeg >= ANGULO_ESLABONADA_MIN && anguloDeg <= ANGULO_ESLABONADA_MAX)) {
-    return { ok: false, motivo: `el ángulo tiene que estar entre ${ANGULO_ESLABONADA_MIN}° y ${ANGULO_ESLABONADA_MAX}°` };
-  }
+  const esDeLaClase = !!placed && (clase === 'eslabonada' ? PATRONES_CURVA_ESLABONADA.has(placed.def.patron) : placed.def.patron === PATRON_CURVA_AJUSTABLE);
+  if (!placed || !esDeLaClase) return { ok: false, motivo: clase === 'eslabonada' ? 'la pieza no es una curva eslabonada' : 'la pieza no es una curva ajustable' };
+  const receta = clase === 'eslabonada' ? [...RECETAS_ESLABONADAS][0] : RECETA_CURVA_AJUSTABLE;
+  const fueraDeRango = motivoAnguloInstancia(receta, anguloDeg);
+  if (fueraDeRango) return { ok: false, motivo: fueraDeRango };
   const product = productos.get(piece.producto_id);
   if (!product) return { ok: false, motivo: `producto ${piece.producto_id} no está en el catálogo` };
-  const sentido = placed.def.params.sentido_vertical === 1 ? 'sube' : 'baja';
-  const d = definicionEfectiva(product, { angulo_deg: anguloDeg, sentido_vertical: sentido });
+  const d = clase === 'eslabonada'
+    ? definicionEfectiva(product, { angulo_deg: anguloDeg, sentido_vertical: placed.def.params.sentido_vertical === 1 ? 'sube' : 'baja' })
+    : definicionEfectiva(product, { angulo_deg: anguloDeg });
   if (!d.ok) return { ok: false, motivo: d.motivo };
 
   // La boca de entrada queda donde está (posición, dirección y "arriba" de sección).
@@ -61,5 +89,9 @@ export function cambiarAnguloEslabonada(entrada: TrayInput, productos: ReadonlyM
   let next: TrayInput = withDefinition({ ...entrada, piezas: [...entrada.piezas] }, d.huella, d.def);
   next.piezas[idx] = nueva;
   next = { ...next };
-  return { ok: true, entrada: next, eslabones: eslabonesPara(anguloDeg), unionesQueNoCumplen: invalidConnections(next, new Set([piezaId])) };
+  return {
+    ok: true, entrada: next,
+    eslabones: clase === 'eslabonada' ? eslabonesPara(anguloDeg) : null,
+    unionesQueNoCumplen: invalidConnections(next, new Set([piezaId])),
+  };
 }

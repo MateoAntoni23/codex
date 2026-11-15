@@ -345,7 +345,16 @@ export function planAddCurve(
 ): PendingSegmentAddition {
   if (!compat.ok) throw new Error('planAddCurve: compat.ok must be true');
 
-  const angleDeg = (newProduct as Record<string, unknown>).angulo_grados as number | undefined;
+  // Sin colocación del llamador, se calcula con la MISMA función que usan el preview y
+  // la confirmación (antes del ángulo: en la CAS el ángulo sale de la colocación).
+  if (!placement && tieneDefinicion(newProduct)) {
+    placement = computeRoutingPlacement({ product: newProduct, startPort, entryPortName: 'P1', side: turnDirection });
+  }
+  // El ángulo es el del catálogo, salvo en las curvas con ángulo por instancia (CAS):
+  // ahí el catálogo no lo declara y vale el de la colocación (elegido al colocar).
+  const anguloInstancia = placement?.ok ? placement.def.params.angulo_deg : undefined;
+  const anguloCatalogo = (newProduct as Record<string, unknown>).angulo_grados as number | undefined;
+  const angleDeg = typeof anguloCatalogo === 'number' && anguloCatalogo > 0 ? anguloCatalogo : anguloInstancia;
   if (!angleDeg || angleDeg <= 0) throw new Error('planAddCurve: angulo_grados must be > 0');
 
   const pieceIds = new Set(entrada.piezas.map((p) => p.instancia_id));

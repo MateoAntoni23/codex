@@ -35,6 +35,8 @@ export interface RoutingPlacementInput {
   readonly entryDir?: readonly number[];
   /** Curva vertical articulada (CUS): si sube o baja. Las CUPS lo traen fijo (A sube, D baja). */
   readonly sentidoVertical?: 'sube' | 'baja';
+  /** Ángulo por instancia elegido al colocar (curva ajustable CAS). Sin valor, el de por defecto. */
+  readonly anguloDeg?: number | null;
 }
 
 export type RoutingPlacement =
@@ -59,7 +61,7 @@ function key(i: RoutingPlacementInput): string {
   return JSON.stringify([
     i.product.producto_id,
     i.startPort.pieceId, i.startPort.portName, i.startPort.pos, i.startPort.dir, i.startPort.sectionUp ?? null,
-    i.entryPortName, i.side, i.lengthMm ?? null, i.entryDir ?? null, i.sentidoVertical ?? null,
+    i.entryPortName, i.side, i.lengthMm ?? null, i.entryDir ?? null, i.sentidoVertical ?? null, i.anguloDeg ?? null,
   ]);
 }
 
@@ -78,6 +80,7 @@ export function computeRoutingPlacement(input: RoutingPlacementInput): RoutingPl
   const d = resolveDefinition(input.product, {
     longitud_mm: input.lengthMm ?? null,
     ...(input.sentidoVertical ? { sentido_vertical: input.sentidoVertical } : {}),
+    ...(typeof input.anguloDeg === 'number' ? { angulo_deg: input.anguloDeg } : {}),
   });
   if (!d.ok) return { ok: false, motivo: d.motivo };
   const k = `${key(input)}|${d.huella}`;

@@ -18,6 +18,7 @@
  */
 import type { Product } from '../../tray/model';
 import { acabadoDe, grupoDe } from '../mezclaAcabados';
+import { eligeAnguloAlColocar } from '../placement/routingPlacementState';
 
 export interface Candidato {
   readonly product: Product;
@@ -74,6 +75,8 @@ function textoVariante(p: Product): string {
   const rad = num(reg(p).radio_mm);
   if (ala !== null) partes.push(`ala ${ala}`);
   if (ang !== null) partes.push(`${ang}°`);
+  // Curva ajustable (CAS): el ángulo no es del producto; se elige al colocar.
+  else if (eligeAnguloAlColocar(p)) partes.push('ángulo ajustable');
   if (rad !== null) partes.push(`R ${rad}`);
   return partes.join(' · ');
 }

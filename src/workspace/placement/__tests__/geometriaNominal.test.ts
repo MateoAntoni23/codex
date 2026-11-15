@@ -15,7 +15,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { seedStaticCatalog } from '../../../catalog/staticCatalog';
 import { clearCatalogPortIndex, clearPortMappingOverrides, clearProductCatalogIndex, setMasterResolver } from '../../catalogPortMapping';
-import { definicionEfectiva, MOTIVO_ANGULO_AJUSTABLE, modeloDeProducto } from '../definitions';
+import { definicionEfectiva, modeloDeProducto } from '../definitions';
 import { migrateTray } from '../migration';
 import { checkJoin } from '../joins';
 import { placeDefinition, worldPorts } from '../placementCore';
@@ -95,9 +95,10 @@ describe('geometría nominal del catálogo', () => {
     expect(r2.ok).toBe(false);
     if (!r2.ok) expect(r2.motivo).toMatch(/necesita ancho, ala, ángulo y radio/);
 
+    // CAS (2026-11-14): tiene regla del operador; lo que no se coloca es un ángulo fuera de rango.
     const cas = snapshot.PRODUCTOS.find((p) => String(p.sku).startsWith('CAS-'))!;
-    const r3 = definicionEfectiva(cas);
+    const r3 = definicionEfectiva(cas, { angulo_deg: 120 });
     expect(r3.ok).toBe(false);
-    if (!r3.ok) expect(r3.motivo).toBe(MOTIVO_ANGULO_AJUSTABLE);
+    if (!r3.ok) expect(r3.motivo).toMatch(/fuera de rango.*de 1° a 90°/);
   });
 });
