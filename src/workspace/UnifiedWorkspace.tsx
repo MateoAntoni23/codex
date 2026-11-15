@@ -14,6 +14,8 @@ import { PlantaPanel } from './stages/PlantaPanel';
 import { BandejasPanel } from './stages/BandejasPanel';
 import { ConexionesPanel } from './stages/ConexionesPanel';
 import { ResultadosPanel } from './stages/ResultadosPanel';
+import { LeyendaColores } from './colores/LeyendaColores';
+import { PanelInferior } from './stages/PanelInferior';
 import { useUiStore } from './stages/uiStore';
 import './stages/stages.css';
 import { useStageSync } from './stages/useStageSync';
@@ -248,8 +250,11 @@ export function UnifiedWorkspace() {
   const routingActive            = useRoutingStore((s) => s.active);
   const deactivateRouting        = useRoutingStore((s) => s.deactivate);
 
-  const clearAll = () => {
+  const formulario = useUiStore((s) => s.formulario);
+  /** Escape cierra también el formulario del inspector; un clic en la escena vacía, no. */
+  const clearAll = (cerrarFormulario = true) => {
     if (routingActive) { deactivateRouting(); return; }
+    if (cerrarFormulario && formulario) { useUiStore.getState().abrirFormulario(null); return; }
     if (connectionToolActive) { deactivateConnectionTool(); return; }
     if (selectedEquipId) selectEquip(null);
     else if (selectedSupportId) selectSupport(null);
@@ -258,7 +263,7 @@ export function UnifiedWorkspace() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') clearAll();
+      if (e.key === 'Escape') clearAll(true);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -284,11 +289,12 @@ export function UnifiedWorkspace() {
         </aside>
 
         <main className="unified-workspace-canvas">
-          <Canvas shadows camera={{ position: [15, 12, 15], fov: 45 }} onPointerMissed={clearAll}>
+          <Canvas shadows camera={{ position: [15, 12, 15], fov: 45 }} onPointerMissed={() => clearAll(false)}>
             <SceneBridge />
             <WorkspaceScene />
             <OrbitControls makeDefault />
           </Canvas>
+          <LeyendaColores />
         </main>
 
         <aside className="unified-workspace-inspector ws-panel" aria-label="Inspector">
@@ -296,6 +302,7 @@ export function UnifiedWorkspace() {
         </aside>
       </div>
       )}
+      {booted && <PanelInferior />}
 
       {importWizardOpen && (
         <div className="ws-panel ws-modal-host">

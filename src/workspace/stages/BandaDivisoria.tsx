@@ -106,7 +106,8 @@ export function OcupacionSegregadaView({ o }: { o: OcupacionSegregada }) {
   );
 }
 
-export function BandejasSegregadasSection() {
+/** `parte`: la ocupación (pestaña «Cálculo del motor») o las bandas del cómputo (pestaña «Cómputo»). */
+export function BandejasSegregadasSection({ parte }: { parte: 'ocupacion' | 'computo' }) {
   const entrada = useTrayStore((s) => s.entrada);
   const context = useTrayStore((s) => s.context);
   const productos = useProductos();
@@ -118,6 +119,16 @@ export function BandejasSegregadasSection() {
   const etiqueta = (id: string) => (piezas.some((p) => p.instancia_id === id) ? pieceLabelById(id, piezas, idx) : id);
   const computo = computoBandas(entrada, productos);
   return (
+    parte === 'computo' ? (
+      <Section title={`Bandas divisorias — agregadas por la app (${computo.reduce((n, l) => n + l.piezas, 0)})`} testid="segregadas-computo">
+        {computo.map((l) => (
+          <div key={l.producto_id} className="stage-card" data-testid="computo-banda" data-producto={l.producto_id} data-piezas={l.piezas} data-longitud={l.longitud_mm}>
+            <strong>[AGREGADA POR LA APP] {l.sku}</strong>: {l.piezas} banda(s) — {mm(l.longitud_mm)} a cubrir ({l.tramos.map(etiqueta).join(', ')})
+          </div>
+        ))}
+        <p className="stage-note" style={{ whiteSpace: 'normal' }}>{NOTA_COMPUTO}</p>
+      </Section>
+    ) : (
     <Section title={`Bandejas segregadas — cálculo de la app (${bandas.length})`} testid="segregadas">
       <p className="stage-note" style={{ whiteSpace: 'normal' }} data-testid="segregadas-procedencia">
         {PROCEDENCIA_REGLA} {PROCEDENCIA_CALCULO} {CRITERIO_PE} {CRITERIO_OCUPACION}
@@ -131,13 +142,7 @@ export function BandejasSegregadasSection() {
           </div>
         );
       })}
-      <h4 className="stage-section-subtitle">Bandas divisorias en el cómputo (agregadas por la app)</h4>
-      {computo.map((l) => (
-        <div key={l.producto_id} className="stage-card" data-testid="computo-banda" data-producto={l.producto_id} data-piezas={l.piezas} data-longitud={l.longitud_mm}>
-          <strong>[AGREGADA POR LA APP] {l.sku}</strong>: {l.piezas} banda(s) — {mm(l.longitud_mm)} a cubrir ({l.tramos.map(etiqueta).join(', ')})
-        </div>
-      ))}
-      <p className="stage-note" style={{ whiteSpace: 'normal' }}>{NOTA_COMPUTO}</p>
     </Section>
+    )
   );
 }

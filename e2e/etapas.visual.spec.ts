@@ -9,6 +9,8 @@ import { test, expect, type Locator, type Page } from '@playwright/test';
 import { readFileSync, mkdirSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { detalleOfrecido, elegirPieza, esperarSelectorPieza } from './helpers/selectorPieza';
+import { verPestana } from './helpers/interfaz';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const OUT_DIR = resolve(__dirname, 'output');
@@ -22,7 +24,8 @@ const STAGES: StageId[] = ['equipos', 'planta', 'bandejas', 'conexiones', 'resul
 const OWN: Record<StageId, string[]> = {
   equipos: ['panel-equipos', 'tools-equipos', 'equipment-list', 'open-import-wizard', 'new-equipment'],
   planta: ['panel-planta', 'planta-list', 'layer-infrastructure'],
-  bandejas: ['panel-bandejas', 'tools-bandejas', 'piece-list', 'free-ends', 'joins', 'supports', 'pe'],
+  // Interfaz (2026-11-14): los soportes son un grupo de la lista de piezas ('piece-list').
+  bandejas: ['panel-bandejas', 'tools-bandejas', 'piece-list', 'free-ends', 'joins', 'pe'],
   conexiones: ['panel-conexiones', 'catalog-connections', 'circuits'],
   resultados: ['panel-resultados', 'engine-state', 'engine-reconnect', 'calculate-tray', 'reserva-input'],
 };
@@ -105,12 +108,11 @@ async function newStraight(page: Page): Promise<void> {
 async function continueFromFreeEnd(page: Page): Promise<void> {
   const before = await page.evaluate(() => (window as unknown as { __codex: { trayStore: { getState: () => { entrada: { piezas: unknown[] } } } } }).__codex.trayStore.getState().entrada.piezas.length);
   await clickOwn(page, 'bandejas', page.getByTestId('free-end').first());
-  const select = page.locator('[data-codex-routing-product-select]');
-  await expect(select).toBeVisible();
-  // Un recto compatible con modelo (◆ … mm × … mm ala), no una excepción.
-  const first = await select.evaluate((el) => Array.from((el as HTMLSelectElement).options).find((o) => o.value && /^◆ .*mm × .*ala/.test(o.textContent ?? ''))?.value ?? '');
+  await esperarSelectorPieza(page);
+  // Un recto compatible con modelo, no una excepción.
+  const first = Object.entries(await detalleOfrecido(page)).find(([, d]) => d.tipo === 'recta' && d.conModelo && !d.excepcion)?.[0] ?? '';
   expect(first, 'hay un recto compatible para continuar').not.toBe('');
-  await select.selectOption(first);
+  await elegirPieza(page, first);
   const motive = page.locator('[data-codex-routing-exception-motive]');
   if (await motive.count()) await motive.fill('E2E hito 1b');
   await clickOwn(page, 'bandejas', page.locator('text=Confirmar continuación'));
@@ -280,17 +282,21 @@ test.describe('Hito 1b — interfaz por etapas', () => {
     await expect(pieceRow).toBeInViewport();
     await expect(page.getByTestId('piece-title')).toBeVisible();
 
-    // B4 pieza: clic en la lista → color de selección en la escena.
+    // B4 pieza: clic en la lista → selección marcada en la escena. (Interfaz B3, 2026-11-14:
+    // la selección ya no es relleno amarillo sino contorno + realce sobre el color del tipo;
+    // se verifica lo mismo —que la pieza elegida en la lista queda marcada en la escena— por
+    // su contorno, y que el contorno está SÓLO en ella.)
     const other = await page.evaluate(() => (window as unknown as { __codex: { trayStore: { getState: () => { entrada: { piezas: Array<{ instancia_id: string }> } } } } }).__codex.trayStore.getState().entrada.piezas[1].instancia_id);
     await clickOwn(page, 'bandejas', page.locator(`[data-row-key="piece:${other}"]`));
-    await expect.poll(() => page.evaluate((id) => {
-      let ok = false;
+    await expect.poll(() => page.evaluate(() => {
+      const marcadas = new Set<string>();
       (window as unknown as { __codex: { scene: { traverse: (f: (o: unknown) => void) => void } } }).__codex.scene.traverse((o) => {
-        const m = o as { userData?: { codex?: { instanciaId?: string } }; material?: { color?: { getHexString: () => string } } };
-        if (m.userData?.codex?.instanciaId === id && m.material?.color?.getHexString() === 'ffcf33') ok = true;
+        const m = o as { userData?: { codex?: { instanciaId?: string } }; material?: unknown; children?: Array<{ type: string }> };
+        const id = m.userData?.codex?.instanciaId;
+        if (id && m.material && m.children?.some((c) => /Line/.test(c.type))) marcadas.add(id);
       });
-      return ok;
-    }, other)).toBe(true);
+      return [...marcadas];
+    })).toEqual([other]);
   });
 
   test('B5 — tema: cambia, persiste al recargar, no altera el archivo; contraste AA', async ({ page }) => {
@@ -361,6 +367,7 @@ test.describe('Hito 1b — interfaz por etapas', () => {
     await expect(headline).toHaveText('Preseleccion condicionada', { timeout: 30_000 });
     await expect(page.getByTestId('result-pe-note')).toHaveCount(0);
     await expect(page.getByTestId('result-issues')).toHaveCount(0);
+    await verPestana(page, 'motor');
     await expect(page.getByTestId('motor-pe')).toHaveAttribute('data-cobertura', 'COMPLETA');
     await expect(page.getByTestId('motor-incumplimiento')).toHaveCount(0);
     expect(await page.getByTestId('stage-status-resultados').innerText()).toBe('Preseleccion condicionada');

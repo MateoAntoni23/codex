@@ -27,14 +27,16 @@ const PHASE_LABEL: Record<string, string> = {
   restoring: 'Restaurando…',
   idle: 'Sin cambios guardados aún',
   saving: 'Guardando…',
-  saved: 'Guardado en este equipo',
+  // Corto para que la barra entre en una fila a 1366 (2026-11-14); el texto completo va en el title.
+  saved: 'Guardado',
   error: 'Error al guardar',
 };
 
-function formatTime(iso: string | null): string {
+function formatTime(iso: string | null, conSegundos = true): string {
   if (!iso) return '';
   const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? '' : d.toLocaleTimeString();
+  if (Number.isNaN(d.getTime())) return '';
+  return conSegundos ? d.toLocaleTimeString() : d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
 export function SaveStatusIndicator() {
@@ -47,10 +49,10 @@ export function SaveStatusIndicator() {
       data-testid="project-save-status"
       data-phase={phase}
       role="status"
-      title={error ?? undefined}
+      title={error ?? (phase === 'saved' && savedAt ? `Guardado en este equipo a las ${formatTime(savedAt)}` : undefined)}
     >
       {PHASE_LABEL[phase] ?? phase}
-      {phase === 'saved' && savedAt ? ` · ${formatTime(savedAt)}` : ''}
+      {phase === 'saved' && savedAt ? ` · ${formatTime(savedAt, false)}` : ''}
       {phase === 'error' && (
         <>
           {' '}
@@ -217,13 +219,13 @@ export function ProjectControls() {
       </button>
       <SaveStatusIndicator />
       {message && (
-        <span className="project-message" data-testid="project-message" role="alert">
+        <span className="project-message" data-testid="project-message" role="alert" title={message}>
           {' '}
           {message}
         </span>
       )}
       {notice && (
-        <span className="project-message" data-testid="project-notice" role="alert">
+        <span className="project-message" data-testid="project-notice" role="alert" title={notice}>
           {' '}
           {notice}
         </span>

@@ -109,7 +109,16 @@ test.describe('modelo no resuelto: giro medido ≠ declarado', () => {
     // No se dibuja con el contorno medido (el modelo no está resuelto).
     expect(kinds).not.toContain('ladder-measured');
     expect(kinds).not.toContain('parametric-confirmed');
-    await expect(page.getByTestId('unresolved-marker')).toContainText(MOTIVO_60);
+    // En la escena, sólo la etiqueta corta (los motivos completos tapaban la escena);
+    // el motivo se despliega al seleccionar la pieza.
+    const marca = page.getByTestId('unresolved-marker');
+    await expect(marca).toHaveAttribute('data-desplegado', 'false');
+    await expect(marca).toContainText('Sin resolver');
+    await expect(marca).not.toContainText(MOTIVO_60);
+    await page.getByTestId('stage-tab-bandejas').click();
+    await page.locator('[data-row-key="piece:C45"]').click();
+    await expect(marca).toHaveAttribute('data-desplegado', 'true');
+    await expect(marca).toContainText(MOTIVO_60);
   });
 
   test('pieza colocada con una definición de 60°: sin malla, esquema + "Modelo no resuelto"', async ({ page }) => {

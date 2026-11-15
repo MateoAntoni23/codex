@@ -15,7 +15,7 @@
 import type { Product, TrayInput } from '../tray/model';
 import { placedOf } from './placement/definitions';
 import { PATRONES_CURVA_ESLABONADA } from './placement/longitudesEje';
-import { medidasEslabonada } from '../parametric/reglaEslabones';
+import { eslabonesDeAnguloGuardado, medidasEslabonada } from '../parametric/reglaEslabones';
 
 export interface CurvaEslabonada {
   readonly pieza: string;
@@ -56,10 +56,15 @@ export function curvasEslabonadas(entrada: TrayInput | null | undefined, product
   for (const p of entrada.piezas) {
     const placed = placedOf(entrada, p);
     if (!placed || !PATRONES_CURVA_ESLABONADA.has(placed.def.patron)) continue;
-    const ancho = placed.def.params.ancho_mm;
     const ang = placed.def.params.angulo_deg;
-    if (typeof ancho !== 'number' || typeof ang !== 'number') continue;
-    const m = medidasEslabonada(ancho, ang);
+    if (typeof ang !== 'number') continue;
+    // Los eslabones salen sólo del ángulo (cómputo). La longitud, de la regla de radio si la
+    // definición la trae; si no (definición anterior al 2026-11-15), la guardada en la pieza.
+    const radio = placed.def.params.radio_interior_mm;
+    const ala = placed.def.params.ala_mm;
+    const m = typeof radio === 'number' && typeof ala === 'number'
+      ? medidasEslabonada({ radioInteriorMm: radio, alaMm: ala, anguloDeg: ang })
+      : { eslabones: eslabonesDeAnguloGuardado(ang), longitudEjeMm: p.longitud_eje_mm ?? 0 };
     out.push({
       pieza: p.instancia_id,
       producto_id: p.producto_id,

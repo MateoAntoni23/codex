@@ -50,6 +50,14 @@ export interface RoutingState {
   sentidoVertical: 'sube' | 'baja' | null;
   setSentidoVertical(s: 'sube' | 'baja' | null): void;
 
+  /**
+   * Ángulo por instancia elegido AL COLOCAR (curva ajustable CAS). null = el de por
+   * defecto de la regla (90°). Entra en la vista previa y en la confirmación (el mismo
+   * cálculo); fuera del rango no hay colocación y se muestra el motivo.
+   */
+  anguloInstancia: number | null;
+  setAnguloInstancia(a: number | null): void;
+
   activate(): void;
   deactivate(): void;
   hoverPiece(id: string | null): void;
@@ -80,6 +88,8 @@ export const useRoutingStore = create<RoutingState>((set) => ({
   turnDirection: 'left',
   sentidoVertical: null,
   setSentidoVertical: (s) => set({ sentidoVertical: s }),
+  anguloInstancia: null,
+  setAnguloInstancia: (a) => set({ anguloInstancia: a }),
   entryPortName: null,
 
   activate: () =>
@@ -103,9 +113,9 @@ export const useRoutingStore = create<RoutingState>((set) => ({
   // preseleccionaba el producto de la pieza origen, lo que provocaba un
   // preview con la forma de la pieza origen incluso cuando el inspector
   // mostraba otro SKU: ver fix stale-preview y routingPreviewSwap spec).
-  selectStartPort: (port) => set({ startPort: port, step: 'configuringSegment', selectedProductId: '', entryPortName: null }),
+  selectStartPort: (port) => set({ startPort: port, step: 'configuringSegment', selectedProductId: '', entryPortName: null, anguloInstancia: null }),
 
-  setProduct: (id) => set({ selectedProductId: id, entryPortName: null, sentidoVertical: null }),
+  setProduct: (id) => set({ selectedProductId: id, entryPortName: null, sentidoVertical: null, anguloInstancia: null }),
 
   setLength: (mm) => set({ previewLengthMm: mm }),
 

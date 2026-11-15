@@ -10,6 +10,12 @@ import { checkDirectCompatibility, snapDirectionToAxis } from '../routingRules';
 import { definicionEfectiva, esTramoRecto, modeloDeProducto } from './definitions';
 import { computeRoutingPlacement, type RoutingPlacement } from './routingPlacement';
 import { esVerticalArticulada } from '../parametricBridge';
+import { RECETA_CURVA_AJUSTABLE } from '../../parametric/reglaCurvaAjustable';
+
+/** La pieza elige el ángulo al colocar (curva ajustable CAS). */
+export function eligeAnguloAlColocar(product: Product | null | undefined): boolean {
+  return modeloDeProducto(product)?.recipeKey === RECETA_CURVA_AJUSTABLE;
+}
 
 export interface RoutingStateSlice {
   readonly startPort: StartPort | null;
@@ -21,6 +27,8 @@ export interface RoutingStateSlice {
   readonly step: string;
   /** Curva vertical articulada (CUS): sentido elegido; null = sin elegir. */
   readonly sentidoVertical?: 'sube' | 'baja' | null;
+  /** Ángulo elegido al colocar (curva ajustable CAS); null = el de por defecto. */
+  readonly anguloInstancia?: number | null;
 }
 
 /** Piece kinds que eligen boca de entrada (3+ bocas o curva vertical). */
@@ -77,5 +85,6 @@ export function routingPlacementFromState(
     lengthMm,
     ...(entryDir ? { entryDir } : {}),
     ...(esVerticalArticulada(product) && r.sentidoVertical ? { sentidoVertical: r.sentidoVertical } : {}),
+    ...(eligeAnguloAlColocar(product) && typeof r.anguloInstancia === 'number' ? { anguloDeg: r.anguloInstancia } : {}),
   });
 }

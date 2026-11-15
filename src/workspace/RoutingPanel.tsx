@@ -35,15 +35,16 @@ import {
   isInteractivelyInsertable,
   isWalkable,
   getLimitationReason,
-  formatProductOption,
 } from './pieceClassification';
 import { chiralityForTurn, esVerticalArticulada } from './parametricBridge';
 import { definicionEfectiva, tieneDefinicion, modeloDeProducto } from './placement/definitions';
 import { placeDefinition, worldPorts } from './placement/placementCore';
 import { buildContinuationCandidates, esDerivacionLateral, type ContinuationCandidate } from './continuationCandidates';
-import { routingPlacementFromState } from './placement/routingPlacementState';
+import { eligeAnguloAlColocar, routingPlacementFromState } from './placement/routingPlacementState';
+import { ANGULO_AJUSTABLE_MAX, ANGULO_AJUSTABLE_MIN, ANGULO_AJUSTABLE_POR_DEFECTO, RANGO_AJUSTABLE_TEXTO } from '../parametric/reglaCurvaAjustable';
 import { UNIONS_KEY, unionsOf, type UnionRecord } from './workspaceOperation';
 import { indexProducts, pieceLabelById, portLabel } from './stages/displayNames';
+import { SelectorPieza } from './routing/SelectorPieza';
 
 // ─── PE extension proposal widget ────────────────────────────────────────────
 
@@ -200,6 +201,11 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
   const snapToAxis        = useRoutingStore((s) => s.snapToAxis);
   const turnDirection     = useRoutingStore((s) => s.turnDirection);
   const sentidoVertical   = useRoutingStore((s) => s.sentidoVertical);
+  const anguloInstancia = useRoutingStore((s) => s.anguloInstancia);
+  const setAnguloInstancia = useRoutingStore((s) => s.setAnguloInstancia);
+  // Texto del campo de ángulo (CAS): vuelve al de por defecto al cambiar de pieza.
+  const [anguloTexto, setAnguloTexto] = useState(String(ANGULO_AJUSTABLE_POR_DEFECTO));
+  useEffect(() => { if (anguloInstancia === null) setAnguloTexto(String(ANGULO_AJUSTABLE_POR_DEFECTO)); }, [anguloInstancia]);
   const setSentidoVertical = useRoutingStore((s) => s.setSentidoVertical);
   const entryPortName     = useRoutingStore((s) => s.entryPortName);
   const setProduct        = useRoutingStore((s) => s.setProduct);
@@ -292,20 +298,6 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
     [compatibleProducts],
   );
 
-  // Group compatible products by family for <optgroup> display
-  const familyGroups = useMemo(() => {
-    const groups = new Map<string, { name: string; acabado: string | null; products: typeof compatibleProducts }>();
-    for (const p of compatibleProducts) {
-      const famId = (p as Record<string, unknown>).familia_id as string | undefined ?? '__other__';
-      if (!groups.has(famId)) {
-        const fam = context?.familias?.find((f) => f.familia_id === famId);
-        groups.set(famId, { name: fam?.nombre_familia ?? famId, acabado: fam?.acabado_normalizado ?? null, products: [] });
-      }
-      groups.get(famId)!.products.push(p);
-    }
-    return groups;
-  }, [compatibleProducts, context?.familias]);
-
   // Candidatos clasificados con razones explícitas — base del selector
   // ampliado ("Recomendados" / "Otros productos"). Mantiene disjunción con
   // compatibleProducts: los "recommended" son un subconjunto estricto.
@@ -323,15 +315,6 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
     () => continuationCandidates.filter((c) => c.category === 'other'),
     [continuationCandidates],
   );
-  const otherCandidatesByTipo = useMemo(() => {
-    const m = new Map<string, ContinuationCandidate[]>();
-    for (const c of otherCandidates) {
-      const k = c.product.tipo_pieza || 'sin tipo';
-      (m.get(k) ?? m.set(k, []).get(k)!).push(c);
-    }
-    return new Map([...m.entries()].sort(([a], [b]) => a.localeCompare(b)));
-  }, [otherCandidates]);
-
   const otherCandidateById = useMemo(() => {
     const m = new Map<string, ContinuationCandidate>();
     for (const c of otherCandidates) m.set(c.product.producto_id, c);
@@ -451,7 +434,10 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
       const a = ports.find((p) => p.name === 'P1')!.pos;
       const b = ports.find((p) => p.name === 'P2')!.pos;
       const chord = Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]);
-      const angleDeg = ((selectedProduct as Record<string, unknown>).angulo_grados as number | undefined) ?? null;
+      // Curva ajustable (CAS): el catálogo no declara ángulo; vale el de la definición (el radio
+      // de línea central no depende del ángulo).
+      const angleDeg = ((selectedProduct as Record<string, unknown>).angulo_grados as number | undefined)
+        ?? (eligeAnguloAlColocar(selectedProduct) ? parametricEntry.def.params.angulo_deg ?? null : null);
       if (angleDeg === null) return { ok: false as const, reason: 'el catálogo no declara angulo_grados' };
       const θ = (angleDeg * Math.PI) / 180;
       const sinHalf = Math.sin(θ / 2);
@@ -472,9 +458,9 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
   const step = useRoutingStore((s) => s.step);
   const placement = useMemo(
     () => routingPlacementFromState(context, entrada, {
-      startPort, selectedProductId, entryPortName, turnDirection, previewLengthMm, snapToAxis, step, sentidoVertical,
+      startPort, selectedProductId, entryPortName, turnDirection, previewLengthMm, snapToAxis, step, sentidoVertical, anguloInstancia,
     }),
-    [context, entrada, startPort, selectedProductId, entryPortName, turnDirection, previewLengthMm, snapToAxis, step, sentidoVertical],
+    [context, entrada, startPort, selectedProductId, entryPortName, turnDirection, previewLengthMm, snapToAxis, step, sentidoVertical, anguloInstancia],
   );
 
   const snapWarnAngle = useMemo(() => {
@@ -644,71 +630,22 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
             Cancelá y usá "+ Agregar tramo recto" para iniciar un principal perforado.
           </div>
         )}
-        {compatibleProducts.length === 0 && otherCandidates.length === 0 ? (
-          <div style={{ padding: '6px 8px', background: '#2a1a1a', borderRadius: 3, color: '#ff9955', fontSize: 10 }}>
-            Sin continuaciones insertables para este puerto en el trazado interactivo.
-            {!context?.compatibilidades?.length && ' (Catálogo no disponible)'}
-          </div>
-        ) : (
-          <select
-            data-codex-routing-product-select
-            className="inspector-input"
-            style={{ width: '100%' }}
-            value={selectedProductId}
-            onChange={(e) => {
-              setProduct(e.target.value);
-              setError(null);
-              setExceptionMotive('');
-            }}
-          >
-            {!selectedProductId && <option value="">— Elegí un producto —</option>}
-            {compatibleProducts.length > 0 && (
-              // Optgroups planos por familia (prefijo "Recomendados · ") en vez
-              // de anidar optgroups — el HTML no permite optgroup dentro de
-              // optgroup y el DOM resultante esconde opciones de select.options,
-              // bloqueando Playwright selectOption y la navegación por teclado.
-              <>
-                {Array.from(familyGroups.entries()).map(([famId, { name, acabado, products }]) => (
-                  <optgroup
-                    key={famId}
-                    label={`Recomendados · ${acabado ? `${name} (${acabado})` : name}`}
-                  >
-                    {products.map((p) => (
-                      <option key={p.producto_id} value={p.producto_id}>
-                        {tieneDefinicion(p) ? '◆ ' : '○ '}{formatProductOption(p)}
-                      </option>
-                    ))}
-                  </optgroup>
-                ))}
-              </>
-            )}
-            {/* A-9: excepciones agrupadas por tipo de pieza (el catálogo no
-                documenta pares accesorio–accesorio; se piden con motivo). */}
-            {Array.from(otherCandidatesByTipo.entries()).map(([tipo, group]) => (
-              <optgroup key={tipo} label={`Excepción con motivo · ${tipo}`}>
-                {group.map((c) => (
-                  <option
-                    key={c.product.producto_id}
-                    value={c.product.producto_id}
-                    disabled={!c.insertionSupported}
-                  >
-                    {c.insertionSupported ? '⚠ ' : '⏳ '}{formatProductOption(c.product)}
-                    {' — '}
-                    {c.reasonCode === 'compat_no_documentada' && 'compat. no documentada'}
-                    {c.reasonCode === 'kind_pendiente_insercion' && 'inserción pendiente'}
-                    {c.reasonCode === 'sin_modelo_geometrico' && 'sin modelo'}
-                    {c.reasonCode === 'boca_dimension_divergente' && 'bocas divergentes'}
-                  </option>
-                ))}
-              </optgroup>
-            ))}
-          </select>
-        )}
-        {(compatibleProducts.length > 0 || otherCandidates.length > 0) && (
-          <div style={{ fontSize: 9, color: '#667788', marginTop: 2 }}>
-            ◆ modelo paramétrico · ○ sin modelo · ⚠ excepción (sin compat SAMET) · ⏳ inserción pendiente
-          </div>
-        )}
+        {/* A2 (interfaz, 2026-11-14): tipo → ancho → variante, con espesor y acabado dentro. */}
+        <SelectorPieza
+          origen={existingProduct}
+          candidatos={[
+            ...compatibleProducts.map((p) => ({ product: p, sinModelo: !tieneDefinicion(p) })),
+            ...otherCandidates.filter((c) => c.insertionSupported).map((c) => ({ product: c.product, excepcion: true })),
+          ]}
+          catalogo={context?.productos ?? []}
+          pendientes={[...nonInsertableCompatible, ...otherCandidates.filter((c) => !c.insertionSupported).map((c) => c.product)]}
+          seleccionado={selectedProductId}
+          onElegir={(id) => {
+            setProduct(id);
+            setError(null);
+            setExceptionMotive('');
+          }}
+        />
         {selectedOtherCandidate && (
           <div style={{
             marginTop: 8, padding: '6px 8px', borderRadius: 3, fontSize: 10,
@@ -792,7 +729,9 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
           borderLeft: `2px solid ${parametricEntry ? '#3355aa' : '#aa8822'}`,
         }}>
           <div style={{ fontWeight: 600, marginBottom: 2 }}>
-            {parametricEntry ? 'Ajuste geométrico — modelo medido' : 'Ajuste geométrico — sin modelo'}
+            {parametricEntry
+              ? (eligeAnguloAlColocar(selectedProduct) ? 'Ajuste geométrico — regla del operador (sin STEP)' : 'Ajuste geométrico — modelo medido')
+              : 'Ajuste geométrico — sin modelo'}
           </div>
           {parametricEntry && geometricFit?.ok && (
             <div style={{ color: '#aaaacc' }}>
@@ -845,6 +784,32 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
             ))}
           </div>
           {!sentidoVertical && <div style={{ color: '#cc8844', fontSize: 10, marginTop: 4 }}>Elegí si la curva sube o baja para ver la pieza.</div>}
+        </div>
+      )}
+
+      {/* Curva ajustable (CAS): el ángulo se elige AL COLOCAR, antes de confirmar. Entra
+          en la vista previa y en la confirmación (el mismo cálculo); fuera del rango no
+          hay colocación y se muestra el motivo con el rango. */}
+      {selectedProduct && eligeAnguloAlColocar(selectedProduct) && (
+        <div style={{ marginBottom: 10 }} data-codex-routing-angulo-choice>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ color: '#8888aa' }}>Ángulo de la curva (°)</span>
+            <input
+              type="number"
+              className="inspector-input"
+              style={{ width: 70 }}
+              min={ANGULO_AJUSTABLE_MIN}
+              max={ANGULO_AJUSTABLE_MAX}
+              step={0.5}
+              data-codex-routing-angulo
+              value={anguloTexto}
+              onChange={(e) => {
+                setAnguloTexto(e.target.value);
+                setAnguloInstancia(e.target.value.trim() === '' ? Number.NaN : Number(e.target.value));
+              }}
+            />
+          </label>
+          <div style={{ color: '#8888aa', fontSize: 10, marginTop: 2 }}>Rango {RANGO_AJUSTABLE_TEXTO}.</div>
         </div>
       )}
 
@@ -973,12 +938,13 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
         </>
       )}
 
+      <div className="inspector-fijo-abajo" data-testid="routing-pie">
       {error && (
         <div style={{ color: '#ff7755', marginBottom: 8, fontSize: 11 }}>{error}</div>
       )}
-
       <div style={{ display: 'flex', gap: 6 }}>
         <button
+          data-testid="routing-confirmar"
           style={{
             flex: 1, padding: '5px 0', fontSize: 12, background: '#1f3322',
             color: 'white', border: '1px solid #336644', borderRadius: 3, cursor: 'pointer',
@@ -999,6 +965,7 @@ function StepConfiguringSegment({ onConfirmDirect, onCancel }: {
         >
           Cancelar
         </button>
+      </div>
       </div>
     </div>
   );
@@ -1419,7 +1386,7 @@ export function RoutingPanel() {
 
   return (
     <div className="inspector-panel" style={{ padding: 0 }}>
-      <div className="inspector-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div className="inspector-header inspector-fijo-arriba" data-testid="routing-cabecera" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <span style={{ fontSize: 11, fontWeight: 600, color: '#ff9900' }}>
           ● Continuando trazado
         </span>

@@ -18,7 +18,8 @@
  */
 
 import * as THREE from 'three';
-import { ANGULO_ESLABONADA_POR_DEFECTO, RECETAS_ESLABONADAS } from '../parametric/reglaEslabones';
+import { RECETAS_ESLABONADAS, radioEslabonadaDe, type RadioEslabonada } from '../parametric/reglaEslabones';
+import { anguloPorDefecto, tieneAnguloInstancia } from '../parametric/anguloInstancia';
 import {
   type ParametricEntry,
   type ParametricVariantView,
@@ -34,6 +35,7 @@ import { buildTRPSRecipe, type GeometryRecipe, type PortDef } from '../parametri
 import type { Piece, Product, TrayPort } from '../tray/model';
 import { findMasterForProduct, type MasterModel } from '../configurator/masterModels';
 import { resolveRecipeForProduct } from './resolvedPortGeometry';
+import { listProductIndexEntries } from './catalogPortMapping';
 
 // ─── Tipos del puente ────────────────────────────────────────────────────────
 
@@ -200,8 +202,18 @@ export function datosFaltantesParaMaestro(master: MasterModel, product: Syntheti
   if (numOrNull(product.ancho_nominal_mm) === null) faltan.push('ancho_nominal_mm');
   if (numOrNull(product.ala_nominal_mm) === null) faltan.push('ala_nominal_mm');
   if (master.baseParams.longitud_mm !== undefined && numOrNull(product.longitud_comercial_mm) === null) faltan.push('longitud_comercial_mm');
-  if (master.baseParams.angulo_deg !== undefined && numOrNull(product.angulo_grados) === null) faltan.push('angulo_grados');
+  // Con ángulo por instancia (eslabonadas, CAS) el ángulo no es dato del producto.
+  if (master.baseParams.angulo_deg !== undefined && !tieneAnguloInstancia(master.recipeKey) && numOrNull(product.angulo_grados) === null) faltan.push('angulo_grados');
   return faltan;
+}
+
+/**
+ * Radio interior de una curva eslabonada, por producto (regla del operador,
+ * 2026-11-15): EPS 260, CUS 294; las CUS G sólo con una Z de igual geometría en
+ * el catálogo (índice de productos).
+ */
+export function radioDeEslabonada(product: Record<string, unknown> | SyntheticProductLike): RadioEslabonada {
+  return radioEslabonadaDe(product as Record<string, unknown>, listProductIndexEntries());
 }
 
 function paramsForMaster(master: MasterModel, product: SyntheticProductLike): RawParams {
@@ -218,9 +230,14 @@ function paramsForMaster(master: MasterModel, product: SyntheticProductLike): Ra
     params.angulo_deg = numOrNull(product.angulo_grados);
   }
   if (master.pieceKind === 'curva_vertical') params.sentido_vertical = sentidoPorTipo(String(product.tipo_pieza));
-  // Curva eslabonada: el catálogo no declara ángulo; el modelo de referencia usa el
-  // de por defecto declarado por el operador (90°). Cada instancia guarda el suyo.
-  if (RECETAS_ESLABONADAS.has(master.recipeKey)) params.angulo_deg = ANGULO_ESLABONADA_POR_DEFECTO;
+  // Curva eslabonada o ajustable (CAS): el catálogo no declara ángulo; el modelo de
+  // referencia usa el de por defecto declarado por el operador (90°). Cada instancia
+  // guarda el suyo.
+  if (tieneAnguloInstancia(master.recipeKey)) params.angulo_deg = anguloPorDefecto(master.recipeKey);
+  if (RECETAS_ESLABONADAS.has(master.recipeKey)) {
+    const r = radioDeEslabonada(product);
+    params.radio_interior_mm = r.ok ? r.radioInteriorMm : null;
+  }
   return params as RawParams;
 }
 
@@ -418,7 +435,7 @@ interface BuildRecipeOverrides {
    * CUPS lo traen fijo por producto (A sube, D baja) y lo ignoran.
    */
   readonly sentido_vertical?: 'sube' | 'baja';
-  /** Ángulo de una curva ESLABONADA (por instancia); sin valor, el de por defecto (90°). */
+  /** Ángulo por instancia (curva eslabonada o ajustable CAS); sin valor, el de por defecto (90°). */
   readonly angulo_deg?: number | null;
 }
 
@@ -494,13 +511,19 @@ export function buildRecipeFromProduct(
   const sentido = sentidoVerticalDe(product, entry, overrides?.sentido_vertical);
   if (sentido !== null) params.sentido_vertical = sentido;
 
-  if (RECETAS_ESLABONADAS.has(String(entry.recipe))) {
+  if (tieneAnguloInstancia(entry.recipe)) {
     const a = overrides?.angulo_deg;
-    params.angulo_deg = typeof a === 'number' && Number.isFinite(a) ? a : ANGULO_ESLABONADA_POR_DEFECTO;
+    params.angulo_deg = typeof a === 'number' && Number.isFinite(a) ? a : anguloPorDefecto(entry.recipe);
+  }
+  // Curva eslabonada: radio interior por producto (sin radio, no hay receta: el motivo lo da la regla).
+  if (RECETAS_ESLABONADAS.has(String(entry.recipe))) {
+    const r = radioDeEslabonada(product as unknown as Record<string, unknown>);
+    if (!r.ok) throw new Error(r.motivo);
+    params.radio_interior_mm = r.radioInteriorMm;
   }
 
   const takesAngulo =
-    entry.piece_kind === 'curva_horizontal' || entry.recipe === 'escalera:curva_horizontal';
+    (entry.piece_kind === 'curva_horizontal' || entry.recipe === 'escalera:curva_horizontal') && !tieneAnguloInstancia(entry.recipe);
   if (takesAngulo) {
     const ang = (product as Record<string, unknown>).angulo_grados;
     if (typeof ang === 'number' && Number.isFinite(ang) && ang > 0) {

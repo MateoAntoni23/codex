@@ -118,6 +118,8 @@ export interface MasterBaseParams {
    * el sentido real se elige al colocar.
    */
   readonly sentido_vertical?: 1 | -1;
+  /** Curvas eslabonadas: radio interior del modelo de referencia (regla del operador, 2026-11-15). */
+  readonly radio_interior_mm?: number;
 }
 
 export interface MasterSource {
@@ -280,6 +282,8 @@ const PERFORADA_FAMILIAS: readonly string[] = ['SAM-STP-Z', 'SAM-STP-ZN'];
  */
 const ESLABONADA_SPEC = 'src/parametric/geometry/__tests__/curvaEslabonada.test.ts';
 const ESLABONADA_E2E = 'e2e/curvaEslabonada.visual.spec.ts';
+const CURVA_AJUSTABLE_SPEC = 'src/parametric/geometry/__tests__/curvaAjustable.test.ts';
+const CURVA_AJUSTABLE_E2E = 'e2e/curvaAjustable.visual.spec.ts';
 const ESLABONADA_SOURCE = {
   stepFile: 'sin STEP — regla geométrica declarada por el operador (2026-11-13)',
   stepHashShort: 'operador',
@@ -289,14 +293,14 @@ const ESLABONADA_CLOSURE = {
   continuity: {
     status: 'validated',
     regressionSpecs: [ESLABONADA_SPEC, ESLABONADA_E2E],
-    limitations: ['Bocas P1/P2 en el marco de la CUPS; la de salida es la de entrada girada θ alrededor del centro (radio = ancho). Uniones B-3 con el ala del catálogo.'],
+    limitations: ['Bocas P1/P2 en el marco de la CUPS; la de salida es la de entrada girada θ alrededor del centro, a radio de eje = radio interior del producto + ala/2. Uniones B-3 con el ala del catálogo.'],
   },
   fidelity: {
     status: 'pending',
     regressionSpecs: [],
     limitations: [
       'Esquemática: banda del ancho de la bandeja sobre el polígono de N−1 cuerdas; los eslabones no se modelan uno por uno.',
-      'Contradice al catálogo (anotado): el catálogo no declara ángulo ni rango y trae un radio aproximado por cantidad de eslabones distinto del de la regla (radio = ancho).',
+      'El catálogo no declara ángulo ni la referencia del radio de su gráfico; el radio se toma al interior por la convención de las curvas planas de la familia (inferencia, no dato).',
     ],
   },
   variants: {
@@ -754,7 +758,7 @@ const MASTER_PERFORADA: readonly MasterModel[] = [
     source: ESLABONADA_SOURCE,
     recipeKey: 'curva_eslabonada',
     // Ángulo de referencia = el de por defecto del operador (90°); cada instancia guarda el suyo.
-    baseParams: { ancho_mm: 300, ala_mm: 50, angulo_deg: 90, sentido_vertical: -1 },
+    baseParams: { ancho_mm: 300, ala_mm: 50, angulo_deg: 90, sentido_vertical: -1, radio_interior_mm: 260 },
     canonicalRotationZDeg: 0,
     catalogMatch: {
       familiaIds: PERFORADA_FAMILIAS,
@@ -770,7 +774,7 @@ const MASTER_PERFORADA: readonly MasterModel[] = [
       kind: 'ala-independent',
       provenance: 'estimated',
       varies: ['ancho', 'angulo'],
-      rationale: 'Regla declarada por el operador (2026-11-13): radio = ancho, 22,5° por articulación, N = techo(θ/22,5°)+1, eje = polígono de N−1 cuerdas. Sin STEP. El catálogo no declara ángulo; su gráfico de radio aproximado por eslabones (3→150, 4→200, 5→260 mm…) no coincide con radio = ancho.',
+      rationale: 'Regla del operador (2026-11-15) respaldada por el catálogo: radio interior 260 mm (gráfico EPS, fila de 5 eslabones = 22,5° por articulación; no depende del ancho ni de la cantidad de eslabones), eje = radio + ala/2, N = techo(θ/22,5°)+1 sólo para el cómputo, eje = polígono de N−1 cuerdas. Sin STEP. El catálogo no declara ángulo.',
     },
     declaredVariantSkus: ['EPS-050-Z', 'EPS-100-Z', 'EPS-150-Z', 'EPS-200-Z', 'EPS-300-Z', 'EPS-450-Z', 'EPS-600-Z'],
     closure: ESLABONADA_CLOSURE,
@@ -965,7 +969,7 @@ const MASTER_ESCALERA: readonly MasterModel[] = [
     pieceKind: 'curva_vertical',
     source: ESLABONADA_SOURCE,
     recipeKey: 'escalera:curva_eslabonada',
-    baseParams: { ancho_mm: 300, ala_mm: 65, angulo_deg: 90, sentido_vertical: -1 },
+    baseParams: { ancho_mm: 300, ala_mm: 65, angulo_deg: 90, sentido_vertical: -1, radio_interior_mm: 294 },
     canonicalRotationZDeg: 0,
     catalogMatch: {
       familiaIds: ESCALERA_FAMILIAS,
@@ -981,10 +985,64 @@ const MASTER_ESCALERA: readonly MasterModel[] = [
       kind: 'ala-independent',
       provenance: 'estimated',
       varies: ['ancho', 'ala', 'angulo'],
-      rationale: 'Regla declarada por el operador (2026-11-13): radio = ancho, 22,5° por articulación, N = techo(θ/22,5°)+1, eje = polígono de N−1 cuerdas; cada código CUS trae 5 eslabones. Sin STEP. El catálogo no declara ángulo; las CUS Z traen radio_mm = 294 (gráfico aproximado para 5 eslabones, referencia no especificada), distinto de radio = ancho. No hay CUS de 50 ni 100 (sólo la perforada).',
+      rationale: 'Regla del operador (2026-11-15) respaldada por el catálogo: radio interior 294 mm (gráfico CUS línea Z, fila de 5 eslabones = 22,5° por articulación; es el armado que se vende: cada código CUS trae 5 eslabones; coincide con radio_mm = 294 de las CUS Z), eje = radio + ala/2, N = techo(θ/22,5°)+1 sólo para el cómputo, eje = polígono de N−1 cuerdas. CUS G: el radio de la Z de igual ancho, ala y espesor (mismo eslabón, otro acabado; ver la procedencia de cada pieza); si no hay una Z con esa geometría (chapa 2,1 o ala 150), sin definición. Sin STEP. No hay CUS de 50 ni 100 (sólo la perforada).',
     },
     declaredVariantSkus: [],
     closure: ESLABONADA_CLOSURE,
+    revision: 1,
+  },
+  {
+    // CAS: CURVA AJUSTABLE de escalera (tipo_pieza «curva horizontal»): una pieza
+    // por código con ángulo por instancia. Omitida en el encargo de eslabonadas;
+    // retomada el 2026-11-14. El catálogo no declara ángulo ni radio. Regla del
+    // operador en src/parametric/reglaCurvaAjustable.ts. El prefijo CAS- la separa
+    // de las CS de 45° y 90° (mismo tipo_pieza), que siguen con sus maestros.
+    id: 'master:escalera:curva_ajustable',
+    label: 'Escalera — curva horizontal ajustable (CAS, ángulo por instancia)',
+    sistema: 'escalera',
+    pieceKind: 'curva_horizontal',
+    source: {
+      stepFile: 'sin STEP — regla geométrica declarada por el operador (2026-11-14)',
+      stepHashShort: 'operador',
+      reportJsonPath: 'src/parametric/geometry/curvaAjustable.ts',
+    },
+    recipeKey: 'escalera:curva_ajustable',
+    baseParams: { ancho_mm: 300, ala_mm: 65, angulo_deg: 90 },
+    canonicalRotationZDeg: 0,
+    catalogMatch: {
+      familiaIds: ESCALERA_FAMILIAS,
+      catalogTipoPieza: 'curva horizontal',
+      catalogAlaMm: 65,
+      catalogSkuPrefixes: ['CAS-'],
+    },
+    ports: [
+      { recipePortName: 'P1', physicalLabel: 'Boca de entrada', catalogPortName: 'P1' },
+      { recipePortName: 'P2', physicalLabel: 'Boca de salida (girada θ)', catalogPortName: 'P2' },
+    ],
+    variationRule: {
+      kind: 'ala-independent',
+      provenance: 'estimated',
+      varies: ['ancho', 'ala', 'angulo'],
+      rationale: 'Regla declarada por el operador (2026-11-14): radio interior = ancho, radio del eje = interior + ancho/2, ángulo por instancia (90° por defecto), rango 1°–90° provisional. Sin STEP. El catálogo no declara ángulo ni radio («Ángulo ajustable: rango no declarado. Radio no declarado para esta pieza»). Una pieza por código: sin regla de eslabones.',
+    },
+    declaredVariantSkus: [],
+    closure: {
+      continuity: {
+        status: 'validated',
+        regressionSpecs: [CURVA_AJUSTABLE_SPEC, CURVA_AJUSTABLE_E2E],
+        limitations: ['Bocas P1/P2 sobre el eje (R_eje = 1,5 × ancho); la de salida es la de entrada girada θ alrededor del centro. Marco de las CS (planta XZ, alto en Y).'],
+      },
+      fidelity: {
+        status: 'pending',
+        regressionSpecs: [],
+        limitations: ['Esquemática: banda curva del ancho de la bandeja barriendo θ; no es un modelo medido.'],
+      },
+      variants: {
+        status: 'validated',
+        regressionSpecs: [CURVA_AJUSTABLE_SPEC],
+        limitations: ['Todas las variantes salen de la misma regla: ancho → radios; ala → alto de la banda y ala de las bocas; ángulo por instancia.'],
+      },
+    },
     revision: 1,
   },
   {

@@ -7,7 +7,8 @@
  *
  *   - CURVA ESLABONADA (master:perforada:curva_eslabonada, EPS, y
  *     master:escalera:curva_eslabonada, CUS): el POLÍGONO REAL de N−1 cuerdas
- *     sobre radio = ancho (regla declarada por el operador; no el arco). Se
+ *     sobre el radio del eje = radio interior del producto + ala/2 (regla del
+ *     operador, 2026-11-15; no el arco). Se
  *     exige que la cadena de cuerdas termine en los centros de las bocas.
  *
  *   - CURVA VERTICAL (patrones master:perforada:curva_vertical_interior y
@@ -25,12 +26,16 @@
  *     no hay centro común y no se guarda. Semieje = distancia del centro de la
  *     boca al centro de la pieza.
  *
+ *   - CURVA AJUSTABLE (master:escalera:curva_ajustable, CAS): el ARCO de radio
+ *     R_eje = ancho + ancho/2 y el ángulo de la instancia (regla del operador).
+ *
  * Las curvas horizontales ya guardan `longitud_eje_mm` al colocarse (arco de la
  * cuerda medida y el ángulo del catálogo; ver `workspaceOperation.planAddCurve`)
  * y los tramos rectos su `longitud_mm`: no pasan por acá.
  */
 import { lineaMediaPerfilCUPS } from '../../parametric/geometry/outlines';
 import { medidasEslabonada, PROCEDENCIA_ESLABONADA } from '../../parametric/reglaEslabones';
+import { medidasCurvaAjustable, PATRON_CURVA_AJUSTABLE, PROCEDENCIA_CURVA_AJUSTABLE } from '../../parametric/reglaCurvaAjustable';
 import type { StoredDefinition } from './placementCore';
 import decisiones from '../../../vendor/motor_bandejas/datos/decisiones_producto.json';
 
@@ -40,7 +45,7 @@ const TOL_POS_MM = Number((decisiones as Record<string, unknown>)['D-14_toleranc
 export interface LongitudTramo {
   /** Longitud de eje entre las dos bocas (mm). */
   readonly mm: number;
-  readonly regla: 'linea_media_perfil' | 'semiejes_centro' | 'profundidad_derivacion' | 'poligono_eslabones';
+  readonly regla: 'linea_media_perfil' | 'semiejes_centro' | 'profundidad_derivacion' | 'poligono_eslabones' | 'arco_curva_ajustable';
   /** De dónde sale: modelo/patrón y cómo se obtuvo el centro o el eje. */
   readonly procedencia: string;
 }
@@ -122,17 +127,20 @@ export type ResultadoLongitudes = { ok: true; longitudes: LongitudesEje } | { ok
 export function longitudesDeEje(def: StoredDefinition): ResultadoLongitudes {
   const ports = def.ports;
   if (PATRONES_CURVA_ESLABONADA.has(def.patron)) {
-    const ancho = def.params.ancho_mm;
+    const radio = def.params.radio_interior_mm;
+    const ala = def.params.ala_mm;
     const ang = def.params.angulo_deg;
     const p1 = ports.find((p) => p.name === 'P1');
     const p2 = ports.find((p) => p.name === 'P2');
-    if (typeof ancho !== 'number' || typeof ang !== 'number' || !p1 || !p2) return { ok: false, motivo: 'curva eslabonada sin ancho, ángulo o bocas P1/P2' };
-    const m = medidasEslabonada(ancho, ang);
-    // La cadena de cuerdas tiene que unir los centros de las bocas: la cuerda total P1→P2 es 2R·sen(θ/2).
+    if (typeof radio !== 'number' || typeof ala !== 'number' || typeof ang !== 'number' || !p1 || !p2) {
+      return { ok: false, motivo: 'curva eslabonada sin radio interior, ala, ángulo o bocas P1/P2 (definición anterior a la regla de radio del 2026-11-15)' };
+    }
+    const m = medidasEslabonada({ radioInteriorMm: radio, alaMm: ala, anguloDeg: ang });
+    // La cadena de cuerdas tiene que unir los centros de las bocas: la cuerda total P1→P2 es 2R·sen(θ/2), R del eje.
     const directa = len(sub(p2.center as V3, p1.center as V3));
-    const esperada = 2 * m.radioMm * Math.sin((ang * Math.PI) / 360);
+    const esperada = 2 * m.radioEjeMm * Math.sin((ang * Math.PI) / 360);
     if (Math.abs(directa - esperada) > TOL_EXTREMO_MM) {
-      return { ok: false, motivo: `las bocas no están sobre el giro de radio ${m.radioMm} mm (desvío ${Math.abs(directa - esperada).toFixed(3)} mm)` };
+      return { ok: false, motivo: `las bocas no están sobre el giro de radio de eje ${m.radioEjeMm} mm (desvío ${Math.abs(directa - esperada).toFixed(3)} mm)` };
     }
     return {
       ok: true,
@@ -140,7 +148,31 @@ export function longitudesDeEje(def: StoredDefinition): ResultadoLongitudes {
         [claveTramo('P1', 'P2')]: {
           mm: m.longitudEjeMm,
           regla: 'poligono_eslabones',
-          procedencia: `${m.eslabones} eslabones: ${m.articulaciones} cuerdas de ${m.gradosPorArticulacion.toFixed(2)}° sobre radio ${m.radioMm} mm (patrón ${def.patron}; ${PROCEDENCIA_ESLABONADA})`,
+          procedencia: `${m.eslabones} eslabones: ${m.articulaciones} cuerdas de ${m.gradosPorArticulacion.toFixed(2)}° sobre el radio de eje ${m.radioEjeMm} mm (interior ${m.radioInteriorMm} + ala/2; patrón ${def.patron}; ${PROCEDENCIA_ESLABONADA})`,
+        },
+      },
+    };
+  }
+  if (def.patron === PATRON_CURVA_AJUSTABLE) {
+    // CAS: arco de radio R_eje (interior + ancho/2) y el ángulo de la instancia (regla del operador).
+    const ancho = def.params.ancho_mm;
+    const ang = def.params.angulo_deg;
+    const p1 = ports.find((p) => p.name === 'P1');
+    const p2 = ports.find((p) => p.name === 'P2');
+    if (typeof ancho !== 'number' || typeof ang !== 'number' || !p1 || !p2) return { ok: false, motivo: 'curva ajustable sin ancho, ángulo o bocas P1/P2' };
+    const m = medidasCurvaAjustable(ancho, ang);
+    const directa = len(sub(p2.center as V3, p1.center as V3));
+    const esperada = 2 * m.radioEjeMm * Math.sin((ang * Math.PI) / 360);
+    if (Math.abs(directa - esperada) > TOL_EXTREMO_MM) {
+      return { ok: false, motivo: `las bocas no están sobre el giro de radio ${m.radioEjeMm} mm (desvío ${Math.abs(directa - esperada).toFixed(3)} mm)` };
+    }
+    return {
+      ok: true,
+      longitudes: {
+        [claveTramo('P1', 'P2')]: {
+          mm: m.longitudEjeMm,
+          regla: 'arco_curva_ajustable',
+          procedencia: `arco de ${ang}° sobre el eje, radio ${m.radioEjeMm} mm (interior ${m.radioInteriorMm} + ancho/2; patrón ${def.patron}; ${PROCEDENCIA_CURVA_AJUSTABLE})`,
         },
       },
     };

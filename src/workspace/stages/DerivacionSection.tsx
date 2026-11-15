@@ -18,7 +18,8 @@ import { indexProducts, pieceLabelById } from './displayNames';
 import { Empty, Section } from './shared';
 import { PuntoEnTramoCampos, troncosElegibles } from './PuntoEnTramoCampos';
 
-export function DerivacionForm({ onClose }: { onClose: () => void }) {
+/** `tronco`: ya elegido cuando la derivación se lanza desde el tramo seleccionado (A1). */
+export function DerivacionForm({ onClose, tronco: troncoInicial }: { onClose: () => void; tronco?: string }) {
   const entrada = useTrayStore((s) => s.entrada);
   const context = useTrayStore((s) => s.context);
   const trayEdit = useTrayStore((s) => s.edit);
@@ -27,7 +28,7 @@ export function DerivacionForm({ onClose }: { onClose: () => void }) {
   const piezas = entrada?.piezas ?? [];
   const troncos = troncosElegibles(piezas, productos);
 
-  const [tronco, setTronco] = useState('');
+  const [tronco, setTronco] = useState(troncoInicial ?? '');
   const [desde, setDesde] = useState('P1');
   const [distancia, setDistancia] = useState('');
   const [lado, setLado] = useState<Lado>('izquierda');
@@ -78,7 +79,7 @@ export function DerivacionForm({ onClose }: { onClose: () => void }) {
       <p className="stage-note" style={{ whiteSpace: 'normal' }}>
         Se coloca sólo la derivación y su boca queda libre: lo que sigue se continúa desde esa boca, como desde cualquier accesorio.
       </p>
-      <div style={{ display: 'flex', gap: 6 }}>
+      <div className="inspector-fijo-abajo" style={{ display: 'flex', gap: 6 }}>
         <button type="button" className="stage-primary" data-testid="der-crear" onClick={crear} disabled={!tronco || !ancho || distancia === ''}>Crear derivación</button>
         <button type="button" onClick={onClose}>Cerrar</button>
       </div>

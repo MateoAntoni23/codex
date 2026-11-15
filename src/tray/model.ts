@@ -55,6 +55,8 @@ export interface CatalogFamily {
   acabado_normalizado: string | null;
   material: string | null;
   fabricante: string | null;
+  /** perforada | escalera | alambre | otro (catálogo). Da el color por tipo en la escena. */
+  tipo_constructivo?: string | null;
 }
 
 export interface Context {

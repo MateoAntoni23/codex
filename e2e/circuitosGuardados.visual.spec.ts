@@ -1,5 +1,5 @@
 /**
- * E2E — circuitos guardados y longitudes de proyectos anteriores.
+ * E2E — circuitos guardados.
  *
  * Cadena armada con gestos reales en Bandejas:
  *   recto 1 → curva plana 90 → recto 2000 → T (tronco) → recto 1500 por la derivación
@@ -15,14 +15,16 @@
  * 3. Rotar una pieza del recorrido (herramienta Rotar, B-4) y borrar otra: el
  *    circuito queda desactualizado con el motivo, sin recalcularse solo.
  *    Deshacer lo deja vigente otra vez.
- * 4. Proyecto anterior a la regla de longitudes: la acción explícita guarda las
- *    longitudes, dice cuántas actualizó; con el fixture del operador dice cuál
- *    no pudo y por qué.
+ * (La prueba de «Guardar longitudes con las reglas vigentes» se retiró con esa acción
+ *  —interfaz, 2026-11-14—: con el corte limpio ya no llegan proyectos anteriores. La
+ *  función sigue cubierta por recorridos/__tests__/circuitosGuardados.test.ts.)
  */
 import { test, expect, type Page } from '@playwright/test';
 import { mkdirSync, readFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { elegirPieza } from './helpers/selectorPieza';
+import { abrirFormulario } from './helpers/interfaz';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const OUT_DIR = resolve(HERE, 'output');
@@ -51,9 +53,7 @@ const piezas = (page: Page) => page.evaluate(() => (window as unknown as TrayW).
 async function continueFrom(page: Page, freeEnd: RegExp, productoId: string, opts: { entryPort?: string; side?: 'left' | 'right'; length?: number } = {}) {
   const before = (await piezas(page)).length;
   await page.getByTestId('free-end').filter({ hasText: freeEnd }).first().click();
-  const select = page.locator('[data-codex-routing-product-select]');
-  await expect(select).toBeVisible();
-  await select.selectOption(productoId);
+  await elegirPieza(page, productoId);
   if (opts.entryPort) await page.locator(`[data-codex-routing-entry-port="${opts.entryPort}"]`).click();
   if (opts.side) await page.locator(`[data-codex-routing-hand="${opts.side}"]`).click();
   if (opts.length) await page.locator('[data-codex-routing-length-input]').fill(String(opts.length));
@@ -105,6 +105,7 @@ async function crearEquipo(page: Page, nombre: string, pos: V3): Promise<string>
 
 /** Enlace equipo ↔ bandeja (Conexiones): tramo, distancia desde una boca, lado. */
 async function enlazar(page: Page, equipoId: string, tronco: string, desde: 'P1' | 'P2', distancia: number, lado: 'izquierda' | 'derecha') {
+  await abrirFormulario(page, 'enlace');
   const form = page.getByTestId('baj-form');
   await form.getByTestId('baj-equipo').selectOption(equipoId);
   await form.getByTestId('baj-tronco').selectOption(tronco);
@@ -146,11 +147,13 @@ test.describe('Circuitos guardados', () => {
     const total = esperado + bajadasMm;
 
     // La medición entre bocas sigue dando la cadena (no se guarda).
+    await abrirFormulario(page, 'medir');
     await elegir(page, 'recorrido-origen', r1.instancia_id, 'P1');
     await elegir(page, 'recorrido-destino', rVert.instancia_id, 'P2');
     await expect(page.getByTestId('recorrido-total')).toContainText(`Longitud total: ${fmt(esperado)} mm`);
 
     // Guardar como circuito, de equipo a equipo.
+    await abrirFormulario(page, 'circuito');
     await page.getByTestId('circuito-origen').selectOption(tg);
     await page.getByTestId('circuito-destino').selectOption(b3);
     await expect(page.getByTestId('circuito-total')).toContainText(`Longitud total: ${fmt(total)} mm`);
@@ -239,47 +242,5 @@ test.describe('Circuitos guardados', () => {
     await page.getByRole('button', { name: 'Eliminar pieza' }).click();
     await page.getByTestId('stage-tab-resultados').click();
     await expect(page.getByTestId('circuito-desactualizado')).toContainText(`la pieza ${cups.instancia_id} ya no existe`);
-  });
-
-  test('longitudes de proyectos anteriores: acción explícita, cuántas actualizó y cuáles no pudo', async ({ page }) => {
-    await openBandejas(page);
-    const ps = await armarCadena(page);
-    const [r1, , , tee, , cups, rVert] = ps;
-    // Proyecto "anterior": sin longitudes guardadas en la T ni en la CUPS.
-    await page.evaluate(([t, c]) => {
-      const s = (window as unknown as TrayW).__codex.trayStore.getState();
-      const next = structuredClone(s.entrada);
-      for (const id of [t, c]) {
-        const p = next.piezas.find((x) => x.instancia_id === id)!;
-        delete p.colocacion!.longitudes_eje;
-        delete p.longitud_eje_mm;
-      }
-      s.edit(next);
-    }, [tee.instancia_id, cups.instancia_id] as const);
-    await page.getByTestId('stage-tab-conexiones').click();
-    await elegir(page, 'recorrido-origen', r1.instancia_id, 'P1');
-    await elegir(page, 'recorrido-destino', rVert.instancia_id, 'P2');
-    await expect(page.getByTestId('recorrido-incompleto')).toContainText('falta la longitud de 2 pieza(s)');
-    await expect(page.getByTestId('longitudes-anteriores')).toContainText('2 pieza(s) sin longitud de eje guardada');
-    await page.getByTestId('longitudes-anteriores-aplicar').click();
-    await expect(page.getByTestId('longitudes-anteriores-resultado')).toContainText('2 pieza(s) actualizada(s): 4. TPS-300-Z, 6. CUPS-300-A-Z.');
-    await expect(page.getByTestId('longitudes-anteriores-no-pudo')).toHaveCount(0);
-    await expect(page.getByTestId('recorrido-total')).toBeVisible();
-    await page.screenshot({ path: resolve(OUT_DIR, 'circuitos-03-longitudes-anteriores.png') });
-
-    // Fixture real del operador (proyecto viejo): la T no se pudo resolver al migrar.
-    page.once('dialog', (d) => void d.accept());
-    await page.getByTestId('project-open-input').setInputFiles(USER_REPORT);
-    await expect.poll(async () => (await piezas(page)).length).toBe(7);
-    await expect(page.getByTestId('longitudes-anteriores-aplicar')).toBeVisible();
-    await page.getByTestId('longitudes-anteriores-aplicar').click();
-    const res = page.getByTestId('longitudes-anteriores-resultado');
-    await expect(res).toContainText('0 pieza(s) actualizada(s).');
-    await expect(res).toContainText('No se pudo en 1:');
-    await expect(page.getByTestId('longitudes-anteriores-no-pudo')).toContainText('sin colocación resuelta: no encaja con el modelo vigente');
-    // La elección del proyecto anterior no sobrevive como un falso "sin camino".
-    await expect(page.getByTestId('recorrido-sin-camino')).toHaveCount(0);
-    await expect(page.getByTestId('recorrido-origen')).toHaveValue('');
-    await page.screenshot({ path: resolve(OUT_DIR, 'circuitos-04-no-pudo.png') });
   });
 });

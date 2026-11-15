@@ -16,6 +16,8 @@ import { test, expect, type Page } from '@playwright/test';
 import { mkdirSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { elegirPieza, esperarSelectorPieza, piezasOfrecidas } from './helpers/selectorPieza';
+import { verPestana } from './helpers/interfaz';
 
 const OUT_DIR = resolve(dirname(fileURLToPath(import.meta.url)), 'output');
 const PROCEDENCIA = 'declarado por el operador, contradice REV-032 (fuente del catálogo)';
@@ -43,6 +45,7 @@ async function crearTronco(page: Page, productoId: string) {
 
 async function calcular(page: Page) {
   await page.getByTestId('stage-tab-resultados').click();
+  await verPestana(page, 'avisos');
   await page.getByTestId('reserva-input').fill('20');
   await expect(page.getByTestId('engine-state')).toHaveAttribute('data-engine', 'conectado', { timeout: 20_000 });
   await page.getByTestId('calculate-tray').click();
@@ -59,9 +62,9 @@ test.describe('Mezcla de acabados', () => {
     // Por el camino normal: la zincada del mismo ancho se ofrece desde la color.
     await page.getByTestId('tool-bandejas-seleccionar').click();
     await page.getByTestId('free-end').filter({ hasText: /Boca x_max/ }).first().click();
-    const select = page.locator('[data-codex-routing-product-select]');
-    await expect(select.locator('option[value="SAM_TRPS-100-22-Z"]')).toHaveCount(1);
-    await select.selectOption('SAM_TRPS-100-22-Z');
+    await esperarSelectorPieza(page);
+    expect(await piezasOfrecidas(page)).toContain('SAM_TRPS-100-22-Z');
+    await elegirPieza(page, 'SAM_TRPS-100-22-Z');
     await page.locator('[data-codex-routing-length-input]').fill('1000');
     await page.locator('text=Confirmar continuación').click();
     await expect.poll(async () => (await piezas(page)).length).toBe(2);

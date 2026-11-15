@@ -21,6 +21,7 @@ import { test, expect, type Page, type Download } from '@playwright/test';
 import { readFileSync, mkdirSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { elegirPieza, esperarSelectorPieza } from './helpers/selectorPieza';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -89,16 +90,16 @@ async function bootstrap(page: Page): Promise<void> {
     });
   }, FIXTURE_TRAY);
 
-  await page.locator('[data-codex-routing-product-select]').waitFor({ state: 'visible', timeout: 10_000 });
+  await esperarSelectorPieza(page);
 }
 
 async function insertCups(page: Page): Promise<void> {
-  const productSelect = page.locator('[data-codex-routing-product-select]');
+  const productSelect = page.locator('[data-codex-routing-pieza-tipo]');
   await page.waitForFunction(() => {
-    const sel = document.querySelector('[data-codex-routing-product-select]') as HTMLSelectElement | null;
-    return !!sel && Array.from(sel.options).some((o) => o.value === 'SAM_CUPS-300-A-Z');
+    const sel = document.querySelector('[data-codex-routing-pieza-tipo]') as HTMLSelectElement | null;
+    return !!sel && Array.from(sel.options).some((o) => (o.getAttribute('data-productos') ?? '').split(' ').includes('SAM_CUPS-300-A-Z'));
   }, { timeout: 15_000 });
-  await productSelect.selectOption('SAM_CUPS-300-A-Z');
+  await elegirPieza(page, 'SAM_CUPS-300-A-Z');
   await page.waitForTimeout(300);
   // Default entry boca ahora es P1_horizontal (primera soportada de la receta).
   const motive = page.locator('[data-codex-routing-exception-motive]');
@@ -157,13 +158,13 @@ async function selectVerticalExitAndContinueStraight(page: Page, lengthMm: numbe
   expect(started, 'P2_vertical localizada y routing arrancado').toBeTruthy();
   expect(started!.startPort?.portName).toBe('P2_vertical');
 
-  const productSelect = page.locator('[data-codex-routing-product-select]');
+  const productSelect = page.locator('[data-codex-routing-pieza-tipo]');
   await productSelect.waitFor({ state: 'visible', timeout: 10_000 });
   await page.waitForFunction(() => {
-    const sel = document.querySelector('[data-codex-routing-product-select]') as HTMLSelectElement | null;
-    return !!sel && Array.from(sel.options).some((o) => o.value === 'SAM_TRPS-300-22-Z');
+    const sel = document.querySelector('[data-codex-routing-pieza-tipo]') as HTMLSelectElement | null;
+    return !!sel && Array.from(sel.options).some((o) => (o.getAttribute('data-productos') ?? '').split(' ').includes('SAM_TRPS-300-22-Z'));
   }, { timeout: 15_000 });
-  await productSelect.selectOption('SAM_TRPS-300-22-Z');
+  await elegirPieza(page, 'SAM_TRPS-300-22-Z');
   await page.waitForTimeout(200);
 
   // Longitud configurable del recto vertical.
@@ -327,12 +328,12 @@ test.describe('Cadena vertical recto → CUPS → recto vertical', () => {
     await bootstrap(page);
 
     // ── Fase 1: preview naranja (producto seleccionado, aún sin confirmar).
-    const productSelect = page.locator('[data-codex-routing-product-select]');
+    const productSelect = page.locator('[data-codex-routing-pieza-tipo]');
     await page.waitForFunction(() => {
-      const sel = document.querySelector('[data-codex-routing-product-select]') as HTMLSelectElement | null;
-      return !!sel && Array.from(sel.options).some((o) => o.value === 'SAM_CUPS-300-A-Z');
+      const sel = document.querySelector('[data-codex-routing-pieza-tipo]') as HTMLSelectElement | null;
+      return !!sel && Array.from(sel.options).some((o) => (o.getAttribute('data-productos') ?? '').split(' ').includes('SAM_CUPS-300-A-Z'));
     }, { timeout: 15_000 });
-    await productSelect.selectOption('SAM_CUPS-300-A-Z');
+    await elegirPieza(page, 'SAM_CUPS-300-A-Z');
     await page.waitForTimeout(400);
 
     const previewBox = await page.evaluate(() => {

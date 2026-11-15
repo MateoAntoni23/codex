@@ -11,6 +11,7 @@ import { test, expect, type Page } from '@playwright/test';
 import { readFileSync, mkdirSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { elegirPieza, esperarSelectorPieza, piezasOfrecidas } from './helpers/selectorPieza';
 
 /**
  * Hito 2 (A-10): al abrir un proyecto anterior se deduce la colocación de cada pieza
@@ -110,14 +111,10 @@ async function continueFromFirstStraight(page: Page): Promise<void> {
       pos: p.puertos.P2.posicion_mm, dir: p.puertos.P2.direccion, sectionUp: [0, 0, 1],
     });
   });
-  const select = page.locator('[data-codex-routing-product-select]');
-  await select.waitFor({ state: 'visible', timeout: 10_000 });
-  const firstProduct = await page.evaluate(() => {
-    const el = document.querySelector('[data-codex-routing-product-select]') as HTMLSelectElement;
-    return Array.from(el.options).find((o) => o.value)?.value ?? '';
-  });
+  await esperarSelectorPieza(page);
+  const firstProduct = (await piezasOfrecidas(page))[0] ?? '';
   expect(firstProduct).not.toBe('');
-  await select.selectOption(firstProduct);
+  await elegirPieza(page, firstProduct);
   const motive = page.locator('[data-codex-routing-exception-motive]');
   if (await motive.count()) await motive.fill('Prueba de persistencia (E2E hito 1)');
   await page.locator('text=Confirmar continuación').click();

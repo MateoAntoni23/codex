@@ -11,8 +11,9 @@ import { useWorkspaceStore } from './useWorkspaceStore';
 import { useTrayStore } from '../tray/store';
 import { placedOf } from './placement/definitions';
 import { avisosDeModelo } from './placement/joins';
-import { esCurvaEslabonada } from './placement/anguloEslabonada';
+import { esCurvaAjustable, esCurvaEslabonada } from './placement/anguloEslabonada';
 import { AnguloEslabonadaField } from './stages/AnguloEslabonadaField';
+import { AnguloAjustableField } from './stages/AnguloAjustableField';
 import { mezclasDePieza } from './mezclaAcabados';
 import { MarcaMezcla } from './stages/MarcaMezcla';
 import { useRoutingStore } from './useRoutingStore';
@@ -31,6 +32,7 @@ import { object } from '../tray/model';
 import { rotatePiece, rotatePieceAroundAxis, normalizeDeg, type AxisKey, type PivotRef } from './pieceTransforms';
 import { indexProducts, pieceLabelById, portLabel, productLabel } from './stages/displayNames';
 import { BandaDivisoriaControl } from './stages/BandaDivisoria';
+import { AccionesPieza } from './stages/AccionesPieza';
 
 /** Renders a Python result value as readable text, handling nested objects and arrays. */
 function formatResultValue(v: unknown, depth = 0): string {
@@ -561,15 +563,23 @@ function BrokenConnectionsModal() {
   );
 }
 
+
+/**
+ * Muestra una medida en mm redondeada a la milésima. Sólo la vista: el dato no cambia
+ * salvo que se edite. Evita que el ruido de coma flotante (p. ej. −6,39e−14 al
+ * recolocar una curva) se lea como «-6.3948846» en un campo angosto.
+ */
+function aMilesima(v: number): number {
+  const r = Math.round(v * 1000) / 1000;
+  return Object.is(r, -0) ? 0 : r;
+}
+
 export function PieceCard({ piece }: { piece: Piece }) {
   const context = useTrayStore((s) => s.context);
   const edit    = useTrayStore((s) => s.edit);
   const entrada = useTrayStore((s) => s.entrada);
   const markDirty = useWorkspaceStore((s) => s.markDirty);
-  const trayMoveMode     = useWorkspaceStore((s) => s.trayMoveMode);
-  const setTrayMoveMode  = useWorkspaceStore((s) => s.setTrayMoveMode);
   const trayRotateMode   = useWorkspaceStore((s) => s.trayRotateMode);
-  const setTrayRotateMode = useWorkspaceStore((s) => s.setTrayRotateMode);
 
   if (!entrada) return null;
 
@@ -627,6 +637,7 @@ export function PieceCard({ piece }: { piece: Piece }) {
         <span className="inspector-category">Pieza de bandeja</span>
         <span className="inspector-title" data-testid="piece-title">{title}</span>
       </div>
+      <AccionesPieza piece={piece} />
       {(() => {
         const def = placedOf(entrada, piece)?.def;
         return def?.procedencia?.tipo === 'nominal'
@@ -645,44 +656,6 @@ export function PieceCard({ piece }: { piece: Piece }) {
 
       <BrokenConnectionsModal />
 
-      <div style={{ padding: '4px 12px', display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-        <button
-          className={trayMoveMode ? 'tone-ok' : undefined}
-          data-testid="tray-move-toggle"
-          onClick={() => setTrayMoveMode(!trayMoveMode)}
-          title="Mostrar/ocultar gizmo XYZ para mover la pieza completa en planta y altura"
-          style={{
-            fontSize: 11,
-            padding: '3px 10px',
-            background: trayMoveMode ? '#a97014' : '#3c4967',
-            color: 'white',
-            border: `1px solid ${trayMoveMode ? '#f0b65e' : '#5566aa'}`,
-            borderRadius: 3,
-            cursor: 'pointer',
-            fontWeight: trayMoveMode ? 600 : 400,
-          }}
-        >
-          {trayMoveMode ? '✥ Mover tramo (activo — Esc)' : '✥ Mover tramo'}
-        </button>
-        <button
-          className={trayRotateMode ? 'tone-ok' : undefined}
-          data-testid="tray-rotate-toggle"
-          onClick={() => setTrayRotateMode(!trayRotateMode)}
-          title="Mostrar/ocultar el gizmo de rotación (anillos por eje) sobre la pieza"
-          style={{
-            fontSize: 11,
-            padding: '3px 10px',
-            background: trayRotateMode ? '#1f5a8a' : '#3c4967',
-            color: 'white',
-            border: `1px solid ${trayRotateMode ? '#7fc0f0' : '#5566aa'}`,
-            borderRadius: 3,
-            cursor: 'pointer',
-            fontWeight: trayRotateMode ? 600 : 400,
-          }}
-        >
-          {trayRotateMode ? '⟳ Rotar tramo (activo — Esc)' : '⟳ Rotar tramo'}
-        </button>
-      </div>
       {trayRotateMode && <TrayRotatePanel piece={piece} />}
 
       <TrayCentroidEditor
@@ -719,6 +692,9 @@ export function PieceCard({ piece }: { piece: Piece }) {
       {esCurvaEslabonada(entrada, piece) && typeof product?.ancho_nominal_mm === 'number' && (
         <AnguloEslabonadaField key={piece.instancia_id} piece={piece} ancho={product.ancho_nominal_mm} />
       )}
+      {esCurvaAjustable(entrada, piece) && typeof product?.ancho_nominal_mm === 'number' && (
+        <AnguloAjustableField key={piece.instancia_id} piece={piece} ancho={product.ancho_nominal_mm} />
+      )}
 
       <div className="inspector-field">
         <span className="inspector-label">Longitud pieza (mm)</span>
@@ -726,7 +702,7 @@ export function PieceCard({ piece }: { piece: Piece }) {
           type="number"
           className="inspector-input"
           style={{ width: 90 }}
-          value={piece.longitud_mm ?? piece.longitud_eje_mm ?? 0}
+          value={aMilesima(piece.longitud_mm ?? piece.longitud_eje_mm ?? 0)}
           onChange={(e) => updatePiece((p) => {
             const v = Number(e.target.value);
             if (p.longitud_mm !== undefined) p.longitud_mm = v;
@@ -745,7 +721,7 @@ export function PieceCard({ piece }: { piece: Piece }) {
                 <input
                   type="number"
                   className="inspector-input"
-                  value={v}
+                  value={aMilesima(v)}
                   onChange={(e) => updatePiece((p) => {
                     p.puertos[portId].posicion_mm[i] = Number(e.target.value);
                   })}

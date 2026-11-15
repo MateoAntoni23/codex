@@ -16,6 +16,8 @@ import { test, expect, type Page } from '@playwright/test';
 import { mkdirSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { elegirPieza } from './helpers/selectorPieza';
+import { abrirFormulario } from './helpers/interfaz';
 
 const OUT_DIR = resolve(dirname(fileURLToPath(import.meta.url)), 'output');
 
@@ -68,9 +70,7 @@ async function continuarDesde(page: Page, extremo: RegExp, productoId: string, l
   const antes = (await estado(page)).piezas.length;
   await page.getByTestId('tool-bandejas-seleccionar').click();
   await page.getByTestId('free-end').filter({ hasText: extremo }).first().click();
-  const select = page.locator('[data-codex-routing-product-select]');
-  await expect(select).toBeVisible();
-  await select.selectOption(productoId);
+  await elegirPieza(page, productoId);
   await page.locator('[data-codex-routing-length-input]').fill(String(largo));
   await page.locator('text=Confirmar continuación').click();
   await expect.poll(async () => (await estado(page)).piezas.length).toBe(antes + 1);
@@ -79,6 +79,7 @@ async function continuarDesde(page: Page, extremo: RegExp, productoId: string, l
 
 async function recorrido(page: Page, origen: [string, string], destino: [string, string]) {
   await page.getByTestId('stage-tab-conexiones').click();
+  await abrirFormulario(page, 'medir');
   await page.getByTestId('recorrido-origen').selectOption(`${origen[0]}\u0000${origen[1]}`);
   await page.getByTestId('recorrido-destino').selectOption(`${destino[0]}\u0000${destino[1]}`);
 }

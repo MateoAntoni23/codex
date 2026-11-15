@@ -13,6 +13,7 @@ import { test, expect, type Page } from '@playwright/test';
 import { mkdirSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { elegirPieza } from './helpers/selectorPieza';
 
 const OUT_DIR = resolve(dirname(fileURLToPath(import.meta.url)), 'output');
 type V3 = [number, number, number];
@@ -34,9 +35,7 @@ const piezas = (page: Page) => page.evaluate(() =>
 async function continueFrom(page: Page, freeEnd: RegExp, productoId: string, opts: { entryPort?: string; length?: number; sentido?: 'sube' | 'baja' } = {}) {
   const before = (await piezas(page)).length;
   await page.getByTestId('free-end').filter({ hasText: freeEnd }).first().click();
-  const select = page.locator('[data-codex-routing-product-select]');
-  await expect(select).toBeVisible();
-  await select.selectOption(productoId);
+  await elegirPieza(page, productoId);
   if (opts.sentido) {
     // CUS: sin elegir no hay previa ni confirmación.
     await expect(page.locator('[data-codex-routing-vertical-choice]')).toContainText('Elegí si la curva sube o baja');

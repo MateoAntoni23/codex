@@ -12,7 +12,7 @@
  * All hooks are declared before any conditional return to comply with Rules of Hooks.
  */
 import { useMemo } from 'react';
-import { Html, Line } from '@react-three/drei';
+import { Edges, Html, Line } from '@react-three/drei';
 import * as THREE from 'three';
 import { useTrayStore } from '../tray/store';
 import { useWorkspaceStore } from './useWorkspaceStore';
@@ -28,6 +28,7 @@ import { compatibilidadDirecta } from './compatibilidadFisica';
 import { UNIONS_KEY, unionRecord, unionsOf } from './workspaceOperation';
 import { LadderPiece, isLadderFamily } from './ladderGeometry';
 import { BajadasEnEscena } from './equipos/BajadasEnEscena';
+import { COLOR_CONTORNO_SELECCION, EMISIVO_BASE, EMISIVO_SELECCION, OPACIDAD_PIEZA, tipoColorDe, useColoresStore, type TipoColor } from './colores/coloresTipo';
 
 type V3 = [number, number, number];
 
@@ -57,11 +58,11 @@ function alaFromProduct(product: Product | undefined): number | null {
 }
 
 function RectoPiece({
-  p1mm, p2mm, widthMm, alaMm, selected, onClick, label, instanciaId, sku,
+  p1mm, p2mm, widthMm, alaMm, selected, onClick, label, instanciaId, sku, color,
 }: {
   p1mm: V3; p2mm: V3; widthMm: number | null; alaMm: number | null;
   selected: boolean; onClick: () => void; label: string;
-  instanciaId: string; sku: string | null;
+  instanciaId: string; sku: string | null; color: string;
 }) {
   const p1v = toViewer(p1mm);
   const p2v = toViewer(p2mm);
@@ -70,7 +71,6 @@ function RectoPiece({
   const safeLen = len || 1;
   const dir: V3 = [(p2v[0] - p1v[0]) / safeLen, (p2v[1] - p1v[1]) / safeLen, (p2v[2] - p1v[2]) / safeLen];
   const quat = useMemo(() => alignToDir(dir), [dir[0], dir[1], dir[2]]);
-  const color = selected ? '#ffcf33' : '#50b8de';
   const lenMm = lengthBetween(p1mm, p2mm);
 
   if (widthMm == null || alaMm == null) {
@@ -86,7 +86,8 @@ function RectoPiece({
           };
         }}
       >
-        <Line points={[p1v, p2v]} color={selected ? '#ffcf33' : '#8899bb'} lineWidth={selected ? 10 : 5}
+        {selected && <Line points={[p1v, p2v]} color={COLOR_CONTORNO_SELECCION} lineWidth={11} />}
+        <Line points={[p1v, p2v]} color={color} lineWidth={5}
           onClick={(e: { stopPropagation: () => void }) => { e.stopPropagation(); onClick(); }} />
         <Html position={center} style={{ pointerEvents: 'none', color: '#ff9955', fontSize: 10 }}>
           {label} · sin dimensiones
@@ -105,12 +106,13 @@ function RectoPiece({
           kind: 'recto-box-fallback',
           instanciaId, sku,
           widthMm, alaMm, lenMm,
-          p1mm, p2mm,
+          p1mm, p2mm, color, selected,
         };
       }}
     >
       <boxGeometry args={[len, alaMm / 1000, widthMm / 1000]} />
-      <meshStandardMaterial color={color} transparent opacity={0.75} />
+      <meshStandardMaterial color={color} transparent opacity={OPACIDAD_PIEZA} toneMapped={false} emissive={color} emissiveIntensity={selected ? EMISIVO_SELECCION : EMISIVO_BASE} />
+      {selected && <Edges lineWidth={2.5} color={COLOR_CONTORNO_SELECCION} />}
     </mesh>
   );
 }
@@ -121,7 +123,7 @@ function RectoPiece({
  */
 function PieceVisual({
   product, piece, entrada, fallbackPorts, p1mm, p2mm, widthMm, alaMm, tipo,
-  selected, onClick, label,
+  selected, onClick, label, color, tipoColor,
 }: {
   product: Product | undefined;
   piece: Piece;
@@ -135,6 +137,9 @@ function PieceVisual({
   selected: boolean;
   onClick: () => void;
   label: string;
+  /** Color de su tipo (B1); la selección no lo cambia (B3). */
+  color: string;
+  tipoColor: TipoColor;
 }) {
   // A-5: se dibuja desde lo guardado (definición + mano + pose). No se re-deduce
   // nada con verifyGeometricFit (queda para la migración y el diagnóstico).
@@ -155,11 +160,13 @@ function PieceVisual({
         huella={placed.colocacion.definicion.huella}
         mano={placed.colocacion.mano}
         pose={placed.colocacion.pose}
-        color={selected ? '#ffcf33' : '#50b8de'}
-        opacity={isPortDiagEnabled() ? 0.4 : 0.85}
+        color={color}
+        selected={selected}
+        opacity={isPortDiagEnabled() ? 0.4 : OPACIDAD_PIEZA}
         onClick={onClick}
         userData={{
           kind: 'ladder-definition',
+          tipoColor,
           instanciaId: piece.instancia_id,
           sku: product.sku,
           entryPortName: placed.colocacion.boca_entrada ?? null,
@@ -177,8 +184,8 @@ function PieceVisual({
   if (product && isLadderFamily(product) && !angleIssue) {
     return (
       <group>
-        <LadderPiece piece={piece} product={product} selected={selected} onClick={onClick} />
-        {colocacion?.estado === 'sin_resolver' && <UnresolvedMarker piece={piece} motivo={colocacion.motivo} />}
+        <LadderPiece piece={piece} product={product} selected={selected} onClick={onClick} color={color} />
+        {colocacion?.estado === 'sin_resolver' && <UnresolvedMarker piece={piece} selected={selected} motivo={colocacion.motivo} />}
       </group>
     );
   }
@@ -187,17 +194,19 @@ function PieceVisual({
     const nominal = placed.def.procedencia?.tipo === 'nominal';
     return (
       <group>
-      {nominal && <UnresolvedMarker piece={piece} motivo={placed.def.procedencia!.nota} titulo="Geometría nominal" tipo="nominal" />}
+      {nominal && <UnresolvedMarker piece={piece} selected={selected} motivo={placed.def.procedencia!.nota} titulo="Geometría nominal" tipo="nominal" />}
       <PlacedMesh
         def={placed.def}
         huella={placed.colocacion.definicion.huella}
         mano={placed.colocacion.mano}
         pose={placed.colocacion.pose}
-        color={selected ? '#ffcf33' : '#50b8de'}
-        opacity={isPortDiagEnabled() ? 0.4 : 0.75}
+        color={color}
+        selected={selected}
+        opacity={isPortDiagEnabled() ? 0.4 : OPACIDAD_PIEZA}
         onClick={onClick}
         userData={{
           kind: 'parametric-confirmed',
+          tipoColor,
           instanciaId: piece.instancia_id,
           sku: product.sku,
           entryPortName: placed.colocacion.boca_entrada ?? null,
@@ -219,6 +228,7 @@ function PieceVisual({
         label={label}
         instanciaId={piece.instancia_id}
         sku={product?.sku ?? null}
+        color={color}
       />
     )
     : (
@@ -231,13 +241,14 @@ function PieceVisual({
         sku={product?.sku ?? null}
         tipo={tipo}
         portsMm={Object.values(piece.puertos).map((pp) => pp.posicion_mm as V3)}
+        color={color}
       />
     );
   return (
     <group>
       {fallback}
-      {colocacion?.estado === 'sin_resolver' && <UnresolvedMarker piece={piece} motivo={colocacion.motivo} />}
-      {angleIssue && <UnresolvedMarker piece={piece} motivo={angleIssue.motivo} titulo="Modelo no resuelto" />}
+      {colocacion?.estado === 'sin_resolver' && <UnresolvedMarker piece={piece} selected={selected} motivo={colocacion.motivo} />}
+      {angleIssue && <UnresolvedMarker piece={piece} selected={selected} motivo={angleIssue.motivo} titulo="Modelo no resuelto" />}
     </group>
   );
 }
@@ -245,9 +256,11 @@ function PieceVisual({
 /**
  * A-10: marcador visible de una pieza "sin resolver" (no encajó al migrar) o
  * con modelo no resuelto (giro medido ≠ declarado): conserva sus bocas y se
- * dibuja con este aviso y su motivo en su centro.
+ * dibuja con este aviso en su centro. En la escena sólo la etiqueta corta (con
+ * varias piezas, los motivos completos tapaban la escena, 2026-11-14); el motivo
+ * se despliega al seleccionar la pieza. Queda por debajo de los paneles.
  */
-function UnresolvedMarker({ piece, motivo, titulo = 'Sin resolver', tipo = 'unresolved' }: { piece: Piece; motivo: string; titulo?: string; tipo?: 'unresolved' | 'nominal' }) {
+function UnresolvedMarker({ piece, motivo, titulo = 'Sin resolver', tipo = 'unresolved', selected = false }: { piece: Piece; motivo: string; titulo?: string; tipo?: 'unresolved' | 'nominal'; selected?: boolean }) {
   const nominal = tipo === 'nominal';
   const ports = Object.values(piece.puertos);
   if (!ports.length) return null;
@@ -259,16 +272,22 @@ function UnresolvedMarker({ piece, motivo, titulo = 'Sin resolver', tipo = 'unre
     >
       <mesh>
         <octahedronGeometry args={[0.18, 0]} />
-        <meshBasicMaterial color={nominal ? '#e0b040' : '#ff5a4f'} wireframe />
+        {/* Distintivo neutro (B4): el estado se dice con texto, no con un color que se confunda con un tipo. */}
+        <meshBasicMaterial color="#ffffff" wireframe />
       </mesh>
-      <Html center style={{ pointerEvents: 'none' }} position={[0, 0.3, 0]}>
+      <Html center zIndexRange={[5, 0]} style={{ pointerEvents: 'none' }} position={[0, 0.3, 0]}>
         <div
           data-testid={nominal ? 'nominal-marker' : 'unresolved-marker'}
+          data-desplegado={selected ? 'true' : 'false'}
           title={motivo}
-          style={{ background: nominal ? 'rgba(50,40,0,0.85)' : 'rgba(60,0,0,0.85)', color: nominal ? '#ffe9b0' : '#ffd0cc', fontSize: 10, padding: '2px 6px', borderRadius: 3, maxWidth: 260 }}
+          style={{
+            background: nominal ? 'rgba(50,40,0,0.8)' : 'rgba(60,0,0,0.8)', color: nominal ? '#ffe9b0' : '#ffd0cc',
+            fontSize: 10, lineHeight: 1.25, padding: selected ? '2px 6px' : '1px 5px', borderRadius: 3,
+            maxWidth: selected ? 260 : undefined, whiteSpace: selected ? 'normal' : 'nowrap',
+          }}
         >
-          <strong>{titulo}</strong>
-          <div style={{ fontSize: 9, opacity: 0.9 }}>{motivo}</div>
+          <strong>⚠ {titulo}</strong>
+          {selected && <div style={{ fontSize: 9, opacity: 0.9 }} data-testid="marker-motivo">{motivo}</div>}
         </div>
       </Html>
     </group>
@@ -277,13 +296,12 @@ function UnresolvedMarker({ piece, motivo, titulo = 'Sin resolver', tipo = 'unre
 
 
 function SchematicPiece({
-  ports, selected, onClick, label, instanciaId, sku, tipo, portsMm,
+  ports, selected, onClick, label, instanciaId, sku, tipo, portsMm, color,
 }: {
   ports: V3[]; selected: boolean; onClick: () => void; label: string;
-  instanciaId: string; sku: string | null; tipo: string; portsMm: V3[];
+  instanciaId: string; sku: string | null; tipo: string; portsMm: V3[]; color: string;
 }) {
   if (ports.length < 2) return null;
-  const color = selected ? '#ffcf33' : '#8899bb';
   const start = ports[0];
   return (
     <group
@@ -291,13 +309,17 @@ function SchematicPiece({
         g.userData.codex = {
           kind: 'schematic-line-fallback',
           instanciaId, sku, tipo,
-          portsMm,
+          portsMm, color, selected,
           reason: tipo === 'recta' ? 'no-parametric-recipe' : `non-straight-tipo:${tipo}`,
         };
       }}
     >
+      {/* Selección (B3): halo blanco detrás de la línea; el color de la pieza no cambia. */}
+      {selected && ports.slice(1).map((end, i) => (
+        <Line key={`sel-${i}`} points={[start, end]} color={COLOR_CONTORNO_SELECCION} lineWidth={11} />
+      ))}
       {ports.slice(1).map((end, i) => (
-        <Line key={i} points={[start, end]} color={color} lineWidth={selected ? 10 : 5}
+        <Line key={i} points={[start, end]} color={color} lineWidth={5}
           onClick={(e: { stopPropagation: () => void }) => { e.stopPropagation(); onClick(); }} />
       ))}
       <Html position={start} style={{ pointerEvents: 'none', color: '#aabbcc', fontSize: 10 }}>
@@ -360,6 +382,7 @@ export function TrayObjects() {
   const markDirty            = useWorkspaceStore((s) => s.markDirty);
   const routingActive        = useRoutingStore((s) => s.active);
   const routingHoverPiece    = useRoutingStore((s) => s.hoverPiece);
+  const colores              = useColoresStore((s) => s.colores);
 
   const productMap = useMemo(() => {
     const m = new Map<string, Product>();
@@ -444,6 +467,7 @@ ${body}
         const product   = productMap.get(piece.producto_id);
         const tipo      = product?.tipo_pieza ?? 'recta';
         const isSelected = traySelected === piece.instancia_id;
+        const tipoColor = tipoColorDe(product, context?.familias);
         const onClick   = () => {
           if (connectionToolActive || routingActive) return;
           selectTray(piece.instancia_id);
@@ -474,6 +498,8 @@ ${body}
               selected={isSelected}
               onClick={onClick}
               label={piece.instancia_id}
+              color={colores[tipoColor]}
+              tipoColor={tipoColor}
             />
 
             {/* Port markers when connection tool is active */}
@@ -515,9 +541,12 @@ ${body}
             key={s.soporte_id}
             position={toViewer(q)}
             onClick={(e) => { e.stopPropagation(); selectSupport(s.soporte_id); }}
+            onUpdate={(m) => { m.userData.codex = { kind: 'soporte', soporteId: s.soporte_id, tipoColor: 'herraje', color: colores.herraje, selected: isSelectedSupport }; }}
           >
             <boxGeometry args={[0.5, 0.12, 0.12]} />
-            <meshBasicMaterial color={isSelectedSupport ? '#ffcf33' : '#bb77bb'} />
+            {/* Soportes: gris neutro de herrajes (B1); seleccionado con contorno (B3). */}
+            <meshStandardMaterial color={colores.herraje} toneMapped={false} emissive={colores.herraje} emissiveIntensity={isSelectedSupport ? EMISIVO_SELECCION : EMISIVO_BASE} />
+            {isSelectedSupport && <Edges lineWidth={2.5} color={COLOR_CONTORNO_SELECCION} />}
           </mesh>
         );
       })}
