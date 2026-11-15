@@ -6,24 +6,21 @@
  *   - escalera: CUS-{ancho}-5-{ala}-{espesor}-{G|Z}, "CURVA VERTICAL (Articulated
  *     Bend)": cada código trae 5 eslabones.
  *
- * GEOMETRÍA — declarada por el operador (2026-11-13), con esa procedencia:
- *   - radio de giro = ancho de la bandeja (se toma sobre el eje de la pieza);
- *   - cada articulación cubre 22,5°;
- *   - eslabones N = techo(θ / 22,5°) + 1 (90° → 5, 45° → 3);
- *   - longitud de eje = el polígono real de N−1 cuerdas sobre ese radio, no el arco;
+ * GEOMETRÍA — regla en ../reglaEslabones.ts (operador, 2026-11-15, respaldada por
+ * el catálogo):
+ *   - radio por PRODUCTO, del gráfico del catálogo para 22,5° por articulación
+ *     (fila de 5 eslabones): EPS 260 mm, CUS 294 mm, al interior; no depende del
+ *     ancho ni de la cantidad de eslabones. Eje = radio interior + ala/2;
+ *   - cada articulación cubre 22,5°; N = techo(θ / 22,5°) + 1 (sólo cómputo);
+ *   - longitud de eje = el polígono real de N−1 cuerdas sobre el radio del eje;
  *   - la boca de salida es la de entrada girada θ alrededor del centro;
- *   - ángulo por defecto 90°, modificable por instancia.
+ *   - ángulo por defecto 90°, modificable por instancia, mayor que 22,5°.
  * Ángulos que no son múltiplo de 22,5°: θ se reparte en las N−1 articulaciones
  * por igual (cada una ≤ 22,5°); en los múltiplos da exactamente cuerdas de 22,5°.
  *
- * CONTRADICE AL CATÁLOGO (anotado, no corregido): el catálogo no declara ángulo
- * ni rango, y su radio es otro. Trae un gráfico "radio aprox. por cantidad de
- * eslabones" (EPS: 3→150, 4→200, 5→260, 6→330 mm…; CUS línea Z: 3→125, 4→210,
- * 5→294, 6→376 mm…, cargado como radio_mm = 294 en las 12 CUS Z, "referencia no
- * especificada"). La regla del operador da radio = ancho (300 mm en 300).
- *
  * DIBUJO: esquemático. Una banda del ancho de la bandeja barriendo θ sobre el
- * polígono de cuerdas; los eslabones no se modelan uno por uno.
+ * polígono de cuerdas (espesor = ala, centrada en el eje); los eslabones no se
+ * modelan uno por uno.
  *
  * Marco canónico (el de la CUPS, para que la colocación sea la misma): perfil en
  * el plano XY, extrusión en Z ∈ [−ancho, 0]. Boca P1 en el origen con normal
@@ -46,10 +43,10 @@ type V3 = readonly [number, number, number];
 
 const areaFirmada = (p: readonly V2[]) => p.reduce((s, a, i) => { const b = p[(i + 1) % p.length]; return s + a[0] * b[1] - b[0] * a[1]; }, 0) / 2;
 
-export function buildCurvaEslabonadaRecipe(params: { ancho_mm: number; ala_mm: number; angulo_deg: number; sentido: SentidoVertical }): GeometryRecipe {
+export function buildCurvaEslabonadaRecipe(params: { ancho_mm: number; ala_mm: number; angulo_deg: number; sentido: SentidoVertical; radio_interior_mm: number }): GeometryRecipe {
   const { ancho_mm, ala_mm, angulo_deg } = params;
-  const m = medidasEslabonada(ancho_mm, angulo_deg);
-  const R = m.radioMm;
+  const m = medidasEslabonada({ radioInteriorMm: params.radio_interior_mm, alaMm: ala_mm, anguloDeg: angulo_deg });
+  const R = m.radioEjeMm;
   const h = ala_mm / 2;
   const rad = (d: number) => (d * Math.PI) / 180;
   // Centro del giro (0, −R); vértice k del polígono de cuerdas en φk = k·α.
@@ -100,7 +97,7 @@ export function buildCurvaEslabonadaRecipe(params: { ancho_mm: number; ala_mm: n
     bboxMin: [Math.min(...xs), Math.min(...ys), -ancho_mm],
     bboxMax: [Math.max(...xs), Math.max(...ys), 0],
     notes: [
-      `Curva eslabonada esquemática: ${m.eslabones} eslabones, ${m.articulaciones} articulaciones de ${m.gradosPorArticulacion.toFixed(2)}°, radio ${R} mm, eje ${m.longitudEjeMm.toFixed(1)} mm.`,
+      `Curva eslabonada esquemática: ${m.eslabones} eslabones, ${m.articulaciones} articulaciones de ${m.gradosPorArticulacion.toFixed(2)}°, radio interior ${m.radioInteriorMm} mm (eje ${R} mm), longitud de eje ${m.longitudEjeMm.toFixed(1)} mm.`,
       `Procedencia: ${PROCEDENCIA_ESLABONADA}.`,
       `Sentido: ${sube ? 'ascendente' : 'descendente'} (cambia sólo el marco de la boca de entrada).`,
     ],

@@ -15,7 +15,7 @@
  */
 import * as THREE from 'three';
 import type { Piece, Product, TrayInput } from '../../tray/model';
-import { buildNominalRecipe, buildRecipeFromProduct, datosFaltantesParaMaestro, NOTA_NOMINAL, resolveParametricEntry, resolveRecipe, sentidoVerticalDe, tieneReglaNominal } from '../parametricBridge';
+import { buildNominalRecipe, buildRecipeFromProduct, datosFaltantesParaMaestro, NOTA_NOMINAL, radioDeEslabonada, resolveParametricEntry, resolveRecipe, sentidoVerticalDe, tieneReglaNominal } from '../parametricBridge';
 import { calibracionVersion } from '../catalogPortMapping';
 import { RECETAS_ESLABONADAS } from '../../parametric/reglaEslabones';
 import { anguloPorDefecto, motivoAnguloInstancia, tieneAnguloInstancia } from '../../parametric/anguloInstancia';
@@ -178,6 +178,13 @@ export function resolveDefinition(product: Product, opts?: OpcionesDefinicion): 
  * (p. ej. la prueba de ángulos); para colocar se usa `resolveDefinition`.
  */
 export function buildDefinition(product: Product, opts?: OpcionesDefinicion): DefinitionResult {
+  // Curva eslabonada sin radio (CUS G sin Z equivalente): el motivo es el del radio, no
+  // un «sin modelo» genérico (sin radio la receta no se puede armar).
+  const maestro = findMasterForProduct(product as Record<string, unknown>);
+  if (maestro && RECETAS_ESLABONADAS.has(maestro.recipeKey)) {
+    const r = radioDeEslabonada(product as unknown as Record<string, unknown>);
+    if (!r.ok) return { ok: false, motivo: r.motivo };
+  }
   const entry = resolveRecipe(product);
   if (!entry) {
     // Sin modelo medido: geometría nominal del catálogo, si alcanza (decisión 2).
@@ -217,6 +224,9 @@ export function buildDefinition(product: Product, opts?: OpcionesDefinicion): De
     const motivo = motivoAnguloInstancia(entry.recipe, opts.angulo_deg);
     if (motivo) return { ok: false, motivo };
   }
+  // Curva eslabonada sin radio (CUS G sin Z equivalente): no hay definición, con el motivo.
+  const radioEsl = RECETAS_ESLABONADAS.has(String(entry.recipe)) ? radioDeEslabonada(product as unknown as Record<string, unknown>) : null;
+  if (radioEsl && !radioEsl.ok) return { ok: false, motivo: radioEsl.motivo };
   let raw;
   try {
     raw = buildRecipeFromProduct(product, entry, {
@@ -249,6 +259,9 @@ export function buildDefinition(product: Product, opts?: OpcionesDefinicion): De
   if (tieneAnguloInstancia(entry.recipe)) {
     params.angulo_deg = typeof opts?.angulo_deg === 'number' ? opts.angulo_deg : anguloPorDefecto(entry.recipe);
   }
+  // Radio interior de la eslabonada (por producto): entra en la huella; si la regla cambia,
+  // las piezas colocadas quedan desactualizadas.
+  if (radioEsl?.ok) params.radio_interior_mm = radioEsl.radioInteriorMm;
   const def = definitionFromRecipe({
     patron: master?.id ?? String(entry.recipe),
     revision: master ? String(master.revision) : String(entry.source_version ?? 'legacy'),
@@ -346,7 +359,44 @@ export function outdatedPieces(entrada: TrayInput, products: ReadonlyMap<string,
       { def: placed.def, mano: c.mano, pose: c.pose, bocaEntrada: c.boca_entrada ?? placed.def.ports[0]?.name ?? 'P1' },
       current.def,
     );
-    if (!cmp.equivalente) out.push({ id: piece.instancia_id, current, motivo: cmp.motivo ?? 'la geometría cambió' });
+    if (!cmp.equivalente) {
+      const causa = causaDelCambio(placed.def, current.def);
+      const geom = cmp.motivo ?? 'la geometría cambió';
+      out.push({ id: piece.instancia_id, current, motivo: causa ? `${causa}; ${geom}` : geom });
+    }
+  }
+  return out;
+}
+
+/**
+ * Por qué cambió la definición, cuando se sabe: hoy, la regla de radio de las curvas
+ * eslabonadas (2026-11-15: radio interior por producto en lugar de radio = ancho).
+ */
+function causaDelCambio(guardada: StoredDefinition, vigente: StoredDefinition): string | null {
+  if (!PATRONES_ESLABONADA.has(vigente.patron)) return null;
+  const antes = guardada.params.radio_interior_mm;
+  const ahora = vigente.params.radio_interior_mm;
+  if (antes === ahora) return null;
+  const radioAntes = typeof antes === 'number' ? `radio interior ${antes} mm` : `radio = ancho (${guardada.params.ancho_mm} mm, sobre el eje)`;
+  return `cambió la regla de radio de las curvas eslabonadas (2026-11-15): ${radioAntes} → radio interior ${ahora} mm del producto (gráfico del catálogo para 22,5° por articulación; eje = radio + ala/2); cambia la longitud de eje`;
+}
+
+const PATRONES_ESLABONADA: ReadonlySet<string> = new Set(['master:perforada:curva_eslabonada', 'master:escalera:curva_eslabonada']);
+
+/**
+ * Piezas colocadas que ya NO tienen definición vigente (p. ej. una eslabonada guardada a
+ * 20°, que hoy se rechaza, o una CUS G sin Z equivalente): no se pueden actualizar; se
+ * siguen dibujando como fueron colocadas y se listan con su motivo.
+ */
+export function piezasSinDefinicionVigente(entrada: TrayInput, products: ReadonlyMap<string, Product>): Array<{ id: string; motivo: string }> {
+  const out: Array<{ id: string; motivo: string }> = [];
+  for (const piece of entrada.piezas) {
+    const c = piece.colocacion as Colocacion | undefined;
+    if (!c || c.estado !== 'resuelta') continue;
+    const product = products.get(piece.producto_id);
+    if (!product) continue;
+    const current = resolveDefinition(product, opcionesDeInstancia(c.definicion.params, product));
+    if (!current.ok) out.push({ id: piece.instancia_id, motivo: current.motivo });
   }
   return out;
 }

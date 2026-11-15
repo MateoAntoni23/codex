@@ -9,7 +9,8 @@ import type { Piece, Product } from '../../tray/model';
 import { useTrayStore } from '../../tray/store';
 import { useWorkspaceStore } from '../useWorkspaceStore';
 import { anguloDe, cambiarAnguloEslabonada } from '../placement/anguloEslabonada';
-import { ANGULO_ESLABONADA_MAX, ANGULO_ESLABONADA_MIN, medidasEslabonada, PROCEDENCIA_ESLABONADA } from '../../parametric/reglaEslabones';
+import { placedOf } from '../placement/definitions';
+import { ANGULO_ESLABONADA_MAX, ANGULO_ESLABONADA_MIN, eslabonesDeAnguloGuardado, medidasEslabonada, PROCEDENCIA_ESLABONADA } from '../../parametric/reglaEslabones';
 
 export function AnguloEslabonadaField({ piece, ancho }: { piece: Piece; ancho: number }) {
   const entrada = useTrayStore((s) => s.entrada);
@@ -20,7 +21,12 @@ export function AnguloEslabonadaField({ piece, ancho }: { piece: Piece; ancho: n
   const [valor, setValor] = useState(String(actual ?? ''));
   const [msg, setMsg] = useState<{ ok: boolean; texto: string } | null>(null);
   if (!entrada || actual === null) return null;
-  const m = medidasEslabonada(ancho, actual);
+  void ancho;
+  const params = placedOf(entrada, piece)?.def.params ?? {};
+  // Definición anterior a la regla de radio (2026-11-15): sin radio guardado; queda desactualizada.
+  const m = typeof params.radio_interior_mm === 'number' && typeof params.ala_mm === 'number' && actual > ANGULO_ESLABONADA_MIN
+    ? medidasEslabonada({ radioInteriorMm: params.radio_interior_mm, alaMm: params.ala_mm, anguloDeg: actual })
+    : null;
 
   const aplicar = () => {
     const productos = new Map<string, Product>((context?.productos ?? []).map((p) => [p.producto_id, p]));
@@ -39,8 +45,10 @@ export function AnguloEslabonadaField({ piece, ancho }: { piece: Piece; ancho: n
   return (
     <div className="inspector-field" data-testid="eslabonada-ficha" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
       <span className="inspector-label">Curva eslabonada</span>
-      <span style={{ fontSize: 11 }} data-testid="eslabonada-resumen" data-angulo={actual} data-eslabones={m.eslabones}>
-        {actual}° · {m.eslabones} eslabones · eje {m.longitudEjeMm.toFixed(1)} mm · radio {m.radioMm} mm
+      <span style={{ fontSize: 11 }} data-testid="eslabonada-resumen" data-angulo={actual} data-eslabones={m?.eslabones ?? eslabonesDeAnguloGuardado(actual)}>
+        {m
+          ? <>{actual}° · {m.eslabones} eslabones · eje {m.longitudEjeMm.toFixed(1)} mm · radio interior {m.radioInteriorMm} mm (eje {m.radioEjeMm} mm)</>
+          : <>{actual}° · {eslabonesDeAnguloGuardado(actual)} eslabones · definición anterior a la regla de radio: actualizala desde «Actualizar piezas»</>}
       </span>
       <span style={{ display: 'flex', gap: 6, marginTop: 4 }}>
         <input

@@ -300,6 +300,11 @@ export function getProductIndexEntry(productId: string): Readonly<Record<string,
   return (_productIndex[productId] as unknown as Record<string, unknown>) ?? null;
 }
 
+/** Todas las entradas del índice (p. ej. para buscar una pieza equivalente en el catálogo). */
+export function listProductIndexEntries(): ReadonlyArray<Readonly<Record<string, unknown>>> {
+  return Object.values(_productIndex) as unknown as ReadonlyArray<Readonly<Record<string, unknown>>>;
+}
+
 export function setProductCatalogIndex(products: readonly ProductIndexEntry[]): void {
   _version++;
   const idx: Record<string, ProductIndexEntry> = {};

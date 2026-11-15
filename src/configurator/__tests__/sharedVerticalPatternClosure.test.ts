@@ -154,7 +154,7 @@ describe('sharedVerticalPatternClosure — perforada CUPS A/D', () => {
     expect(cusMaster.recipeKey).toBe('escalera:curva_eslabonada');
     const interior = findMasterById('master:perforada:curva_vertical_interior')!;
     expect(cusMaster.source.stepFile).not.toBe(interior.source.stepFile);
-    expect(cusMaster.variationRule.rationale).toMatch(/declarada por el operador/);
+    expect(cusMaster.variationRule.rationale).toMatch(/Regla del operador/);
     expect(cusMaster.variationRule.rationale).not.toMatch(/equivalencia/i);
     expect(cusMaster.closure.fidelity.status).toBe('pending');
   });

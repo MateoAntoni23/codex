@@ -158,7 +158,10 @@ export function buildRecipeByKey(recipeKey: string, params: RawParams): Geometry
         : buildCS90Recipe({ ancho_mm, ala_mm });
     case 'curva_eslabonada':
     case 'escalera:curva_eslabonada':
-      return buildCurvaEslabonadaRecipe({ ancho_mm, ala_mm, angulo_deg: requireNumber(params, 'angulo_deg', recipeKey), sentido: sentidoDe(params, recipeKey) });
+      return buildCurvaEslabonadaRecipe({
+        ancho_mm, ala_mm, angulo_deg: requireNumber(params, 'angulo_deg', recipeKey), sentido: sentidoDe(params, recipeKey),
+        radio_interior_mm: requireNumber(params, 'radio_interior_mm', recipeKey),
+      });
     case 'escalera:curva_ajustable':
       return buildCurvaAjustableRecipe({ ancho_mm, ala_mm, angulo_deg: requireNumber(params, 'angulo_deg', recipeKey) });
     case 'escalera:derivacion_lateral':

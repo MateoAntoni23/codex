@@ -18,7 +18,7 @@
  */
 
 import * as THREE from 'three';
-import { RECETAS_ESLABONADAS } from '../parametric/reglaEslabones';
+import { RECETAS_ESLABONADAS, radioEslabonadaDe, type RadioEslabonada } from '../parametric/reglaEslabones';
 import { anguloPorDefecto, tieneAnguloInstancia } from '../parametric/anguloInstancia';
 import {
   type ParametricEntry,
@@ -35,6 +35,7 @@ import { buildTRPSRecipe, type GeometryRecipe, type PortDef } from '../parametri
 import type { Piece, Product, TrayPort } from '../tray/model';
 import { findMasterForProduct, type MasterModel } from '../configurator/masterModels';
 import { resolveRecipeForProduct } from './resolvedPortGeometry';
+import { listProductIndexEntries } from './catalogPortMapping';
 
 // ─── Tipos del puente ────────────────────────────────────────────────────────
 
@@ -206,6 +207,15 @@ export function datosFaltantesParaMaestro(master: MasterModel, product: Syntheti
   return faltan;
 }
 
+/**
+ * Radio interior de una curva eslabonada, por producto (regla del operador,
+ * 2026-11-15): EPS 260, CUS 294; las CUS G sólo con una Z de igual geometría en
+ * el catálogo (índice de productos).
+ */
+export function radioDeEslabonada(product: Record<string, unknown> | SyntheticProductLike): RadioEslabonada {
+  return radioEslabonadaDe(product as Record<string, unknown>, listProductIndexEntries());
+}
+
 function paramsForMaster(master: MasterModel, product: SyntheticProductLike): RawParams {
   const params: Record<string, number | string | null> = {
     // Sólo lo que declara el producto: los baseParams del maestro describen el
@@ -224,6 +234,10 @@ function paramsForMaster(master: MasterModel, product: SyntheticProductLike): Ra
   // referencia usa el de por defecto declarado por el operador (90°). Cada instancia
   // guarda el suyo.
   if (tieneAnguloInstancia(master.recipeKey)) params.angulo_deg = anguloPorDefecto(master.recipeKey);
+  if (RECETAS_ESLABONADAS.has(master.recipeKey)) {
+    const r = radioDeEslabonada(product);
+    params.radio_interior_mm = r.ok ? r.radioInteriorMm : null;
+  }
   return params as RawParams;
 }
 
@@ -500,6 +514,12 @@ export function buildRecipeFromProduct(
   if (tieneAnguloInstancia(entry.recipe)) {
     const a = overrides?.angulo_deg;
     params.angulo_deg = typeof a === 'number' && Number.isFinite(a) ? a : anguloPorDefecto(entry.recipe);
+  }
+  // Curva eslabonada: radio interior por producto (sin radio, no hay receta: el motivo lo da la regla).
+  if (RECETAS_ESLABONADAS.has(String(entry.recipe))) {
+    const r = radioDeEslabonada(product as unknown as Record<string, unknown>);
+    if (!r.ok) throw new Error(r.motivo);
+    params.radio_interior_mm = r.radioInteriorMm;
   }
 
   const takesAngulo =

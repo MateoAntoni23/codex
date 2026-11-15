@@ -22,7 +22,7 @@ import { ListaPiezas } from './ListaPiezas';
 import { PE_CABLE_ID, PE_SECCION_MM2 } from '../motor/paraMotor';
 import { isNeutralPe } from '../../project/emptyProject';
 import { useCatalogConfigStore } from '../../configurator/catalogConfigStore';
-import { outdatedPieces, updateOutdatedPieces } from '../placement/definitions';
+import { outdatedPieces, piezasSinDefinicionVigente, updateOutdatedPieces } from '../placement/definitions';
 import { AVISO_MEZCLA_PREFIJO, checkConnection, formatJoin, invalidConnections } from '../placement/joins';
 import { MarcaMezcla } from './MarcaMezcla';
 import { mezclaDeAcabados } from '../mezclaAcabados';
@@ -110,6 +110,10 @@ export function BandejasPanel() {
     [entrada, productMap, libraryOverrides], // eslint-disable-line react-hooks/exhaustive-deps
   );
   const [updateMsg, setUpdateMsg] = useState<string | null>(null);
+  const sinDefinicion = useMemo(
+    () => (entrada ? piezasSinDefinicionVigente(entrada, productMap) : []),
+    [entrada, productMap],
+  );
   const updateAll = () => {
     if (!entrada) return;
     const { entrada: next, updated } = updateOutdatedPieces(entrada, productMap);
@@ -159,9 +163,30 @@ export function BandejasPanel() {
             {outdated.length} pieza(s) colocada(s) con una definición distinta de la vigente (la biblioteca cambió).
             Se siguen dibujando como fueron colocadas.
           </div>
+          <details data-testid="outdated-motivos">
+            <summary>Por qué</summary>
+            {outdated.map((o) => (
+              <div key={o.id} className="stage-row-sub" style={{ whiteSpace: 'normal' }} data-testid="outdated-motivo" data-pieza={o.id}>
+                {o.id}: {o.motivo}
+              </div>
+            ))}
+          </details>
           <button type="button" onClick={updateAll} data-testid="update-outdated">
             Actualizar {outdated.length} pieza(s)
           </button>
+        </div>
+      )}
+      {sinDefinicion.length > 0 && (
+        <div className="stage-card tone-warn" role="status" data-testid="sin-definicion-notice">
+          <div>
+            {sinDefinicion.length} pieza(s) colocada(s) que ya no tienen definición vigente: no se pueden actualizar y se siguen
+            dibujando como fueron colocadas.
+          </div>
+          {sinDefinicion.map((o) => (
+            <div key={o.id} className="stage-row-sub" style={{ whiteSpace: 'normal' }} data-testid="sin-definicion-motivo" data-pieza={o.id}>
+              {o.id}: {o.motivo}
+            </div>
+          ))}
         </div>
       )}
       {updateMsg && <p className="stage-note" role="status" data-testid="update-outdated-result">{updateMsg}</p>}
