@@ -224,6 +224,20 @@ motor ni se mezclan con su resultado). Requiere que el operador aporte el diáme
 Encaja en `cablesDelCircuito` (un ítem sin `cable_id` pero con diámetro declarado) y en `ocupacionSegregada`, que ya
 suma diámetros por grupo como cálculo de la app.
 
+### Pendiente anotado, NO hecho — los tendidos de 1 mm² (debajo del piso del catálogo)
+El catálogo del motor arranca en 1,5 mm² en multipolar y en 4 mm² en unipolar (Sintenax; Superastic desde 10 mm²). Los
+tendidos de 1 mm² del Excel quedan fuera por estar debajo de ese piso, no por falta de una fila. En el ejemplo son
+117: 114 de 2 a 4 conductores (64 de CONTROL y 50 de INSTRUMENTACION: 2×1, 3×1 y 4×1) y 3 de CONTROL de 7×1 y 27×1, que
+además superan los 4 conductores del catálogo. Consecuencia: en una bandeja segregada, el grupo de mando no tiene
+ocupación calculable (hoy se listan «fuera de la suma» en el inspector de la pieza y en la segregación).
+
+**Los dos huecos —5 conductores (los 8 3F+N+PE de potencia) y 1 mm²— se cierran con el mismo camino:** una tabla de
+cables declarados por el operador (formación y diámetro exterior, con procedencia «operador», aparte de lo importado),
+usada por la app para la ocupación de esas bandejas, marcada como cálculo de la app, como la banda divisoria. No viajan
+al motor (su contrato sólo admite cables de su catálogo) ni se mezclan con su resultado. Encaja en `cablesDelCircuito`
+(un ítem sin `cable_id` pero con diámetro declarado), `porBandeja` y `ocupacionSegregada`. **Pendiente de que el
+operador aporte los diámetros** (5×6, 5×10, 2×1, 3×1, 4×1, 7×1, 27×1).
+
 ### Etapa 3 — contraste contra la ingeniería (2026-11-15)
 `src/conexiones/contraste.ts`: sólo comparaciones entre números que ya existen. Cada fila trae el valor de ingeniería y
 el comparado, cada uno con su origen; estado aviso / falta un dato / cierra / no aplica. Nunca impide.
