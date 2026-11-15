@@ -210,3 +210,39 @@ instrumentación.
 **E2E** `tendidosImportados` (7, una por punto). Usa el Excel de ejemplo con dos cambios declarados en la prueba: Ø 20 mm
 en CB-001 (el ejemplo no trae diámetros) y CB-012 pasado a unipolar 1×16 (un caso «varios» entre lo que se traza).
 Calcula con el motor real: acepta los circuitos por tendido.
+
+**Confirmado por el operador (2026-11-15), no cambiar:** el PE unipolar de un circuito de potencia va como un tendido
+más (es otro conductor que el PE de la bandeja, D-20, y ocupa lugar); la propuesta sin confirmación queda, con la
+procedencia a la vista; la regla del cobre queda igual.
+
+### Pendiente anotado, NO hecho — los 8 tendidos de potencia sin cable (3F+N+PE, 5×6 y 5×10)
+No es una sección faltante: el catálogo del motor llega hasta 4 conductores y un 3F+N+PE son 5, es una categoría que
+no existe. Salida, si el operador la pide: la misma que ya se usa para la banda divisoria — que la APP calcule la
+ocupación de esas bandejas sumando esos cables con el diámetro exterior que DECLARE el operador (dato del operador,
+con procedencia, aparte de lo importado), marcada como «cálculo de la app», sin que el motor se entere (no viajan al
+motor ni se mezclan con su resultado). Requiere que el operador aporte el diámetro exterior de los 5×6 y del 5×10.
+Encaja en `cablesDelCircuito` (un ítem sin `cable_id` pero con diámetro declarado) y en `ocupacionSegregada`, que ya
+suma diámetros por grupo como cálculo de la app.
+
+### Etapa 3 — contraste contra la ingeniería (2026-11-15)
+`src/conexiones/contraste.ts`: sólo comparaciones entre números que ya existen. Cada fila trae el valor de ingeniería y
+el comparado, cada uno con su origen; estado aviso / falta un dato / cierra / no aplica. Nunca impide.
+- **Longitud** (la que más importa; las 104 conexiones de potencia del ejemplo traen el dato): longitud trazada del
+  circuito (bandeja + bajadas, la guardada) contra `refIngLongitudM` (con `refIngLongitudOrigen` a la vista). Si la
+  trazada es mayor: «la caída de tensión del Excel se verificó con una longitud menor». Si la trazada está incompleta
+  y no supera, no se concluye y se dice; si el circuito está desactualizado, se dice que es la longitud guardada.
+- **Corriente:** `refIngCorrienteDisenoA` de la conexión contra `refIngIzA` del tendido. No aplica a neutro, PE,
+  equipotencial, datos ni aire (no llevan la corriente de fase); se ve como «no aplica», no como falta.
+- **Metraje:** longitud trazada × `cantidadUnidades` contra `refIngMetrajeCompraM`. Si el Excel declara unidades
+  existentes, se dice y NO se descuentan (sería suponer qué cubre el metraje de compra).
+- Falta un dato: se nombra el campo del Excel (`ref_ing_longitud_m`, `ref_ing_iz_a`, …).
+- Dónde se ve: Resultados › pestaña «Contraste con ingeniería» (avisos y faltantes primero, longitud antes que nada;
+  «ver también lo que cierra»; tabla copiable con los dos valores, unidades y orígenes; la pestaña muestra cuántos
+  avisos hay) y, para los avisos, en la tarjeta de la conexión en Conexiones.
+- **Ficha técnica:** en el inspector del equipo ubicado y vinculado (`LinkedImportedPanel`), todos los atributos
+  vigentes del Excel agrupados como en CATALOGO_ATRIBUTOS, con valor, origen del valor y estado del dato, y la celda de
+  origen al pasar el mouse. Sólo lectura. Antes mostraba 8 atributos sin estado ni origen.
+
+**E2E** `contrasteIngenieria` (6, una por punto). Usa el Excel de ejemplo con dos cambios declarados en la prueba (Iz de
+CB-001 = 300 A, sin longitud de ingeniería en CX-0005) para tener un aviso de corriente y un faltante entre lo trazado;
+el último recto mide 7000 mm para que CX-0001 supere sus 10 m.
