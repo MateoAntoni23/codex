@@ -17,7 +17,7 @@
  */
 import type { TrayInput } from '../tray/model';
 import type { EquipmentElement } from '../types/domain-v2';
-import type { ConexionImportada, ImportedCatalog, ServicioConexion } from '../import/types';
+import type { ConexionImportada, ImportedCatalog, ServicioConexion, TendidoImportado } from '../import/types';
 import { circuitosOf, estadoCircuito, type CircuitoGuardado } from '../workspace/recorridos/circuitosGuardados';
 import { bajadaDeEquipo } from '../workspace/equipos/bajada';
 import { declaradoOf, type RolExtremo } from './declarado';
@@ -50,6 +50,8 @@ export type Extremo =
 
 export interface EstadoConexion {
   readonly conexion: ConexionImportada;
+  /** Sus tendidos en el Excel actual. */
+  readonly tendidos: readonly TendidoImportado[];
   readonly codigo: CodigoEstado;
   readonly motivos: readonly string[];
   readonly origen: Extremo;
@@ -95,14 +97,23 @@ export function relacionConExcel(entrada: TrayInput | null | undefined, catalog:
   const ahora = catalog?.conexiones.find((x) => x.conexionId === v.conexionId);
   if (!ahora) return { tipo: 'ligado', conexionId: v.conexionId, motivos: [`la conexión ${v.conexionId} ya no está en el Excel`], enElExcel: false };
   const cambios = camposCambiados(v.conexion, ahora);
-  return {
-    tipo: 'ligado',
-    conexionId: v.conexionId,
-    enElExcel: true,
-    motivos: cambios.length
-      ? [`la conexión ${v.conexionId} cambió en el Excel: ${cambios.map((x) => `${x.campo} (${valor(x.antes)} → ${valor(x.ahora)})`).join('; ')}`]
-      : [],
-  };
+  const motivos = cambios.length
+    ? [`la conexión ${v.conexionId} cambió en el Excel: ${cambios.map((x) => `${x.campo} (${valor(x.antes)} → ${valor(x.ahora)})`).join('; ')}`]
+    : [];
+  // Tendidos (etapa 2): sólo si el vínculo los guardó al trazar.
+  if (v.tendidos) {
+    const ahoraT = (catalog?.tendidos ?? []).filter((t) => t.conexionId === v.conexionId);
+    const antes = new Map(v.tendidos.map((t) => [t.tendidoId, t]));
+    const hoy = new Map(ahoraT.map((t) => [t.tendidoId, t]));
+    for (const [id, t] of antes) {
+      const n = hoy.get(id);
+      if (!n) { motivos.push(`el tendido ${id} ya no está en el Excel`); continue; }
+      const c = camposCambiados(t as unknown as ConexionImportada, n as unknown as ConexionImportada);
+      if (c.length) motivos.push(`el tendido ${id} cambió en el Excel: ${c.map((x) => `${x.campo} (${valor(x.antes)} → ${valor(x.ahora)})`).join('; ')}`);
+    }
+    for (const id of hoy.keys()) if (!antes.has(id)) motivos.push(`el Excel suma el tendido ${id}`);
+  }
+  return { tipo: 'ligado', conexionId: v.conexionId, enElExcel: true, motivos };
 }
 
 const idEquipo = (x: Extremo) => (x.fuente === 'excel' ? x.elemento?.id ?? null : x.fuente === 'operador' ? x.elementoId : null);
@@ -121,7 +132,8 @@ export function estadosDeConexiones(catalog: ImportedCatalog | null, entrada: Tr
     const origen = resolverExtremo(cx, 'origen', entrada, elements);
     const destino = resolverExtremo(cx, 'destino', entrada, elements);
     const circuito = circuitoDe.get(cx.conexionId) ?? null;
-    const base = { conexion: cx, origen, destino, circuito };
+    const tendidos = catalog.tendidos.filter((t) => t.conexionId === cx.conexionId);
+    const base = { conexion: cx, tendidos, origen, destino, circuito };
     const motivoNo = MOTIVO_NO_SE_TRAZA[cx.servicio];
     if (motivoNo) return { ...base, codigo: 'no-se-traza', motivos: [motivoNo], trazable: false };
 

@@ -40,7 +40,7 @@ const WS_ONLY: ReadonlySet<string> = new Set(['excepciones_conexion', 'definicio
  */
 export function toMotorEntrada(
   trayInput: TrayInput,
-  opts: { elements?: readonly EquipmentElement[]; idsCables?: readonly string[] } = {},
+  opts: { elements?: readonly EquipmentElement[]; idsCables?: readonly string[]; excel?: import('../workspace/motor/paraMotor').DatosDelExcel } = {},
 ): Record<string,unknown> {
   const out: Record<string,unknown> = {};
   for (const [k,v] of Object.entries(trayInput)) {
@@ -48,7 +48,7 @@ export function toMotorEntrada(
   }
   // Etapa 3: los circuitos guardados de potencia (vigentes, con cable) viajan al motor junto
   // con los del trazado; maniobra e instrumentación no (D-11). Ver `workspace/motor/paraMotor.ts`.
-  out.circuitos = [...trayInput.circuitos, ...circuitosParaMotor(trayInput, opts.elements ?? [], opts.idsCables).enviados];
+  out.circuitos = [...trayInput.circuitos, ...circuitosParaMotor(trayInput, opts.elements ?? [], opts.idsCables, opts.excel).enviados];
   // `pe` neutro (proyecto sin PE definido, ver emptyProject.ts): NUNCA se envía tal cual
   // (el motor falla con "Cable desconocido: ''"). Etapa 3: con piezas, se envía el PE del
   // trazado (D-20 16 mm², D-21 verde/amarillo, recorrido por todas las piezas) y sus puntos
@@ -250,7 +250,7 @@ export const useTrayStore=create<State>((set,get)=>({
    // Equipos (para la vigencia de los circuitos guardados) y cables del catálogo; import dinámico: evita el ciclo de módulos.
    const {useWorkspaceStore}=await import('../workspace/useWorkspaceStore');
    const cat=get().context?.catalogoCables;
-   const outcome=await manager.calcular('trazado','trazado',toMotorEntrada(input,{elements:useWorkspaceStore.getState().elements,idsCables:cat?.ok?cat.cables.map(c=>c.cable_id):undefined}));
+   const outcome=await manager.calcular('trazado','trazado',toMotorEntrada(input,{elements:useWorkspaceStore.getState().elements,idsCables:cat?.ok?cat.cables.map(c=>c.cable_id):undefined,excel:{catalog:useWorkspaceStore.getState().importedCatalog,cables:cat?.ok?cat.cables:[]}}));
    if(get().revision!==revision||call!==callSequence)return;
    if(outcome.tipo==='descartada')return;
    if(outcome.tipo==='aplicada'){

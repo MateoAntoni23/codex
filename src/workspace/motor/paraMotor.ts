@@ -38,6 +38,11 @@ import type { Circuit, TrayInput } from '../../tray/model';
 import type { EquipmentElement } from '../../types/domain-v2';
 import { enganchesOf } from '../derivacion/enganche';
 import { circuitosOf, estadoCircuito, faltaParaCalcular, MOTIVO_D11, type CircuitoGuardado } from '../recorridos/circuitosGuardados';
+import type { ImportedCatalog } from '../../import/types';
+import type { CableCatalogo } from '../cables/catalogoCables';
+import { declaradoOf } from '../../conexiones/declarado';
+import { relacionConExcel } from '../../conexiones/estadoConexion';
+import { cableDeTendido, tendidosDe } from '../../conexiones/tendidos';
 
 export const PE_SECCION_MM2 = 16;
 export const PE_CABLE_ID = 'PRY-SASTFLEX-CU-1x16';
@@ -52,18 +57,61 @@ export interface NoEnviado {
   /** Lo que se mide igual (aunque no se calcule). */
   readonly sumaMm: number;
   readonly completa: boolean;
+  /** Circuito ligado a una conexión del Excel: el tendido que no viaja (etapa 2). */
+  readonly tendidoId?: string;
+  readonly conexionId?: string;
+  /** Tendido de POTENCIA sin cable de catálogo: la ocupación de sus bandejas no lo incluye. */
+  readonly potenciaSinCable?: boolean;
+  /** Piezas de bandeja del recorrido. */
+  readonly piezas?: readonly string[];
+}
+
+/** Excel y catálogo de cables, para los circuitos ligados a una conexión (etapa 2 de conexiones importadas). */
+export interface DatosDelExcel {
+  readonly catalog: ImportedCatalog | null;
+  readonly cables: readonly CableCatalogo[];
 }
 
 export function circuitosParaMotor(
   entrada: TrayInput,
   elements: readonly EquipmentElement[],
   idsCables?: readonly string[],
+  excel?: DatosDelExcel,
 ): { enviados: Circuit[]; noEnviados: NoEnviado[] } {
   const enviados: Circuit[] = [];
   const noEnviados: NoEnviado[] = [];
   const ocupados = new Set(entrada.circuitos.map((c) => c.circuito_id));
   const no = (c: CircuitoGuardado, motivo: string) => noEnviados.push({ id: c.id, nombre: c.nombre, motivo, sumaMm: c.sumaMm, completa: c.completa });
+  const vinculos = declaradoOf(entrada).vinculos;
   for (const c of circuitosOf(entrada)) {
+    const recorrido: string[] = [];
+    for (const cr of c.cruces) if (!recorrido.includes(cr.pieza)) recorrido.push(cr.pieza);
+    // Etapa 2: un circuito ligado lleva los tendidos de su conexión; su `cable` (si lo tuviera) no se usa.
+    const v = vinculos[c.id];
+    if (v) {
+      const rel = relacionConExcel(entrada, excel?.catalog ?? null, c);
+      const cx = excel?.catalog?.conexiones.find((x) => x.conexionId === v.conexionId);
+      if (!cx || (rel.tipo === 'ligado' && rel.motivos.length)) {
+        no(c, `Desactualizado respecto del Excel (retrazalo antes de calcular): ${rel.tipo === 'ligado' ? rel.motivos.join('; ') : ''}`);
+        continue;
+      }
+      if (cx.servicio !== 'POTENCIA') { no(c, `No va al motor — ${MOTIVO_D11}`); continue; }
+      const est = estadoCircuito(entrada, elements, c);
+      if (!est.vigente) { no(c, `Desactualizado (recalculalo antes de calcular): ${est.motivos.join('; ')}`); continue; }
+      const declarado = declaradoOf(entrada);
+      for (const t of tendidosDe(excel!.catalog, cx.conexionId)) {
+        const id = `${c.id}-${t.tendidoId}`;
+        const base = { id, nombre: `${c.nombre} · ${t.tendidoId} (${t.designacion ?? t.funcion})`, sumaMm: c.sumaMm, completa: c.completa, tendidoId: t.tendidoId, conexionId: cx.conexionId, piezas: recorrido };
+        const k = cableDeTendido(t, excel!.cables, declarado);
+        if (!k.cable) { noEnviados.push({ ...base, motivo: `Tendido de potencia ${k.motivoSinCable ?? 'sin cable'}`, potenciaSinCable: true }); continue; }
+        if (idsCables && !idsCables.includes(k.cable.cable_id)) { noEnviados.push({ ...base, motivo: `el cable ${k.cable.cable_id} no está en el catálogo de cables`, potenciaSinCable: true }); continue; }
+        if (k.cable.cable_id === PE_CABLE_ID) { noEnviados.push({ ...base, motivo: `Su cable (${PE_CABLE_ID}) es el del PE del trazado: el motor lo contaría dos veces` }); continue; }
+        if (!Number.isInteger(t.cantidadUnidades) || t.cantidadUnidades < 1) { noEnviados.push({ ...base, motivo: `la cantidad del Excel (${t.cantidadUnidades}) no es un entero positivo` }); continue; }
+        if (ocupados.has(id)) { noEnviados.push({ ...base, motivo: `Otro circuito del trazado ya se llama ${id}` }); continue; }
+        enviados.push({ circuito_id: id, funcion: 'potencia', cable_id: k.cable.cable_id, cantidad: t.cantidadUnidades, separado: false, recorrido });
+      }
+      continue;
+    }
     if (c.cable && c.cable.funcion !== 'potencia') { no(c, `No va al motor — ${MOTIVO_D11}`); continue; }
     const falta = faltaParaCalcular(c, idsCables);
     if (falta.length) { no(c, `Incompleto: ${falta.join('; ')}`); continue; }
@@ -71,8 +119,6 @@ export function circuitosParaMotor(
     if (!est.vigente) { no(c, `Desactualizado (recalculalo antes de calcular): ${est.motivos.join('; ')}`); continue; }
     if (c.cable!.cable_id === PE_CABLE_ID) { no(c, `Su cable (${PE_CABLE_ID}) es el del PE: el motor lo contaría dos veces`); continue; }
     if (ocupados.has(c.id)) { no(c, `Otro circuito del trazado ya se llama ${c.id}`); continue; }
-    const recorrido: string[] = [];
-    for (const cr of c.cruces) if (!recorrido.includes(cr.pieza)) recorrido.push(cr.pieza);
     enviados.push({ circuito_id: c.id, funcion: 'potencia', cable_id: c.cable!.cable_id, cantidad: c.cable!.cantidad, separado: false, recorrido });
   }
   return { enviados, noEnviados };

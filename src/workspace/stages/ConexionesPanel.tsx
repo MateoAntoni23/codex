@@ -16,7 +16,9 @@ import { useWorkspaceStore } from '../useWorkspaceStore';
 import { useTrayStore } from '../../tray/store';
 import { Empty, Section } from './shared';
 import { BajadasSection, mmTexto } from './CircuitoEquipos';
-import { circuitosOf, estadoCircuito, faltaParaCalcular } from '../recorridos/circuitosGuardados';
+import { circuitosOf, estadoCircuito } from '../recorridos/circuitosGuardados';
+import { faltaConExcel } from '../../conexiones/tendidos';
+import { useCatalogoCables } from './CableCircuitoCampos';
 import { useUiStore } from './uiStore';
 import { ListaConexiones } from '../../conexiones/ListaConexiones';
 import { relacionConExcel } from '../../conexiones/estadoConexion';
@@ -75,6 +77,7 @@ function CircuitosGuardadosLista() {
   const entrada = useTrayStore((s) => s.entrada);
   const elements = useWorkspaceStore((s) => s.elements);
   const catalog = useWorkspaceStore((s) => s.importedCatalog);
+  const { cables } = useCatalogoCables();
   const ver = useUiStore((s) => s.verPestana);
   const circuitos = circuitosOf(entrada);
   const nombre = (id: string) => elements.find((e) => e.id === id)?.name ?? id;
@@ -83,7 +86,7 @@ function CircuitosGuardadosLista() {
       {circuitos.length === 0 && <Empty>Sin circuitos. Armá uno entre dos equipos desde el inspector.</Empty>}
       {circuitos.map((c) => {
         const est = entrada ? estadoCircuito(entrada, elements, c) : { vigente: true as const };
-        const falta = faltaParaCalcular(c);
+        const falta = faltaConExcel(entrada, catalog, cables, c);
         const rel = relacionConExcel(entrada, catalog, c);
         return (
           <div key={c.id} className="stage-row-inline" data-testid="circuito-lista-fila" data-vigente={est.vigente ? 'true' : 'false'} data-excel={rel.tipo === 'ligado' ? rel.conexionId : 'fuera'}>

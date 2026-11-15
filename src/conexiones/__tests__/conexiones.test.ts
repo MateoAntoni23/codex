@@ -20,6 +20,10 @@ import type { ConexionImportada, ImportedCatalog } from '../../import/types';
 import { DECLARADO_KEY, declaradoOf, emparejar } from '../declarado';
 import { estadosDeConexiones, relacionConExcel } from '../estadoConexion';
 import { recalcularConExcel, retrazarConexion, trazarConexion } from '../acciones';
+import { circuitosParaMotor } from '../../workspace/motor/paraMotor';
+import { construirCatalogoCables, idDeCable } from '../../workspace/cables/catalogoCables';
+import { elegirCable } from '../declarado';
+import type { TendidoImportado } from '../../import/types';
 
 const snapshot = JSON.parse(readFileSync(resolve(__dirname, '../../../vendor/motor_bandejas/datos/catalogo/catalogo_bandejas_snapshot.json'), 'utf8')) as { PRODUCTOS: Product[] };
 const productos = new Map(snapshot.PRODUCTOS.map((p) => [p.producto_id, p]));
@@ -258,5 +262,68 @@ describe('reimportar', () => {
     const t2 = emparejar(t, 'CX-0002', 'destino', 'el-manual');
     const cat2 = catalogo(CAT.conexiones.map((c) => ({ ...c, descripcion: `${c.descripcion} rev1` })));
     expect(estadoDe(t2, elements, 'CX-0002', cat2).destino).toMatchObject({ fuente: 'operador', elementoId: 'el-manual' });
+  });
+});
+
+// ─── Etapa 2: al motor, un circuito por tendido de potencia con cable ────────
+
+const DS = ['prysmian_sintenax_valio_2020', 'prysmian_superastic_flex_2026'].map((f) =>
+  JSON.parse(readFileSync(resolve(__dirname, `../../../vendor/motor_bandejas/datos/cables/${f}.json`), 'utf-8')));
+const IDS = DS.flatMap((d) => d.tablas.flatMap((t: { filas: [string][] }) => t.filas.map((r) => idDeCable(d.dataset_id, t as never, r[0])!)));
+const CC = construirCatalogoCables(DS, IDS);
+const CABLES = CC.ok ? CC.cables : [];
+
+const tend = (id: string, extra: Partial<TendidoImportado>): TendidoImportado => ({
+  tendidoId: id, conexionId: 'CX-0001', naturaleza: 'CONDUCTOR_UNIPOLAR', funcion: 'FASES', cantidadUnidades: 1, conductoresPorUnidad: 1,
+  incluyePe: 'NO_APLICA', apantallado: 'NO_INDICADO', estadoAlcance: 'NUEVO', fuenteHoja: 'CONDUCTORES', ...extra,
+});
+
+describe('etapa 2 — al motor', () => {
+  const TENDIDOS = [
+    tend('CB-001', { seccionMm2: 150, cantidadUnidades: 6, designacion: '2×(3×1×150)' }),
+    tend('CB-002', { funcion: 'NEUTRO', seccionMm2: 35 }),
+    tend('CB-003', { funcion: 'PE', seccionMm2: 95, designacion: '1×95 V/A' }),
+    tend('CB-004', { naturaleza: 'CABLE_MULTIPOLAR', funcion: '3F+N+PE', conductoresPorUnidad: 5, seccionMm2: 6 }),
+  ];
+  const cat2 = { ...CAT, tendidos: [...TENDIDOS, tend('CB-900', { conexionId: 'CX-0004', naturaleza: 'CABLE_MULTIPOLAR', funcion: 'SENAL_CONTROL', conductoresPorUnidad: 2, seccionMm2: 1.5 })] };
+
+  it('un circuito por tendido de potencia con cable, todos con el mismo recorrido; el de 5 conductores queda con su motivo', () => {
+    const { t, elements } = proyecto();
+    const r = trazarConexion(t, elements, estadoDe(t, elements, 'CX-0001', cat2));
+    if (!r.ok) throw new Error(r.motivo);
+    const m = circuitosParaMotor(r.entrada, elements, IDS, { catalog: cat2, cables: CABLES });
+    expect(m.enviados).toEqual([
+      { circuito_id: 'CIR-CX-0001-CB-001', funcion: 'potencia', cable_id: 'PRY-SVALIO-CU-1x150', cantidad: 6, separado: false, recorrido: ['R1', 'R2'] },
+      { circuito_id: 'CIR-CX-0001-CB-002', funcion: 'potencia', cable_id: 'PRY-SVALIO-CU-1x35', cantidad: 1, separado: false, recorrido: ['R1', 'R2'] },
+      { circuito_id: 'CIR-CX-0001-CB-003', funcion: 'potencia', cable_id: 'PRY-SVALIO-CU-1x95', cantidad: 1, separado: false, recorrido: ['R1', 'R2'] },
+    ]);
+    expect(m.noEnviados).toEqual([expect.objectContaining({ id: 'CIR-CX-0001-CB-004', tendidoId: 'CB-004', conexionId: 'CX-0001', potenciaSinCable: true, piezas: ['R1', 'R2'] })]);
+    expect(m.noEnviados[0].motivo).toMatch(/5 conductores/);
+    // El PE del trazado (el del motor) sigue saliendo de su sección: viaja aparte, una sola vez.
+    const salida = toMotorEntrada(r.entrada, { elements, idsCables: IDS, excel: { catalog: cat2, cables: CABLES } });
+    expect((salida.circuitos as Array<{ cable_id: string }>).filter((c) => c.cable_id === 'PRY-SASTFLEX-CU-1x16')).toEqual([]);
+    expect((salida.pe as { cable_id: string }).cable_id).toBe('PRY-SASTFLEX-CU-1x16');
+  });
+
+  it('elegir aluminio en un tendido cambia lo que viaja; dejarlo sin cable lo saca y lo lista', () => {
+    const { t, elements } = proyecto();
+    const r = trazarConexion(t, elements, estadoDe(t, elements, 'CX-0001', cat2));
+    if (!r.ok) throw new Error(r.motivo);
+    const e2 = elegirCable(elegirCable(r.entrada, 'CB-001', 'PRY-SVALIO-AL-1x150'), 'CB-002', null);
+    const m = circuitosParaMotor(e2, elements, IDS, { catalog: cat2, cables: CABLES });
+    expect(m.enviados.map((c) => [c.circuito_id, c.cable_id])).toEqual([['CIR-CX-0001-CB-001', 'PRY-SVALIO-AL-1x150'], ['CIR-CX-0001-CB-003', 'PRY-SVALIO-CU-1x95']]);
+    expect(m.noEnviados.filter((n) => n.potenciaSinCable).map((n) => n.tendidoId)).toEqual(['CB-002', 'CB-004']);
+  });
+
+  it('el circuito de una conexión de CONTROL no viaja (D-11), con sus tendidos medidos igual', () => {
+    const { t, elements } = proyecto();
+    const b = crearBajada(t, productos, elements, { equipo: 'EQ-0020', tronco: 'R2', desde_boca: 'P2', distancia_mm: 600, lado: 'izquierda' });
+    if (!b.ok) throw new Error(b.motivo);
+    const els = elements.map((e) => (e.id === 'EQ-0020' ? { ...e, transform: { ...(e as { transform: object }).transform } } : e)) as typeof elements;
+    const r = trazarConexion(b.entrada, els, estadoDe(b.entrada, els, 'CX-0004', cat2));
+    if (!r.ok) throw new Error(r.motivo);
+    const m = circuitosParaMotor(r.entrada, els, IDS, { catalog: cat2, cables: CABLES });
+    expect(m.enviados).toEqual([]);
+    expect(m.noEnviados[0].motivo).toMatch(/D-11/);
   });
 });

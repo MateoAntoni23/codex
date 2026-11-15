@@ -26,7 +26,7 @@ export function trazarConexion(entrada: TrayInput, elements: readonly EquipmentE
     r = guardarCircuito(entrada, elements, nombre, { equipo: eq.origen }, { equipo: eq.destino }, undefined, undefined, id);
   }
   if (!r.ok) return r;
-  return { ok: true, entrada: vincular(r.entrada, id, e.conexion), circuitoId: id };
+  return { ok: true, entrada: vincular(r.entrada, id, e.conexion, e.tendidos), circuitoId: id };
 }
 
 export function retrazarConexion(entrada: TrayInput, elements: readonly EquipmentElement[], e: EstadoConexion):
@@ -39,7 +39,7 @@ export function retrazarConexion(entrada: TrayInput, elements: readonly Equipmen
   if (!ids[0] || !ids[1]) return { ok: false, motivo: 'falta resolver un equipo de la conexión' };
   const r = recalcularCircuito(entrada, elements, e.circuito.id, { origen: { equipo: ids[0] }, destino: { equipo: ids[1] } });
   if (!r.ok) return r;
-  return { ok: true, entrada: vincular(r.entrada, e.circuito.id, e.conexion) };
+  return { ok: true, entrada: vincular(r.entrada, e.circuito.id, e.conexion, e.tendidos) };
 }
 
 /**
