@@ -136,3 +136,7 @@ tabla sigue sin estar declarada.
   vuelve a medir el radio.
 - El texto del rechazo de N = 2 sugiere la CAS «para un giro horizontal menor», como pidió el operador. Las
   eslabonadas son curvas verticales: para un giro VERTICAL menor de 22,5° no hay alternativa en el catálogo.
+
+## Verify de cierre (2026-11-15, sobre `b4fd29a`)
+Por pasos y en primer plano: tipos OK; vitest 1883/1883 (forks, 2 procesos); motor 190 OK (2 omitidas);
+Playwright en 8 tandas **130/130**, 0 fallos, 0 inestables.
