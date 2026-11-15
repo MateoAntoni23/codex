@@ -42,6 +42,7 @@ export function RecorridoResaltado({ entrada }: { entrada: TrayInput }) {
   if (!c || !pts || pts.length < 2) return null;
   return (
     <group
+      key={id /* uno por circuito: al cambiar de circuito se rearma, con sus datos */}
       name="recorrido-resaltado"
       onUpdate={(g) => { g.userData.codex = { kind: 'recorrido-resaltado', circuito: id, piezas: c.cruces.map((x) => x.pieza), puntosMm: pts }; }}
     >

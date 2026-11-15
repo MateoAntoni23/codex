@@ -50,7 +50,7 @@ export function porBandeja(entrada: TrayInput, elements: readonly EquipmentEleme
       const cable = k.cable_id ? cables.find((x) => x.cable_id === k.cable_id) ?? null : null;
       const grupo: Grupo | null = k.funcion ? (k.funcion === 'potencia' ? 'potencia' : 'resto') : null;
       const motivo = !vigente ? 'circuito desactualizado: recalculalo'
-        : !cable ? `sin cable de catálogo (${k.motivoSinCable ?? 'sin cable'}): no hay diámetro`
+        : !cable ? `${k.motivoSinCable?.startsWith('sin cable de catálogo') ? k.motivoSinCable : `sin cable de catálogo (${k.motivoSinCable ?? 'sin cable'})`} — no hay diámetro`
         : !grupo ? 'sin función' : !k.cantidad ? 'sin cantidad' : null;
       const suma = motivo ? null : cable!.diametro_exterior_mm * k.cantidad!;
       if (suma === null) fuera++;

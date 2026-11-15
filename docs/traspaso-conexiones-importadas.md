@@ -246,3 +246,21 @@ el comparado, cada uno con su origen; estado aviso / falta un dato / cierra / no
 **E2E** `contrasteIngenieria` (6, una por punto). Usa el Excel de ejemplo con dos cambios declarados en la prueba (Iz de
 CB-001 = 300 A, sin longitud de ingeniería en CX-0005) para tener un aviso de corriente y un faltante entre lo trazado;
 el último recto mide 7000 mm para que CX-0001 supere sus 10 m.
+
+### Etapa 4 — qué pasa por cada bandeja (2026-11-15)
+- **Inspector de la pieza** (`PorEstaBandeja`, en `PieceCard`): los circuitos guardados que la atraviesan y lo que
+  lleva cada uno —los tendidos si está ligado al Excel, su cable si es a mano—, con función, cable, cantidad y
+  diámetro; y la Σ de diámetros por grupo (potencia / mando, señal y comunicación: los mismos grupos de la
+  segregación). Cálculo de la app, marcado como tal: Σ diámetro exterior de catálogo × cantidad. Fuera de la suma,
+  con el motivo: lo que no tiene cable de catálogo (no hay diámetro; p. ej. los 3F+N+PE) y los circuitos
+  desactualizados. El PE del trazado no es un circuito: lo cuenta el motor. Lógica en `porBandeja.ts`, sobre
+  `cablesDelCircuito` (la misma lectura que el motor y la segregación).
+- **Saltar al circuito:** «Ver circuito» lo resalta y abre su fila en Resultados › Circuitos (marcada con contorno).
+  En la tabla, «Ver en la escena» / «Quitar resaltado».
+- **Resaltado en la escena** (`RecorridoResaltado`): un trazo aparte (`recorrido-resaltado`, cian, por encima de las
+  bandejas) que sigue el recorrido guardado: bajada de origen → bocas de cada pieza cruzada en orden → bajada de
+  destino. No cambia color, emisivo ni opacidad de ninguna malla (la E2E lo verifica sobre el estado real de la
+  escena): el color de las piezas sigue diciendo su tipo. Camino no tomado: contorno (Edges) en cada pieza cruzada,
+  que exigía tocar cada dibujante de pieza; dentro de una curva el trazo une sus bocas en recta.
+- **E2E** `porBandeja` (3). El ejemplo no trae mando con cable de catálogo (todo el control es de 1 mm²): el grupo
+  «mando» se prueba con un circuito a mano de 2 × Sintenax 2×1,5.
