@@ -140,24 +140,31 @@ describe('longitudes de eje guardadas al colocar — catálogo completo', () => 
     expect(linea.longitud_mm).toBeCloseTo(227.588, 3);
   });
 
-  it('curva eslabonada (EPS, CUS): el polígono de N−1 cuerdas sobre radio = ancho, entre la cuerda directa y el arco', () => {
+  it('curva eslabonada (EPS, CUS): el polígono de N−1 cuerdas sobre el radio de EJE (radio interior del producto + ala/2), entre la cuerda directa y el arco', () => {
     let piezas = 0;
+    let sinRadio = 0;
     for (const p of snapshot.PRODUCTOS.filter((x) => x.tipo_pieza === 'curva vertical articulada')) {
       const r = colocada(p);
-      expect(r, p.producto_id).not.toBeNull();
-      if (!r) continue;
+      if (!r) {
+        // CUS G sin Z equivalente (chapa 2,1 o ala 150): sin radio, no se coloca.
+        sinRadio++;
+        expect(String(p.sku), p.producto_id).toMatch(/^CUS-.*-G$/);
+        continue;
+      }
       piezas++;
       expect(PATRONES_CURVA_ESLABONADA.has(r.def.patron), p.producto_id).toBe(true);
       const g = r.pieza.colocacion.longitudes_eje![claveTramo('P1', 'P2')];
       expect(g.regla).toBe('poligono_eslabones');
-      const R = p.ancho_nominal_mm!;
+      // Radio interior por producto (gráfico, 22,5° por articulación): EPS 260, CUS 294; eje + ala/2.
+      const ala = (p as Record<string, unknown>).ala_nominal_mm as number;
+      const R = (String(p.sku).startsWith('EPS-') ? 260 : 294) + ala / 2;
       // 90° por defecto: 5 eslabones, 4 cuerdas de 22,5°.
       expect(g.mm).toBeCloseTo(4 * 2 * R * Math.sin((11.25 * Math.PI) / 180), 9);
       expect(g.mm).toBeGreaterThan(R * Math.SQRT2);
       expect(g.mm).toBeLessThan((R * Math.PI) / 2);
       expect(r.pieza.longitud_eje_mm).toBe(g.mm);
     }
-    expect(piezas).toBe(47); // EPS 7 + CUS 40
+    expect([piezas, sinRadio]).toEqual([31, 16]); // EPS 7 + CUS Z 12 + CUS G con Z equivalente 12; 16 G sin radio
   });
 
   it('familias sin regla: sin longitud y con motivo (las T, X y curvas verticales sin modelo no tienen definición)', () => {

@@ -118,6 +118,8 @@ export interface MasterBaseParams {
    * el sentido real se elige al colocar.
    */
   readonly sentido_vertical?: 1 | -1;
+  /** Curvas eslabonadas: radio interior del modelo de referencia (regla del operador, 2026-11-15). */
+  readonly radio_interior_mm?: number;
 }
 
 export interface MasterSource {
@@ -291,14 +293,14 @@ const ESLABONADA_CLOSURE = {
   continuity: {
     status: 'validated',
     regressionSpecs: [ESLABONADA_SPEC, ESLABONADA_E2E],
-    limitations: ['Bocas P1/P2 en el marco de la CUPS; la de salida es la de entrada girada θ alrededor del centro (radio = ancho). Uniones B-3 con el ala del catálogo.'],
+    limitations: ['Bocas P1/P2 en el marco de la CUPS; la de salida es la de entrada girada θ alrededor del centro, a radio de eje = radio interior del producto + ala/2. Uniones B-3 con el ala del catálogo.'],
   },
   fidelity: {
     status: 'pending',
     regressionSpecs: [],
     limitations: [
       'Esquemática: banda del ancho de la bandeja sobre el polígono de N−1 cuerdas; los eslabones no se modelan uno por uno.',
-      'Contradice al catálogo (anotado): el catálogo no declara ángulo ni rango y trae un radio aproximado por cantidad de eslabones distinto del de la regla (radio = ancho).',
+      'El catálogo no declara ángulo ni la referencia del radio de su gráfico; el radio se toma al interior por la convención de las curvas planas de la familia (inferencia, no dato).',
     ],
   },
   variants: {
@@ -756,7 +758,7 @@ const MASTER_PERFORADA: readonly MasterModel[] = [
     source: ESLABONADA_SOURCE,
     recipeKey: 'curva_eslabonada',
     // Ángulo de referencia = el de por defecto del operador (90°); cada instancia guarda el suyo.
-    baseParams: { ancho_mm: 300, ala_mm: 50, angulo_deg: 90, sentido_vertical: -1 },
+    baseParams: { ancho_mm: 300, ala_mm: 50, angulo_deg: 90, sentido_vertical: -1, radio_interior_mm: 260 },
     canonicalRotationZDeg: 0,
     catalogMatch: {
       familiaIds: PERFORADA_FAMILIAS,
@@ -772,7 +774,7 @@ const MASTER_PERFORADA: readonly MasterModel[] = [
       kind: 'ala-independent',
       provenance: 'estimated',
       varies: ['ancho', 'angulo'],
-      rationale: 'Regla declarada por el operador (2026-11-13): radio = ancho, 22,5° por articulación, N = techo(θ/22,5°)+1, eje = polígono de N−1 cuerdas. Sin STEP. El catálogo no declara ángulo; su gráfico de radio aproximado por eslabones (3→150, 4→200, 5→260 mm…) no coincide con radio = ancho.',
+      rationale: 'Regla del operador (2026-11-15) respaldada por el catálogo: radio interior 260 mm (gráfico EPS, fila de 5 eslabones = 22,5° por articulación; no depende del ancho ni de la cantidad de eslabones), eje = radio + ala/2, N = techo(θ/22,5°)+1 sólo para el cómputo, eje = polígono de N−1 cuerdas. Sin STEP. El catálogo no declara ángulo.',
     },
     declaredVariantSkus: ['EPS-050-Z', 'EPS-100-Z', 'EPS-150-Z', 'EPS-200-Z', 'EPS-300-Z', 'EPS-450-Z', 'EPS-600-Z'],
     closure: ESLABONADA_CLOSURE,
@@ -967,7 +969,7 @@ const MASTER_ESCALERA: readonly MasterModel[] = [
     pieceKind: 'curva_vertical',
     source: ESLABONADA_SOURCE,
     recipeKey: 'escalera:curva_eslabonada',
-    baseParams: { ancho_mm: 300, ala_mm: 65, angulo_deg: 90, sentido_vertical: -1 },
+    baseParams: { ancho_mm: 300, ala_mm: 65, angulo_deg: 90, sentido_vertical: -1, radio_interior_mm: 294 },
     canonicalRotationZDeg: 0,
     catalogMatch: {
       familiaIds: ESCALERA_FAMILIAS,
@@ -983,7 +985,7 @@ const MASTER_ESCALERA: readonly MasterModel[] = [
       kind: 'ala-independent',
       provenance: 'estimated',
       varies: ['ancho', 'ala', 'angulo'],
-      rationale: 'Regla declarada por el operador (2026-11-13): radio = ancho, 22,5° por articulación, N = techo(θ/22,5°)+1, eje = polígono de N−1 cuerdas; cada código CUS trae 5 eslabones. Sin STEP. El catálogo no declara ángulo; las CUS Z traen radio_mm = 294 (gráfico aproximado para 5 eslabones, referencia no especificada), distinto de radio = ancho. No hay CUS de 50 ni 100 (sólo la perforada).',
+      rationale: 'Regla del operador (2026-11-15) respaldada por el catálogo: radio interior 294 mm (gráfico CUS línea Z, fila de 5 eslabones = 22,5° por articulación; es el armado que se vende: cada código CUS trae 5 eslabones; coincide con radio_mm = 294 de las CUS Z), eje = radio + ala/2, N = techo(θ/22,5°)+1 sólo para el cómputo, eje = polígono de N−1 cuerdas. CUS G: el radio de la Z de igual ancho, ala y espesor (mismo eslabón, otro acabado; ver la procedencia de cada pieza); si no hay una Z con esa geometría (chapa 2,1 o ala 150), sin definición. Sin STEP. No hay CUS de 50 ni 100 (sólo la perforada).',
     },
     declaredVariantSkus: [],
     closure: ESLABONADA_CLOSURE,

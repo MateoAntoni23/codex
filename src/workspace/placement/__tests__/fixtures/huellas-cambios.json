@@ -1224,238 +1224,238 @@
     },
     "SAM_CUS-150-5-065-14-G": {
       "antes": "def-1ec73b81a184fa",
-      "despues": "def-11de01dca2edd2",
-      "motivo": "Curva eslabonada (2026-11-13): la CUS deja el perfil rígido de la CUPS (\"equivalencia autorizada\" retirada) y pasa a la regla del operador — radio = ancho, 22,5° por articulación, polígono de cuerdas, bocas P1/P2 con el ala del catálogo, ángulo por instancia (90° por defecto). Las CUS ya colocadas quedan desactualizadas (A-6)."
+      "despues": "(sin modelo)",
+      "motivo": "2026-11-15: CUS G sin una CUS Z de igual ancho, ala y espesor (chapa 2,1 o ala 150): el catálogo no publica su radio y no hay pieza equivalente de la que tomarlo; queda sin definición."
     },
     "SAM_CUS-150-5-065-18-G": {
       "antes": "def-1ec73b81a184fa",
-      "despues": "def-11de01dca2edd2",
-      "motivo": "Curva eslabonada (2026-11-13): la CUS deja el perfil rígido de la CUPS (\"equivalencia autorizada\" retirada) y pasa a la regla del operador — radio = ancho, 22,5° por articulación, polígono de cuerdas, bocas P1/P2 con el ala del catálogo, ángulo por instancia (90° por defecto). Las CUS ya colocadas quedan desactualizadas (A-6)."
+      "despues": "def-102de7a3ae635c",
+      "motivo": "2026-11-15: CUS G con una CUS Z de igual ancho, ala y espesor: toma su radio (equivalencia por acabado: mismo eslabón, otro baño). Regla de radio de las curvas eslabonadas (operador, respaldada por el catálogo): radio interior 294 mm (antes radio = ancho), al interior; eje = radio + ala/2; cambia la longitud de eje."
     },
     "SAM_CUS-150-5-065-18-Z": {
       "antes": "def-1ec73b81a184fa",
-      "despues": "def-11de01dca2edd2",
-      "motivo": "Curva eslabonada (2026-11-13): la CUS deja el perfil rígido de la CUPS (\"equivalencia autorizada\" retirada) y pasa a la regla del operador — radio = ancho, 22,5° por articulación, polígono de cuerdas, bocas P1/P2 con el ala del catálogo, ángulo por instancia (90° por defecto). Las CUS ya colocadas quedan desactualizadas (A-6)."
+      "despues": "def-102de7a3ae635c",
+      "motivo": "2026-11-15: regla de radio de las curvas eslabonadas (operador, respaldada por el catálogo): radio interior por producto del gráfico para 22,5° por articulación (EPS 260 mm, CUS 294 mm; antes radio = ancho), al interior; eje = radio + ala/2; cambia la longitud de eje."
     },
     "SAM_CUS-150-5-090-14-G": {
       "antes": "def-17c7663c9f8ff8",
-      "despues": "def-06dda8108bcd74",
-      "motivo": "Curva eslabonada (2026-11-13): la CUS deja el perfil rígido de la CUPS (\"equivalencia autorizada\" retirada) y pasa a la regla del operador — radio = ancho, 22,5° por articulación, polígono de cuerdas, bocas P1/P2 con el ala del catálogo, ángulo por instancia (90° por defecto). Las CUS ya colocadas quedan desactualizadas (A-6)."
+      "despues": "(sin modelo)",
+      "motivo": "2026-11-15: CUS G sin una CUS Z de igual ancho, ala y espesor (chapa 2,1 o ala 150): el catálogo no publica su radio y no hay pieza equivalente de la que tomarlo; queda sin definición."
     },
     "SAM_CUS-150-5-090-18-G": {
       "antes": "def-17c7663c9f8ff8",
-      "despues": "def-06dda8108bcd74",
-      "motivo": "Curva eslabonada (2026-11-13): la CUS deja el perfil rígido de la CUPS (\"equivalencia autorizada\" retirada) y pasa a la regla del operador — radio = ancho, 22,5° por articulación, polígono de cuerdas, bocas P1/P2 con el ala del catálogo, ángulo por instancia (90° por defecto). Las CUS ya colocadas quedan desactualizadas (A-6)."
+      "despues": "def-04bd235587c7b4",
+      "motivo": "2026-11-15: CUS G con una CUS Z de igual ancho, ala y espesor: toma su radio (equivalencia por acabado: mismo eslabón, otro baño). Regla de radio de las curvas eslabonadas (operador, respaldada por el catálogo): radio interior 294 mm (antes radio = ancho), al interior; eje = radio + ala/2; cambia la longitud de eje."
     },
     "SAM_CUS-150-5-090-18-Z": {
       "antes": "def-17c7663c9f8ff8",
-      "despues": "def-06dda8108bcd74",
-      "motivo": "Curva eslabonada (2026-11-13): la CUS deja el perfil rígido de la CUPS (\"equivalencia autorizada\" retirada) y pasa a la regla del operador — radio = ancho, 22,5° por articulación, polígono de cuerdas, bocas P1/P2 con el ala del catálogo, ángulo por instancia (90° por defecto). Las CUS ya colocadas quedan desactualizadas (A-6)."
+      "despues": "def-04bd235587c7b4",
+      "motivo": "2026-11-15: regla de radio de las curvas eslabonadas (operador, respaldada por el catálogo): radio interior por producto del gráfico para 22,5° por articulación (EPS 260 mm, CUS 294 mm; antes radio = ancho), al interior; eje = radio + ala/2; cambia la longitud de eje."
     },
     "SAM_CUS-150-5-115-14-G": {
       "antes": "def-0c2b98ec925663",
-      "despues": "def-012f2c1a8c930d",
-      "motivo": "Curva eslabonada (2026-11-13): la CUS deja el perfil rígido de la CUPS (\"equivalencia autorizada\" retirada) y pasa a la regla del operador — radio = ancho, 22,5° por articulación, polígono de cuerdas, bocas P1/P2 con el ala del catálogo, ángulo por instancia (90° por defecto). Las CUS ya colocadas quedan desactualizadas (A-6)."
+      "despues": "(sin modelo)",
+      "motivo": "2026-11-15: CUS G sin una CUS Z de igual ancho, ala y espesor (chapa 2,1 o ala 150): el catálogo no publica su radio y no hay pieza equivalente de la que tomarlo; queda sin definición."
     },
     "SAM_CUS-150-5-115-18-G": {
       "antes": "def-0c2b98ec925663",
-      "despues": "def-012f2c1a8c930d",
-      "motivo": "Curva eslabonada (2026-11-13): la CUS deja el perfil rígido de la CUPS (\"equivalencia autorizada\" retirada) y pasa a la regla del operador — radio = ancho, 22,5° por articulación, polígono de cuerdas, bocas P1/P2 con el ala del catálogo, ángulo por instancia (90° por defecto). Las CUS ya colocadas quedan desactualizadas (A-6)."
+      "despues": "def-15d0e4283573bd",
+      "motivo": "2026-11-15: CUS G con una CUS Z de igual ancho, ala y espesor: toma su radio (equivalencia por acabado: mismo eslabón, otro baño). Regla de radio de las curvas eslabonadas (operador, respaldada por el catálogo): radio interior 294 mm (antes radio = ancho), al interior; eje = radio + ala/2; cambia la longitud de eje."
     },
     "SAM_CUS-150-5-115-18-Z": {
       "antes": "def-0c2b98ec925663",
-      "despues": "def-012f2c1a8c930d",
-      "motivo": "Curva eslabonada (2026-11-13): la CUS deja el perfil rígido de la CUPS (\"equivalencia autorizada\" retirada) y pasa a la regla del operador — radio = ancho, 22,5° por articulación, polígono de cuerdas, bocas P1/P2 con el ala del catálogo, ángulo por instancia (90° por defecto). Las CUS ya colocadas quedan desactualizadas (A-6)."
+      "despues": "def-15d0e4283573bd",
+      "motivo": "2026-11-15: regla de radio de las curvas eslabonadas (operador, respaldada por el catálogo): radio interior por producto del gráfico para 22,5° por articulación (EPS 260 mm, CUS 294 mm; antes radio = ancho), al interior; eje = radio + ala/2; cambia la longitud de eje."
     },
     "SAM_CUS-150-5-150-14-G": {
       "antes": "def-04034de0ef95ed",
-      "despues": "def-00bd86b9337404",
-      "motivo": "Curva eslabonada (2026-11-13): la CUS deja el perfil rígido de la CUPS (\"equivalencia autorizada\" retirada) y pasa a la regla del operador — radio = ancho, 22,5° por articulación, polígono de cuerdas, bocas P1/P2 con el ala del catálogo, ángulo por instancia (90° por defecto). Las CUS ya colocadas quedan desactualizadas (A-6)."
+      "despues": "(sin modelo)",
+      "motivo": "2026-11-15: CUS G sin una CUS Z de igual ancho, ala y espesor (chapa 2,1 o ala 150): el catálogo no publica su radio y no hay pieza equivalente de la que tomarlo; queda sin definición."
     },
     "SAM_CUS-300-5-065-14-G": {
       "antes": "def-08d783c8be28e6",
-      "despues": "def-15623c87e7478a",
-      "motivo": "Curva eslabonada (2026-11-13): la CUS deja el perfil rígido de la CUPS (\"equivalencia autorizada\" retirada) y pasa a la regla del operador — radio = ancho, 22,5° por articulación, polígono de cuerdas, bocas P1/P2 con el ala del catálogo, ángulo por instancia (90° por defecto). Las CUS ya colocadas quedan desactualizadas (A-6)."
+      "despues": "(sin modelo)",
+      "motivo": "2026-11-15: CUS G sin una CUS Z de igual ancho, ala y espesor (chapa 2,1 o ala 150): el catálogo no publica su radio y no hay pieza equivalente de la que tomarlo; queda sin definición."
     },
     "SAM_CUS-300-5-065-18-G": {
       "antes": "def-08d783c8be28e6",
-      "despues": "def-15623c87e7478a",
-      "motivo": "Curva eslabonada (2026-11-13): la CUS deja el perfil rígido de la CUPS (\"equivalencia autorizada\" retirada) y pasa a la regla del operador — radio = ancho, 22,5° por articulación, polígono de cuerdas, bocas P1/P2 con el ala del catálogo, ángulo por instancia (90° por defecto). Las CUS ya colocadas quedan desactualizadas (A-6)."
+      "despues": "def-0bbb542a9154a0",
+      "motivo": "2026-11-15: CUS G con una CUS Z de igual ancho, ala y espesor: toma su radio (equivalencia por acabado: mismo eslabón, otro baño). Regla de radio de las curvas eslabonadas (operador, respaldada por el catálogo): radio interior 294 mm (antes radio = ancho), al interior; eje = radio + ala/2; cambia la longitud de eje."
     },
     "SAM_CUS-300-5-065-18-Z": {
       "antes": "def-08d783c8be28e6",
-      "despues": "def-15623c87e7478a",
-      "motivo": "Curva eslabonada (2026-11-13): la CUS deja el perfil rígido de la CUPS (\"equivalencia autorizada\" retirada) y pasa a la regla del operador — radio = ancho, 22,5° por articulación, polígono de cuerdas, bocas P1/P2 con el ala del catálogo, ángulo por instancia (90° por defecto). Las CUS ya colocadas quedan desactualizadas (A-6)."
+      "despues": "def-0bbb542a9154a0",
+      "motivo": "2026-11-15: regla de radio de las curvas eslabonadas (operador, respaldada por el catálogo): radio interior por producto del gráfico para 22,5° por articulación (EPS 260 mm, CUS 294 mm; antes radio = ancho), al interior; eje = radio + ala/2; cambia la longitud de eje."
     },
     "SAM_CUS-300-5-090-14-G": {
       "antes": "def-161a2230851c66",
-      "despues": "def-1724143fcd3152",
-      "motivo": "Curva eslabonada (2026-11-13): la CUS deja el perfil rígido de la CUPS (\"equivalencia autorizada\" retirada) y pasa a la regla del operador — radio = ancho, 22,5° por articulación, polígono de cuerdas, bocas P1/P2 con el ala del catálogo, ángulo por instancia (90° por defecto). Las CUS ya colocadas quedan desactualizadas (A-6)."
+      "despues": "(sin modelo)",
+      "motivo": "2026-11-15: CUS G sin una CUS Z de igual ancho, ala y espesor (chapa 2,1 o ala 150): el catálogo no publica su radio y no hay pieza equivalente de la que tomarlo; queda sin definición."
     },
     "SAM_CUS-300-5-090-18-G": {
       "antes": "def-161a2230851c66",
-      "despues": "def-1724143fcd3152",
-      "motivo": "Curva eslabonada (2026-11-13): la CUS deja el perfil rígido de la CUPS (\"equivalencia autorizada\" retirada) y pasa a la regla del operador — radio = ancho, 22,5° por articulación, polígono de cuerdas, bocas P1/P2 con el ala del catálogo, ángulo por instancia (90° por defecto). Las CUS ya colocadas quedan desactualizadas (A-6)."
+      "despues": "def-12f02ef6a37d03",
+      "motivo": "2026-11-15: CUS G con una CUS Z de igual ancho, ala y espesor: toma su radio (equivalencia por acabado: mismo eslabón, otro baño). Regla de radio de las curvas eslabonadas (operador, respaldada por el catálogo): radio interior 294 mm (antes radio = ancho), al interior; eje = radio + ala/2; cambia la longitud de eje."
     },
     "SAM_CUS-300-5-090-18-Z": {
       "antes": "def-161a2230851c66",
-      "despues": "def-1724143fcd3152",
-      "motivo": "Curva eslabonada (2026-11-13): la CUS deja el perfil rígido de la CUPS (\"equivalencia autorizada\" retirada) y pasa a la regla del operador — radio = ancho, 22,5° por articulación, polígono de cuerdas, bocas P1/P2 con el ala del catálogo, ángulo por instancia (90° por defecto). Las CUS ya colocadas quedan desactualizadas (A-6)."
+      "despues": "def-12f02ef6a37d03",
+      "motivo": "2026-11-15: regla de radio de las curvas eslabonadas (operador, respaldada por el catálogo): radio interior por producto del gráfico para 22,5° por articulación (EPS 260 mm, CUS 294 mm; antes radio = ancho), al interior; eje = radio + ala/2; cambia la longitud de eje."
     },
     "SAM_CUS-300-5-115-14-G": {
       "antes": "def-16aca8a0c91123",
-      "despues": "def-0bc6a50b769632",
-      "motivo": "Curva eslabonada (2026-11-13): la CUS deja el perfil rígido de la CUPS (\"equivalencia autorizada\" retirada) y pasa a la regla del operador — radio = ancho, 22,5° por articulación, polígono de cuerdas, bocas P1/P2 con el ala del catálogo, ángulo por instancia (90° por defecto). Las CUS ya colocadas quedan desactualizadas (A-6)."
+      "despues": "(sin modelo)",
+      "motivo": "2026-11-15: CUS G sin una CUS Z de igual ancho, ala y espesor (chapa 2,1 o ala 150): el catálogo no publica su radio y no hay pieza equivalente de la que tomarlo; queda sin definición."
     },
     "SAM_CUS-300-5-115-18-G": {
       "antes": "def-16aca8a0c91123",
-      "despues": "def-0bc6a50b769632",
-      "motivo": "Curva eslabonada (2026-11-13): la CUS deja el perfil rígido de la CUPS (\"equivalencia autorizada\" retirada) y pasa a la regla del operador — radio = ancho, 22,5° por articulación, polígono de cuerdas, bocas P1/P2 con el ala del catálogo, ángulo por instancia (90° por defecto). Las CUS ya colocadas quedan desactualizadas (A-6)."
+      "despues": "def-00f1708ac2f62e",
+      "motivo": "2026-11-15: CUS G con una CUS Z de igual ancho, ala y espesor: toma su radio (equivalencia por acabado: mismo eslabón, otro baño). Regla de radio de las curvas eslabonadas (operador, respaldada por el catálogo): radio interior 294 mm (antes radio = ancho), al interior; eje = radio + ala/2; cambia la longitud de eje."
     },
     "SAM_CUS-300-5-115-18-Z": {
       "antes": "def-16aca8a0c91123",
-      "despues": "def-0bc6a50b769632",
-      "motivo": "Curva eslabonada (2026-11-13): la CUS deja el perfil rígido de la CUPS (\"equivalencia autorizada\" retirada) y pasa a la regla del operador — radio = ancho, 22,5° por articulación, polígono de cuerdas, bocas P1/P2 con el ala del catálogo, ángulo por instancia (90° por defecto). Las CUS ya colocadas quedan desactualizadas (A-6)."
+      "despues": "def-00f1708ac2f62e",
+      "motivo": "2026-11-15: regla de radio de las curvas eslabonadas (operador, respaldada por el catálogo): radio interior por producto del gráfico para 22,5° por articulación (EPS 260 mm, CUS 294 mm; antes radio = ancho), al interior; eje = radio + ala/2; cambia la longitud de eje."
     },
     "SAM_CUS-300-5-150-14-G": {
       "antes": "def-0fffa38a473400",
-      "despues": "def-0ff1ca59038d90",
-      "motivo": "Curva eslabonada (2026-11-13): la CUS deja el perfil rígido de la CUPS (\"equivalencia autorizada\" retirada) y pasa a la regla del operador — radio = ancho, 22,5° por articulación, polígono de cuerdas, bocas P1/P2 con el ala del catálogo, ángulo por instancia (90° por defecto). Las CUS ya colocadas quedan desactualizadas (A-6)."
+      "despues": "(sin modelo)",
+      "motivo": "2026-11-15: CUS G sin una CUS Z de igual ancho, ala y espesor (chapa 2,1 o ala 150): el catálogo no publica su radio y no hay pieza equivalente de la que tomarlo; queda sin definición."
     },
     "SAM_CUS-450-5-065-14-G": {
       "antes": "def-0efd5b1b141a6c",
-      "despues": "def-01c8e2828df28e",
-      "motivo": "Curva eslabonada (2026-11-13): la CUS deja el perfil rígido de la CUPS (\"equivalencia autorizada\" retirada) y pasa a la regla del operador — radio = ancho, 22,5° por articulación, polígono de cuerdas, bocas P1/P2 con el ala del catálogo, ángulo por instancia (90° por defecto). Las CUS ya colocadas quedan desactualizadas (A-6)."
+      "despues": "(sin modelo)",
+      "motivo": "2026-11-15: CUS G sin una CUS Z de igual ancho, ala y espesor (chapa 2,1 o ala 150): el catálogo no publica su radio y no hay pieza equivalente de la que tomarlo; queda sin definición."
     },
     "SAM_CUS-450-5-065-18-G": {
       "antes": "def-0efd5b1b141a6c",
-      "despues": "def-01c8e2828df28e",
-      "motivo": "Curva eslabonada (2026-11-13): la CUS deja el perfil rígido de la CUPS (\"equivalencia autorizada\" retirada) y pasa a la regla del operador — radio = ancho, 22,5° por articulación, polígono de cuerdas, bocas P1/P2 con el ala del catálogo, ángulo por instancia (90° por defecto). Las CUS ya colocadas quedan desactualizadas (A-6)."
+      "despues": "def-18b80b57b1491f",
+      "motivo": "2026-11-15: CUS G con una CUS Z de igual ancho, ala y espesor: toma su radio (equivalencia por acabado: mismo eslabón, otro baño). Regla de radio de las curvas eslabonadas (operador, respaldada por el catálogo): radio interior 294 mm (antes radio = ancho), al interior; eje = radio + ala/2; cambia la longitud de eje."
     },
     "SAM_CUS-450-5-065-18-Z": {
       "antes": "def-0efd5b1b141a6c",
-      "despues": "def-01c8e2828df28e",
-      "motivo": "Curva eslabonada (2026-11-13): la CUS deja el perfil rígido de la CUPS (\"equivalencia autorizada\" retirada) y pasa a la regla del operador — radio = ancho, 22,5° por articulación, polígono de cuerdas, bocas P1/P2 con el ala del catálogo, ángulo por instancia (90° por defecto). Las CUS ya colocadas quedan desactualizadas (A-6)."
+      "despues": "def-18b80b57b1491f",
+      "motivo": "2026-11-15: regla de radio de las curvas eslabonadas (operador, respaldada por el catálogo): radio interior por producto del gráfico para 22,5° por articulación (EPS 260 mm, CUS 294 mm; antes radio = ancho), al interior; eje = radio + ala/2; cambia la longitud de eje."
     },
     "SAM_CUS-450-5-090-14-G": {
       "antes": "def-042e872fef06a8",
-      "despues": "def-16af7130f01e2f",
-      "motivo": "Curva eslabonada (2026-11-13): la CUS deja el perfil rígido de la CUPS (\"equivalencia autorizada\" retirada) y pasa a la regla del operador — radio = ancho, 22,5° por articulación, polígono de cuerdas, bocas P1/P2 con el ala del catálogo, ángulo por instancia (90° por defecto). Las CUS ya colocadas quedan desactualizadas (A-6)."
+      "despues": "(sin modelo)",
+      "motivo": "2026-11-15: CUS G sin una CUS Z de igual ancho, ala y espesor (chapa 2,1 o ala 150): el catálogo no publica su radio y no hay pieza equivalente de la que tomarlo; queda sin definición."
     },
     "SAM_CUS-450-5-090-18-G": {
       "antes": "def-042e872fef06a8",
-      "despues": "def-16af7130f01e2f",
-      "motivo": "Curva eslabonada (2026-11-13): la CUS deja el perfil rígido de la CUPS (\"equivalencia autorizada\" retirada) y pasa a la regla del operador — radio = ancho, 22,5° por articulación, polígono de cuerdas, bocas P1/P2 con el ala del catálogo, ángulo por instancia (90° por defecto). Las CUS ya colocadas quedan desactualizadas (A-6)."
+      "despues": "def-00440a979a26db",
+      "motivo": "2026-11-15: CUS G con una CUS Z de igual ancho, ala y espesor: toma su radio (equivalencia por acabado: mismo eslabón, otro baño). Regla de radio de las curvas eslabonadas (operador, respaldada por el catálogo): radio interior 294 mm (antes radio = ancho), al interior; eje = radio + ala/2; cambia la longitud de eje."
     },
     "SAM_CUS-450-5-090-18-Z": {
       "antes": "def-042e872fef06a8",
-      "despues": "def-16af7130f01e2f",
-      "motivo": "Curva eslabonada (2026-11-13): la CUS deja el perfil rígido de la CUPS (\"equivalencia autorizada\" retirada) y pasa a la regla del operador — radio = ancho, 22,5° por articulación, polígono de cuerdas, bocas P1/P2 con el ala del catálogo, ángulo por instancia (90° por defecto). Las CUS ya colocadas quedan desactualizadas (A-6)."
+      "despues": "def-00440a979a26db",
+      "motivo": "2026-11-15: regla de radio de las curvas eslabonadas (operador, respaldada por el catálogo): radio interior por producto del gráfico para 22,5° por articulación (EPS 260 mm, CUS 294 mm; antes radio = ancho), al interior; eje = radio + ala/2; cambia la longitud de eje."
     },
     "SAM_CUS-450-5-115-14-G": {
       "antes": "def-0e3e8007124455",
-      "despues": "def-04b37a340852c6",
-      "motivo": "Curva eslabonada (2026-11-13): la CUS deja el perfil rígido de la CUPS (\"equivalencia autorizada\" retirada) y pasa a la regla del operador — radio = ancho, 22,5° por articulación, polígono de cuerdas, bocas P1/P2 con el ala del catálogo, ángulo por instancia (90° por defecto). Las CUS ya colocadas quedan desactualizadas (A-6)."
+      "despues": "(sin modelo)",
+      "motivo": "2026-11-15: CUS G sin una CUS Z de igual ancho, ala y espesor (chapa 2,1 o ala 150): el catálogo no publica su radio y no hay pieza equivalente de la que tomarlo; queda sin definición."
     },
     "SAM_CUS-450-5-115-18-G": {
       "antes": "def-0e3e8007124455",
-      "despues": "def-04b37a340852c6",
-      "motivo": "Curva eslabonada (2026-11-13): la CUS deja el perfil rígido de la CUPS (\"equivalencia autorizada\" retirada) y pasa a la regla del operador — radio = ancho, 22,5° por articulación, polígono de cuerdas, bocas P1/P2 con el ala del catálogo, ángulo por instancia (90° por defecto). Las CUS ya colocadas quedan desactualizadas (A-6)."
+      "despues": "def-0c84f0d63f0fed",
+      "motivo": "2026-11-15: CUS G con una CUS Z de igual ancho, ala y espesor: toma su radio (equivalencia por acabado: mismo eslabón, otro baño). Regla de radio de las curvas eslabonadas (operador, respaldada por el catálogo): radio interior 294 mm (antes radio = ancho), al interior; eje = radio + ala/2; cambia la longitud de eje."
     },
     "SAM_CUS-450-5-115-18-Z": {
       "antes": "def-0e3e8007124455",
-      "despues": "def-04b37a340852c6",
-      "motivo": "Curva eslabonada (2026-11-13): la CUS deja el perfil rígido de la CUPS (\"equivalencia autorizada\" retirada) y pasa a la regla del operador — radio = ancho, 22,5° por articulación, polígono de cuerdas, bocas P1/P2 con el ala del catálogo, ángulo por instancia (90° por defecto). Las CUS ya colocadas quedan desactualizadas (A-6)."
+      "despues": "def-0c84f0d63f0fed",
+      "motivo": "2026-11-15: regla de radio de las curvas eslabonadas (operador, respaldada por el catálogo): radio interior por producto del gráfico para 22,5° por articulación (EPS 260 mm, CUS 294 mm; antes radio = ancho), al interior; eje = radio + ala/2; cambia la longitud de eje."
     },
     "SAM_CUS-450-5-150-14-G": {
       "antes": "def-1b38558c43f0dd",
-      "despues": "def-0426f14bf1de99",
-      "motivo": "Curva eslabonada (2026-11-13): la CUS deja el perfil rígido de la CUPS (\"equivalencia autorizada\" retirada) y pasa a la regla del operador — radio = ancho, 22,5° por articulación, polígono de cuerdas, bocas P1/P2 con el ala del catálogo, ángulo por instancia (90° por defecto). Las CUS ya colocadas quedan desactualizadas (A-6)."
+      "despues": "(sin modelo)",
+      "motivo": "2026-11-15: CUS G sin una CUS Z de igual ancho, ala y espesor (chapa 2,1 o ala 150): el catálogo no publica su radio y no hay pieza equivalente de la que tomarlo; queda sin definición."
     },
     "SAM_CUS-600-5-065-14-G": {
       "antes": "def-08e5302e9bf832",
-      "despues": "def-1f5a9a76b9952d",
-      "motivo": "Curva eslabonada (2026-11-13): la CUS deja el perfil rígido de la CUPS (\"equivalencia autorizada\" retirada) y pasa a la regla del operador — radio = ancho, 22,5° por articulación, polígono de cuerdas, bocas P1/P2 con el ala del catálogo, ángulo por instancia (90° por defecto). Las CUS ya colocadas quedan desactualizadas (A-6)."
+      "despues": "(sin modelo)",
+      "motivo": "2026-11-15: CUS G sin una CUS Z de igual ancho, ala y espesor (chapa 2,1 o ala 150): el catálogo no publica su radio y no hay pieza equivalente de la que tomarlo; queda sin definición."
     },
     "SAM_CUS-600-5-065-18-G": {
       "antes": "def-08e5302e9bf832",
-      "despues": "def-1f5a9a76b9952d",
-      "motivo": "Curva eslabonada (2026-11-13): la CUS deja el perfil rígido de la CUPS (\"equivalencia autorizada\" retirada) y pasa a la regla del operador — radio = ancho, 22,5° por articulación, polígono de cuerdas, bocas P1/P2 con el ala del catálogo, ángulo por instancia (90° por defecto). Las CUS ya colocadas quedan desactualizadas (A-6)."
+      "despues": "def-167e78465cd31e",
+      "motivo": "2026-11-15: CUS G con una CUS Z de igual ancho, ala y espesor: toma su radio (equivalencia por acabado: mismo eslabón, otro baño). Regla de radio de las curvas eslabonadas (operador, respaldada por el catálogo): radio interior 294 mm (antes radio = ancho), al interior; eje = radio + ala/2; cambia la longitud de eje."
     },
     "SAM_CUS-600-5-065-18-Z": {
       "antes": "def-08e5302e9bf832",
-      "despues": "def-1f5a9a76b9952d",
-      "motivo": "Curva eslabonada (2026-11-13): la CUS deja el perfil rígido de la CUPS (\"equivalencia autorizada\" retirada) y pasa a la regla del operador — radio = ancho, 22,5° por articulación, polígono de cuerdas, bocas P1/P2 con el ala del catálogo, ángulo por instancia (90° por defecto). Las CUS ya colocadas quedan desactualizadas (A-6)."
+      "despues": "def-167e78465cd31e",
+      "motivo": "2026-11-15: regla de radio de las curvas eslabonadas (operador, respaldada por el catálogo): radio interior por producto del gráfico para 22,5° por articulación (EPS 260 mm, CUS 294 mm; antes radio = ancho), al interior; eje = radio + ala/2; cambia la longitud de eje."
     },
     "SAM_CUS-600-5-090-14-G": {
       "antes": "def-1709188d8804c0",
-      "despues": "def-1808d192391fa6",
-      "motivo": "Curva eslabonada (2026-11-13): la CUS deja el perfil rígido de la CUPS (\"equivalencia autorizada\" retirada) y pasa a la regla del operador — radio = ancho, 22,5° por articulación, polígono de cuerdas, bocas P1/P2 con el ala del catálogo, ángulo por instancia (90° por defecto). Las CUS ya colocadas quedan desactualizadas (A-6)."
+      "despues": "(sin modelo)",
+      "motivo": "2026-11-15: CUS G sin una CUS Z de igual ancho, ala y espesor (chapa 2,1 o ala 150): el catálogo no publica su radio y no hay pieza equivalente de la que tomarlo; queda sin definición."
     },
     "SAM_CUS-600-5-090-18-G": {
       "antes": "def-1709188d8804c0",
-      "despues": "def-1808d192391fa6",
-      "motivo": "Curva eslabonada (2026-11-13): la CUS deja el perfil rígido de la CUPS (\"equivalencia autorizada\" retirada) y pasa a la regla del operador — radio = ancho, 22,5° por articulación, polígono de cuerdas, bocas P1/P2 con el ala del catálogo, ángulo por instancia (90° por defecto). Las CUS ya colocadas quedan desactualizadas (A-6)."
+      "despues": "def-03c98cf03820ca",
+      "motivo": "2026-11-15: CUS G con una CUS Z de igual ancho, ala y espesor: toma su radio (equivalencia por acabado: mismo eslabón, otro baño). Regla de radio de las curvas eslabonadas (operador, respaldada por el catálogo): radio interior 294 mm (antes radio = ancho), al interior; eje = radio + ala/2; cambia la longitud de eje."
     },
     "SAM_CUS-600-5-090-18-Z": {
       "antes": "def-1709188d8804c0",
-      "despues": "def-1808d192391fa6",
-      "motivo": "Curva eslabonada (2026-11-13): la CUS deja el perfil rígido de la CUPS (\"equivalencia autorizada\" retirada) y pasa a la regla del operador — radio = ancho, 22,5° por articulación, polígono de cuerdas, bocas P1/P2 con el ala del catálogo, ángulo por instancia (90° por defecto). Las CUS ya colocadas quedan desactualizadas (A-6)."
+      "despues": "def-03c98cf03820ca",
+      "motivo": "2026-11-15: regla de radio de las curvas eslabonadas (operador, respaldada por el catálogo): radio interior por producto del gráfico para 22,5° por articulación (EPS 260 mm, CUS 294 mm; antes radio = ancho), al interior; eje = radio + ala/2; cambia la longitud de eje."
     },
     "SAM_CUS-600-5-115-14-G": {
       "antes": "def-1ad921191664a4",
-      "despues": "def-0c9d462a777e2d",
-      "motivo": "Curva eslabonada (2026-11-13): la CUS deja el perfil rígido de la CUPS (\"equivalencia autorizada\" retirada) y pasa a la regla del operador — radio = ancho, 22,5° por articulación, polígono de cuerdas, bocas P1/P2 con el ala del catálogo, ángulo por instancia (90° por defecto). Las CUS ya colocadas quedan desactualizadas (A-6)."
+      "despues": "(sin modelo)",
+      "motivo": "2026-11-15: CUS G sin una CUS Z de igual ancho, ala y espesor (chapa 2,1 o ala 150): el catálogo no publica su radio y no hay pieza equivalente de la que tomarlo; queda sin definición."
     },
     "SAM_CUS-600-5-115-18-G": {
       "antes": "def-1ad921191664a4",
-      "despues": "def-0c9d462a777e2d",
-      "motivo": "Curva eslabonada (2026-11-13): la CUS deja el perfil rígido de la CUPS (\"equivalencia autorizada\" retirada) y pasa a la regla del operador — radio = ancho, 22,5° por articulación, polígono de cuerdas, bocas P1/P2 con el ala del catálogo, ángulo por instancia (90° por defecto). Las CUS ya colocadas quedan desactualizadas (A-6)."
+      "despues": "def-0740392338f0e9",
+      "motivo": "2026-11-15: CUS G con una CUS Z de igual ancho, ala y espesor: toma su radio (equivalencia por acabado: mismo eslabón, otro baño). Regla de radio de las curvas eslabonadas (operador, respaldada por el catálogo): radio interior 294 mm (antes radio = ancho), al interior; eje = radio + ala/2; cambia la longitud de eje."
     },
     "SAM_CUS-600-5-115-18-Z": {
       "antes": "def-1ad921191664a4",
-      "despues": "def-0c9d462a777e2d",
-      "motivo": "Curva eslabonada (2026-11-13): la CUS deja el perfil rígido de la CUPS (\"equivalencia autorizada\" retirada) y pasa a la regla del operador — radio = ancho, 22,5° por articulación, polígono de cuerdas, bocas P1/P2 con el ala del catálogo, ángulo por instancia (90° por defecto). Las CUS ya colocadas quedan desactualizadas (A-6)."
+      "despues": "def-0740392338f0e9",
+      "motivo": "2026-11-15: regla de radio de las curvas eslabonadas (operador, respaldada por el catálogo): radio interior por producto del gráfico para 22,5° por articulación (EPS 260 mm, CUS 294 mm; antes radio = ancho), al interior; eje = radio + ala/2; cambia la longitud de eje."
     },
     "SAM_CUS-600-5-150-14-G": {
       "antes": "def-0e6569e5a9adde",
-      "despues": "def-12cdf959d2fd24",
-      "motivo": "Curva eslabonada (2026-11-13): la CUS deja el perfil rígido de la CUPS (\"equivalencia autorizada\" retirada) y pasa a la regla del operador — radio = ancho, 22,5° por articulación, polígono de cuerdas, bocas P1/P2 con el ala del catálogo, ángulo por instancia (90° por defecto). Las CUS ya colocadas quedan desactualizadas (A-6)."
+      "despues": "(sin modelo)",
+      "motivo": "2026-11-15: CUS G sin una CUS Z de igual ancho, ala y espesor (chapa 2,1 o ala 150): el catálogo no publica su radio y no hay pieza equivalente de la que tomarlo; queda sin definición."
     },
     "SAM_EPS-050-Z": {
       "antes": "(sin modelo)",
-      "despues": "def-1d95551f680c4b",
-      "motivo": "Curva eslabonada (2026-11-13): la EPS pasa a tener modelo (regla declarada por el operador; antes \"ángulo ajustable\" sin definición)."
+      "despues": "def-0f031286e96bf8",
+      "motivo": "2026-11-15: regla de radio de las curvas eslabonadas (operador, respaldada por el catálogo): radio interior por producto del gráfico para 22,5° por articulación (EPS 260 mm, CUS 294 mm; antes radio = ancho), al interior; eje = radio + ala/2; cambia la longitud de eje."
     },
     "SAM_EPS-100-Z": {
       "antes": "(sin modelo)",
-      "despues": "def-08af980d75b4eb",
-      "motivo": "Curva eslabonada (2026-11-13): la EPS pasa a tener modelo (regla declarada por el operador; antes \"ángulo ajustable\" sin definición)."
+      "despues": "def-093741c303c681",
+      "motivo": "2026-11-15: regla de radio de las curvas eslabonadas (operador, respaldada por el catálogo): radio interior por producto del gráfico para 22,5° por articulación (EPS 260 mm, CUS 294 mm; antes radio = ancho), al interior; eje = radio + ala/2; cambia la longitud de eje."
     },
     "SAM_EPS-150-Z": {
       "antes": "(sin modelo)",
-      "despues": "def-0fd58ab876fb9c",
-      "motivo": "Curva eslabonada (2026-11-13): la EPS pasa a tener modelo (regla declarada por el operador; antes \"ángulo ajustable\" sin definición)."
+      "despues": "def-0f8ee440d87667",
+      "motivo": "2026-11-15: regla de radio de las curvas eslabonadas (operador, respaldada por el catálogo): radio interior por producto del gráfico para 22,5° por articulación (EPS 260 mm, CUS 294 mm; antes radio = ancho), al interior; eje = radio + ala/2; cambia la longitud de eje."
     },
     "SAM_EPS-200-Z": {
       "antes": "(sin modelo)",
-      "despues": "def-1b6763f82bd837",
-      "motivo": "Curva eslabonada (2026-11-13): la EPS pasa a tener modelo (regla declarada por el operador; antes \"ángulo ajustable\" sin definición)."
+      "despues": "def-0a061db1433ba5",
+      "motivo": "2026-11-15: regla de radio de las curvas eslabonadas (operador, respaldada por el catálogo): radio interior por producto del gráfico para 22,5° por articulación (EPS 260 mm, CUS 294 mm; antes radio = ancho), al interior; eje = radio + ala/2; cambia la longitud de eje."
     },
     "SAM_EPS-300-Z": {
       "antes": "(sin modelo)",
-      "despues": "def-1de973e192ec6d",
-      "motivo": "Curva eslabonada (2026-11-13): la EPS pasa a tener modelo (regla declarada por el operador; antes \"ángulo ajustable\" sin definición)."
+      "despues": "def-19deb60b37b0a2",
+      "motivo": "2026-11-15: regla de radio de las curvas eslabonadas (operador, respaldada por el catálogo): radio interior por producto del gráfico para 22,5° por articulación (EPS 260 mm, CUS 294 mm; antes radio = ancho), al interior; eje = radio + ala/2; cambia la longitud de eje."
     },
     "SAM_EPS-450-Z": {
       "antes": "(sin modelo)",
-      "despues": "def-1d0f83cc59eb15",
-      "motivo": "Curva eslabonada (2026-11-13): la EPS pasa a tener modelo (regla declarada por el operador; antes \"ángulo ajustable\" sin definición)."
+      "despues": "def-07a6d39a610e79",
+      "motivo": "2026-11-15: regla de radio de las curvas eslabonadas (operador, respaldada por el catálogo): radio interior por producto del gráfico para 22,5° por articulación (EPS 260 mm, CUS 294 mm; antes radio = ancho), al interior; eje = radio + ala/2; cambia la longitud de eje."
     },
     "SAM_EPS-600-Z": {
       "antes": "(sin modelo)",
-      "despues": "def-029d370a246956",
-      "motivo": "Curva eslabonada (2026-11-13): la EPS pasa a tener modelo (regla declarada por el operador; antes \"ángulo ajustable\" sin definición)."
+      "despues": "def-180bf9236ec5b5",
+      "motivo": "2026-11-15: regla de radio de las curvas eslabonadas (operador, respaldada por el catálogo): radio interior por producto del gráfico para 22,5° por articulación (EPS 260 mm, CUS 294 mm; antes radio = ancho), al interior; eje = radio + ala/2; cambia la longitud de eje."
     }
   }
 }

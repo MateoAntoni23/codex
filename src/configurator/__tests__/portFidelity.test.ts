@@ -188,6 +188,7 @@ describe('portFidelity — cada boca sobre la cara física correcta del polígon
         longitud_mm: master.baseParams.longitud_mm ?? 3000,
         angulo_deg: master.baseParams.angulo_deg ?? 90,
         ...(master.baseParams.sentido_vertical !== undefined ? { sentido_vertical: master.baseParams.sentido_vertical } : {}),
+        ...(master.baseParams.radio_interior_mm !== undefined ? { radio_interior_mm: master.baseParams.radio_interior_mm } : {}),
       });
       expect(recipe.ports.length, `${master.id}: receta sin puertos`).toBeGreaterThan(0);
       for (const port of recipe.ports) {

@@ -2,11 +2,11 @@
  * Recetas con ÁNGULO POR INSTANCIA: el ángulo no lo declara el producto sino la
  * pieza colocada (entra en la definición y en la huella). Cada receta tiene su
  * regla, declarada por el operador:
- *   - curvas eslabonadas (EPS, CUS): 90° por defecto, 1°–180° (reglaEslabones.ts);
+ *   - curvas eslabonadas (EPS, CUS): 90° por defecto, más de 22,5° y hasta 180° (reglaEslabones.ts);
  *   - curva ajustable de escalera (CAS): 90° por defecto, 1°–90° provisional
  *     (reglaCurvaAjustable.ts).
  */
-import { ANGULO_ESLABONADA_MAX, ANGULO_ESLABONADA_MIN, ANGULO_ESLABONADA_POR_DEFECTO, RECETAS_ESLABONADAS } from './reglaEslabones';
+import { ANGULO_ESLABONADA_POR_DEFECTO, motivoAnguloEslabonada, RECETAS_ESLABONADAS } from './reglaEslabones';
 import { ANGULO_AJUSTABLE_POR_DEFECTO, motivoAnguloAjustable, RECETA_CURVA_AJUSTABLE } from './reglaCurvaAjustable';
 
 export const RECETAS_ANGULO_INSTANCIA: ReadonlySet<string> = new Set([...RECETAS_ESLABONADAS, RECETA_CURVA_AJUSTABLE]);
@@ -23,8 +23,5 @@ export function anguloPorDefecto(recipeKey: unknown): number {
 /** null si el ángulo es aceptable para la receta; si no, el motivo con el rango. */
 export function motivoAnguloInstancia(recipeKey: unknown, anguloDeg: number): string | null {
   if (String(recipeKey) === RECETA_CURVA_AJUSTABLE) return motivoAnguloAjustable(anguloDeg);
-  if (!(anguloDeg >= ANGULO_ESLABONADA_MIN && anguloDeg <= ANGULO_ESLABONADA_MAX)) {
-    return `el ángulo tiene que estar entre ${ANGULO_ESLABONADA_MIN}° y ${ANGULO_ESLABONADA_MAX}°`;
-  }
-  return null;
+  return motivoAnguloEslabonada(anguloDeg);
 }
