@@ -12,8 +12,9 @@
     "dev:trays": "node scripts/dev-trays.mjs",
     "test:motor": "python -m unittest discover -s vendor/motor_bandejas/pruebas -p \"test_*.py\"",
     "test:e2e": "playwright test",
-    "verify": "npm run typecheck && npm test && npm run test:motor && npm run test:e2e:tandas",
-    "test:e2e:tandas": "node scripts/e2e-tandas.mjs"
+    "verify": "npm run typecheck && npm test && npm run test:motor && npm run test:servidor && npm run test:e2e:tandas",
+    "test:e2e:tandas": "node scripts/e2e-tandas.mjs",
+    "test:servidor": "python -m unittest discover -s server -p \"test_*.py\""
   },
   "dependencies": {
     "@react-three/drei": "^9.115.0",
