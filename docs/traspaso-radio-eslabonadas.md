@@ -154,3 +154,15 @@ tabla sigue sin estar declarada.
 ## Verify de cierre (2026-11-15, sobre `b4fd29a`)
 Por pasos y en primer plano: tipos OK; vitest 1883/1883 (forks, 2 procesos); motor 190 OK (2 omitidas);
 Playwright en 8 tandas **130/130**, 0 fallos, 0 inestables.
+
+## Verify de cierre tras la corrección del texto (2026-11-15, sobre `d1bb59e` → `fa02fb6`)
+- Tipos OK; vitest 1885/1885; Playwright en 8 tandas: 129/130 en la primera pasada. Falló `interfazB` B2
+  (de la rama de interfaz): recargaba sin esperar el autoguardado y, si recargaba antes, no estaba la pieza.
+  Arreglado en la prueba (`fa02fb6`: espera `data-phase="saved"`, como las demás E2E); 3/3 repetida y la
+  tanda 4 repetida 16/16. **El PR #9 tiene la versión sin la espera.**
+- Motor: intermitente, **3 de 6 corridas** con un error `WinError 10053` (ConnectionAbortedError) en las
+  pruebas del servicio HTTP que rechazan host u origen ajeno (`test_regresiones_auditoria_v021.H6_H9_Servicio`:
+  `test_host_ajeno_rechazado`, `test_host_ausente_rechazado`, `test_origen_ajeno_rechazado`); las otras 3,
+  190 OK (2 omitidas). Es el intermitente ya anotado en `STATUS.md`. Esta rama no toca `vendor/` ni `server/`
+  desde `b1ca484`.
+
