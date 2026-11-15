@@ -93,3 +93,46 @@ tabla sigue sin estar declarada.
   el radio del EJE = interior + ala/2).
 - Cómputo por eslabones (EPS por eslabón; CUS sumando eslabones y dividiendo por 5).
 - La CAS no se toca.
+
+## Implementación
+- **Regla** — `src/parametric/reglaEslabones.ts`: `RADIO_INTERIOR_EPS_MM = 260`, `RADIO_INTERIOR_CUS_MM = 294`,
+  `radioEslabonadaDe(producto, catálogo)` (EPS; CUS Z; CUS G por equivalencia de ancho, ala y espesor con una
+  Z, buscada en el catálogo y no por el nombre; si no hay, motivo), `medidasEslabonada({ radioInteriorMm,
+  alaMm, anguloDeg })` (eje = interior + ala/2), `motivoAnguloEslabonada` (más de 22,5° y hasta 180°).
+  `eslabonesPara` valida; `eslabonesDeAnguloGuardado` cuenta sin validar, para piezas ya colocadas.
+- **Definición** — `radio_interior_mm` entra en los parámetros de la definición (y en la huella). Una CUS G
+  sin Z equivalente no tiene definición: el motivo es el del radio, no un «sin modelo» genérico.
+- **Receta** — `geometry/curvaEslabonada.ts` dibuja sobre el radio de eje. Nota «CONTRADICE AL CATÁLOGO»
+  retirada.
+- **Piezas ya colocadas** — `outdatedPieces` antepone la causa al motivo geométrico: «cambió la regla de
+  radio de las curvas eslabonadas (2026-11-15): radio = ancho (300 mm, sobre el eje) → radio interior 260 mm
+  del producto…». Nuevo `piezasSinDefinicionVigente`: las que ya no tienen definición (p. ej. guardadas a
+  20°, o una CUS G sin Z equivalente) se listan con su motivo; no se pueden actualizar y se siguen dibujando
+  como fueron colocadas. El panel de Bandejas muestra los dos avisos con el motivo de cada pieza.
+- **Cómputo** — los eslabones salen sólo del ángulo; una pieza guardada a 20° se sigue computando (2
+  eslabones) sin romper Resultados.
+
+## Pruebas
+- `curvaEslabonada.test.ts` (26): N = 2 rechazado con el mínimo, el porqué y la alternativa CAS; longitud
+  sobre el radio de eje; EPS 260 y CUS Z 294 en todos los anchos (y coincide con `radio_mm = 294`); en 600 ya
+  no da el doble; **reparto G/Z sobre el catálogo** (12 con Z equivalente reciben radio con procedencia
+  «equivalencia por acabado»; 16 sin Z equivalente, ninguno, todas con chapa 2,1 o ala 150); geometría en 4
+  ángulos × 2 sentidos; desactualizadas con el motivo; a 20° listadas como sin definición.
+- `longitudesEje.test.ts`: las 31 eslabonadas con definición guardan el polígono sobre el radio de eje; las
+  16 CUS G sin radio no se colocan.
+- E2E `curvaEslabonada`: valores de la EPS-300 con radio de eje 285; 20° rechazado en la ficha con el motivo
+  completo; proyecto con piezas de la regla anterior → aviso con el motivo, «Actualizar» las lleva a la regla
+  nueva, la de 20° queda listada sin definición.
+- **Controles negativos, verificados**: si toda CUS G recibe radio, fallan 3 pruebas (reparto, maestros,
+  longitudes); con la regla anterior (radio de eje = ancho), fallan 7.
+- **Pruebas que cambian a propósito** (no se aflojaron): `portFidelity` y `portsOutward` pasan el radio del
+  maestro (nuevo `baseParams.radio_interior_mm`, igual que el sentido); `sharedVerticalPatternClosure` sigue
+  exigiendo que el maestro de la CUS no hable de «equivalencia» (la de la CUPS): la redacción del maestro se
+  ajustó, la prueba no; huellas de las 47 eslabonadas declaradas con su motivo.
+
+## Pendiente para el operador
+- El gráfico de la CUS Z cierra con un eslabón de largo fijo sólo si el radio tabulado está ~41 mm por dentro
+  de la línea de articulaciones (ver la verificación arriba). No cambia lo decidido; vale aclararlo si se
+  vuelve a medir el radio.
+- El texto del rechazo de N = 2 sugiere la CAS «para un giro horizontal menor», como pidió el operador. Las
+  eslabonadas son curvas verticales: para un giro VERTICAL menor de 22,5° no hay alternativa en el catálogo.
