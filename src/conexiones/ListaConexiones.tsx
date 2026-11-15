@@ -13,6 +13,7 @@ import { emparejar, type RolExtremo } from './declarado';
 import { estadosDeConexiones, ORDEN_SERVICIOS, TEXTO_ESTADO, type CodigoEstado, type EstadoConexion, type Extremo } from './estadoConexion';
 import { retrazarConexion, trazarConexion } from './acciones';
 import { TendidosConexion } from './TendidosConexion';
+import { contrasteDeCircuito } from './contraste';
 
 const TONO: Readonly<Record<CodigoEstado, string>> = {
   'no-se-traza': 'tone-neutral',
@@ -132,6 +133,11 @@ export function ListaConexiones() {
                   <div style={{ whiteSpace: 'normal' }}>{extremo(e, 'origen')} → {extremo(e, 'destino')}</div>
                   {e.conexion.descripcion && <div className="stage-row-sub" style={{ whiteSpace: 'normal' }}>{e.conexion.descripcion}</div>}
                   {e.motivos.map((m) => <div key={m} className={`stage-note ${e.codigo === 'no-se-traza' ? '' : 'tone-warn'}`} style={{ whiteSpace: 'normal' }} data-testid="conexion-motivo">{m}</div>)}
+                  {e.circuito && entrada && contrasteDeCircuito(entrada, elements, catalog, e.circuito).filter((f) => f.estado === 'aviso').map((f) => (
+                    <div key={`${f.tipo}|${f.tendidoId ?? ''}`} className="stage-note tone-warn" style={{ whiteSpace: 'normal' }} data-testid="conexion-contraste" data-tipo={f.tipo}>
+                      {f.texto} <span className="stage-row-sub">({f.ingenieria.origen})</span>
+                    </div>
+                  ))}
                   {e.codigo !== 'no-se-traza' && <TendidosConexion conexion={e.conexion} tendidos={e.tendidos} />}
                   {e.circuito && <div className="stage-row-sub" data-testid="conexion-circuito">Circuito {e.circuito.nombre} ({e.circuito.id})</div>}
                   <div style={{ display: 'flex', gap: 4, marginTop: 2 }}>

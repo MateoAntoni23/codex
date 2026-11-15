@@ -26,6 +26,7 @@ import { RoutingPanel } from './RoutingPanel';
 import { EquipmentEditorPanel } from '../preview/EquipmentEditorPanel';
 import { TrayResults } from './TrayResults';
 import { ImportedEquipmentInspector } from '../import/ImportedEquipmentInspector';
+import { FichaTecnica } from '../conexiones/FichaTecnica';
 import { checkDeleteDependencies, duplicateElement } from '../preview/previewCrud';
 import type { Piece, Support, TrayInput } from '../tray/model';
 import { object } from '../tray/model';
@@ -905,7 +906,6 @@ function LinkedImportedPanel({ equipoId, onUnlink, onOpenInImportedTree }: {
       </details>
     );
   }
-  const atributos = catalog.atributos.filter((a) => a.equipoId === equipoId && !a.componenteId && a.vigente === 'SI');
   return (
     <details className="imported-linked" open style={{ margin: '0 12px 8px', padding: '6px 10px', border: '1px solid #4a5570', borderRadius: 3, background: '#1e2338' }}>
       <summary style={{ fontSize: 12, color: '#ebb0ff', cursor: 'pointer' }} data-testid="imported-linked-summary">
@@ -914,20 +914,8 @@ function LinkedImportedPanel({ equipoId, onUnlink, onOpenInImportedTree }: {
       <div style={{ fontSize: 11, color: '#8f9ba3', marginTop: 4 }}>
         {equipo.descripcion} · {equipo.categoria} · {equipo.estadoAlcance}
       </div>
-      {atributos.length > 0 && (
-        <div style={{ marginTop: 6, fontSize: 11, color: '#c0c0e0' }}>
-          {atributos.slice(0, 8).map((a) => (
-            <div key={a.atributoId}>
-              <span style={{ color: '#8f9ba3' }}>{a.atributo}: </span>
-              <span>{a.valorTexto ?? (a.valorNumero != null ? String(a.valorNumero) : '—')}</span>
-              {a.unidad ? <span style={{ color: '#8f9ba3' }}> {a.unidad}</span> : null}
-            </div>
-          ))}
-          {atributos.length > 8 && (
-            <div style={{ color: '#8f9ba3', marginTop: 2 }}>+{atributos.length - 8} más…</div>
-          )}
-        </div>
-      )}
+      {/* Conexiones importadas, etapa 3: la ficha técnica completa, con estado y origen (sólo lectura). */}
+      <FichaTecnica catalog={catalog} equipoId={equipoId} />
       <div style={{ marginTop: 6, display: 'flex', gap: 6 }}>
         <button onClick={onOpenInImportedTree} style={{ fontSize: 11, padding: '2px 8px', background: '#3c4967', color: 'white', border: '1px solid #5566aa', borderRadius: 3, cursor: 'pointer' }} data-testid="imported-linked-open">
           Ver ficha completa

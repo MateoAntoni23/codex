@@ -6,7 +6,7 @@
 import { expect, type Page } from '@playwright/test';
 
 export type FormularioConexiones = 'enlace' | 'circuito' | 'medir';
-export type Pestana = 'circuitos' | 'computo' | 'motor' | 'avisos';
+export type Pestana = 'circuitos' | 'contraste' | 'computo' | 'motor' | 'avisos';
 
 /** Abre en el inspector un formulario de Conexiones (desde sus acciones), cerrando otro si lo hubiera. */
 export async function abrirFormulario(page: Page, tipo: FormularioConexiones): Promise<void> {

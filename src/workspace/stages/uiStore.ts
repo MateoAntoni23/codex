@@ -41,7 +41,7 @@ export type Formulario =
   | { readonly tipo: 'medir'; readonly origen?: { readonly pieza: string; readonly boca: string } }
   | { readonly tipo: 'equipo-nuevo' };
 
-export type PestanaInferior = 'circuitos' | 'computo' | 'motor' | 'avisos';
+export type PestanaInferior = 'circuitos' | 'contraste' | 'computo' | 'motor' | 'avisos';
 
 interface UiState {
   stage: StageId;

@@ -21,6 +21,7 @@ import { DECLARADO_KEY, declaradoOf, emparejar } from '../declarado';
 import { estadosDeConexiones, relacionConExcel } from '../estadoConexion';
 import { recalcularConExcel, retrazarConexion, trazarConexion } from '../acciones';
 import { circuitosParaMotor } from '../../workspace/motor/paraMotor';
+import { contrasteDeCircuito, tsvContraste } from '../contraste';
 import { construirCatalogoCables, idDeCable } from '../../workspace/cables/catalogoCables';
 import { elegirCable } from '../declarado';
 import type { TendidoImportado } from '../../import/types';
@@ -325,5 +326,81 @@ describe('etapa 2 — al motor', () => {
     const m = circuitosParaMotor(r.entrada, els, IDS, { catalog: cat2, cables: CABLES });
     expect(m.enviados).toEqual([]);
     expect(m.noEnviados[0].motivo).toMatch(/D-11/);
+  });
+});
+
+// ─── Etapa 3: contraste contra la ingeniería ─────────────────────────────────
+
+describe('etapa 3 — contraste', () => {
+  const tendidos = [
+    tend('CB-001', { seccionMm2: 150, cantidadUnidades: 6, refIngIzA: 501.5, refIngMetrajeCompraM: 33, cantidadUnidadesExistentes: 3 }),
+    tend('CB-002', { funcion: 'NEUTRO', seccionMm2: 35, refIngMetrajeCompraM: 11 }),
+    tend('CB-003', { funcion: 'PE', seccionMm2: 95 }),
+  ];
+  const conRef = (cx: Partial<ConexionImportada>) => ({
+    ...CAT,
+    conexiones: CAT.conexiones.map((c) => (c.conexionId === 'CX-0001' ? { ...c, refIngLongitudM: 10, refIngLongitudOrigen: 'PM 02/11', refIngCorrienteDisenoA: 317.3, ...cx } : c)),
+    tendidos,
+  });
+  const trazado = (cat: ImportedCatalog) => {
+    const { t, elements } = proyecto();
+    const r = trazarConexion(t, elements, estadoDe(t, elements, 'CX-0001', cat));
+    if (!r.ok) throw new Error(r.motivo);
+    return { e: r.entrada, elements, c: circuitosOf(r.entrada)[0] };
+  };
+  const fila = (filas: ReturnType<typeof contrasteDeCircuito>, tipo: string, tendidoId: string | null = null) => filas.find((f) => f.tipo === tipo && f.tendidoId === tendidoId)!;
+
+  it('longitud trazada mayor que la de ingeniería: el aviso dice que la caída de tensión se verificó con una longitud menor', () => {
+    const cat = conRef({ refIngLongitudM: 2 });
+    const { e, elements, c } = trazado(cat);
+    const L = c.sumaMm / 1000;
+    expect(L).toBeGreaterThan(2);
+    const f = fila(contrasteDeCircuito(e, elements, cat, c), 'longitud');
+    expect(f).toMatchObject({ estado: 'aviso', ingenieria: { valor: 2, unidad: 'm' }, comparado: { valor: L, unidad: 'm' } });
+    expect(f.texto).toMatch(/la caída de tensión del Excel se verificó con una longitud menor/);
+    expect(f.ingenieria.origen).toBe('Excel, longitud de ingeniería de CX-0001 (PM 02/11)');
+    expect(f.comparado.origen).toBe('trazado: bandeja + bajadas');
+  });
+
+  it('longitud que no supera: cierra; sin el dato: se dice cuál falta', () => {
+    const cat = conRef({ refIngLongitudM: 1000 });
+    const { e, elements, c } = trazado(cat);
+    expect(fila(contrasteDeCircuito(e, elements, cat, c), 'longitud').estado).toBe('ok');
+    const sin = conRef({ refIngLongitudM: undefined });
+    const f = fila(contrasteDeCircuito(e, elements, sin, c), 'longitud');
+    expect(f).toMatchObject({ estado: 'falta', ingenieria: { valor: null } });
+    expect(f.texto).toMatch(/no trae la longitud de ingeniería \(ref_ing_longitud_m\) de CX-0001/);
+  });
+
+  it('corriente: diseño contra Iz del tendido, las dos del Excel; neutro y PE no aplican; Iz menor avisa', () => {
+    const cat = conRef({});
+    const { e, elements, c } = trazado(cat);
+    const filas = contrasteDeCircuito(e, elements, cat, c);
+    expect(fila(filas, 'corriente', 'CB-001')).toMatchObject({ estado: 'ok', ingenieria: { valor: 317.3, unidad: 'A' }, comparado: { valor: 501.5, unidad: 'A' } });
+    expect(fila(filas, 'corriente', 'CB-002').estado).toBe('no-aplica');
+    expect(fila(filas, 'corriente', 'CB-003').estado).toBe('no-aplica');
+    const alta = conRef({ refIngCorrienteDisenoA: 600 });
+    expect(fila(contrasteDeCircuito(e, elements, alta, c), 'corriente', 'CB-001').estado).toBe('aviso');
+    const sinIdis = conRef({ refIngCorrienteDisenoA: undefined });
+    expect(fila(contrasteDeCircuito(e, elements, sinIdis, c), 'corriente', 'CB-001').texto).toMatch(/no trae la corriente de diseño de CX-0001/);
+  });
+
+  it('metraje: longitud trazada × cantidad contra el de compra; las existentes se dicen, no se descuentan', () => {
+    const cat = conRef({});
+    const { e, elements, c } = trazado(cat);
+    const filas = contrasteDeCircuito(e, elements, cat, c);
+    const f1 = fila(filas, 'metraje', 'CB-001');
+    expect(f1.comparado.valor).toBeCloseTo((c.sumaMm / 1000) * 6, 9);
+    expect(f1.estado).toBe((c.sumaMm / 1000) * 6 > 33 ? 'aviso' : 'ok');
+    expect(f1.texto).toMatch(/3 unidad\(es\) existente\(s\); no se descuentan/);
+    expect(fila(filas, 'metraje', 'CB-003')).toMatchObject({ estado: 'falta' });
+    expect(tsvContraste(filas).split('\r\n')[0]).toBe('Circuito\tConexión\tTendido\tContraste\tEstado\tIngeniería\tUnidad\tOrigen ingeniería\tComparado\tUnidad\tOrigen comparado\tDetalle');
+  });
+
+  it('un circuito fuera del Excel no tiene contraste', () => {
+    const { t, elements } = proyecto();
+    const g = guardarCircuito(t, elements, 'A mano', { equipo: 'EQ-0011' }, { equipo: 'EQ-0009' });
+    if (!g.ok) throw new Error(g.motivo);
+    expect(contrasteDeCircuito(g.entrada, elements, conRef({}), g.circuito)).toEqual([]);
   });
 });
