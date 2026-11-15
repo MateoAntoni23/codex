@@ -17,12 +17,14 @@ import { Fragment, useMemo, useState } from 'react';
 import { useTrayStore } from '../../tray/store';
 import { useWorkspaceStore } from '../useWorkspaceStore';
 import {
-  asignarCable, borrarCircuito, circuitosOf, estadoCircuito, faltaParaCalcular, quitarCable, recalcularCircuito, type CircuitoGuardado,
+  asignarCable, borrarCircuito, circuitosOf, estadoCircuito, faltaParaCalcular, quitarCable, type CircuitoGuardado,
 } from '../recorridos/circuitosGuardados';
 import { textoCable } from '../cables/catalogoCables';
 import { CableCircuitoCampos, cableDesdeValor, useCatalogoCables, valorDesdeCable, type ValorCable } from './CableCircuitoCampos';
 import { indexProducts, pieceLabelById } from './displayNames';
 import { Empty, Section } from './shared';
+import { relacionConExcel } from '../../conexiones/estadoConexion';
+import { recalcularConExcel } from '../../conexiones/acciones';
 
 const num = (x: number) => x.toLocaleString('es-AR', { maximumFractionDigits: 1, minimumFractionDigits: 1, useGrouping: false });
 const mmPantalla = (x: number) => x.toLocaleString('es-AR', { maximumFractionDigits: 1, minimumFractionDigits: 1 });
@@ -33,6 +35,7 @@ export function CircuitosTabla() {
   const trayEdit = useTrayStore((s) => s.edit);
   const markDirty = useWorkspaceStore((s) => s.markDirty);
   const elements = useWorkspaceStore((s) => s.elements);
+  const catalog = useWorkspaceStore((s) => s.importedCatalog);
   const idx = useMemo(() => indexProducts(context?.productos), [context]);
   const [msg, setMsg] = useState<string | null>(null);
   const [editando, setEditando] = useState<{ id: string; valor: ValorCable } | null>(null);
@@ -53,16 +56,19 @@ export function CircuitosTabla() {
     c,
     estado: entrada ? estadoCircuito(entrada, elements, c, etiquetaPieza) : { vigente: true as const },
     falta: faltaParaCalcular(c, ids),
+    excel: relacionConExcel(entrada, catalog, c),
   }));
+  const excelTexto = (r: (typeof filas)[number]['excel']) =>
+    r.tipo === 'fuera-del-excel' ? 'fuera del Excel' : [r.conexionId, ...r.motivos].join('; ');
   const parcial = (x: number, pantalla: boolean) => (pantalla ? mmPantalla(x) : num(x));
 
   const longitudTexto = (c: CircuitoGuardado, pantalla: boolean) =>
     c.completa ? (pantalla ? mmPantalla(c.sumaMm) : num(c.sumaMm)) : `incompleta (≥ ${pantalla ? mmPantalla(c.sumaMm) : num(c.sumaMm)})`;
 
   const tsv = () => [
-    ['Nombre', 'Origen', 'Destino', 'Cable', 'Cantidad', 'Longitud total (mm)', 'Bandeja (mm)', 'Bajadas (mm)', 'Piezas', 'Estado'].join('\t'),
-    ...filas.map(({ c, estado, falta }) => [
-      c.nombre, nombreEquipo(c.origen.equipo), nombreEquipo(c.destino.equipo),
+    ['Nombre', 'Excel', 'Origen', 'Destino', 'Cable', 'Cantidad', 'Longitud total (mm)', 'Bandeja (mm)', 'Bajadas (mm)', 'Piezas', 'Estado'].join('\t'),
+    ...filas.map(({ c, estado, falta, excel }) => [
+      c.nombre, excelTexto(excel), nombreEquipo(c.origen.equipo), nombreEquipo(c.destino.equipo),
       cableTexto(c), c.cable ? String(c.cable.cantidad) : '', longitudTexto(c, false),
       parcial(c.bandejaMm, false), parcial(c.bajadasMm, false), String(c.cruces.length),
       [estado.vigente ? 'vigente' : `desactualizado: ${estado.motivos.join('; ')}`, ...(falta.length ? [`incompleto: ${falta.join('; ')}`] : [])].join('; '),
@@ -81,7 +87,8 @@ export function CircuitosTabla() {
 
   const recalcular = (id: string) => {
     if (!entrada) return;
-    const r = recalcularCircuito(entrada, elements, id);
+    // Ligado a una conexión del Excel: se retraza con los equipos y la conexión de ahora.
+    const r = recalcularConExcel(entrada, elements, catalog, id);
     if (!r.ok) { setMsg(`No se pudo recalcular: ${r.motivo}.`); return; }
     trayEdit(r.entrada);
     markDirty();
@@ -132,11 +139,15 @@ export function CircuitosTabla() {
                 </tr>
               </thead>
               <tbody>
-                {filas.map(({ c, estado, falta }) => (
+                {filas.map(({ c, estado, falta, excel }) => (
                   <Fragment key={c.id}>
-                  <tr data-testid="circuito-fila" data-vigente={estado.vigente ? 'true' : 'false'} data-completo={falta.length ? 'false' : 'true'} data-cable={c.cable?.cable_id ?? ''}>
+                  <tr data-testid="circuito-fila" data-vigente={estado.vigente ? 'true' : 'false'} data-excel={excel.tipo === 'ligado' ? excel.conexionId : 'fuera'} data-completo={falta.length ? 'false' : 'true'} data-cable={c.cable?.cable_id ?? ''}>
                     <td>
                       <strong data-testid="circuito-nombre">{c.nombre}</strong>
+                      <div className="stage-row-sub" data-testid="circuito-excel">{excel.tipo === 'fuera-del-excel' ? 'fuera del Excel' : `Excel: ${excel.conexionId}`}</div>
+                      {excel.tipo === 'ligado' && excel.motivos.map((m) => (
+                        <div key={m} className="tone-warn" style={{ whiteSpace: 'normal' }} data-testid="circuito-excel-cambio">{m}.</div>
+                      ))}
                       {!estado.vigente && (
                         <div className="tone-warn" style={{ whiteSpace: 'normal' }} data-testid="circuito-desactualizado">
                           Desactualizado: {estado.motivos.join('; ')}.
@@ -151,7 +162,7 @@ export function CircuitosTabla() {
                         <button type="button" data-testid="circuito-cable-editar" onClick={() => setEditando({ id: c.id, valor: valorDesdeCable(cables, c.cable) })}>
                           {c.cable ? 'Cambiar cable' : 'Elegir cable'}
                         </button>
-                        {!estado.vigente && <button type="button" data-testid="circuito-recalcular" onClick={() => recalcular(c.id)}>Recalcular</button>}
+                        {(!estado.vigente || (excel.tipo === 'ligado' && excel.enElExcel && excel.motivos.length > 0)) && <button type="button" data-testid="circuito-recalcular" onClick={() => recalcular(c.id)}>Recalcular</button>}
                         <button type="button" data-testid="circuito-borrar" onClick={() => borrar(c.id)}>Borrar</button>
                       </div>
                     </td>

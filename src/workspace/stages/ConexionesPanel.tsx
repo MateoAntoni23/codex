@@ -1,6 +1,9 @@
 /**
  * Etapa 4 — Conexiones.
  *
+ * Conexiones importadas (2026-11-15): la lista principal son las conexiones del Excel
+ * (`conexiones/ListaConexiones.tsx`), con estado, motivo y «Trazar».
+ *
  * Reubica lo que ya existe: las conexiones del catálogo importado (Excel), todas
  * con estado "sin recorrido" (asignar recorridos es otro hito), y los circuitos
  * del trazado con su edición actual (cable, cantidad, recorrido por piezas).
@@ -9,26 +12,20 @@
  * inferior), conexiones del Excel y circuitos del trazado. Crear un enlace, armar
  * un circuito y medir entre bocas se abren en el inspector.
  */
-import { useMemo } from 'react';
 import { useWorkspaceStore } from '../useWorkspaceStore';
 import { useTrayStore } from '../../tray/store';
 import { Empty, Section } from './shared';
 import { BajadasSection, mmTexto } from './CircuitoEquipos';
 import { circuitosOf, estadoCircuito, faltaParaCalcular } from '../recorridos/circuitosGuardados';
 import { useUiStore } from './uiStore';
+import { ListaConexiones } from '../../conexiones/ListaConexiones';
+import { relacionConExcel } from '../../conexiones/estadoConexion';
 
 export function ConexionesPanel() {
-  const catalog = useWorkspaceStore((s) => s.importedCatalog);
   const markDirty = useWorkspaceStore((s) => s.markDirty);
   const entrada = useTrayStore((s) => s.entrada);
   const context = useTrayStore((s) => s.context);
   const trayEdit = useTrayStore((s) => s.edit);
-
-  const tagById = useMemo(
-    () => new Map((catalog?.equipos ?? []).map((e) => [e.equipoId, e.tag || e.descripcion] as const)),
-    [catalog],
-  );
-  const conexiones = catalog?.conexiones ?? [];
 
   const editTray = (fn: (inp: NonNullable<typeof entrada>) => void) => {
     if (!entrada) return;
@@ -38,27 +35,11 @@ export function ConexionesPanel() {
     markDirty();
   };
 
-  const end = (equipoId: string | null | undefined, texto: string | null | undefined) =>
-    (equipoId && tagById.get(equipoId)) || texto || 'Sin dato';
-
   return (
     <div className="stage-panel" data-testid="panel-conexiones">
+      <ListaConexiones />
       <BajadasSection />
       <CircuitosGuardadosLista />
-
-      <Section title={`Conexiones del Excel (${conexiones.length})`} testid="catalog-connections">
-        {!catalog && <Empty>Sin conexiones: importá el Excel en la etapa Equipos.</Empty>}
-        {catalog && conexiones.length === 0 && <Empty>El Excel no trae conexiones.</Empty>}
-        {conexiones.map((c) => (
-          <div key={c.conexionId} className="stage-card" data-testid="catalog-connection">
-            <div className="stage-card-head">
-              <strong>{end(c.origenEquipoId, c.origenTextoOriginal)} → {end(c.destinoEquipoId, c.destinoTextoOriginal)}</strong>
-              <span className="stage-badge tone-neutral" data-testid="connection-status">sin recorrido</span>
-            </div>
-            <div className="stage-row-sub">{c.servicio}{c.descripcion ? ` · ${c.descripcion}` : ''}</div>
-          </div>
-        ))}
-      </Section>
 
       <Section title={`Circuitos del trazado (${entrada?.circuitos.length ?? 0})`} testid="circuits">
         {(entrada?.circuitos.length ?? 0) === 0 && <Empty>Sin circuitos.</Empty>}
@@ -93,6 +74,7 @@ export function ConexionesPanel() {
 function CircuitosGuardadosLista() {
   const entrada = useTrayStore((s) => s.entrada);
   const elements = useWorkspaceStore((s) => s.elements);
+  const catalog = useWorkspaceStore((s) => s.importedCatalog);
   const ver = useUiStore((s) => s.verPestana);
   const circuitos = circuitosOf(entrada);
   const nombre = (id: string) => elements.find((e) => e.id === id)?.name ?? id;
@@ -102,12 +84,16 @@ function CircuitosGuardadosLista() {
       {circuitos.map((c) => {
         const est = entrada ? estadoCircuito(entrada, elements, c) : { vigente: true as const };
         const falta = faltaParaCalcular(c);
+        const rel = relacionConExcel(entrada, catalog, c);
         return (
-          <div key={c.id} className="stage-row-inline" data-testid="circuito-lista-fila" data-vigente={est.vigente ? 'true' : 'false'}>
+          <div key={c.id} className="stage-row-inline" data-testid="circuito-lista-fila" data-vigente={est.vigente ? 'true' : 'false'} data-excel={rel.tipo === 'ligado' ? rel.conexionId : 'fuera'}>
             <span>
               <strong>{c.nombre}</strong> · {nombre(c.origen.equipo)} → {nombre(c.destino.equipo)} · {mmTexto(c.sumaMm)}
               {!est.vigente && <span className="tone-warn"> · desactualizado</span>}
               {falta.length > 0 && <span className="tone-warn"> · incompleto</span>}
+              {rel.tipo === 'fuera-del-excel' && <span className="stage-row-sub" data-testid="circuito-fuera-excel"> · fuera del Excel</span>}
+              {rel.tipo === 'ligado' && <span className="stage-row-sub"> · {rel.conexionId}</span>}
+              {rel.tipo === 'ligado' && rel.motivos.map((m) => <span key={m} className="tone-warn" data-testid="circuito-excel-cambio"> · {m}</span>)}
             </span>
           </div>
         );
