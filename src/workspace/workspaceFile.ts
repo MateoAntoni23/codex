@@ -1,4 +1,5 @@
 import type { EquipmentElement, FieldEvidence, ProjectDataV2 } from '../types/domain-v2';
+import { validarParteCivil, VERSION_BLOQUE_CIVIL, type ArchivoCivil, type ParteCivilBlock } from '../civil/modelo';
 import type { TrayInput } from '../tray/model';
 import { assertInput } from '../tray/model';
 import { validateProjectDataV2 } from '../persistence/validate-v2';
@@ -62,15 +63,24 @@ export interface ImportedCatalogBlock {
  * guardados): un archivo de una versión anterior (fileVersion 1 ó 2) NO se abre.
  * La app avisa que no es compatible y no intenta repararlo ni migrarlo.
  */
-export const FILE_VERSION = 3;
+export const FILE_VERSION = 4;
+/**
+ * Versiones que se abren. fileVersion 4 (2026-11-15) agrega el bloque `parteCivil`
+ * (STEP importados de la nave, como contexto visual). Se subió la versión porque una
+ * app anterior ignoraría ese bloque sin avisar y lo perdería al guardar; con la 4 se
+ * niega a abrirlo. Un archivo 3 se sigue abriendo (sin parte civil).
+ */
+export const VERSIONES_QUE_SE_ABREN: readonly number[] = [3, 4];
 
-export interface WorkspaceFileV3 {
-  fileVersion: 3;
+export interface WorkspaceFileV4 {
+  fileVersion: 4;
   exportedAt: string;
   projectV2: ProjectDataV2;
   trayInput: TrayInput;
   library?: LibraryBlock;
   importedCatalog?: ImportedCatalogBlock;
+  /** Parte civil (fuera del trazado: nunca viaja al motor). Se omite si no hay archivos. */
+  parteCivil?: ParteCivilBlock;
 }
 
 /**
@@ -79,17 +89,20 @@ export interface WorkspaceFileV3 {
  * biblioteca local.
  */
 export interface ParsedWorkspaceFile {
-  fileVersion: 3;
+  /** La del archivo leído (3 ó 4). */
+  fileVersion: number;
   exportedAt: string;
   projectV2: ProjectDataV2;
   trayInput: TrayInput;
   library: FileLibrary | null;
   importedCatalog?: ImportedCatalogBlock;
+  /** null si el archivo no trae parte civil (o es versión 3). */
+  parteCivil: ParteCivilBlock | null;
 }
 
 /** Aviso al abrir un archivo de una versión anterior: no es compatible y no se repara. */
 export function motivoVersionNoCompatible(fileVersion: unknown): string {
-  return typeof fileVersion === 'number' && fileVersion < FILE_VERSION
+  return typeof fileVersion === 'number' && fileVersion < Math.min(...VERSIONES_QUE_SE_ABREN)
     ? `El archivo es de una versión anterior de la app (versión de archivo ${fileVersion}) y no es compatible con esta (versión ${FILE_VERSION}). No se intenta repararlo.`
     : `Versión de archivo no soportada: ${String(fileVersion)}`;
 }
@@ -107,6 +120,7 @@ export function exportWorkspace(
     /** B-2.5: calibración por patrón. */
     calibracion?: LibrarySnapshot['calibracion'];
   },
+  parteCivil?: readonly ArchivoCivil[],
 ): string {
   const projectV2: ProjectDataV2 = {
     schemaVersion: 2,
@@ -114,8 +128,8 @@ export function exportWorkspace(
     evidence,
     ...meta,
   };
-  const file: WorkspaceFileV3 = {
-    fileVersion: 3,
+  const file: WorkspaceFileV4 = {
+    fileVersion: 4,
     exportedAt: new Date().toISOString(),
     projectV2,
     trayInput,
@@ -136,6 +150,7 @@ export function exportWorkspace(
       catalog: importedCatalog,
     };
   }
+  if (parteCivil && parteCivil.length) file.parteCivil = { version: VERSION_BLOQUE_CIVIL, archivos: parteCivil };
   return JSON.stringify(file, null, 2);
 }
 
@@ -151,7 +166,9 @@ export function importWorkspace(raw: string): ParsedWorkspaceFile {
   }
   const obj = parsed as Record<string, unknown>;
 
-  if (obj.fileVersion !== FILE_VERSION) throw new Error(motivoVersionNoCompatible(obj.fileVersion));
+  if (typeof obj.fileVersion !== 'number' || !VERSIONES_QUE_SE_ABREN.includes(obj.fileVersion)) {
+    throw new Error(motivoVersionNoCompatible(obj.fileVersion));
+  }
 
   // Validate equipment + evidence (and origin, factories, etc.) through validateProjectDataV2
   const projectV2 = validateProjectDataV2(obj.projectV2);
@@ -163,14 +180,17 @@ export function importWorkspace(raw: string): ParsedWorkspaceFile {
 
   const library: FileLibrary | null = parseLibraryBlock(obj.library);
   const importedCatalog = parseImportedCatalog(obj.importedCatalog);
+  // La versión 3 no tiene parte civil: si trajera el bloque, es un archivo raro; se ignora.
+  const parteCivil = obj.fileVersion >= 4 ? validarParteCivil(obj.parteCivil) : null;
 
   return {
-    fileVersion: FILE_VERSION,
+    fileVersion: obj.fileVersion,
     exportedAt: typeof obj.exportedAt === 'string' ? obj.exportedAt : '',
     projectV2,
     trayInput: obj.trayInput as TrayInput,
     library,
     ...(importedCatalog ? { importedCatalog } : {}),
+    parteCivil,
   };
 }
 

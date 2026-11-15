@@ -61,10 +61,12 @@ const EVIDENCE: FieldEvidence[] = [];
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
 describe('exportWorkspace', () => {
-  it('produces parseable JSON with fileVersion 3', () => {
+  it('produces parseable JSON with fileVersion 4 (parte civil, 2026-11-15)', () => {
     const json = exportWorkspace([ELEMENT], EVIDENCE, DEFAULT_PROJECT_META, TRAY_INPUT);
     const parsed = JSON.parse(json) as Record<string, unknown>;
-    expect(parsed.fileVersion).toBe(3);
+    expect(parsed.fileVersion).toBe(4);
+    // Sin archivos civiles no se escribe el bloque.
+    expect(parsed.parteCivil).toBeUndefined();
     expect(typeof parsed.exportedAt).toBe('string');
   });
 
@@ -101,10 +103,20 @@ describe('exportWorkspace', () => {
 });
 
 describe('importWorkspace', () => {
+  it('un archivo de versión 3 se sigue abriendo (sin parte civil); uno de versión 2, no', () => {
+    const v4 = JSON.parse(exportWorkspace([ELEMENT], EVIDENCE, DEFAULT_PROJECT_META, TRAY_INPUT)) as Record<string, unknown>;
+    const v3 = importWorkspace(JSON.stringify({ ...v4, fileVersion: 3 }));
+    expect(v3.fileVersion).toBe(3);
+    expect(v3.parteCivil).toBeNull();
+    expect(v3.trayInput.piezas[0].instancia_id).toBe('R1');
+    expect(() => importWorkspace(JSON.stringify({ ...v4, fileVersion: 2 }))).toThrow(/versión anterior/);
+  });
+
   it('round-trips export → import and recovers elements + trayInput', () => {
     const json   = exportWorkspace([ELEMENT], EVIDENCE, DEFAULT_PROJECT_META, TRAY_INPUT);
     const result = importWorkspace(json);
-    expect(result.fileVersion).toBe(3);
+    expect(result.fileVersion).toBe(4);
+    expect(result.parteCivil).toBeNull();
     expect(result.projectV2.elements).toHaveLength(1);
     expect(result.projectV2.elements[0].id).toBe('motor-001');
     expect(result.trayInput.piezas[0].instancia_id).toBe('R1');
@@ -183,7 +195,7 @@ describe('importWorkspace', () => {
     for (const v of [1, 2]) {
       const viejo = JSON.stringify({ ...v3, fileVersion: v });
       expect(() => importWorkspace(viejo)).toThrow(
-        `El archivo es de una versión anterior de la app (versión de archivo ${v}) y no es compatible con esta (versión 3). No se intenta repararlo.`,
+        `El archivo es de una versión anterior de la app (versión de archivo ${v}) y no es compatible con esta (versión 4). No se intenta repararlo.`,
       );
     }
   });

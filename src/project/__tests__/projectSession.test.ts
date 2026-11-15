@@ -263,7 +263,7 @@ describe('acciones de proyecto', () => {
   it('guardar copia funciona con el proyecto vacío y sin motor', () => {
     const { json, name } = buildProjectCopy();
     const f = JSON.parse(json);
-    expect(f.fileVersion).toBe(3);
+    expect(f.fileVersion).toBe(4);
     expect(f.projectV2.elements).toEqual([]);
     expect(f.trayInput.piezas).toEqual([]);
     expect('library' in f).toBe(false); // biblioteca vacía: sin bloque
@@ -444,7 +444,7 @@ describe('biblioteca protegida', () => {
     const v2 = JSON.parse(readFileSync(FIXTURE, 'utf8'));
     v2.fileVersion = 2;
     const r2 = await openProjectText(JSON.stringify(v2), 'v2-sin-library.json', chooser);
-    expect(r2).toEqual({ status: 'error', error: 'El archivo es de una versión anterior de la app (versión de archivo 2) y no es compatible con esta (versión 3). No se intenta repararlo.' });
+    expect(r2).toEqual({ status: 'error', error: 'El archivo es de una versión anterior de la app (versión de archivo 2) y no es compatible con esta (versión 4). No se intenta repararlo.' });
     expect(chooser).not.toHaveBeenCalled();
     expect(localStorage.getItem(LIBRARY_STORAGE_KEY)).toBe(raw);
   });
@@ -461,7 +461,7 @@ describe('biblioteca protegida', () => {
     };
     const chooser = vi.fn(async () => 'adopt' as const);
     const r = await openProjectText(JSON.stringify(v1), 'v1.json', chooser);
-    expect(r).toEqual({ status: 'error', error: 'El archivo es de una versión anterior de la app (versión de archivo 1) y no es compatible con esta (versión 3). No se intenta repararlo.' });
+    expect(r).toEqual({ status: 'error', error: 'El archivo es de una versión anterior de la app (versión de archivo 1) y no es compatible con esta (versión 4). No se intenta repararlo.' });
     expect(chooser).not.toHaveBeenCalled();
     expect(localStorage.getItem(LIBRARY_STORAGE_KEY)).toBe(lib);
     expect(projectState()).toEqual(antes);

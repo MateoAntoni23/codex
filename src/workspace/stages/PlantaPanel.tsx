@@ -10,10 +10,14 @@
  *   - La visibilidad existe como capa ("Infraestructura"); no hay visibilidad
  *     por elemento en la escena, y la escena no se modifica en este hito.
  *   - No se construye carga de planos.
+ *   - Parte civil (2026-11-15): STEP importados (columnas, vigas, muros, losas)
+ *     agrupados por nivel, arriba de la lista de elementos viejos (src/civil/).
  */
 import { useState } from 'react';
 import { useWorkspaceStore } from '../useWorkspaceStore';
 import { Empty, Section, useRevealSelected } from './shared';
+import { ListaCivil } from '../../civil/PanelCivil';
+import { useParteCivilStore } from '../../civil/parteCivilStore';
 
 export function PlantaPanel() {
   const elements = useWorkspaceStore((s) => s.elements);
@@ -35,6 +39,7 @@ export function PlantaPanel() {
           Infraestructura visible en la escena
         </label>
       </Section>
+      <ListaCivil />
       <section className="stage-section" ref={setListEl} data-testid="planta-list">
         <h4 className="stage-section-title">Elementos de planta ({infra.length})</h4>
         {infra.length === 0 && (
@@ -52,7 +57,7 @@ export function PlantaPanel() {
               data-row-key={key}
               className={`workspace-tree-item stage-row${isSel ? ' active' : ''}`}
               aria-current={isSel ? 'true' : undefined}
-              onClick={() => selectEquip(el.id)}
+              onClick={() => { useParteCivilStore.getState().seleccionar(null); selectEquip(el.id); }}
             >
               {el.tag ? `${el.tag} · ` : ''}{el.name}
             </button>

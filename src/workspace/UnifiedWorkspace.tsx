@@ -15,6 +15,7 @@ import { BandejasPanel } from './stages/BandejasPanel';
 import { ConexionesPanel } from './stages/ConexionesPanel';
 import { ResultadosPanel } from './stages/ResultadosPanel';
 import { LeyendaColores } from './colores/LeyendaColores';
+import { useParteCivilStore } from '../civil/parteCivilStore';
 import { PanelInferior } from './stages/PanelInferior';
 import { useUiStore } from './stages/uiStore';
 import './stages/stages.css';
@@ -221,6 +222,8 @@ export function UnifiedWorkspace() {
       // is the exact transformation used before dispatching to the Python engine.
       catalogConfigStore: useCatalogConfigStore,
       uiStore: useUiStore,
+      // Parte civil (2026-11-15): para las E2E y la medición de peso (A5).
+      parteCivilStore: useParteCivilStore,
       toMotorEntrada,
       // Same-module bindings for the resolver. See note in ConfiguratorLayout
       // about Vite dev-server double-loading when tests use `await import()`.

@@ -26,6 +26,8 @@ import { useWorkspaceStore } from '../workspace/useWorkspaceStore';
 import { useRoutingStore } from '../workspace/useRoutingStore';
 import { useTrayStore } from '../tray/store';
 import { useCatalogConfigStore } from '../configurator/catalogConfigStore';
+import { useParteCivilStore } from '../civil/parteCivilStore';
+import type { ArchivoCivil } from '../civil/modelo';
 import {
   exportWorkspace,
   extractMeta,
@@ -105,6 +107,8 @@ export function buildRecord(): ProjectRecord {
       projectV2: { schemaVersion: 2, elements: w.elements, evidence: w.evidence, ...w.projectMeta },
       trayInput: t.entrada ?? emptyTrayInput(),
       importedCatalog: w.importedCatalog,
+      // Parte civil: bloque propio, fuera del trazado (nunca viaja al motor).
+      parteCivil: useParteCivilStore.getState().archivos,
     },
     session,
   };
@@ -118,6 +122,7 @@ interface StoredProject {
   projectV2: { elements: never[]; evidence: never[] } & Record<string, unknown>;
   trayInput: TrayInput;
   importedCatalog: ImportedCatalog | null;
+  parteCivil: readonly ArchivoCivil[];
 }
 
 const isObj = (v: unknown): v is Record<string, unknown> =>
@@ -138,12 +143,15 @@ export function parseRecord(raw: unknown): ParsedRecord {
     }
     const p = raw.project as Record<string, unknown>;
     const asFile = JSON.stringify({
-      fileVersion: 3,
+      fileVersion: 4,
       exportedAt: typeof raw.savedAt === 'string' ? raw.savedAt : '',
       projectV2: p.projectV2,
       trayInput: p.trayInput,
       ...(p.importedCatalog
         ? { importedCatalog: { version: 'codex:importedCatalog/1', catalog: p.importedCatalog } }
+        : {}),
+      ...(Array.isArray(p.parteCivil) && p.parteCivil.length
+        ? { parteCivil: { version: 'codex:parteCivil/1', archivos: p.parteCivil } }
         : {}),
     });
     const validated = importWorkspace(asFile);
@@ -156,6 +164,7 @@ export function parseRecord(raw: unknown): ParsedRecord {
         projectV2: p.projectV2 as StoredProject['projectV2'],
         trayInput: p.trayInput as TrayInput,
         importedCatalog: (p.importedCatalog as ImportedCatalog | null) ?? null,
+        parteCivil: validated.parteCivil?.archivos ?? [],
       },
       session: {
         fileName: str(s.fileName),
@@ -234,6 +243,7 @@ async function doBoot(): Promise<void> {
     meta: extractMeta(proj),
     trayInput: stored.trayInput,
     importedCatalog: stored.importedCatalog,
+    parteCivil: stored.parteCivil,
     fileName: session.fileName,
   });
   restoreSelection(session);
@@ -263,6 +273,7 @@ function tracked() {
   return [
     w.elements, w.evidence, w.projectMeta, w.importedCatalog, w.fileName,
     w.selectedEquipId, w.selectedTrayId, w.selectedSupportId, t.entrada,
+    useParteCivilStore.getState().archivos,
   ];
 }
 
@@ -323,6 +334,7 @@ export function startAutosave(): () => void {
   };
   const unsubW = useWorkspaceStore.subscribe(onChange);
   const unsubT = useTrayStore.subscribe(onChange);
+  const unsubC = useParteCivilStore.subscribe(onChange);
   const flush = () => {
     if (timer) {
       clearTimeout(timer);
@@ -338,6 +350,7 @@ export function startAutosave(): () => void {
   return () => {
     unsubW();
     unsubT();
+    unsubC();
     if (timer) clearTimeout(timer);
     document.removeEventListener('visibilitychange', onHide);
     window.removeEventListener('pagehide', flush);
@@ -358,6 +371,7 @@ interface ProjectContent {
   meta: ReturnType<typeof extractMeta>;
   trayInput: TrayInput;
   importedCatalog: ImportedCatalog | null;
+  parteCivil: readonly ArchivoCivil[];
   fileName: string | null;
 }
 
@@ -366,6 +380,7 @@ function applyProject(c: ProjectContent): void {
   if (c.fileName === null) useWorkspaceStore.setState({ fileName: null });
   // importEdit reinicia historial/futuro: deshacer nunca cruza proyectos.
   useTrayStore.getState().importEdit(c.trayInput);
+  useParteCivilStore.getState().cargar(c.parteCivil);
   useRoutingStore.getState().deactivate();
 }
 
@@ -379,6 +394,7 @@ export function hasProjectContent(): boolean {
     w.elements.length > 0 ||
     w.evidence.length > 0 ||
     w.importedCatalog !== null ||
+    useParteCivilStore.getState().archivos.length > 0 ||
     (t !== null &&
       (t.piezas.length > 0 || t.conexiones.length > 0 || t.circuitos.length > 0 || t.soportes.length > 0))
   );
@@ -388,6 +404,7 @@ export function hasProjectContent(): boolean {
 export function newProject(): void {
   useWorkspaceStore.getState().reset();
   useTrayStore.getState().importEdit(emptyTrayInput());
+  useParteCivilStore.getState().cargar([]);
   useRoutingStore.getState().deactivate();
 }
 
@@ -401,7 +418,7 @@ export function localLibrary(): LibrarySnapshot {
   };
 }
 
-/** Serializa el proyecto actual (fileVersion 3, con biblioteca completa). Funciona sin motor. */
+/** Serializa el proyecto actual (fileVersion 4, con biblioteca completa y parte civil). Funciona sin motor. */
 export function buildProjectCopy(): { json: string; name: string } {
   const w = useWorkspaceStore.getState();
   const lib = localLibrary();
@@ -413,6 +430,7 @@ export function buildProjectCopy(): { json: string; name: string } {
     lib.overrides,
     w.importedCatalog,
     { approvals: lib.approvals, aporteOverrides: lib.aporteOverrides, calibracion: lib.calibracion },
+    useParteCivilStore.getState().archivos,
   );
   return { json, name: `workspace-${new Date().toISOString().slice(0, 10)}.json` };
 }
@@ -431,7 +449,7 @@ export type OpenResult =
   | { status: 'error'; error: string };
 
 /**
- * Abre un proyecto desde el texto de un archivo (fileVersion 3; uno anterior se
+ * Abre un proyecto desde el texto de un archivo (fileVersion 3 ó 4; uno anterior se
  * rechaza con el aviso de que no es compatible, sin intentar repararlo).
  * Orden: validar → (si la biblioteca del archivo difiere) preguntar → recién
  * entonces aplicar. Cancelar o fallar no deja ningún cambio a medias.
@@ -486,6 +504,7 @@ export async function openProjectText(
     meta: extractMeta(parsed.projectV2),
     trayInput: parsed.trayInput,
     importedCatalog: parsed.importedCatalog?.catalog ?? null,
+    parteCivil: parsed.parteCivil?.archivos ?? [],
     fileName,
   });
   return { status: 'opened', libraryAdopted: adopted, backupKey };

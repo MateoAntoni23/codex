@@ -19,6 +19,8 @@ import { OcupacionSegregadaView, useOcupacionSegregada } from './BandaDivisoria'
 import { FormularioInspector } from './FormularioInspector';
 import { circuitosOf } from '../recorridos/circuitosGuardados';
 import { bajadasOf } from '../equipos/bajada';
+import { InspectorCivil } from '../../civil/PanelCivil';
+import { useParteCivilStore } from '../../civil/parteCivilStore';
 
 /** Botones de acción del inspector sin selección: abren su formulario acá mismo. */
 function Acciones({ items }: { items: Array<[string, string, () => void, boolean?]> }) {
@@ -58,13 +60,18 @@ function EquiposSummary() {
 
 function PlantaSummary() {
   const n = useWorkspaceStore((s) => s.elements.filter((e) => e.category === 'infrastructure').length);
+  const civiles = useParteCivilStore((s) => s.archivos);
+  const niveles = new Set(civiles.map((a) => a.nivel.nombre)).size;
+  const triangulos = civiles.reduce((t, a) => t + a.malla.triangulos, 0);
   return (
     <StageSummary
       title="Planta"
-      rows={[['Elementos de planta', n]]}
-      next={n === 0 ? 'Este proyecto no tiene elementos de planta; seguí con Equipos o Bandejas.' : 'Elegí un elemento para ver su ficha.'}
+      rows={[['Archivos civiles (STEP)', civiles.length], ['Niveles', niveles], ['Triángulos', triangulos.toLocaleString('es-AR')], ['Elementos de planta', n]]}
+      next={civiles.length === 0
+        ? 'Importá la nave en STEP con «Importar STEP…» (un archivo por piso y por tipo: columnas, vigas, muros, losas).'
+        : 'Elegí un archivo de la lista para ver sus datos, moverlo, reemplazarlo o quitarlo.'}
     >
-      <p className="stage-note">Editar dimensiones y posición de la infraestructura y cargar planos todavía no está disponible.</p>
+      <p className="stage-note" style={{ whiteSpace: 'normal' }}>La parte civil es contexto visual: no interviene en uniones, cómputo ni cálculo, y no se manda al motor.</p>
     </StageSummary>
   );
 }
@@ -191,6 +198,7 @@ export function StageInspector() {
   const entrada = useTrayStore((s) => s.entrada);
   const routingActive = useRoutingStore((s) => s.active);
   const formulario = useUiStore((s) => s.formulario);
+  const civilActivo = useParteCivilStore((s) => s.pendiente !== null || s.seleccionado !== null);
 
   const element = selectedEquipId ? elements.find((e) => e.id === selectedEquipId) ?? null : null;
   const piece = selectedTrayId ? entrada?.piezas.find((p) => p.instancia_id === selectedTrayId) ?? null : null;
@@ -206,7 +214,9 @@ export function StageInspector() {
         : <EquiposSummary />;
       break;
     case 'planta':
-      body = element && element.category === 'infrastructure' ? <EquipmentCard /> : <PlantaSummary />;
+      // Parte civil: la importación en curso o el archivo seleccionado ocupan el inspector.
+      body = civilActivo ? <InspectorCivil />
+        : element && element.category === 'infrastructure' ? <EquipmentCard /> : <PlantaSummary />;
       break;
     case 'bandejas':
       body = routingActive ? <RoutingPanel />

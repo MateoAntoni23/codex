@@ -194,7 +194,7 @@ test.describe('Hito 1 — el proyecto no se pierde', () => {
     await continueFromFirstStraight(page);
     await importExcelAndPlaceEquipment(page);
     const saved = await saveCopy(page, 'a2'); // fija el nombre de archivo del proyecto
-    expect(saved.json.fileVersion).toBe(3);
+    expect(saved.json.fileVersion).toBe(4);
     await waitSaved(page);
 
     const before = await projectSnapshot(page);
@@ -224,7 +224,7 @@ test.describe('Hito 1 — el proyecto no se pierde', () => {
     page.on('dialog', (d) => void d.accept());
     await openFile(page, USER_REPORT_V1);
     await expect(page.getByTestId('project-message')).toHaveText(
-      'Error al abrir: El archivo es de una versión anterior de la app (versión de archivo 1) y no es compatible con esta (versión 3). No se intenta repararlo.',
+      'Error al abrir: El archivo es de una versión anterior de la app (versión de archivo 1) y no es compatible con esta (versión 4). No se intenta repararlo.',
     );
     expect(await projectSnapshot(page)).toEqual(antes);
   });

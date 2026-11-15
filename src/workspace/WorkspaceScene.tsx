@@ -19,6 +19,7 @@ import {
 import { TrayObjects } from './TrayObjects';
 import { TrayRotateControls } from './TrayRotateControls';
 import { RoutingObjects } from './RoutingObjects';
+import { ParteCivilEnEscena } from '../civil/ParteCivilEnEscena';
 import type { ElementRenderProps } from '../scene/v2-adapter';
 import type { EquipmentElement } from '../types/domain-v2';
 import type { TrayInput } from '../tray/model';
@@ -444,6 +445,9 @@ export function WorkspaceScene() {
     <>
       <ambientLight intensity={0.6} />
       <directionalLight position={[10, 20, 10]} intensity={1.2} castShadow />
+
+      {/* Parte civil (contexto visual; no recibe clics) */}
+      <ParteCivilEnEscena />
 
       {/* Equipment objects */}
       {allRenderProps.map((rp) => {
