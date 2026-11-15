@@ -16,8 +16,11 @@
  * cuadro ≤ 50 ms.
  */
 import { chromium } from '@playwright/test';
+import { readFileSync } from 'node:fs';
 
 const URL = process.argv[2] ?? 'http://localhost:5173';
+// Trazado real (7 bandejas) para medir el autoguardado al mover una bandeja.
+const TRAZADO = JSON.parse(readFileSync(new globalThis.URL('../../e2e/fixtures/user-report-20261107.workspace.json', import.meta.url), 'utf-8')).trayInput;
 const TAMANOS = (process.argv[3] ?? '50000,100000,250000,500000,1000000,2000000,3000000,5000000,8000000').split(',').map(Number);
 
 function malla(triangulos) {
@@ -57,7 +60,7 @@ const gpu = await pagina.evaluate(() => {
   return e ? gl.getParameter(e.UNMASKED_RENDERER_WEBGL) : 'desconocida';
 });
 console.log(`GPU: ${gpu}`);
-console.log('triángulos | mediana fps | p95 cuadro (ms) | fluida | carga (ms) | malla en el archivo (MB) | autoguardado (ms)');
+console.log('triángulos | mediana fps | p95 cuadro (ms) | fluida | carga (ms) | malla en el archivo (MB) | autoguardado al girar la nave (ms) | autoguardado al mover una bandeja (ms) | registro current (KB)');
 const filas = [];
 for (const t of TAMANOS) {
   await pagina.close();
@@ -65,6 +68,7 @@ for (const t of TAMANOS) {
   const m = { triangulos: Math.ceil(t / 12) * 12, posiciones: { length: Math.ceil(Math.ceil(t / 12) * 96 / 3) * 4 }, indices: { length: Math.ceil(Math.ceil(t / 12) * 144 / 3) * 4 } };
   let caida = false;
   pagina.on('crash', () => { caida = true; });
+  await pagina.evaluate((tr) => window.__codex.trayStore.getState().importEdit(tr), TRAZADO);
   let tCarga;
   try {
   tCarga = await pagina.evaluate(async (t) => {
@@ -138,9 +142,35 @@ for (const t of TAMANOS) {
     while (leer() !== 'saved' && performance.now() - t0 < 120000) await new Promise((ok) => setTimeout(ok, 20));
     return leer() === 'saved' ? performance.now() - t0 - 500 : NaN; // menos el retardo de 500 ms del autoguardado
   });
+  // Mover una bandeja (R1, 100 mm en X): el caso de todos los días. No debe depender de la nave.
+  const tBandeja = [];
+  for (let k = 0; k < 5; k++) {
+    tBandeja.push(await pagina.evaluate(async (k) => {
+      const leer = () => document.querySelector('[data-testid="project-save-status"]')?.getAttribute('data-phase');
+      while (leer() !== 'saved') await new Promise((ok) => setTimeout(ok, 20));
+      const ts = window.__codex.trayStore.getState();
+      const e = structuredClone(ts.entrada);
+      const r1 = e.piezas.find((p) => p.instancia_id === 'R1');
+      for (const port of Object.values(r1.puertos)) port.posicion_mm[0] += k % 2 ? -100 : 100;
+      const t0 = performance.now();
+      ts.edit(e);
+      while (leer() !== 'saving' && performance.now() - t0 < 2000) await new Promise((ok) => setTimeout(ok, 5));
+      while (leer() !== 'saved' && performance.now() - t0 < 120000) await new Promise((ok) => setTimeout(ok, 5));
+      return leer() === 'saved' ? performance.now() - t0 - 500 : NaN;
+    }, k));
+  }
+  tBandeja.sort((a, b) => a - b);
+  const medBandeja = tBandeja[2];
+  const kbCurrent = await pagina.evaluate(() => new Promise((ok) => {
+    const r = indexedDB.open('codex-workspace-v1');
+    r.onsuccess = () => {
+      const g = r.result.transaction('project').objectStore('project').get('current');
+      g.onsuccess = () => { ok(JSON.stringify(g.result).length / 1024); r.result.close(); };
+    };
+  }));
   const fluida = r.fps >= 30 && r.p95 <= 50;
   filas.push({ triangulos: m.triangulos, ...r, fluida });
-  console.log(`${m.triangulos.toLocaleString('es-AR').padStart(10)} | ${r.fps.toFixed(1).padStart(11)} | ${r.p95.toFixed(1).padStart(15)} | ${(fluida ? 'sí' : 'no').padStart(6)} | ${tCarga.toFixed(0).padStart(10)} | ${mb.toFixed(1).padStart(24)} | ${Number.isNaN(tGuardado) ? 'no terminó en 2 min' : tGuardado.toFixed(0)}`);
+  console.log(`${m.triangulos.toLocaleString('es-AR').padStart(10)} | ${r.fps.toFixed(1).padStart(11)} | ${r.p95.toFixed(1).padStart(15)} | ${(fluida ? 'sí' : 'no').padStart(6)} | ${tCarga.toFixed(0).padStart(10)} | ${mb.toFixed(1).padStart(24)} | ${Number.isNaN(tGuardado) ? 'no terminó en 2 min' : tGuardado.toFixed(0)} | ${medBandeja.toFixed(0)} | ${kbCurrent.toFixed(0)}`);
 }
 await navegador.close();
 const ultimo = filas.filter((f) => f.fluida).pop();

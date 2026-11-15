@@ -6,10 +6,17 @@
  * nunca abre ni lee la base del editor inicial, y el editor inicial nunca abre
  * ésta, de modo que ninguno puede alterar los datos del otro (criterio A6).
  *
- * Esquema (versión 1):
+ * Esquema (versión 2):
  *   - object store `project`: clave `current` → ProjectRecord (último estado
  *     autoguardado); claves `corrupt:<ISO>` → registros ilegibles apartados al
  *     restaurar (para no sobrescribirlos con un estado vacío).
+ *   - object store `mallasCiviles` (desde la versión 2, 2026-11-15): clave
+ *     `<id del archivo civil>@<versión>` → MallaCivil. Las mallas de la parte civil
+ *     pesan ~25 MB por millón de triángulos y casi nunca cambian; si viajaran en
+ *     `current` se reescribirían en CADA autoguardado (medido: ~0,3 s por millón).
+ *     Se escriben sólo cuando la parte civil cambia (importar, reemplazar, quitar,
+ *     abrir otro proyecto), en la MISMA transacción que el registro que las nombra:
+ *     nunca queda un `current` apuntando a una malla que no está.
  *
  * Reemplaza (para el espacio de trabajo) a `src/persistence/db.ts` porque ese
  * módulo está atado al nombre/versión de la base del editor inicial y a su
@@ -18,6 +25,8 @@
 export const WORKSPACE_DB_NAME = 'codex-workspace-v1';
 export const WORKSPACE_STORE = 'project';
 export const CURRENT_KEY = 'current';
+export const CIVIL_MESH_STORE = 'mallasCiviles';
+const DB_VERSION = 2;
 /**
  * Esquema del registro autoguardado. /2 desde la etapa 1 (2026-11-13), junto con
  * el archivo v3: un registro /1 es de una versión anterior y no se abre (se aparta).
@@ -54,10 +63,14 @@ function factory(): IDBFactory {
 function open(): Promise<IDBDatabase> {
   if (_dbPromise) return _dbPromise;
   _dbPromise = new Promise<IDBDatabase>((resolve, reject) => {
-    const req = factory().open(WORKSPACE_DB_NAME, 1);
+    const req = factory().open(WORKSPACE_DB_NAME, DB_VERSION);
     req.onupgradeneeded = () => {
+      // 1 → 2 sólo agrega el almacén de mallas: el registro `current` no se toca.
       if (!req.result.objectStoreNames.contains(WORKSPACE_STORE)) {
         req.result.createObjectStore(WORKSPACE_STORE);
+      }
+      if (!req.result.objectStoreNames.contains(CIVIL_MESH_STORE)) {
+        req.result.createObjectStore(CIVIL_MESH_STORE);
       }
     };
     req.onsuccess = () => {
@@ -105,9 +118,59 @@ export async function readCurrentRecord(): Promise<unknown | null> {
   return v ?? null;
 }
 
-/** Escribe el estado actual. Rechaza si IndexedDB falla (cuota, bloqueo, etc.). */
-export async function writeCurrentRecord(record: ProjectRecord): Promise<void> {
-  await run('readwrite', (s) => s.put(record, CURRENT_KEY));
+/** Cambios del almacén de mallas civiles que acompañan a una escritura de `current`. */
+export interface EscrituraMallas {
+  /** Mallas nuevas o reemplazadas: [clave, malla]. */
+  readonly poner: ReadonlyArray<readonly [string, unknown]>;
+  /** Claves que nombra el registro: cualquier otra se borra (archivo quitado o reemplazado). */
+  readonly conservar: ReadonlySet<string>;
+}
+
+/**
+ * Escribe el estado actual. Rechaza si IndexedDB falla (cuota, bloqueo, etc.).
+ * Sin `mallas` sólo toca `current` (el caso de todo autoguardado que no cambia la
+ * parte civil). Con `mallas`, mallas y registro van en UNA transacción.
+ */
+export async function writeCurrentRecord(record: ProjectRecord, mallas?: EscrituraMallas): Promise<void> {
+  if (!mallas) {
+    await run('readwrite', (s) => s.put(record, CURRENT_KEY));
+    return;
+  }
+  const db = await open();
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction([WORKSPACE_STORE, CIVIL_MESH_STORE], 'readwrite');
+    const m = tx.objectStore(CIVIL_MESH_STORE);
+    for (const [k, v] of mallas.poner) m.put(v, k);
+    const keys = m.getAllKeys();
+    keys.onsuccess = () => {
+      for (const k of keys.result) if (!mallas.conservar.has(String(k))) m.delete(k);
+    };
+    tx.objectStore(WORKSPACE_STORE).put(record, CURRENT_KEY);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error ?? new Error('Error de IndexedDB'));
+    tx.onabort = () => reject(tx.error ?? new Error('Transacción de IndexedDB abortada'));
+  });
+}
+
+/** Lee las mallas civiles pedidas. Las que no están no aparecen en el resultado. */
+export async function readCivilMeshes(keys: readonly string[]): Promise<Map<string, unknown>> {
+  const out = new Map<string, unknown>();
+  if (!keys.length) return out;
+  const db = await open();
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(CIVIL_MESH_STORE, 'readonly');
+    const s = tx.objectStore(CIVIL_MESH_STORE);
+    for (const k of keys) {
+      const r = s.get(k);
+      r.onsuccess = () => {
+        if (r.result !== undefined) out.set(k, r.result);
+      };
+    }
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error ?? new Error('Error de IndexedDB'));
+    tx.onabort = () => reject(tx.error ?? new Error('Transacción de IndexedDB abortada'));
+  });
+  return out;
 }
 
 /** Aparta un registro ilegible bajo `corrupt:<ISO>` y borra `current`. */

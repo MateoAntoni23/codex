@@ -27,7 +27,7 @@ import { useRoutingStore } from '../workspace/useRoutingStore';
 import { useTrayStore } from '../tray/store';
 import { useCatalogConfigStore } from '../configurator/catalogConfigStore';
 import { useParteCivilStore } from '../civil/parteCivilStore';
-import type { ArchivoCivil } from '../civil/modelo';
+import type { ArchivoCivil, MallaCivil } from '../civil/modelo';
 import {
   exportWorkspace,
   extractMeta,
@@ -39,8 +39,10 @@ import {
   RECORD_SCHEMA,
   RECORD_SCHEMAS_ANTERIORES,
   quarantineCurrentRecord,
+  readCivilMeshes,
   readCurrentRecord,
   writeCurrentRecord,
+  type EscrituraMallas,
   type ProjectRecord,
 } from './projectDb';
 import {
@@ -90,6 +92,63 @@ interface SessionState {
   selectedSupportId: string | null;
 }
 
+// ─── Mallas civiles: almacén aparte ──────────────────────────────────────────
+//
+// El registro `current` lleva de cada archivo civil sólo los datos de ensamblado
+// (tipo, nivel, eje, desplazamiento, giro…) y `mallaRef`, la clave de su malla en el
+// almacén `mallasCiviles`. La malla se escribe ahí únicamente cuando cambia (por
+// identidad del objeto: importar, reemplazar, abrir otro proyecto); quitar borra la
+// suya. Así el costo de un autoguardado no depende del tamaño de la nave.
+
+/** Clave de la malla de un archivo civil en `mallasCiviles`. */
+export const claveMalla = (a: Pick<ArchivoCivil, 'id' | 'version'>): string => `${a.id}@${a.version}`;
+
+/** Mallas que este equipo ya tiene en `mallasCiviles`, tal como se escribieron o leyeron. */
+let mallasEscritas = new Map<string, MallaCivil>();
+
+/** Qué hay que tocar en `mallasCiviles` para `archivos`; `undefined` si nada. */
+function escrituraMallas(archivos: readonly ArchivoCivil[]): { escritura?: EscrituraMallas; vigentes: Map<string, MallaCivil> } {
+  const vigentes = new Map(archivos.map((a) => [claveMalla(a), a.malla] as const));
+  const poner = [...vigentes].filter(([k, m]) => mallasEscritas.get(k) !== m);
+  const sobran = [...mallasEscritas.keys()].some((k) => !vigentes.has(k));
+  if (!poner.length && !sobran) return { vigentes };
+  return { escritura: { poner, conservar: new Set(vigentes.keys()) }, vigentes };
+}
+
+/** Archivo civil tal como va en el registro autoguardado (sin la malla). */
+type ArchivoCivilGuardado = Omit<ArchivoCivil, 'malla'> & { mallaRef: string };
+
+function sinMalla(a: ArchivoCivil): ArchivoCivilGuardado {
+  const { malla: _m, ...resto } = a;
+  return { ...resto, mallaRef: claveMalla(a) };
+}
+
+/**
+ * Lee de `mallasCiviles` las mallas que nombra un registro y devuelve el registro con
+ * las mallas adentro (la forma que valida `parseRecord`). Un archivo cuya malla no
+ * está se deja afuera y se nombra en `faltan` (el trazado se abre igual).
+ */
+async function resolverMallas(raw: unknown): Promise<{ raw: unknown; faltan: string[]; leidas: ReadonlySet<string> }> {
+  const nada = { raw, faltan: [], leidas: new Set<string>() };
+  if (!isObj(raw) || !isObj(raw.project) || !Array.isArray(raw.project.parteCivil)) return nada;
+  const lista = raw.project.parteCivil as unknown[];
+  const refs = lista.flatMap((a) => (isObj(a) && typeof a.mallaRef === 'string' && !('malla' in a) ? [a.mallaRef] : []));
+  if (!refs.length) return nada;
+  const leidas = await readCivilMeshes(refs);
+  const faltan: string[] = [];
+  const parteCivil = lista.flatMap((a) => {
+    if (!isObj(a) || typeof a.mallaRef !== 'string' || 'malla' in a) return [a];
+    const malla = leidas.get(a.mallaRef);
+    if (malla === undefined) {
+      faltan.push(typeof a.nombre === 'string' ? a.nombre : a.mallaRef);
+      return [];
+    }
+    const { mallaRef: _r, ...resto } = a;
+    return [{ ...resto, malla }];
+  });
+  return { raw: { ...raw, project: { ...raw.project, parteCivil } }, faltan, leidas: new Set(leidas.keys()) };
+}
+
 /** Arma el registro a persistir a partir del estado actual de los stores. */
 export function buildRecord(): ProjectRecord {
   const w = useWorkspaceStore.getState();
@@ -107,8 +166,9 @@ export function buildRecord(): ProjectRecord {
       projectV2: { schemaVersion: 2, elements: w.elements, evidence: w.evidence, ...w.projectMeta },
       trayInput: t.entrada ?? emptyTrayInput(),
       importedCatalog: w.importedCatalog,
-      // Parte civil: bloque propio, fuera del trazado (nunca viaja al motor).
-      parteCivil: useParteCivilStore.getState().archivos,
+      // Parte civil: bloque propio, fuera del trazado (nunca viaja al motor). Sin las
+      // mallas: van en `mallasCiviles` (ver `escrituraMallas`).
+      parteCivil: useParteCivilStore.getState().archivos.map(sinMalla),
     },
     session,
   };
@@ -191,14 +251,17 @@ export function bootProject(): Promise<void> {
 /** Sólo pruebas: permite volver a ejecutar bootProject(). */
 export function _resetBootForTests(): void {
   bootPromise = null;
+  mallasEscritas = new Map();
   status({ phase: 'restoring', savedAt: null, error: null, notice: null, booted: false, blocked: false });
 }
 
 async function doBoot(): Promise<void> {
   status({ phase: 'restoring' });
   let raw: unknown;
+  let faltan: string[] = [];
+  let leidas: ReadonlySet<string> = new Set();
   try {
-    raw = await readCurrentRecord();
+    ({ raw, faltan, leidas } = await resolverMallas(await readCurrentRecord()));
   } catch (e) {
     // No se pudo leer: trabajar en memoria, pero NO escribir encima de un registro
     // que quizá exista y no pudimos leer.
@@ -247,7 +310,17 @@ async function doBoot(): Promise<void> {
     fileName: session.fileName,
   });
   restoreSelection(session);
-  status({ phase: 'saved', savedAt: typeof (raw as ProjectRecord).savedAt === 'string' ? (raw as ProjectRecord).savedAt : null, booted: true });
+  // Lo que se acaba de LEER de `mallasCiviles` ya está ahí: no se reescribe. Una malla
+  // que venía adentro del registro (formato previo) no está: se escribe al guardar.
+  mallasEscritas = new Map(stored.parteCivil.filter((a) => leidas.has(claveMalla(a))).map((a) => [claveMalla(a), a.malla] as const));
+  status({
+    phase: 'saved',
+    savedAt: typeof (raw as ProjectRecord).savedAt === 'string' ? (raw as ProjectRecord).savedAt : null,
+    booted: true,
+    ...(faltan.length
+      ? { notice: `No se encontró en este equipo la malla de ${faltan.join(', ')}: el proyecto se abrió sin ${faltan.length === 1 ? 'ese archivo civil' : 'esos archivos civiles'}. Volvé a importarlo${faltan.length === 1 ? '' : 's'}.` }
+      : {}),
+  });
 }
 
 function restoreSelection(s: SessionState): void {
@@ -288,7 +361,9 @@ export async function saveNow(): Promise<void> {
   status({ phase: 'saving', error: null });
   writing = (async () => {
     try {
-      await writeCurrentRecord(buildRecord());
+      const { escritura, vigentes } = escrituraMallas(useParteCivilStore.getState().archivos);
+      await writeCurrentRecord(buildRecord(), escritura);
+      mallasEscritas = vigentes;
       writtenVersion = target;
       if (version > target) {
         // Hubo cambios durante la escritura: el siguiente ciclo del debounce los guarda.

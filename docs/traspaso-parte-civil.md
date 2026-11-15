@@ -125,3 +125,24 @@ al operador.
 - Dos errores de la medición, corregidos: (1) un caché que retenía todas las mallas decodificadas (ahora se
   libera con la malla); (2) pasar ~100 MB por el protocolo de depuración tiraba la pestaña en 4 millones: no
   representa el uso real (la malla llega por `fetch` o IndexedDB); se arma dentro de la página.
+
+### A5b — mallas en un almacén aparte (2026-11-15)
+Los ~0,3 s por millón venían de que el registro `current` de IndexedDB llevaba las mallas adentro
+(`buildRecord` → `parteCivil: archivos` con su base64) y se reescribía entero en cada autoguardado,
+cualquiera fuera el cambio. Ahora la base `codex-workspace-v1` (versión 2) tiene el almacén
+`mallasCiviles` (clave `<id>@<versión>`): `current` guarda de cada archivo sólo el ensamblado y
+`mallaRef`; la malla se escribe sólo al importar, reemplazar, quitar o abrir otro proyecto, en la misma
+transacción que el `current` que la nombra. La copia del proyecto sigue llevando todo adentro. Si al
+restaurar falta una malla, el proyecto se abre sin ese archivo y se avisa. Un registro con la malla
+adentro (formato previo de esta rama) se sigue abriendo y pasa al almacén aparte al guardar.
+
+Medido con `medir_peso.mjs` (trazado real de 7 bandejas + nave sintética, mediana de 5 movimientos):
+
+| triángulos | registro `current` antes → ahora | autoguardado al mover una bandeja antes → ahora | al girar la nave antes → ahora |
+|---|---|---|---|
+| 250.000 | 6,5 MB → 9 KB | 96 → 10 ms | 90 → 44 ms |
+| 1.000.000 | 26 MB → 9 KB | 368 → 11 ms | 439 → 30 ms |
+| 4.000.000 | 104 MB → 9 KB | 1.332 → 9 ms | 1.545 → 25 ms |
+
+El autoguardado ya no depende del tamaño de la nave. El umbral de aviso (1.000.000) queda por el peso
+del archivo de proyecto (~25 MB por millón) y la carga, no por el autoguardado.
