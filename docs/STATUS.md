@@ -73,7 +73,19 @@ Rama `feat/m2-colocacion-persistida` (base `b5c444a`). Una página: qué funcion
 - **Cable PE** elegido desde la lista sin sección requerida: el motor lo rechaza (comportamiento previo).
 - Selección 3D de puertos sigue sin probarse con clics en el canvas; continuar se prueba desde la lista
   de extremos libres.
-- Pruebas HTTP del motor intermitentes en Windows (WinError 10053): repetir la corrida.
+- **Motor: fallo intermitente CONOCIDO en Windows — firma exacta** (no se puede arreglar: las pruebas y el
+  servicio que las atiende están en `vendor/motor_bandejas/` y tocarlo rompe las huellas de integridad).
+  - Pruebas (las tres de `test_regresiones_auditoria_v021.H6_H9_Servicio`), una por una:
+    - `test_host_ajeno_rechazado`
+    - `test_host_ausente_rechazado`
+    - `test_origen_ajeno_rechazado`
+  - Error exacto: `ConnectionAbortedError: [WinError 10053]` («Se ha anulado una conexión establecida por el
+    software en su equipo host»).
+  - Frecuencia medida (2026-11-15): **3 de 6 corridas** de `npm run test:motor`, con un error por corrida,
+    siempre en una de esas tres pruebas; las otras corridas, 190 OK (2 omitidas).
+  - **Regla:** se reintenta `npm run test:motor` hasta 3 veces. Es el conocido SÓLO si falla una de esas
+    tres pruebas con ese error exacto. Si falla OTRA prueba, o con OTRO error, o sigue fallando a la tercera,
+    **no es el conocido: hay que investigarlo.**
 
 ## Sigue (hitos posteriores)
 
