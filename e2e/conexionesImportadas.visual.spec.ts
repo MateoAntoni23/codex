@@ -130,7 +130,7 @@ test.describe('Conexiones importadas — etapa 1: lista de trabajo', () => {
     const lista = page.getByTestId('catalog-connections');
     await expect(lista).toContainText('Conexiones del Excel (272)');
     for (const [s, n] of [['POTENCIA', 104], ['CONTROL', 67], ['INSTRUMENTACION', 50], ['COMUNICACION', 7], ['EQUIPOTENCIALIDAD', 2], ['NEUMATICA', 42]] as const) {
-      await expect(page.getByTestId(`conexiones-grupo-${s}`).locator('summary')).toHaveText(`${s} (${n})`);
+      await expect(page.getByTestId(`conexiones-grupo-${s}`).locator(':scope > summary')).toHaveText(`${s} (${n})`);
     }
     // Es lo primero del panel.
     const primero = await page.getByTestId('panel-conexiones').evaluate((p) => p.querySelector('[data-testid]')?.getAttribute('data-testid'));

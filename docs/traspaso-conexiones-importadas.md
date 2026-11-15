@@ -166,3 +166,47 @@ propia sección (D-20). NEUMATICA: es un tubo, no un cable.
 
 **E2E tocadas por el encargo:** `cablesCircuito` y `circuitosGuardados` esperaban la tabla copiable sin la columna
 «Excel»; se les sumó (el encargo pide «fuera del Excel» en Resultados).
+
+### Etapa 2 — los cables salen de los tendidos (2026-11-15)
+**Modelo.** El circuito ligado no copia los tendidos: los lee del Excel actual por su vínculo. Lo único guardado es la
+elección del operador por tendido (`conexiones_ws.cables[tendidoId]`: un `cable_id` o `null` = sin cable de catálogo,
+con procedencia y fecha). Los circuitos de un cable (fuera del Excel) no cambian. Al trazar, el vínculo guarda también
+los tendidos, para decir al reimportar cuál cambió, desapareció o se sumó (vínculos de la etapa 1, sin esa copia, no
+lo dicen). `cablesDelCircuito` (`tendidos.ts`) es la única lectura de «qué cables lleva un circuito»: la usan el
+motor, la segregación y Resultados (y la etapa 4).
+
+**Procedencia del cable de cada tendido, siempre a la vista:**
+- único candidato por naturaleza, conductores y sección → se propone y se usa;
+- **regla del operador (2026-11-15)**: candidatos que sólo difieren en el material → se propone el de cobre (`REGLA_COBRE`
+  con su texto). Se lee «propuesto por la regla del operador», nunca como dato del Excel ni como único candidato. El
+  operador lo cambia a aluminio en ese tendido;
+- elegido por el operador (incluido «sin cable de catálogo»);
+- sin cable: varios candidatos que no son sólo el material (elige el operador) o ninguno, con el motivo.
+Camino no tomado: exigir que el operador confirme cada propuesta antes de que viaje (sobre el Excel de ejemplo
+serían 103 confirmaciones); hoy se puede volver a la propuesta o cambiarla tendido por tendido.
+
+**Al motor:** un circuito `<circuito>-<tendido>` por cada tendido de una conexión POTENCIA con cable, `cantidad` =
+`cantidadUnidades`, `separado` = false, el recorrido del circuito. No viaja nada de un circuito ligado desactualizado (por
+recorrido o por Excel); CONTROL, INSTRUMENTACION y COMUNICACION no viajan (D-11).
+
+**PE, cómo no se cuenta dos veces.** El PE del motor sigue saliendo de su propia sección (D-20/D-21, armado desde el
+trazado), igual que antes. Del Excel:
+- las conexiones EQUIPOTENCIALIDAD / PUESTA_A_TIERRA (el PE de las bandejas) no se trazan → no viajan;
+- un PE dentro de un multipolar (3F+PE) va dentro de ese cable: viaja una vez, con el cable;
+- un PE unipolar de una conexión de potencia (p. ej. CB-003, 1×95 V/A de CX-0001) es el conductor de protección de ESE
+  circuito, otro conductor que el PE de la bandeja: viaja como un tendido más, porque ocupa la bandeja;
+- un tendido cuyo cable sea el del PE del trazado (`PRY-SASTFLEX-CU-1x16`) no viaja, con el motivo: ése sí se
+  contaría dos veces.
+
+**Tendidos de potencia sin cable de catálogo:** en Resultados › Circuitos, «N tendido(s) de potencia sin cable de
+catálogo: la ocupación de estas bandejas no los incluye», con tendido, conexión, motivo y bandejas. En el Excel de
+ejemplo, de los 125 multipolares sin candidato, **8 son de potencia** (CB-010, 012, 014, 016, 197, 199, 206: 5×6;
+CB-217: 5×10; todos 3F+N+PE: el catálogo no tiene cables de 5 conductores). Los otros 117 son de control e
+instrumentación.
+
+**Sobre el Excel de ejemplo:** 63 tendidos con único candidato, 40 resueltos por la regla del cobre, 176 sin cable
+(174 sin candidato + 2 unipolares 1×16 de EQUIPOTENCIALIDAD con Sintenax y Superastic, que no se trazan).
+
+**E2E** `tendidosImportados` (7, una por punto). Usa el Excel de ejemplo con dos cambios declarados en la prueba: Ø 20 mm
+en CB-001 (el ejemplo no trae diámetros) y CB-012 pasado a unipolar 1×16 (un caso «varios» entre lo que se traza).
+Calcula con el motor real: acepta los circuitos por tendido.
