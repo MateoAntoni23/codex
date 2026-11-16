@@ -103,6 +103,17 @@ export const useConductoresStore = create<ConductoresState>((set, get) => {
 });
 
 /**
+ * Otra pestaña (la biblioteca de conductores) cambió la biblioteca local: se vuelve a
+ * leer, para que el cálculo de esta pestaña use los mismos declarados (p. ej. un
+ * diámetro recién completado).
+ */
+if (typeof window !== 'undefined') {
+  window.addEventListener('storage', (e) => {
+    if (e.key === CLAVE_CONDUCTORES && useConductoresStore.getState().hidratado) useConductoresStore.getState().hidratar();
+  });
+}
+
+/**
  * Los declarados de este equipo, leyendo la biblioteca local si todavía no se leyó.
  * El cálculo (qué viaja al motor, ocupación de la app) siempre parte de acá: con la
  * biblioteca sin leer, un tendido que casa con un declarado y un cable de catálogo
