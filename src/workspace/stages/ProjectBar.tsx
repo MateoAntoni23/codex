@@ -1,7 +1,7 @@
 /**
  * Barra de proyecto (siempre visible, una fila): nombre del proyecto, estado de
  * guardado, Nuevo / Abrir / Guardar copia, Deshacer / Rehacer, tema y acceso a la
- * Biblioteca de modelos. Con `?dev=1`, además, el menú de desarrollo (3e).
+ * Biblioteca de modelos y a la de conductores. Con `?dev=1`, además, el menú de desarrollo (3e).
  */
 import { useTrayStore } from '../../tray/store';
 import { useWorkspaceStore } from '../useWorkspaceStore';
@@ -100,6 +100,9 @@ export function ProjectBar() {
       </button>
       <a href="?configurator=v1" className="workspace-toolbar-link" data-testid="open-configurator">
         Biblioteca de modelos
+      </a>
+      <a href="?configurator=v1&seccion=conductores" className="workspace-toolbar-link" data-testid="open-conductores">
+        Biblioteca de conductores
       </a>
       {isDevMenuEnabled() && <DevMenu />}
     </header>

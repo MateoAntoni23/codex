@@ -567,3 +567,7 @@
   display: flex;
   gap: 6px;
 }
+
+/* Pestañas de la configuración: modelos / conductores. */
+.cfg-seccion-tabs { display: flex; gap: 2px; align-self: flex-end; margin-bottom: -8px; }
+.cfg-seccion-tabs .cfg-tab-button { font-size: 12px; padding: 5px 10px; }

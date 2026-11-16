@@ -48,3 +48,68 @@ ocupación calculable. Diámetros a cargar: 5×6, 5×10, 2×1, 3×1, 4×1, 7×1 
 
 Reglas de trabajo: typecheck + vitest + E2E tocadas; verify completo cuando el operador avise; empujar tras
 cada commit; rama y PR propios, sin fusionar; campos nuevos opcionales sin subir la versión del archivo.
+
+## Parte A — cerrada (2026-11-15)
+
+### Dónde está
+- `src/conductores/biblioteca.ts`: tipos, ficha y validación (`validarBorrador`), `noCalculable`,
+  `duplicarDeCatalogo`, vista unificada (`entradasBiblioteca`) con el ORIGEN de cada cable.
+- `src/conductores/store.ts`: autoridad local (`codex:conductoresDeclarados:v1`), respaldo antes de adoptar.
+- `src/conductores/guia.ts`: `tendidosPorCable`, `tendidosSinCable`, `declaradosUsados`.
+- `src/conductores/bloqueArchivo.ts`: bloque del archivo, diferencia con la local.
+- `src/conductores/BibliotecaConductores.tsx`: la pestaña. `ConfiguratorLayout` tiene ahora dos pestañas
+  («Biblioteca de modelos» / «Biblioteca de conductores», `?configurator=v1&seccion=conductores`) y la barra
+  del proyecto un enlace a cada una.
+- `casarTendido` pasó a ser genérico (acepta cualquier cable con id, conductores y formación); la regla no
+  cambió.
+
+### Decisiones
+- **Ficha declarada de conductores iguales**: designación, tipo (unipolar / multipolar), material,
+  conductores, sección de cada conductor, diámetro y masa (estos dos pueden quedar vacíos; vacío = `null`,
+  nunca una estimación). El MATERIAL va en la ficha aunque el encargo no lo nombraba: en el catálogo el
+  «tipo» incluye el material, y la regla del cobre de la etapa 2 lo necesita para la parte B.
+- Un cable del catálogo con conductor reducido («25/16») no se duplica: la ficha no tiene conductor
+  reducido. Se rechaza con el motivo.
+- Ids `OP-…`: nunca coinciden con los del motor (`PRY-…`).
+- Línea de un declarado: «Declarado por el operador» (para el filtro). Un duplicado dice en su procedencia
+  de qué cable y línea salió.
+
+### A5 — cómo quedó
+Igual que la biblioteca de modelos:
+- **Autoridad**: localStorage de cada máquina. El autoguardado (IndexedDB) no la lleva.
+- **Copia del proyecto**: bloque opcional `conductoresDeclarados` (`codex:conductores/1`) con los
+  declarados que el proyecto USA. En la parte A, «usa» = casa con al menos un tendido del Excel del proyecto
+  (`declaradosUsados`); en la B se acota a los elegidos o propuestos. Sin declarados usados, el bloque no va.
+  La versión del archivo no cambia (sigue en 3 en esta rama).
+- **Abrir en otra máquina**: si el archivo trae cables que esta máquina no tiene, o con otros datos, se
+  pregunta como con la de modelos (seguir con la local / adoptar los del archivo / cancelar). Diferencias
+  con la de modelos: **adoptar AGREGA** los que faltan y reemplaza los de igual id, pero **nunca borra** un
+  cable local, porque el archivo trae solo los usados y no la biblioteca entera. Antes de escribir se guarda
+  una copia de la local (`codex:conductoresDeclarados:v1:backup:<ISO>`).
+- Las dos preguntas (modelos y conductores) se hacen antes de aplicar nada: cancelar cualquiera de las dos
+  no deja cambios. La escritura de conductores va después de la de modelos; si fallara, el mensaje dice si
+  la de modelos ya se adoptó y dónde quedó su copia.
+- **App anterior**: ignora el bloque (no lo conoce) y no calcula nada con declarados, así que no cambia
+  ningún resultado. Pero si vuelve a guardar una copia, el bloque no viaja. Los cables siguen en la
+  biblioteca local de la máquina que los declaró. No se subió la versión del archivo.
+
+### A6 — guía con el Excel de ejemplo
+- Exactamente las siete combinaciones, todas multipolares: 2×1 (87), 3×1 (23), 5×6 (7), 4×1 (4),
+  27×1 (2), 5×10 (1), 7×1 (1) = 125. Aparte, con el motivo: 7 cables de datos y 42 tubos.
+- Cada combinación tiene «Cargar uno», que abre la ficha con conductores y sección. La columna «Declarados
+  que ya casan» dice qué declarado la cubre y cuántos tendidos.
+- La pestaña lee los tendidos del proyecto abierto desde el autoguardado, sin tocarlo. Sin Excel, lo dice y
+  el atajo queda deshabilitado.
+
+### Pruebas
+- Unitarias `src/conductores/__tests__/biblioteca.test.ts` (20): ficha (vacíos → qué no se calcula; sin
+  estimación), orígenes, duplicado y su procedencia, persistencia (recargar; fallo de escritura no cambia el
+  estado; biblioteca ilegible no se pisa), fusión que no borra, las siete combinaciones con el Excel real,
+  5×6 que cubre 7 y ninguno de 5×10 (control negativo), bloque del archivo (solo usados; abrir en otra
+  máquina → pregunta, adoptar agrega con respaldo, local no cambia, cancelar no abre), bloque mal formado.
+- E2E `bibliotecaConductores` (4): pestaña junto a la de modelos; uno del catálogo sin editar ni borrar ni
+  campos; declarado sin diámetro → qué no se calcula, recargar y encontrarlo, editarlo; duplicado; guía con
+  el Excel importado: las siete combinaciones y sus cantidades, y la combinación cubierta.
+- Typecheck y vitest completo: 126 archivos, 1937 pruebas. E2E también: `interfazAlcance` (barra en una
+  fila con el enlace nuevo), `proyectoPersistente`, `configuratorMaestroTab`.
+- Verify completo: pendiente del aviso del operador.

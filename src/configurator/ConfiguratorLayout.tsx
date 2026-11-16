@@ -34,6 +34,7 @@ import {
 } from '../workspace/catalogPortMapping';
 import { modeloDeProducto } from '../workspace/placement/definitions';
 import { loadStaticCatalog } from '../catalog/staticCatalog';
+import { BibliotecaConductores } from '../conductores/BibliotecaConductores';
 import { migrarBibliotecaPorSku } from './migracionCalibracion';
 import { useCatalogConfigStore } from './catalogConfigStore';
 import { InspectorTabContent, TABS, type TabId } from './ConfiguratorInspectorTabs';
@@ -829,7 +830,20 @@ function ConfigIO() {
   );
 }
 
+/** Pestaña de la configuración: `?configurator=v1&seccion=conductores` abre la de conductores. */
+type Seccion = 'modelos' | 'conductores';
+const seccionDeUrl = (): Seccion =>
+  new URLSearchParams(window.location.search).get('seccion') === 'conductores' ? 'conductores' : 'modelos';
+
 export function ConfiguratorLayout() {
+  const [seccion, setSeccionState] = useState<Seccion>(seccionDeUrl);
+  const setSeccion = (s: Seccion) => {
+    const u = new URL(window.location.href);
+    if (s === 'conductores') u.searchParams.set('seccion', 'conductores');
+    else u.searchParams.delete('seccion');
+    window.history.replaceState(null, '', u);
+    setSeccionState(s);
+  };
   const context = useTrayStore((s) => s.context);
   const [selected, setSelected] = useState<string | null>(null);
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
@@ -903,8 +917,19 @@ export function ConfiguratorLayout() {
       <header className="cfg-toolbar">
         <a href="?workspace=bandejas" className="cfg-back-link">← Volver al editor</a>
         <span className="cfg-toolbar-title">Configuración de biblioteca</span>
-        <ConfigIO />
+        <nav className="cfg-seccion-tabs" role="tablist" aria-label="Biblioteca">
+          <button type="button" role="tab" aria-selected={seccion === 'modelos'} data-testid="cfg-seccion-modelos"
+            className={`cfg-tab-button ${seccion === 'modelos' ? 'is-active' : ''}`} onClick={() => setSeccion('modelos')}>
+            Biblioteca de modelos
+          </button>
+          <button type="button" role="tab" aria-selected={seccion === 'conductores'} data-testid="cfg-seccion-conductores"
+            className={`cfg-tab-button ${seccion === 'conductores' ? 'is-active' : ''}`} onClick={() => setSeccion('conductores')}>
+            Biblioteca de conductores
+          </button>
+        </nav>
+        {seccion === 'modelos' && <ConfigIO />}
       </header>
+      {seccion === 'conductores' ? <BibliotecaConductores /> : (
       <div className="cfg-grid">
         <ProductList
           products={products}
@@ -925,6 +950,7 @@ export function ConfiguratorLayout() {
           onNavigateTo={setSelected}
         />
       </div>
+      )}
     </div>
   );
 }
