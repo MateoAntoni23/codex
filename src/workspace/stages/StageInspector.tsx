@@ -3,6 +3,7 @@
  * la etapa activa; sin selección muestra el resumen de la etapa y el siguiente
  * paso sugerido (reemplaza a la guía de trabajo y a la leyenda fijas).
  */
+import { estadosDeConexiones } from '../../conexiones/estadoConexion';
 import { extremosLibres } from '../derivacion/extremosLibres';
 import { useTrayStore } from '../../tray/store';
 import { useWorkspaceStore } from '../useWorkspaceStore';
@@ -98,11 +99,16 @@ function ConexionesSummary() {
   const entrada = useTrayStore((s) => s.entrada);
   const circuitos = circuitosOf(entrada).length;
   const enlaces = bajadasOf(entrada).length;
+  const elements = useWorkspaceStore((s) => s.elements);
+  const est = estadosDeConexiones(catalog, entrada, elements);
+  const cuenta = (c: string) => est.filter((e) => e.codigo === c).length;
   const abrir = useUiStore.getState().abrirFormulario;
   return (
     <StageSummary
       title="Conexiones"
-      rows={[['Equipos enlazados', enlaces], ['Circuitos guardados', circuitos], ['Del Excel (sin recorrido)', catalog ? catalog.conexiones.length : 'Sin Excel']]}
+      rows={[['Equipos enlazados', enlaces], ['Circuitos guardados', circuitos], ...(catalog
+        ? [['Del Excel, trazadas', `${cuenta('trazada')} de ${est.length}`], ['Del Excel, listas para trazar', cuenta('sin-trazar')], ['Del Excel, desactualizadas', cuenta('desactualizada')]] as Array<[string, string | number]>
+        : [['Del Excel', 'Sin Excel'] as [string, string]])]}
       next={enlaces < 2 ? 'Enlazá cada equipo con la bandeja; después armá el circuito entre dos equipos.' : 'Armá un circuito entre dos equipos enlazados.'}
     >
       <Acciones items={[

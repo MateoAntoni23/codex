@@ -5,6 +5,7 @@ import { STAGES, type StageId } from './stageModel';
 import { useUiStore } from './uiStore';
 import { summarizeResultDe } from './resultPresentation';
 import { circuitosOf } from '../recorridos/circuitosGuardados';
+import { estadosDeConexiones } from '../../conexiones/estadoConexion';
 
 function useStageStatus(): Record<StageId, string> {
   const elements = useWorkspaceStore((s) => s.elements);
@@ -23,6 +24,7 @@ function useStageStatus(): Record<StageId, string> {
   const infra = elements.length - own.length;
   const piezas = entrada?.piezas.length ?? 0;
   const cx = catalog?.conexiones.length ?? 0;
+  const trazadas = estadosDeConexiones(catalog, entrada, elements).filter((e) => e.codigo === 'trazada').length;
   // A5: cuenta los circuitos guardados entre equipos (no los del motor).
   const circ = circuitosOf(entrada).length;
   const view = summarizeResultDe(result, entrada, productos);
@@ -36,7 +38,7 @@ function useStageStatus(): Record<StageId, string> {
     equipos: unplaced > 0 ? `${placed} ubicados · ${unplaced} sin ubicar` : `${placed} ubicados`,
     planta: `${infra} elementos`,
     bandejas: `${piezas} piezas`,
-    conexiones: `${cx} sin recorrido · ${circ} circuitos`,
+    conexiones: catalog ? `${trazadas} de ${cx} trazadas · ${circ} circuitos` : `${circ} circuitos`,
     resultados,
   };
 }

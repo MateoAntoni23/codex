@@ -9,6 +9,7 @@
 import { useTrayStore } from '../../tray/store';
 import { circuitosOf } from '../recorridos/circuitosGuardados';
 import { useUiStore, type PestanaInferior } from './uiStore';
+import { ContrasteTabla, useContraste } from '../../conexiones/ContrasteTabla';
 import { CircuitosTabla } from './CircuitosTabla';
 import { CalculoMotorSection, CircuitosAlMotor } from './CalculoMotor';
 import { BandejasSegregadasSection } from './BandaDivisoria';
@@ -17,6 +18,7 @@ import { AvisosModeloList, ComponentesUnionApp, CurvasEslabonadasList, Exception
 
 const PESTANAS: Array<[PestanaInferior, string]> = [
   ['circuitos', 'Circuitos'],
+  ['contraste', 'Contraste con ingeniería'],
   ['computo', 'Cómputo de materiales'],
   ['motor', 'Cálculo del motor'],
   ['avisos', 'Avisos'],
@@ -26,6 +28,8 @@ function Contenido({ pestana }: { pestana: PestanaInferior }) {
   switch (pestana) {
     case 'circuitos':
       return <><CircuitosTabla /><CircuitosAlMotor /></>;
+    case 'contraste':
+      return <ContrasteTabla />;
     case 'computo':
       return <><ComputoMotor /><ComponentesUnionApp /><CurvasEslabonadasList /><BandejasSegregadasSection parte="computo" /></>;
     case 'motor':
@@ -51,8 +55,10 @@ export function PanelInferior() {
   const ver = useUiStore((s) => s.verPestana);
   const circuitos = useTrayStore((s) => circuitosOf(s.entrada).length);
   const hayResultado = useTrayStore((s) => s.result !== null);
+  const avisosContraste = useContraste().filter((f) => f.estado === 'aviso').length;
   const cuenta: Partial<Record<PestanaInferior, string>> = {
     circuitos: String(circuitos),
+    contraste: avisosContraste ? `${avisosContraste} ⚠` : '',
     motor: hayResultado ? '●' : '',
   };
   return (

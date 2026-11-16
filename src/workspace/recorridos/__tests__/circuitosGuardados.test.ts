@@ -303,8 +303,8 @@ describe('cable del circuito (etapa 2)', () => {
     for (const cantidad of [0, -1, 1.5, Number.NaN]) {
       expect(asignarCable(sin.entrada, 'CIR-1', { ...TRI, cantidad }, IDS)).toEqual({ ok: false, motivo: 'la cantidad tiene que ser un entero positivo' });
     }
-    expect(asignarCable(sin.entrada, 'CIR-1', { ...TRI, funcion: 'mando' as 'potencia' }, IDS)).toEqual({ ok: false, motivo: 'la función tiene que ser potencia, maniobra o instrumentación' });
-    for (const funcion of ['maniobra', 'instrumentacion'] as const) expect(asignarCable(sin.entrada, 'CIR-1', { ...TRI, funcion }, IDS).ok).toBe(true);
+    expect(asignarCable(sin.entrada, 'CIR-1', { ...TRI, funcion: 'mando' as 'potencia' }, IDS)).toEqual({ ok: false, motivo: 'la función tiene que ser potencia, maniobra, instrumentación o comunicación' });
+    for (const funcion of ['maniobra', 'instrumentacion', 'comunicacion'] as const) expect(asignarCable(sin.entrada, 'CIR-1', { ...TRI, funcion }, IDS).ok).toBe(true);
     // Un circuito de la etapa 2 con "separado" sin elegir ya no queda incompleto: viaja en false (operador, etapa 3).
     const sinDisp = asignarCable(sin.entrada, 'CIR-1', { ...TRI, separado: null }, IDS);
     if (!sinDisp.ok) throw new Error(sinDisp.motivo);

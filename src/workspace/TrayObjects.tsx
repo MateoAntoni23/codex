@@ -28,6 +28,7 @@ import { compatibilidadDirecta } from './compatibilidadFisica';
 import { UNIONS_KEY, unionRecord, unionsOf } from './workspaceOperation';
 import { LadderPiece, isLadderFamily } from './ladderGeometry';
 import { BajadasEnEscena } from './equipos/BajadasEnEscena';
+import { RecorridoResaltado } from '../conexiones/RecorridoResaltado';
 import { COLOR_CONTORNO_SELECCION, EMISIVO_BASE, EMISIVO_SELECCION, OPACIDAD_PIEZA, tipoColorDe, useColoresStore, type TipoColor } from './colores/coloresTipo';
 
 type V3 = [number, number, number];
@@ -570,6 +571,7 @@ ${body}
         );
       })}
       <BajadasEnEscena entrada={entrada} />
+      <RecorridoResaltado entrada={entrada} />
     </group>
   );
 }
