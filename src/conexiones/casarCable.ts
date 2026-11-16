@@ -20,9 +20,12 @@
 import type { TendidoImportado } from '../import/types';
 import type { CableCatalogo } from '../workspace/cables/catalogoCables';
 
-export type CasamientoCable =
-  | { readonly estado: 'unico'; readonly cable: CableCatalogo; readonly candidatos: readonly CableCatalogo[] }
-  | { readonly estado: 'varios'; readonly candidatos: readonly CableCatalogo[] }
+/** Lo único que mira la regla de casamiento: conductores y formación. */
+export type CableCasable = Pick<CableCatalogo, 'cable_id' | 'n_conductores' | 'formacion'>;
+
+export type CasamientoCable<C extends CableCasable = CableCatalogo> =
+  | { readonly estado: 'unico'; readonly cable: C; readonly candidatos: readonly C[] }
+  | { readonly estado: 'varios'; readonly candidatos: readonly C[] }
   | { readonly estado: 'ninguno'; readonly motivo: string };
 
 /** Formación del fabricante → secciones [principal, reducida] (reducida = principal si no hay «/»). */
@@ -33,10 +36,10 @@ export function seccionesDeFormacion(formacion: string): [number, number] {
 
 const mm2 = (n: number) => `${String(n).replace('.', ',')} mm²`;
 
-export function casarTendido(
+export function casarTendido<C extends CableCasable = CableCatalogo>(
   t: Pick<TendidoImportado, 'naturaleza' | 'conductoresPorUnidad' | 'seccionMm2' | 'seccionPeMm2' | 'incluyePe'>,
-  cables: readonly CableCatalogo[],
-): CasamientoCable {
+  cables: readonly C[],
+): CasamientoCable<C> {
   if (t.naturaleza === 'CABLE_DATOS') return { estado: 'ninguno', motivo: 'cable de datos: el catálogo del motor no tiene cables de datos' };
   if (t.naturaleza === 'TUBO') return { estado: 'ninguno', motivo: 'tubo: no es un cable' };
   const n = t.naturaleza === 'CONDUCTOR_UNIPOLAR' ? 1 : t.conductoresPorUnidad;

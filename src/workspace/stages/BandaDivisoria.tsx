@@ -10,8 +10,12 @@ import { useWorkspaceStore } from '../useWorkspaceStore';
 import type { Piece, Product } from '../../tray/model';
 import {
   bandaDePieza, bandasCompatibles, bandasOf, colocarBanda, computoBandas, CRITERIO_OCUPACION, CRITERIO_PE, NOTA_COMPUTO,
-  espesorDeBanda, ocupacionSegregada, PROCEDENCIA_CALCULO, PROCEDENCIA_REGLA, quitarBanda, TEXTO_GRUPO, type OcupacionSegregada,
+  espesorDeBanda, nombrarDeclarados, PROCEDENCIA_CALCULO, PROCEDENCIA_REGLA, quitarBanda, TEXTO_GRUPO, type OcupacionGrupo, type OcupacionSegregada,
 } from '../segregacion/bandaDivisoria';
+import {
+  CRITERIO_DECLARADOS, ocupacionDeLaApp, PROCEDENCIA_DECLARADOS, type OcupacionConDeclarados, type OcupacionDeLaApp,
+} from '../../conductores/ocupacionApp';
+import { useDeclarados } from '../../conductores/store';
 import { useCatalogoCables } from './CableCircuitoCampos';
 import { indexProducts, pieceLabelById } from './displayNames';
 import { Section } from './shared';
@@ -26,13 +30,26 @@ function useProductos() {
 
 /** Ocupación segregada de una pieza (o null si no tiene banda). */
 export function useOcupacionSegregada(): (pieza: string) => OcupacionSegregada | null {
+  const app = useOcupacionDeLaApp();
+  return (pieza: string) => {
+    const r = app(pieza);
+    return r?.tipo === 'segregada' ? r.o : null;
+  };
+}
+
+/**
+ * Lo que la app calcula para una pieza (biblioteca de conductores, parte B): segregada
+ * (banda divisoria) o con cables declarados por el operador. null: manda el motor.
+ */
+export function useOcupacionDeLaApp(): (pieza: string) => OcupacionDeLaApp | null {
   const entrada = useTrayStore((s) => s.entrada);
   const elements = useWorkspaceStore((s) => s.elements);
   const productos = useProductos();
   const { cables } = useCatalogoCables();
   const catalog = useWorkspaceStore((s) => s.importedCatalog);
+  const declarados = useDeclarados();
   const diametros = useMemo(() => new Map(cables.map((c) => [c.cable_id, c.diametro_exterior_mm])), [cables]);
-  return (pieza: string) => (entrada ? ocupacionSegregada(entrada, elements, productos, diametros, pieza, { catalog, cables }) : null);
+  return (pieza: string) => (entrada ? ocupacionDeLaApp(entrada, elements, productos, diametros, pieza, { catalog, cables, declarados }) : null);
 }
 
 export function BandaDivisoriaControl({ piece }: { piece: Piece }) {
@@ -86,7 +103,12 @@ export function BandaDivisoriaControl({ piece }: { piece: Piece }) {
 /** Ocupación por grupos de una pieza segregada (cálculo de la app), para Resultados. */
 export function OcupacionSegregadaView({ o }: { o: OcupacionSegregada }) {
   if (!o.calculada) {
-    return <div className="tone-warn" style={{ whiteSpace: 'normal' }} data-testid="segregada-no-verificable" data-origen="app">Banda {o.banda}: {o.motivo}.</div>;
+    return (
+      <div className="tone-warn" style={{ whiteSpace: 'normal' }} data-testid="segregada-no-verificable" data-origen="app"
+        data-faltan={(o.declarados ?? []).filter((d) => d.diametro_mm === null).map((d) => d.cable_id).join(' ')}>
+        Banda {o.banda}: {o.motivo}.
+      </div>
+    );
   }
   return (
     <div data-testid="segregada-ocupacion" data-origen="app" data-pieza={o.pieza}>
@@ -94,16 +116,81 @@ export function OcupacionSegregadaView({ o }: { o: OcupacionSegregada }) {
         <strong>Cálculo de la app</strong> — banda {o.banda}: ancho útil {mm(o.ancho_util_mm)} ({o.base_ancho}) − espesor {o.espesor_banda_mm.toLocaleString('es-AR', { maximumFractionDigits: 2 })} mm{' '}
         <span data-testid="segregada-espesor-procedencia">({o.espesor_procedencia})</span> = {mm(o.ancho_disponible_mm)} a repartir por cantidad de cables.
       </div>
-      {o.grupos.map((g) => (
-        <div key={g.grupo} className={`stage-row-sub${g.estado === 'CUMPLE' || g.estado === 'SIN_CABLES' ? '' : ' tone-warn'}`} style={{ whiteSpace: 'normal' }}
-          data-testid="segregada-grupo" data-grupo={g.grupo} data-estado={g.estado} data-n={g.n_cables}
-          data-asignado={g.ancho_asignado_mm} data-ocupado={g.ancho_ocupado_mm} data-reserva-libre={g.reserva_libre_pct ?? ''}>
-          {TEXTO_GRUPO[g.grupo]}: {g.n_cables} cable(s) → {mm(g.ancho_asignado_mm)} asignados · ocupa {mm(g.ancho_ocupado_mm)} · reserva libre {pct(g.reserva_libre_pct)} · {g.estado}
-          {g.cables.length > 0 && <span> ({g.cables.map((k) => `${k.origen}: ${k.cantidad} × Ø ${k.diametro_mm}`).join('; ')})</span>}
+      {o.declarados.length > 0 && (
+        <div className="stage-row-sub" style={{ whiteSpace: 'normal' }} data-testid="segregada-declarados" data-declarados={o.declarados.map((d) => d.cable_id).join(' ')}>
+          Lleva cables declarados por el operador, con su diámetro declarado (no viajan al motor): {nombrarDeclarados(o.declarados)}.
         </div>
-      ))}
+      )}
+      {o.grupos.map((g) => <GrupoApp key={g.grupo} g={g} testid="segregada-grupo" />)}
       {o.excluidos.map((x) => <div key={x.nombre} className="stage-row-sub tone-warn">No contado: {x.nombre} — {x.motivo}.</div>)}
     </div>
+  );
+}
+
+function GrupoApp({ g, testid, titulo }: { g: OcupacionGrupo; testid: string; titulo?: string }) {
+  return (
+    <div className={`stage-row-sub${g.estado === 'CUMPLE' || g.estado === 'SIN_CABLES' ? '' : ' tone-warn'}`} style={{ whiteSpace: 'normal' }}
+      data-testid={testid} data-grupo={g.grupo} data-estado={g.estado} data-n={g.n_cables}
+      data-asignado={g.ancho_asignado_mm} data-ocupado={g.ancho_ocupado_mm} data-reserva-libre={g.reserva_libre_pct ?? ''}>
+      {titulo ?? TEXTO_GRUPO[g.grupo]}: {g.n_cables} cable(s) → {mm(g.ancho_asignado_mm)} {titulo ? 'de referencia' : 'asignados'} · ocupa {mm(g.ancho_ocupado_mm)} · reserva libre {pct(g.reserva_libre_pct)} · {g.estado}
+      {g.cables.length > 0 && <span> ({g.cables.map((k) => `${k.origen}: ${k.cantidad} × Ø ${k.diametro_mm}`).join('; ')})</span>}
+    </div>
+  );
+}
+
+/** Ocupación de una bandeja sin banda que lleva cables declarados por el operador (cálculo de la app). */
+export function OcupacionDeclaradosView({ o }: { o: OcupacionConDeclarados }) {
+  return (
+    <div data-testid="declarados-ocupacion" data-origen="app" data-pieza={o.pieza} data-calculada={o.calculada ? 'true' : 'false'}
+      data-declarados={o.declarados.map((d) => d.cable_id).join(' ')}>
+      <div className="stage-row-sub" style={{ whiteSpace: 'normal' }} data-testid="declarados-porque"><strong>Cálculo de la app</strong> — {o.porque}</div>
+      {!o.calculada ? (
+        <div className="tone-warn" style={{ whiteSpace: 'normal' }} data-testid="declarados-no-calculable" data-faltan={o.faltan.map((d) => d.cable_id).join(' ')}>
+          {o.motivo[0].toUpperCase()}{o.motivo.slice(1)}.
+        </div>
+      ) : (
+        <>
+          <div className="stage-row-sub" style={{ whiteSpace: 'normal' }}>
+            Ancho de referencia {mm(o.ancho_util_mm)} ({o.base_ancho}){o.ala_mm !== null ? ` · ala ${mm(o.ala_mm)}` : ''} · reserva pedida {pct(o.reserva_solicitada_pct)}.
+          </div>
+          <GrupoApp g={o.grupo} testid="declarados-grupo" titulo="Potencia y PE" />
+          {o.excluidos.map((x) => <div key={x.nombre} className="stage-row-sub tone-warn">No contado: {x.nombre} — {x.motivo}.</div>)}
+        </>
+      )}
+    </div>
+  );
+}
+
+export function OcupacionDeLaAppView({ r }: { r: OcupacionDeLaApp }) {
+  return r.tipo === 'segregada' ? <OcupacionSegregadaView o={r.o} /> : <OcupacionDeclaradosView o={r.o} />;
+}
+
+/** Texto para decir que la ocupación del motor de una pieza no se usa, y por qué. */
+export function textoReemplazo(r: OcupacionDeLaApp): string {
+  return r.tipo === 'segregada'
+    ? 'Bandeja segregada: la ocupación de esta pieza la calcula la app; la del motor (sin la banda) no se usa.'
+    : 'Lleva cables declarados por el operador: la ocupación de esta pieza la calcula la app; la del motor (sin ellos) no se usa.';
+}
+
+/** Resultados › Cálculo del motor: las bandejas sin banda que llevan declarados, calculadas por la app. */
+export function BandejasConDeclaradosSection() {
+  const entrada = useTrayStore((s) => s.entrada);
+  const context = useTrayStore((s) => s.context);
+  const idx = useMemo(() => indexProducts(context?.productos), [context]);
+  const app = useOcupacionDeLaApp();
+  const piezas = entrada?.piezas ?? [];
+  const filas = piezas.map((p) => ({ p, r: app(p.instancia_id) })).filter((x): x is { p: typeof x.p; r: { tipo: 'declarados'; o: OcupacionConDeclarados } } => x.r?.tipo === 'declarados');
+  if (!filas.length) return null;
+  return (
+    <Section title={`Bandejas con cables declarados — cálculo de la app (${filas.length})`} testid="con-declarados">
+      <p className="stage-note" style={{ whiteSpace: 'normal' }} data-testid="con-declarados-procedencia">{PROCEDENCIA_DECLARADOS} {CRITERIO_DECLARADOS}</p>
+      {filas.map(({ p, r }) => (
+        <div key={p.instancia_id} className="stage-card" data-testid="con-declarados-row" data-pieza={p.instancia_id}>
+          <div><strong>{pieceLabelById(p.instancia_id, piezas, idx)}</strong></div>
+          <OcupacionDeclaradosView o={r.o} />
+        </div>
+      ))}
+    </Section>
   );
 }
 

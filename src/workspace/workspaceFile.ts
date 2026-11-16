@@ -1,4 +1,6 @@
 import type { EquipmentElement, FieldEvidence, ProjectDataV2 } from '../types/domain-v2';
+import { bloqueConductores, leerBloqueConductores, type BloqueConductores } from '../conductores/bloqueArchivo';
+import type { CableDeclarado } from '../conductores/biblioteca';
 import type { TrayInput } from '../tray/model';
 import { assertInput } from '../tray/model';
 import { validateProjectDataV2 } from '../persistence/validate-v2';
@@ -71,6 +73,8 @@ export interface WorkspaceFileV3 {
   trayInput: TrayInput;
   library?: LibraryBlock;
   importedCatalog?: ImportedCatalogBlock;
+  /** Cables declarados por el operador que usa el proyecto (opcional; `conductores/bloqueArchivo.ts`). */
+  conductoresDeclarados?: BloqueConductores;
 }
 
 /**
@@ -85,6 +89,8 @@ export interface ParsedWorkspaceFile {
   trayInput: TrayInput;
   library: FileLibrary | null;
   importedCatalog?: ImportedCatalogBlock;
+  /** Declarados que trae el archivo; null si no trae el bloque (abrirlo no toca la biblioteca local). */
+  conductoresDeclarados: CableDeclarado[] | null;
 }
 
 /** Aviso al abrir un archivo de una versión anterior: no es compatible y no se repara. */
@@ -107,6 +113,7 @@ export function exportWorkspace(
     /** B-2.5: calibración por patrón. */
     calibracion?: LibrarySnapshot['calibracion'];
   },
+  conductoresDeclarados?: readonly CableDeclarado[],
 ): string {
   const projectV2: ProjectDataV2 = {
     schemaVersion: 2,
@@ -136,6 +143,8 @@ export function exportWorkspace(
       catalog: importedCatalog,
     };
   }
+  const conductores = bloqueConductores(conductoresDeclarados ?? []);
+  if (conductores) file.conductoresDeclarados = conductores;
   return JSON.stringify(file, null, 2);
 }
 
@@ -163,6 +172,7 @@ export function importWorkspace(raw: string): ParsedWorkspaceFile {
 
   const library: FileLibrary | null = parseLibraryBlock(obj.library);
   const importedCatalog = parseImportedCatalog(obj.importedCatalog);
+  const conductoresDeclarados = leerBloqueConductores(obj.conductoresDeclarados);
 
   return {
     fileVersion: FILE_VERSION,
@@ -171,6 +181,7 @@ export function importWorkspace(raw: string): ParsedWorkspaceFile {
     trayInput: obj.trayInput as TrayInput,
     library,
     ...(importedCatalog ? { importedCatalog } : {}),
+    conductoresDeclarados,
   };
 }
 

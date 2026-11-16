@@ -80,12 +80,27 @@ function LibraryConflictDialog({ pending }: { pending: PendingChoice }) {
         aria-modal="true"
         aria-labelledby="library-conflict-title"
         data-testid="library-conflict"
+        data-kind={conflict.kind}
       >
-        <h3 id="library-conflict-title">La biblioteca del archivo difiere de la de este equipo</h3>
-        <p>
-          «{conflict.fileName}» trae su propia copia de la biblioteca de calibración. La de este equipo es la
-          autoridad: abrir el proyecto no la modifica salvo que elijas adoptar la del archivo.
-        </p>
+        {conflict.kind === 'conductores' ? (
+          <>
+            <h3 id="library-conflict-title">Los conductores declarados del archivo difieren de los de este equipo</h3>
+            <p>
+              «{conflict.fileName}» trae los cables declarados por el operador que usa el proyecto. La biblioteca de
+              conductores de este equipo es la autoridad: abrir el proyecto no la modifica salvo que elijas adoptar
+              los del archivo. Adoptar agrega los que faltan y reemplaza los de igual id; no borra ningún cable de
+              este equipo.
+            </p>
+          </>
+        ) : (
+          <>
+            <h3 id="library-conflict-title">La biblioteca del archivo difiere de la de este equipo</h3>
+            <p>
+              «{conflict.fileName}» trae su propia copia de la biblioteca de calibración. La de este equipo es la
+              autoridad: abrir el proyecto no la modifica salvo que elijas adoptar la del archivo.
+            </p>
+          </>
+        )}
         <ul>
           {conflict.differences.map((d) => (
             <li key={d}>{d}</li>
@@ -98,12 +113,18 @@ function LibraryConflictDialog({ pending }: { pending: PendingChoice }) {
           </p>
         )}
         <p>Al adoptar, se guarda antes una copia de la biblioteca actual bajo otra clave de este navegador.</p>
+        {conflict.kind === 'conductores' && (
+          <p>
+            Si seguís con la local, los cables del archivo que no están acá no se usan en este equipo y las
+            bandejas que los lleven no tendrán su ocupación.
+          </p>
+        )}
         <div className="project-dialog-actions">
           <button type="button" autoFocus data-testid="library-keep-local" onClick={() => resolve('local')}>
             Seguir con la biblioteca local
           </button>
           <button type="button" data-testid="library-adopt" onClick={() => resolve('adopt')}>
-            Adoptar la del archivo
+            {conflict.kind === 'conductores' ? 'Adoptar los del archivo' : 'Adoptar la del archivo'}
           </button>
           <button type="button" data-testid="library-cancel" onClick={() => resolve('cancel')}>
             Cancelar
@@ -176,8 +197,13 @@ export function ProjectControls() {
       void openProjectText(String(reader.result), file.name, chooseLibrary).then((r) => {
         if (r.status === 'error') setMessage(`Error al abrir: ${r.error}`);
         else if (r.status === 'cancelled') setMessage('Apertura cancelada: no se cambió nada.');
-        else if (r.libraryAdopted) setMessage(`Biblioteca del archivo adoptada. Copia de la anterior: ${r.backupKey}`);
-        else setMessage(null);
+        else {
+          const partes = [
+            r.libraryAdopted ? `Biblioteca del archivo adoptada. Copia de la anterior: ${r.backupKey}` : '',
+            r.conductoresAdoptados ? `Conductores declarados del archivo adoptados. Copia de los anteriores: ${r.conductoresBackupKey}` : '',
+          ].filter(Boolean);
+          setMessage(partes.length ? partes.join(' · ') : null);
+        }
         input.value = '';
       });
     };

@@ -48,6 +48,10 @@ import {
   type FileLibrary,
   type LibrarySnapshot,
 } from '../configurator/libraryBlock';
+import { declaradosHidratados, useConductoresStore, respaldarConductores } from '../conductores/store';
+import { declaradoOf } from '../conexiones/declarado';
+import { declaradosUsados } from '../conductores/guia';
+import { describirDiferencia, diferenciaConductores, hayDiferencia } from '../conductores/bloqueArchivo';
 import type { ImportedCatalog } from '../import/types';
 import type { TrayInput } from '../tray/model';
 
@@ -401,6 +405,12 @@ export function localLibrary(): LibrarySnapshot {
   };
 }
 
+/** Cables del catálogo del motor, si el servicio los mandó (sin motor: vacío). */
+function catalogoCablesActual() {
+  const r = useTrayStore.getState().context?.catalogoCables;
+  return r?.ok ? r.cables : [];
+}
+
 /** Serializa el proyecto actual (fileVersion 3, con biblioteca completa). Funciona sin motor. */
 export function buildProjectCopy(): { json: string; name: string } {
   const w = useWorkspaceStore.getState();
@@ -413,6 +423,7 @@ export function buildProjectCopy(): { json: string; name: string } {
     lib.overrides,
     w.importedCatalog,
     { approvals: lib.approvals, aporteOverrides: lib.aporteOverrides, calibracion: lib.calibracion },
+    declaradosUsados(declaradosHidratados(), w.importedCatalog?.tendidos ?? [], catalogoCablesActual(), declaradoOf(useTrayStore.getState().entrada)),
   );
   return { json, name: `workspace-${new Date().toISOString().slice(0, 10)}.json` };
 }
@@ -420,13 +431,15 @@ export function buildProjectCopy(): { json: string; name: string } {
 export type LibraryChoice = 'local' | 'adopt' | 'cancel';
 
 export interface LibraryConflict {
+  /** Qué biblioteca difiere: la de modelos (calibración) o la de conductores declarados. */
+  kind: 'modelos' | 'conductores';
   fileName: string;
   differences: string[];
   partial: boolean;
 }
 
 export type OpenResult =
-  | { status: 'opened'; libraryAdopted: boolean; backupKey: string | null }
+  | { status: 'opened'; libraryAdopted: boolean; backupKey: string | null; conductoresAdoptados: boolean; conductoresBackupKey: string | null }
   | { status: 'cancelled' }
   | { status: 'error'; error: string };
 
@@ -451,34 +464,64 @@ export async function openProjectText(
   let backupKey: string | null = null;
   const local = localLibrary();
   const fileLib: FileLibrary | null = parsed.library;
+  // Las dos preguntas (modelos y conductores) se hacen ANTES de aplicar nada: cancelar
+  // cualquiera de las dos no deja ningún cambio a medias.
+  let eleccionModelos: LibraryChoice = 'local';
   if (fileLib && libraryDiffers(local, fileLib)) {
-    const choice = await chooseLibrary({
+    eleccionModelos = await chooseLibrary({
+      kind: 'modelos',
       fileName,
       differences: describeLibraryDiff(local, fileLib),
       partial: fileLib.partial,
     });
-    if (choice === 'cancel') return { status: 'cancelled' };
-    if (choice === 'adopt') {
-      backupKey = backupLocalLibrary(local);
-      if (!backupKey) {
-        return {
-          status: 'error',
-          error: 'No se pudo guardar la copia de la biblioteca anterior; no se adoptó la del archivo.',
-        };
-      }
-      // Biblioteca por SKU (formato anterior): se migra a calibración por patrón (B-2.6).
-      let aAdoptar: FileLibrary = fileLib;
-      if (fileLib.porSku) {
-        const cat = await loadStaticCatalog();
-        const r = migrarBibliotecaPorSku(fileLib.overrides, cat.productos);
-        aAdoptar = { ...fileLib, overrides: r.overridesNombres, calibracion: r.biblioteca };
-      }
-      const ok = useCatalogConfigStore.getState().replaceLibrary(aAdoptar, { partial: fileLib.partial });
-      if (!ok) {
-        return { status: 'error', error: 'No se pudo escribir la biblioteca adoptada en este equipo.' };
-      }
-      adopted = true;
+    if (eleccionModelos === 'cancel') return { status: 'cancelled' };
+  }
+  const conductores = useConductoresStore.getState();
+  if (!conductores.hidratado) conductores.hidratar();
+  const difConductores = parsed.conductoresDeclarados
+    ? diferenciaConductores(useConductoresStore.getState().cables, parsed.conductoresDeclarados)
+    : null;
+  let eleccionConductores: LibraryChoice = 'local';
+  if (difConductores && hayDiferencia(difConductores)) {
+    eleccionConductores = await chooseLibrary({
+      kind: 'conductores',
+      fileName,
+      differences: describirDiferencia(difConductores),
+      partial: false,
+    });
+    if (eleccionConductores === 'cancel') return { status: 'cancelled' };
+  }
+  if (fileLib && eleccionModelos === 'adopt') {
+    backupKey = backupLocalLibrary(local);
+    if (!backupKey) {
+      return {
+        status: 'error',
+        error: 'No se pudo guardar la copia de la biblioteca anterior; no se adoptó la del archivo.',
+      };
     }
+    // Biblioteca por SKU (formato anterior): se migra a calibración por patrón (B-2.6).
+    let aAdoptar: FileLibrary = fileLib;
+    if (fileLib.porSku) {
+      const cat = await loadStaticCatalog();
+      const r = migrarBibliotecaPorSku(fileLib.overrides, cat.productos);
+      aAdoptar = { ...fileLib, overrides: r.overridesNombres, calibracion: r.biblioteca };
+    }
+    const ok = useCatalogConfigStore.getState().replaceLibrary(aAdoptar, { partial: fileLib.partial });
+    if (!ok) {
+      return { status: 'error', error: 'No se pudo escribir la biblioteca adoptada en este equipo.' };
+    }
+    adopted = true;
+  }
+  let conductoresAdoptados = false;
+  let conductoresBackupKey: string | null = null;
+  if (eleccionConductores === 'adopt' && parsed.conductoresDeclarados) {
+    conductoresBackupKey = respaldarConductores(useConductoresStore.getState().cables);
+    if (!conductoresBackupKey) {
+      return { status: 'error', error: `No se pudo guardar la copia de los conductores declarados de este equipo; no se adoptaron los del archivo.${adopted ? ` La biblioteca de modelos del archivo sí se adoptó (copia de la anterior: ${backupKey}).` : ''}` };
+    }
+    const err = useConductoresStore.getState().fusionar(parsed.conductoresDeclarados);
+    if (err) return { status: 'error', error: `No se pudieron agregar los conductores declarados del archivo: ${err}.${adopted ? ` La biblioteca de modelos del archivo sí se adoptó (copia de la anterior: ${backupKey}).` : ''}` };
+    conductoresAdoptados = true;
   }
   applyProject({
     elements: parsed.projectV2.elements,
@@ -488,5 +531,5 @@ export async function openProjectText(
     importedCatalog: parsed.importedCatalog?.catalog ?? null,
     fileName,
   });
-  return { status: 'opened', libraryAdopted: adopted, backupKey };
+  return { status: 'opened', libraryAdopted: adopted, backupKey, conductoresAdoptados, conductoresBackupKey };
 }

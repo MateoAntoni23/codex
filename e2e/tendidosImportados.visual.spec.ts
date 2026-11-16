@@ -217,7 +217,7 @@ test.describe('Conexiones importadas — etapa 2: los cables salen de los tendid
   test('7. Resultados: los tendidos de potencia sin cable de catálogo, con la lista y sus bandejas', async () => {
     await verPestana(page, 'circuitos');
     const aviso = page.getByTestId('tendidos-potencia-sin-cable');
-    await expect(aviso).toContainText('1 tendido(s) de potencia sin cable de catálogo: la ocupación de estas bandejas no los incluye.');
+    await expect(aviso).toContainText('1 tendido(s) de potencia sin cable de catálogo ni declarado: la ocupación de estas bandejas no los incluye.');
     const item = aviso.locator('[data-testid="tendido-potencia-sin-cable"][data-tendido="CB-010"]');
     await expect(item).toContainText('CX-0005');
     await expect(item).toContainText('5 conductores');

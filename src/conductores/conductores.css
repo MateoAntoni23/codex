@@ -1,0 +1,39 @@
+/* Biblioteca de conductores: misma paleta que la configuración de modelos (configurator.css). */
+.cond-root { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 8px 14px; gap: 6px; overflow: hidden; }
+.cond-cabecera { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.cond-cabecera select, .cond-cabecera input, .cond-form input, .cond-form select {
+  background: #1e1e2e; color: #e0e0f0; border: 1px solid #33334a; border-radius: 3px; padding: 3px 6px; font-size: 12px;
+}
+.cond-root button {
+  background: #26263a; color: #e0e0f0; border: 1px solid #44446a; border-radius: 3px; padding: 4px 10px; font-size: 12px; cursor: pointer;
+}
+.cond-root button:hover:not(:disabled) { border-color: #88ccff; }
+.cond-root button:disabled { opacity: 0.5; cursor: default; }
+.cond-espacio { flex: 1; }
+.cond-cuenta, .cond-proyecto { color: #8888cc; font-size: 12px; margin: 0; }
+.cond-cuerpo { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 360px; gap: 12px; }
+.cond-lista { overflow: auto; min-height: 0; }
+.cond-lado { overflow: auto; min-height: 0; background: #19192b; border: 1px solid #2a2a44; border-radius: 4px; padding: 10px 12px; }
+.cond-tabla { width: 100%; border-collapse: collapse; font-size: 12px; }
+.cond-tabla th { text-align: left; color: #8888cc; font-weight: 600; position: sticky; top: 0; background: #111120; padding: 4px 6px; border-bottom: 1px solid #2a2a44; }
+.cond-tabla td { padding: 3px 6px; border-bottom: 1px solid #1e1e2e; }
+.cond-lista .cond-tabla tbody tr { cursor: pointer; }
+.cond-lista .cond-tabla tbody tr:hover { background: #1e1e2e; }
+.cond-tabla tr.is-sel { background: #26263a; }
+.cond-origen { font-size: 11px; padding: 1px 6px; border-radius: 8px; white-space: nowrap; }
+.cond-origen--catalogo { background: #22324a; color: #88ccff; }
+.cond-origen--operador { background: #3a2e1a; color: #ffcc88; }
+.cond-ficha h4, .cond-form h4 { margin: 0 0 8px; color: #ffcc88; font-size: 13px; }
+.cond-ficha dl { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; margin: 0 0 8px; font-size: 12px; }
+.cond-ficha dt { color: #8888cc; }
+.cond-ficha dd { margin: 0; }
+.cond-form { display: flex; flex-direction: column; gap: 6px; font-size: 12px; }
+.cond-form label { display: flex; flex-direction: column; gap: 2px; color: #8888cc; }
+.cond-acciones { display: flex; gap: 8px; margin-top: 6px; }
+.cond-aviso { color: #ffcc88; font-size: 12px; }
+.cond-errores { color: #ff8888; font-size: 12px; margin: 4px 0; }
+.cond-procedencia, .cond-solo-lectura, .cond-vacio { color: #b0b0d0; font-size: 12px; }
+.cond-guia { background: #19192b; border: 1px solid #2a2a44; border-radius: 4px; padding: 8px 12px; max-height: 45%; overflow: auto; font-size: 12px; }
+.cond-guia h4 { margin: 0 0 4px; color: #ffcc88; }
+.cond-guia h5 { margin: 8px 0 2px; color: #8888cc; }
+.cond-guia p { margin: 0 0 6px; color: #b0b0d0; }

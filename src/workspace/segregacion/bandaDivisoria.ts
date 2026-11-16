@@ -49,6 +49,7 @@ import { cablesDelCircuito } from '../../conexiones/tendidos';
 import type { ImportedCatalog } from '../../import/types';
 import type { CableCatalogo } from '../cables/catalogoCables';
 import { PE_CABLE_ID, peDelTrazado } from '../motor/paraMotor';
+import type { CableDeclarado } from '../../conductores/biblioteca';
 
 export const BANDAS_KEY = 'bandas_ws';
 
@@ -134,7 +135,14 @@ export function quitarBanda(entrada: TrayInput, pieza: string): TrayInput {
 export type Grupo = 'potencia' | 'control';
 export const TEXTO_GRUPO: Readonly<Record<Grupo, string>> = { potencia: 'Potencia', control: 'Maniobra e instrumentación' };
 
-export interface CableEnGrupo { readonly origen: string; readonly cable_id: string; readonly cantidad: number; readonly diametro_mm: number }
+export interface CableEnGrupo {
+  readonly origen: string;
+  readonly cable_id: string;
+  readonly cantidad: number;
+  readonly diametro_mm: number;
+  /** Cable declarado por el operador (biblioteca de conductores): diámetro declarado, no del catálogo del motor. */
+  readonly declarado?: boolean;
+}
 export interface OcupacionGrupo {
   readonly grupo: Grupo;
   readonly cables: readonly CableEnGrupo[];
@@ -147,6 +155,17 @@ export interface OcupacionGrupo {
   readonly cumple_reserva: boolean | null;
   readonly estado: 'CUMPLE' | 'NO_CUMPLE_ANCHO' | 'NO_CUMPLE_RESERVA' | 'NO_CUMPLE_ALTURA' | 'NO_VERIFICABLE_SIN_RESERVA' | 'SIN_CABLES';
 }
+
+/** Un cable declarado por el operador que pasa por la pieza (biblioteca de conductores, parte B). */
+export interface DeclaradoEnPieza {
+  readonly cable_id: string;
+  readonly designacion: string;
+  readonly diametro_mm: number | null;
+  readonly grupos: readonly Grupo[];
+  /** Tendidos (etiquetas) que lo llevan por esta pieza. */
+  readonly tendidos: readonly string[];
+}
+
 export type OcupacionSegregada =
   | {
       readonly pieza: string; readonly banda: string; readonly calculada: true;
@@ -154,14 +173,116 @@ export type OcupacionSegregada =
       readonly ancho_disponible_mm: number; readonly ala_mm: number | null; readonly reserva_solicitada_pct: number | null;
       readonly grupos: readonly OcupacionGrupo[];
       readonly excluidos: ReadonlyArray<{ nombre: string; motivo: string }>;
+      /** Declarados que pasan por la pieza (entran en la suma con su diámetro declarado). */
+      readonly declarados: readonly DeclaradoEnPieza[];
     }
-  | { readonly pieza: string; readonly banda: string; readonly calculada: false; readonly motivo: string };
+  | { readonly pieza: string; readonly banda: string; readonly calculada: false; readonly motivo: string; readonly declarados?: readonly DeclaradoEnPieza[] };
 
 const red = (x: number) => Math.round(x * 1000) / 1000;
+
+/** Excel, catálogo de cables y declarados del operador (conexiones importadas, etapa 2; biblioteca de conductores, parte B). */
+export interface DatosOcupacion {
+  readonly catalog: ImportedCatalog | null;
+  readonly cables: readonly CableCatalogo[];
+  readonly declarados?: readonly CableDeclarado[];
+}
+
+/** Lo que cruza una pieza, por grupo, con lo que no se cuenta y los declarados. */
+export interface CrucesDePieza {
+  readonly cables: Readonly<Record<Grupo, CableEnGrupo[]>>;
+  readonly excluidos: Array<{ nombre: string; motivo: string }>;
+  readonly declarados: DeclaradoEnPieza[];
+}
+
+/**
+ * Cables de los circuitos guardados que cruzan la pieza (vigentes), por grupo, más los
+ * conductores del PE que la recorren (en potencia, `CRITERIO_PE`). Un cable declarado
+ * entra con SU diámetro declarado; sin diámetro no entra y queda en `declarados` con
+ * `diametro_mm: null` (el llamador decide: la pieza no tiene ocupación calculable).
+ */
+export function crucesDePieza(
+  entrada: TrayInput,
+  elements: readonly EquipmentElement[],
+  diametros: ReadonlyMap<string, number>,
+  pieza: string,
+  excel?: DatosOcupacion,
+): CrucesDePieza {
+  const cables: Record<Grupo, CableEnGrupo[]> = { potencia: [], control: [] };
+  const excluidos: Array<{ nombre: string; motivo: string }> = [];
+  const decl = new Map<string, { cable_id: string; designacion: string; diametro_mm: number | null; grupos: Set<Grupo>; tendidos: string[] }>();
+  for (const c of circuitosOf(entrada)) {
+    if (!c.cruces.some((x) => x.pieza === pieza)) continue;
+    if (!estadoCircuito(entrada, elements, c).vigente) { excluidos.push({ nombre: c.nombre, motivo: 'desactualizado: recalculalo' }); continue; }
+    const items = cablesDelCircuito(entrada, excel?.catalog ?? null, excel?.cables ?? [], c, excel?.declarados ?? []);
+    if (!items.length) { excluidos.push({ nombre: c.nombre, motivo: 'ligado a una conexión que ya no está en el Excel: no se cuenta' }); continue; }
+    for (const k of items) {
+      if (!k.cable_id || !k.cantidad || !k.funcion) { excluidos.push({ nombre: k.etiqueta, motivo: `${k.motivoSinCable ?? 'sin cable'}: no se cuenta` }); continue; }
+      const g: Grupo = k.funcion === 'potencia' ? 'potencia' : 'control';
+      if (k.declarado) {
+        const dd = k.declarado.diametro_exterior_mm;
+        const x = decl.get(k.declarado.cable_id) ?? { cable_id: k.declarado.cable_id, designacion: k.declarado.designacion, diametro_mm: dd, grupos: new Set<Grupo>(), tendidos: [] };
+        x.grupos.add(g);
+        x.tendidos.push(k.etiqueta);
+        decl.set(x.cable_id, x);
+        if (dd === null) { excluidos.push({ nombre: k.etiqueta, motivo: `el cable declarado ${k.declarado.designacion} (${k.declarado.cable_id}) no tiene diámetro exterior: completalo en la biblioteca de conductores` }); continue; }
+        cables[g].push({ origen: `${k.etiqueta} (${TEXTO_FUNCION[k.funcion]}; declarado por el operador)`, cable_id: k.cable_id, cantidad: k.cantidad, diametro_mm: dd, declarado: true });
+        continue;
+      }
+      const d = diametros.get(k.cable_id);
+      if (d === undefined) { excluidos.push({ nombre: k.etiqueta, motivo: `el cable ${k.cable_id} no está en el catálogo` }); continue; }
+      cables[g].push({ origen: `${k.etiqueta} (${TEXTO_FUNCION[k.funcion]})`, cable_id: k.cable_id, cantidad: k.cantidad, diametro_mm: d });
+    }
+  }
+  // PE: los conductores que recorren la pieza, en el grupo de potencia.
+  const pe = isNeutralPe(entrada.pe) ? peDelTrazado(entrada)?.pe : entrada.pe;
+  const nPe = (pe?.conductores ?? []).filter((k) => {
+    const rec = (k as { recorrido?: unknown[] }).recorrido ?? [];
+    return rec.some((t) => (typeof t === 'string' ? t : (t as { instancia?: string })?.instancia) === pieza);
+  }).length;
+  const dPe = diametros.get(pe?.cable_id ?? PE_CABLE_ID);
+  if (nPe && dPe !== undefined) cables.potencia.push({ origen: 'PE', cable_id: pe!.cable_id, cantidad: nPe, diametro_mm: dPe });
+  return { cables, excluidos, declarados: [...decl.values()].map((x) => ({ ...x, grupos: [...x.grupos] })) };
+}
+
+/** Declarados sin diámetro, con su designación e id: «A (OP-1), B (OP-2)». */
+export const nombrarDeclarados = (ds: readonly Pick<DeclaradoEnPieza, 'cable_id' | 'designacion'>[]) => ds.map((d) => `${d.designacion} (${d.cable_id})`).join(', ');
+
+export const motivoSinDiametro = (ds: readonly DeclaradoEnPieza[]) =>
+  `sin ocupación calculable: ${ds.length === 1 ? 'el cable declarado' : 'los cables declarados'} ${nombrarDeclarados(ds)} no ${ds.length === 1 ? 'tiene' : 'tienen'} diámetro exterior; completalo en la biblioteca de conductores`;
+
+/** Ancho de referencia (útil si el catálogo lo publica, si no nominal), ala y reserva pedida. */
+export function referenciasDePieza(entrada: TrayInput, tp: Product): { W: number | null; base: 'util' | 'nominal'; ala: number | null; rPct: number | null } {
+  const util = (tp as Record<string, unknown>).ancho_util_mm;
+  const base: 'util' | 'nominal' = typeof util === 'number' ? 'util' : 'nominal';
+  const W = typeof util === 'number' ? util : typeof tp.ancho_nominal_mm === 'number' ? tp.ancho_nominal_mm : null;
+  const alaRaw = (tp as Record<string, unknown>).ala_nominal_mm;
+  const rRaw = (entrada as Record<string, unknown>).reserva_solicitada_pct;
+  return { W, base, ala: typeof alaRaw === 'number' ? alaRaw : null, rPct: typeof rRaw === 'number' && Number.isFinite(rRaw) ? rRaw : null };
+}
+
+/** Un grupo: una capa en contacto (W = Σ n·D), reserva D-05 sobre el ancho asignado, altura contra el ala. */
+export function evaluarGrupo(g: Grupo, cables: readonly CableEnGrupo[], asignado: number, rPct: number | null, ala: number | null): OcupacionGrupo {
+  const ng = cables.reduce((s, k) => s + k.cantidad, 0);
+  if (!ng) return { grupo: g, cables: [], n_cables: 0, ancho_asignado_mm: red(asignado), ancho_ocupado_mm: 0, diametro_max_mm: 0, reserva_libre_pct: null, cabe: true, cumple_reserva: null, estado: 'SIN_CABLES' };
+  const ocupado = cables.reduce((s, k) => s + k.cantidad * k.diametro_mm, 0);
+  const dMax = cables.reduce((m, k) => Math.max(m, k.diametro_mm), 0);
+  const cabe = ocupado <= asignado + 1e-9;
+  const libre = asignado > 0 ? ((asignado - ocupado) / asignado) * 100 : 0;
+  const cumple = rPct === null ? null : ocupado <= (1 - rPct / 100) * asignado + 1e-9;
+  const estado: OcupacionGrupo['estado'] = !cabe ? 'NO_CUMPLE_ANCHO'
+    : cumple === null ? 'NO_VERIFICABLE_SIN_RESERVA'
+    : !cumple ? 'NO_CUMPLE_RESERVA'
+    : ala !== null && dMax > ala + 1e-9 ? 'NO_CUMPLE_ALTURA'
+    : 'CUMPLE';
+  return { grupo: g, cables, n_cables: ng, ancho_asignado_mm: red(asignado), ancho_ocupado_mm: red(ocupado), diametro_max_mm: dMax,
+    reserva_libre_pct: red(libre), cabe, cumple_reserva: cumple, estado };
+}
 
 /**
  * Ocupación por grupo de una pieza con banda (regla del operador). `diametros`:
  * diámetro exterior por cable_id (catálogo de cables). null si la pieza no tiene banda.
+ * Un cable declarado por el operador entra con su diámetro declarado; si alguno no lo
+ * tiene, la pieza queda sin ocupación calculable y se dice cuál falta.
  */
 export function ocupacionSegregada(
   entrada: TrayInput,
@@ -169,8 +290,7 @@ export function ocupacionSegregada(
   productos: ReadonlyMap<string, Product>,
   diametros: ReadonlyMap<string, number>,
   pieza: string,
-  /** Excel y catálogo de cables: los circuitos ligados cuentan sus tendidos (conexiones importadas, etapa 2). */
-  excel?: { readonly catalog: ImportedCatalog | null; readonly cables: readonly CableCatalogo[] },
+  excel?: DatosOcupacion,
 ): OcupacionSegregada | null {
   const banda = bandaDePieza(entrada, pieza);
   if (!banda) return null;
@@ -184,62 +304,19 @@ export function ocupacionSegregada(
     return { pieza, banda: sku, calculada: false, motivo: `NO VERIFICABLE: el catálogo no publica el espesor de la ${sku}, y la regla del operador lo descuenta primero del ancho útil` };
   }
   const e = esp.mm;
-  const util = (tp as Record<string, unknown>).ancho_util_mm;
-  const base: 'util' | 'nominal' = typeof util === 'number' ? 'util' : 'nominal';
-  const W = typeof util === 'number' ? util : tp.ancho_nominal_mm;
-  if (typeof W !== 'number') return { pieza, banda: sku, calculada: false, motivo: 'la bandeja no tiene ancho en el catálogo' };
-  const alaRaw = (tp as Record<string, unknown>).ala_nominal_mm;
-  const ala = typeof alaRaw === 'number' ? alaRaw : null;
-  const rRaw = (entrada as Record<string, unknown>).reserva_solicitada_pct;
-  const rPct = typeof rRaw === 'number' && Number.isFinite(rRaw) ? rRaw : null;
+  const { W, base, ala, rPct } = referenciasDePieza(entrada, tp);
+  if (W === null) return { pieza, banda: sku, calculada: false, motivo: 'la bandeja no tiene ancho en el catálogo' };
 
-  // Cables por grupo: los circuitos guardados que cruzan la pieza (con cable y vigentes).
-  const cables: Record<Grupo, CableEnGrupo[]> = { potencia: [], control: [] };
-  const excluidos: Array<{ nombre: string; motivo: string }> = [];
-  for (const c of circuitosOf(entrada)) {
-    if (!c.cruces.some((x) => x.pieza === pieza)) continue;
-    if (!estadoCircuito(entrada, elements, c).vigente) { excluidos.push({ nombre: c.nombre, motivo: 'desactualizado: recalculalo' }); continue; }
-    const items = cablesDelCircuito(entrada, excel?.catalog ?? null, excel?.cables ?? [], c);
-    if (!items.length) { excluidos.push({ nombre: c.nombre, motivo: 'ligado a una conexión que ya no está en el Excel: no se cuenta' }); continue; }
-    for (const k of items) {
-      if (!k.cable_id || !k.cantidad || !k.funcion) { excluidos.push({ nombre: k.etiqueta, motivo: `${k.motivoSinCable ?? 'sin cable'}: no se cuenta` }); continue; }
-      const d = diametros.get(k.cable_id);
-      if (d === undefined) { excluidos.push({ nombre: k.etiqueta, motivo: `el cable ${k.cable_id} no está en el catálogo` }); continue; }
-      const g: Grupo = k.funcion === 'potencia' ? 'potencia' : 'control';
-      cables[g].push({ origen: `${k.etiqueta} (${TEXTO_FUNCION[k.funcion]})`, cable_id: k.cable_id, cantidad: k.cantidad, diametro_mm: d });
-    }
-  }
-  // PE: los conductores que recorren la pieza, en el grupo de potencia.
-  const pe = isNeutralPe(entrada.pe) ? peDelTrazado(entrada)?.pe : entrada.pe;
-  const nPe = (pe?.conductores ?? []).filter((k) => {
-    const rec = (k as { recorrido?: unknown[] }).recorrido ?? [];
-    return rec.some((t) => (typeof t === 'string' ? t : (t as { instancia?: string })?.instancia) === pieza);
-  }).length;
-  const dPe = diametros.get(pe?.cable_id ?? PE_CABLE_ID);
-  if (nPe && dPe !== undefined) cables.potencia.push({ origen: 'PE', cable_id: pe!.cable_id, cantidad: nPe, diametro_mm: dPe });
+  const { cables, excluidos, declarados } = crucesDePieza(entrada, elements, diametros, pieza, excel);
+  const sinDiametro = declarados.filter((d) => d.diametro_mm === null);
+  if (sinDiametro.length) return { pieza, banda: sku, calculada: false, motivo: motivoSinDiametro(sinDiametro), declarados };
 
   const disponible = W - e;
   const n = (g: Grupo) => cables[g].reduce((s, k) => s + k.cantidad, 0);
   const nTotal = n('potencia') + n('control');
-  const grupos: OcupacionGrupo[] = (['potencia', 'control'] as const).map((g) => {
-    const ng = n(g);
-    const asignado = nTotal ? (disponible * ng) / nTotal : 0;
-    const ocupado = cables[g].reduce((s, k) => s + k.cantidad * k.diametro_mm, 0);
-    const dMax = cables[g].reduce((m, k) => Math.max(m, k.diametro_mm), 0);
-    if (!ng) return { grupo: g, cables: [], n_cables: 0, ancho_asignado_mm: 0, ancho_ocupado_mm: 0, diametro_max_mm: 0, reserva_libre_pct: null, cabe: true, cumple_reserva: null, estado: 'SIN_CABLES' };
-    const cabe = ocupado <= asignado + 1e-9;
-    const libre = asignado > 0 ? ((asignado - ocupado) / asignado) * 100 : 0;
-    const cumple = rPct === null ? null : ocupado <= (1 - rPct / 100) * asignado + 1e-9;
-    const estado: OcupacionGrupo['estado'] = !cabe ? 'NO_CUMPLE_ANCHO'
-      : cumple === null ? 'NO_VERIFICABLE_SIN_RESERVA'
-      : !cumple ? 'NO_CUMPLE_RESERVA'
-      : ala !== null && dMax > ala + 1e-9 ? 'NO_CUMPLE_ALTURA'
-      : 'CUMPLE';
-    return { grupo: g, cables: cables[g], n_cables: ng, ancho_asignado_mm: red(asignado), ancho_ocupado_mm: red(ocupado), diametro_max_mm: dMax,
-      reserva_libre_pct: red(libre), cabe, cumple_reserva: cumple, estado };
-  });
+  const grupos = (['potencia', 'control'] as const).map((g) => evaluarGrupo(g, cables[g], nTotal ? (disponible * n(g)) / nTotal : 0, rPct, ala));
   return { pieza, banda: sku, calculada: true, espesor_banda_mm: e, espesor_procedencia: esp.procedencia, ancho_util_mm: W, base_ancho: base, ancho_disponible_mm: red(disponible),
-    ala_mm: ala, reserva_solicitada_pct: rPct, grupos, excluidos };
+    ala_mm: ala, reserva_solicitada_pct: rPct, grupos, excluidos, declarados };
 }
 
 /** Cómputo de bandas: una por tramo segregado; longitud a cubrir por SKU. */

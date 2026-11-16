@@ -12,7 +12,7 @@ import { useUiStore, type PestanaInferior } from './uiStore';
 import { ContrasteTabla, useContraste } from '../../conexiones/ContrasteTabla';
 import { CircuitosTabla } from './CircuitosTabla';
 import { CalculoMotorSection, CircuitosAlMotor } from './CalculoMotor';
-import { BandejasSegregadasSection } from './BandaDivisoria';
+import { BandejasConDeclaradosSection, BandejasSegregadasSection } from './BandaDivisoria';
 import { ComputoMotor, TrayResults } from '../TrayResults';
 import { AvisosModeloList, ComponentesUnionApp, CurvasEslabonadasList, ExceptionsList, MezclasList, NominalList } from './ResultadosPanel';
 
@@ -37,6 +37,7 @@ function Contenido({ pestana }: { pestana: PestanaInferior }) {
         <>
           <CalculoMotorSection />
           <BandejasSegregadasSection parte="ocupacion" />
+          <BandejasConDeclaradosSection />
           <details className="stage-card" data-testid="respuesta-cruda">
             <summary>Respuesta completa del motor (cruda)</summary>
             <TrayResults />

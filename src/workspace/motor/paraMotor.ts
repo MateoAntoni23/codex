@@ -43,6 +43,7 @@ import type { CableCatalogo } from '../cables/catalogoCables';
 import { declaradoOf } from '../../conexiones/declarado';
 import { relacionConExcel } from '../../conexiones/estadoConexion';
 import { cableDeTendido, tendidosDe } from '../../conexiones/tendidos';
+import { esIdDeclarado, type CableDeclarado } from '../../conductores/biblioteca';
 
 export const PE_SECCION_MM2 = 16;
 export const PE_CABLE_ID = 'PRY-SASTFLEX-CU-1x16';
@@ -60,8 +61,10 @@ export interface NoEnviado {
   /** Circuito ligado a una conexión del Excel: el tendido que no viaja (etapa 2). */
   readonly tendidoId?: string;
   readonly conexionId?: string;
-  /** Tendido de POTENCIA sin cable de catálogo: la ocupación de sus bandejas no lo incluye. */
+  /** Tendido de POTENCIA sin cable de catálogo NI declarado: la ocupación de sus bandejas no lo incluye. */
   readonly potenciaSinCable?: boolean;
+  /** Tendido de POTENCIA con un cable declarado por el operador: no viaja; sus bandejas las calcula la app. */
+  readonly declarado?: CableDeclarado;
   /** Piezas de bandeja del recorrido. */
   readonly piezas?: readonly string[];
 }
@@ -70,6 +73,22 @@ export interface NoEnviado {
 export interface DatosDelExcel {
   readonly catalog: ImportedCatalog | null;
   readonly cables: readonly CableCatalogo[];
+  /** Cables declarados por el operador (biblioteca de conductores): casan, pero NUNCA viajan al motor. */
+  readonly declarados?: readonly CableDeclarado[];
+}
+
+export const MOTIVO_DECLARADO_NO_VIAJA =
+  'Lleva un cable declarado por el operador: no viaja al motor (su contrato sólo admite cables de su catálogo). La ocupación de sus bandejas la calcula la app; la masa por pieza y los vanos del motor no lo incluyen';
+
+/**
+ * Control de la parte B: ningún cable declarado (`OP-…`) puede salir hacia el motor.
+ * Se llama sobre lo que se va a enviar; si encuentra uno, falla en voz alta.
+ */
+export function asegurarSinDeclarados(circuitos: readonly { circuito_id?: unknown; cable_id?: unknown }[]): void {
+  const malos = circuitos.filter((c) => typeof c.cable_id === 'string' && esIdDeclarado(c.cable_id));
+  if (malos.length) {
+    throw new Error(`Un cable declarado por el operador no puede viajar al motor: ${malos.map((c) => `${String(c.circuito_id)} (${String(c.cable_id)})`).join(', ')}`);
+  }
 }
 
 export function circuitosParaMotor(
@@ -102,7 +121,8 @@ export function circuitosParaMotor(
       for (const t of tendidosDe(excel!.catalog, cx.conexionId)) {
         const id = `${c.id}-${t.tendidoId}`;
         const base = { id, nombre: `${c.nombre} · ${t.tendidoId} (${t.designacion ?? t.funcion})`, sumaMm: c.sumaMm, completa: c.completa, tendidoId: t.tendidoId, conexionId: cx.conexionId, piezas: recorrido };
-        const k = cableDeTendido(t, excel!.cables, declarado);
+        const k = cableDeTendido(t, excel!.cables, declarado, excel!.declarados ?? []);
+        if (k.cableDeclarado) { noEnviados.push({ ...base, motivo: MOTIVO_DECLARADO_NO_VIAJA, declarado: k.cableDeclarado }); continue; }
         if (!k.cable) { noEnviados.push({ ...base, motivo: `Tendido de potencia ${k.motivoSinCable ?? 'sin cable'}`, potenciaSinCable: true }); continue; }
         if (idsCables && !idsCables.includes(k.cable.cable_id)) { noEnviados.push({ ...base, motivo: `el cable ${k.cable.cable_id} no está en el catálogo de cables`, potenciaSinCable: true }); continue; }
         if (k.cable.cable_id === PE_CABLE_ID) { noEnviados.push({ ...base, motivo: `Su cable (${PE_CABLE_ID}) es el del PE del trazado: el motor lo contaría dos veces` }); continue; }
@@ -119,8 +139,10 @@ export function circuitosParaMotor(
     if (!est.vigente) { no(c, `Desactualizado (recalculalo antes de calcular): ${est.motivos.join('; ')}`); continue; }
     if (c.cable!.cable_id === PE_CABLE_ID) { no(c, `Su cable (${PE_CABLE_ID}) es el del PE: el motor lo contaría dos veces`); continue; }
     if (ocupados.has(c.id)) { no(c, `Otro circuito del trazado ya se llama ${c.id}`); continue; }
+    if (esIdDeclarado(c.cable!.cable_id)) { no(c, MOTIVO_DECLARADO_NO_VIAJA); continue; }
     enviados.push({ circuito_id: c.id, funcion: 'potencia', cable_id: c.cable!.cable_id, cantidad: c.cable!.cantidad, separado: false, recorrido });
   }
+  asegurarSinDeclarados(enviados);
   return { enviados, noEnviados };
 }
 
