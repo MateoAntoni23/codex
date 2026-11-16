@@ -41,6 +41,7 @@ import { checkConnection } from '../placement/joins';
 import { caminoEntreBocas, longitudDeCruce, type Cruce, type FuenteLongitud, type UnionCortada } from './caminoEntreBocas';
 import { enganchesOf, estadoEnganche, firmaEnganche, idDeBocaEnganche } from '../derivacion/enganche';
 import { bajadaDeEquipo, bajadasOf, bocaBajada, estadoBajada, firmaBajada, idDeBocaBajada, type Bajada } from '../equipos/bajada';
+import { desvincular } from '../../conexiones/declarado';
 
 export const CIRCUITOS_KEY = 'circuitos_ws';
 
@@ -63,12 +64,15 @@ export interface ExtremoEquipo { readonly equipo: string }
 export interface BajadaGuardada { readonly id: string; readonly firma: string; readonly longitud_mm: number }
 
 /** Funciones de un circuito. Sólo "potencia" viaja al motor (D-11). El PE no es un circuito: va en su propia sección. */
-export const FUNCIONES_CIRCUITO = ['potencia', 'maniobra', 'instrumentacion'] as const;
+export const FUNCIONES_CIRCUITO = ['potencia', 'maniobra', 'instrumentacion', 'comunicacion'] as const;
 export type FuncionCircuito = (typeof FUNCIONES_CIRCUITO)[number];
 export const TEXTO_FUNCION: Readonly<Record<FuncionCircuito, string>> = {
   potencia: 'Potencia',
   maniobra: 'Maniobra',
   instrumentacion: 'Instrumentación',
+  // Conexiones importadas (2026-11-15): COMUNICACION del Excel. En la segregación va con
+  // maniobra e instrumentación, en el grupo que no es potencia; no viaja al motor (D-11).
+  comunicacion: 'Comunicación',
 };
 /** Por qué un circuito de maniobra o instrumentación no va al motor (cita la decisión del motor). */
 export const MOTIVO_D11 =
@@ -207,6 +211,8 @@ function construir(entrada: TrayInput, elements: readonly EquipmentElement[], id
 export function guardarCircuito(
   entrada: TrayInput, elements: readonly EquipmentElement[], nombre: string, origen: ExtremoEquipo, destino: ExtremoEquipo,
   cable?: CableDeCircuito, idsCables?: readonly string[],
+  /** Id pedido (circuitos ligados a una conexión del Excel: `CIR-<conexionId>`). */
+  idPedido?: string,
 ): { ok: true; entrada: TrayInput; circuito: CircuitoGuardado } | { ok: false; motivo: string } {
   const n = nombre.trim();
   if (!n) return { ok: false, motivo: 'el circuito necesita un nombre' };
@@ -217,20 +223,27 @@ export function guardarCircuito(
   const lista = circuitosOf(entrada);
   if (lista.some((c) => c.nombre.toLowerCase() === n.toLowerCase())) return { ok: false, motivo: `ya hay un circuito llamado "${n}"` };
   const usados = new Set(lista.map((c) => c.id));
+  if (idPedido && usados.has(idPedido)) return { ok: false, motivo: `ya hay un circuito ${idPedido}` };
   let k = lista.length + 1;
   while (usados.has(`CIR-${k}`)) k++;
-  const r = construir(entrada, elements, `CIR-${k}`, n, origen, destino);
+  const r = construir(entrada, elements, idPedido ?? `CIR-${k}`, n, origen, destino);
   if (!r.ok) return r;
   const circuito: CircuitoGuardado = cable ? { ...r.circuito, cable: { ...cable } } : r.circuito;
   return { ok: true, entrada: conCircuitos(entrada, [...lista, circuito]), circuito };
 }
 
-/** Recalcula un circuito con el proyecto actual (acción explícita del operador). Conserva id y nombre. */
-export function recalcularCircuito(entrada: TrayInput, elements: readonly EquipmentElement[], id: string): { ok: true; entrada: TrayInput } | { ok: false; motivo: string } {
+/**
+ * Recalcula un circuito con el proyecto actual (acción explícita del operador). Conserva id y nombre.
+ * `extremos`: los equipos de ahora, si cambiaron (circuito ligado a una conexión del Excel).
+ */
+export function recalcularCircuito(
+  entrada: TrayInput, elements: readonly EquipmentElement[], id: string,
+  extremos?: { origen: ExtremoEquipo; destino: ExtremoEquipo },
+): { ok: true; entrada: TrayInput } | { ok: false; motivo: string } {
   const lista = circuitosOf(entrada);
   const c = lista.find((x) => x.id === id);
   if (!c) return { ok: false, motivo: `no existe el circuito ${id}` };
-  const r = construir(entrada, elements, c.id, c.nombre, c.origen, c.destino);
+  const r = construir(entrada, elements, c.id, c.nombre, extremos?.origen ?? c.origen, extremos?.destino ?? c.destino);
   if (!r.ok) return r;
   // El cable es un dato del circuito, no del recorrido: se conserva.
   const nuevo: CircuitoGuardado = c.cable ? { ...r.circuito, cable: c.cable } : r.circuito;
@@ -238,7 +251,8 @@ export function recalcularCircuito(entrada: TrayInput, elements: readonly Equipm
 }
 
 export function borrarCircuito(entrada: TrayInput, id: string): TrayInput {
-  return conCircuitos(entrada, circuitosOf(entrada).filter((c) => c.id !== id));
+  // Con el circuito se va su vínculo con la conexión del Excel (si lo tenía).
+  return desvincular(conCircuitos(entrada, circuitosOf(entrada).filter((c) => c.id !== id)), id);
 }
 
 // ─── Cable del circuito (etapa 2) ────────────────────────────────────────────
@@ -249,7 +263,7 @@ export function motivoCableInvalido(c: CableDeCircuito, idsCables?: readonly str
   if (idsCables && !idsCables.includes(c.cable_id)) return `el cable ${c.cable_id} no está en el catálogo de cables`;
   if (!Number.isInteger(c.cantidad) || c.cantidad < 1) return 'la cantidad tiene que ser un entero positivo';
   if (c.separado !== null && typeof c.separado !== 'boolean') return 'el dato de disposición del cable no es válido';
-  if (!(FUNCIONES_CIRCUITO as readonly string[]).includes(c.funcion)) return 'la función tiene que ser potencia, maniobra o instrumentación';
+  if (!(FUNCIONES_CIRCUITO as readonly string[]).includes(c.funcion)) return 'la función tiene que ser potencia, maniobra, instrumentación o comunicación';
   return null;
 }
 

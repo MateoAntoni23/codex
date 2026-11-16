@@ -30,8 +30,9 @@ export function useOcupacionSegregada(): (pieza: string) => OcupacionSegregada |
   const elements = useWorkspaceStore((s) => s.elements);
   const productos = useProductos();
   const { cables } = useCatalogoCables();
+  const catalog = useWorkspaceStore((s) => s.importedCatalog);
   const diametros = useMemo(() => new Map(cables.map((c) => [c.cable_id, c.diametro_exterior_mm])), [cables]);
-  return (pieza: string) => (entrada ? ocupacionSegregada(entrada, elements, productos, diametros, pieza) : null);
+  return (pieza: string) => (entrada ? ocupacionSegregada(entrada, elements, productos, diametros, pieza, { catalog, cables }) : null);
 }
 
 export function BandaDivisoriaControl({ piece }: { piece: Piece }) {

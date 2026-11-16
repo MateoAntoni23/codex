@@ -305,7 +305,7 @@ export function ResultadosPanel() {
 }
 
 const TABLAS: Array<[PestanaInferior, string]> = [
-  ['circuitos', 'Circuitos'], ['computo', 'Cómputo de materiales'], ['motor', 'Cálculo del motor'], ['avisos', 'Avisos'],
+  ['circuitos', 'Circuitos'], ['contraste', 'Contraste con ingeniería'], ['computo', 'Cómputo de materiales'], ['motor', 'Cálculo del motor'], ['avisos', 'Avisos'],
 ];
 
 /** Accesos a las tablas del panel inferior. */

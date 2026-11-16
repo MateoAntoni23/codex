@@ -45,6 +45,9 @@ import type { CatalogCompatibility, Product, TrayInput } from '../../tray/model'
 import type { EquipmentElement } from '../../types/domain-v2';
 import { isNeutralPe } from '../../project/emptyProject';
 import { circuitosOf, estadoCircuito, TEXTO_FUNCION } from '../recorridos/circuitosGuardados';
+import { cablesDelCircuito } from '../../conexiones/tendidos';
+import type { ImportedCatalog } from '../../import/types';
+import type { CableCatalogo } from '../cables/catalogoCables';
 import { PE_CABLE_ID, peDelTrazado } from '../motor/paraMotor';
 
 export const BANDAS_KEY = 'bandas_ws';
@@ -166,6 +169,8 @@ export function ocupacionSegregada(
   productos: ReadonlyMap<string, Product>,
   diametros: ReadonlyMap<string, number>,
   pieza: string,
+  /** Excel y catálogo de cables: los circuitos ligados cuentan sus tendidos (conexiones importadas, etapa 2). */
+  excel?: { readonly catalog: ImportedCatalog | null; readonly cables: readonly CableCatalogo[] },
 ): OcupacionSegregada | null {
   const banda = bandaDePieza(entrada, pieza);
   if (!banda) return null;
@@ -193,12 +198,16 @@ export function ocupacionSegregada(
   const excluidos: Array<{ nombre: string; motivo: string }> = [];
   for (const c of circuitosOf(entrada)) {
     if (!c.cruces.some((x) => x.pieza === pieza)) continue;
-    if (!c.cable) { excluidos.push({ nombre: c.nombre, motivo: 'sin cable: no se cuenta' }); continue; }
     if (!estadoCircuito(entrada, elements, c).vigente) { excluidos.push({ nombre: c.nombre, motivo: 'desactualizado: recalculalo' }); continue; }
-    const d = diametros.get(c.cable.cable_id);
-    if (d === undefined) { excluidos.push({ nombre: c.nombre, motivo: `el cable ${c.cable.cable_id} no está en el catálogo` }); continue; }
-    const g: Grupo = c.cable.funcion === 'potencia' ? 'potencia' : 'control';
-    cables[g].push({ origen: `${c.nombre} (${TEXTO_FUNCION[c.cable.funcion]})`, cable_id: c.cable.cable_id, cantidad: c.cable.cantidad, diametro_mm: d });
+    const items = cablesDelCircuito(entrada, excel?.catalog ?? null, excel?.cables ?? [], c);
+    if (!items.length) { excluidos.push({ nombre: c.nombre, motivo: 'ligado a una conexión que ya no está en el Excel: no se cuenta' }); continue; }
+    for (const k of items) {
+      if (!k.cable_id || !k.cantidad || !k.funcion) { excluidos.push({ nombre: k.etiqueta, motivo: `${k.motivoSinCable ?? 'sin cable'}: no se cuenta` }); continue; }
+      const d = diametros.get(k.cable_id);
+      if (d === undefined) { excluidos.push({ nombre: k.etiqueta, motivo: `el cable ${k.cable_id} no está en el catálogo` }); continue; }
+      const g: Grupo = k.funcion === 'potencia' ? 'potencia' : 'control';
+      cables[g].push({ origen: `${k.etiqueta} (${TEXTO_FUNCION[k.funcion]})`, cable_id: k.cable_id, cantidad: k.cantidad, diametro_mm: d });
+    }
   }
   // PE: los conductores que recorren la pieza, en el grupo de potencia.
   const pe = isNeutralPe(entrada.pe) ? peDelTrazado(entrada)?.pe : entrada.pe;

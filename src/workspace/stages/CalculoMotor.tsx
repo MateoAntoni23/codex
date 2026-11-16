@@ -43,11 +43,16 @@ function Bloqueo({ b }: { b: R }) {
 export function CircuitosAlMotor() {
   const entrada = useTrayStore((s) => s.entrada);
   const elements = useWorkspaceStore((s) => s.elements);
+  const catalog = useWorkspaceStore((s) => s.importedCatalog);
   const { cables, motivo } = useCatalogoCables();
-  const ids = motivo ? undefined : cables.map((c) => c.cable_id);
-  const r = useMemo(() => (entrada ? circuitosParaMotor(entrada, elements, ids) : null), [entrada, elements, ids]);
+  const r = useMemo(() => {
+    const ids = motivo ? undefined : cables.map((c) => c.cable_id);
+    return entrada ? circuitosParaMotor(entrada, elements, ids, { catalog, cables }) : null;
+  }, [entrada, elements, cables, motivo, catalog]);
   if (!entrada || circuitosOf(entrada).length === 0) return null;
   const nombre = new Map(circuitosOf(entrada).map((c) => [c.id, c.nombre]));
+  // Circuitos ligados al Excel: uno por tendido de potencia (`<circuito>-<tendido>`).
+  for (const c of circuitosOf(entrada)) for (const e of r!.enviados) if (e.circuito_id.startsWith(`${c.id}-`)) nombre.set(e.circuito_id, `${c.nombre} · ${e.circuito_id.slice(c.id.length + 1)}`);
   const cableTexto = (id: string) => {
     const k = cables.find((c) => c.cable_id === id);
     return k ? textoCable(k) : id;
@@ -55,7 +60,7 @@ export function CircuitosAlMotor() {
   return (
     <Section title="Circuitos y el motor" testid="circuitos-motor">
       <p className="stage-note" style={{ whiteSpace: 'normal' }}>
-        Viajan al motor los circuitos de potencia con cable. {PROCEDENCIA_SEPARADO} El PE viaja aparte, en su sección.
+        Viajan al motor los circuitos de potencia con cable; uno ligado al Excel, uno por cada tendido de potencia con cable de catálogo, todos con su recorrido. {PROCEDENCIA_SEPARADO} El PE viaja aparte, en su sección.
       </p>
       {r!.enviados.map((c) => (
         <div key={c.circuito_id} className="stage-card" data-testid="circuito-al-motor" data-circuito={c.circuito_id}>
