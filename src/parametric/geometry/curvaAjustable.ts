@@ -2,7 +2,7 @@
  * CURVA AJUSTABLE de escalera — CAS-{ancho}-{ala}-{espesor}-{G|Z}, tipo_pieza
  * «curva horizontal» (giro a izquierda o derecha visto desde arriba). Ángulo por
  * instancia. Regla del operador en ../reglaCurvaAjustable.ts (radio interior =
- * ancho, eje = 1,5 × ancho, rango 1°–90° provisional); el catálogo no declara
+ * ancho, eje = 1,5 × ancho, rango del producto 0°–90°, pieza colocada con más de 0°); el catálogo no declara
  * ángulo ni radio.
  *
  * DIBUJO esquemático, como las eslabonadas: una banda curva del ancho de la

@@ -3,7 +3,8 @@
  * pieza colocada (entra en la definición y en la huella). Cada receta tiene su
  * regla, declarada por el operador:
  *   - curvas eslabonadas (EPS, CUS): 90° por defecto, más de 22,5° y hasta 180° (reglaEslabones.ts);
- *   - curva ajustable de escalera (CAS): 90° por defecto, 1°–90° provisional
+ *   - curva ajustable de escalera (CAS): 90° por defecto; producto de 0° a 90°, pieza
+ *     colocada con más de 0°
  *     (reglaCurvaAjustable.ts).
  */
 import { ANGULO_ESLABONADA_POR_DEFECTO, motivoAnguloEslabonada, RECETAS_ESLABONADAS } from './reglaEslabones';

@@ -97,7 +97,7 @@ describe('definición de un producto del catálogo al que le falta un dato', () 
       expect(findMasterById(r.def.patron)?.variationRule.rationale, p.sku).toMatch(/declarada por el operador/);
       const fuera = resolveDefinition(p, { angulo_deg: 91 });
       expect(fuera.ok, p.sku).toBe(false);
-      if (!fuera.ok) expect(fuera.motivo).toMatch(/fuera de rango.*de 1° a 90°/);
+      if (!fuera.ok) expect(fuera.motivo).toMatch(/fuera de rango.*de 0° a 90°/);
     }
   });
 

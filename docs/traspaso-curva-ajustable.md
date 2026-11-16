@@ -21,12 +21,9 @@ El encargo llegó con `<RADIO>`, `<MIN>` y `<MAX>` sin completar; los valores se
 - **Radio interior = ancho de la bandeja.** El radio del eje es el interior más la mitad del ancho:
   **R_eje = 1,5 × ancho** (CAS-300 → interior 300 mm, eje 450 mm). Los centros de boca y la longitud de eje
   van sobre el eje.
-- **Rango de ángulo: de 1° a 90°, PROVISIONAL**, declarado por el operador. El catálogo dice «Ángulo
-  ajustable: rango no declarado».
-  - Está elegido **corto a propósito**: rechazar un ángulo válido se ve en el momento; aceptar uno
-    imposible recién se descubre en obra.
-  - Si el operador necesita un ángulo mayor, el rango se amplía cambiando ese único valor (ver notas de
-    implementación: dónde está).
+- **Rango de ángulo: de 0° a 90°**, declarado por el operador el 2026-11-15 (ya no provisional; antes era
+  1°–90° provisional). El catálogo dice «Ángulo ajustable: rango no declarado». Ver «Rango 0°–90° y
+  pieza colocada» más abajo: una pieza colocada necesita más de 0°.
 
 ## Qué se pide
 1. Ángulo por instancia, igual que las eslabonadas. Por defecto 90°.
@@ -49,8 +46,9 @@ las pruebas tienen que fallar.
 
 ## Notas de implementación
 
-- **Regla** — `src/parametric/reglaCurvaAjustable.ts`: radios, longitud de eje, rango y procedencia. **El
-  rango se amplía cambiando `ANGULO_AJUSTABLE_MAX`** (hoy 90, marcado PROVISIONAL).
+- **Regla** — `src/parametric/reglaCurvaAjustable.ts`: radios, longitud de eje, rango y procedencia. Rango del
+  producto en `ANGULO_AJUSTABLE_MIN` / `ANGULO_AJUSTABLE_MAX` (0 y 90); el rechazo de 0° para una pieza
+  colocada está en `motivoAnguloAjustable` (`MOTIVO_AJUSTABLE_CERO`).
 - **Geometría** — `src/parametric/geometry/curvaAjustable.ts`: banda curva esquemática entre el radio
   interior (ancho) y el exterior (2 × ancho), alto = ala, en el marco de las CS (planta XZ, alto en Y).
   P1 sobre el eje a φ = 0; P2 = P1 girada θ alrededor del centro. La otra mano (giro al otro lado) es la
@@ -113,7 +111,30 @@ tipos OK; vitest 1877/1877 (forks, 2 procesos: fijo en `vite.config.ts`); motor 
 Playwright en 8 tandas **129/129**, 0 fallos, 0 inestables.
 
 ## Pendiente
-- Confirmar o ampliar el rango provisional 1°–90° (`ANGULO_AJUSTABLE_MAX`).
+- (Cerrado 2026-11-15) Rango confirmado por el operador: de 0° a 90°.
+- Pregunta abierta al operador sobre 0°: ver «Rango 0°–90° y pieza colocada».
 - El ángulo al colocar se habilitó sólo para la CAS. La eslabonada sigue colocándose a 90° y
   corrigiéndose después; habilitarlo también ahí es pasarle `anguloInstancia` en
   `routingPlacementFromState` y mostrar el campo (el resto del camino ya es común).
+
+## Rango 0°–90° y pieza colocada (operador, 2026-11-15)
+
+- **Rango del producto: de 0° a 90°**, declarado por el operador; es lo que la pieza admite de fábrica.
+  Deja de ser provisional.
+- **Una pieza COLOCADA necesita más de 0°.** Con radio por ángulo, a 0° la longitud de eje es 0 y la boca
+  de salida coincide con la de entrada: no gira ni aporta longitud, así que no es una pieza. Al colocar o
+  al corregir a exactamente 0° se rechaza con el motivo «a 0° la curva ajustable no gira ni aporta
+  longitud (…); para un tramo sin giro va un tramo recto». No dice «fuera de rango», porque 0° está dentro
+  del rango del producto. 0,5° sí se coloca.
+- **Por qué así y no de otro modo:** el motor rechaza `longitud_eje_mm = 0` («debe ser > 0»). Se descartó
+  omitir el campo, porque el motor informaría «longitud de eje no informada por el CAD», que es falso, y
+  la app tendría que desmentirlo con un segundo cartel. Se descartó bloquear el cálculo. Con el rechazo al
+  colocar, ninguna CAS a 0° llega al motor.
+- **Pendiente de una respuesta del operador:** si en obra se usa un codo ajustable totalmente cerrado como
+  pieza recta de paso, a 0° tiene una longitud física propia que el catálogo no publica, y habría que
+  declararla. Hasta que conteste, rige el rechazo a 0°.
+- **El texto de las eslabonadas que remite a la CAS** («para un giro horizontal menor…») dice ahora «más de
+  0° y hasta 90°», tomado de `RANGO_AJUSTABLE_COLOCADA_TEXTO`.
+- Pruebas: unitarias del rango (0 y 90 como límites del producto, sin «provisional»), de 0° con su motivo
+  propio al definir, colocar y corregir, y de 0,5° que sí se coloca. E2E `curvaAjustable`: 0° al colocar
+  (motivo, sin vista previa, sin pieza) y al corregir (motivo, el ángulo no cambia).
