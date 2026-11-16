@@ -11,6 +11,8 @@ import { useUiStore } from '../workspace/stages/uiStore';
 import { textoCable } from '../workspace/cables/catalogoCables';
 import { TEXTO_FUNCION } from '../workspace/recorridos/circuitosGuardados';
 import { porBandeja, TEXTO_GRUPO, type Grupo } from './porBandeja';
+import { useDeclarados } from '../conductores/store';
+import { LINEA_DECLARADO } from '../conductores/biblioteca';
 
 const mm = (x: number) => `${x.toLocaleString('es-AR', { maximumFractionDigits: 1 })} mm`;
 
@@ -19,8 +21,9 @@ export function PorEstaBandeja({ pieza }: { pieza: string }) {
   const elements = useWorkspaceStore((s) => s.elements);
   const catalog = useWorkspaceStore((s) => s.importedCatalog);
   const { cables } = useCatalogoCables();
+  const declarados = useDeclarados();
   const resaltado = useUiStore((s) => s.circuitoResaltado);
-  const r = useMemo(() => (entrada ? porBandeja(entrada, elements, catalog, cables, pieza) : null), [entrada, elements, catalog, cables, pieza]);
+  const r = useMemo(() => (entrada ? porBandeja(entrada, elements, catalog, cables, pieza, declarados) : null), [entrada, elements, catalog, cables, pieza, declarados]);
   if (!r) return null;
 
   const verCircuito = (id: string) => {
@@ -42,10 +45,10 @@ export function PorEstaBandeja({ pieza }: { pieza: string }) {
             <button type="button" data-testid="pasa-ver-circuito" onClick={() => verCircuito(c.id)}>Ver circuito</button>
           </div>
           {items.map((k, i) => (
-            <div key={k.tendidoId ?? i} className="stage-row-sub" style={{ whiteSpace: 'normal' }} data-testid="pasa-item" data-tendido={k.tendidoId ?? ''} data-grupo={k.grupo ?? ''}>
-              {k.tendidoId ? `${k.tendidoId} · ` : ''}{k.funcion ? TEXTO_FUNCION[k.funcion] : 'sin función'} · {k.cable ? textoCable(k.cable) : 'sin cable de catálogo'}
+            <div key={k.tendidoId ?? i} className="stage-row-sub" style={{ whiteSpace: 'normal' }} data-testid="pasa-item" data-tendido={k.tendidoId ?? ''} data-grupo={k.grupo ?? ''} data-declarado={k.declarado?.cable_id ?? ''}>
+              {k.tendidoId ? `${k.tendidoId} · ` : ''}{k.funcion ? TEXTO_FUNCION[k.funcion] : 'sin función'} · {k.declarado ? `${k.declarado.designacion} (${LINEA_DECLARADO.toLowerCase()})` : k.cable ? textoCable(k.cable) : 'sin cable de catálogo'}
               {k.cantidad ? ` × ${k.cantidad}` : ''}
-              {k.cable ? ` · Ø ${mm(k.cable.diametro_exterior_mm)}` : ''}
+              {k.diametroMm !== null ? ` · Ø ${mm(k.diametroMm)}${k.declarado ? ' (declarado)' : ''}` : ''}
               {k.fueraDeLaSuma && <span className="tone-warn" data-testid="pasa-fuera"> — no entra en la suma: {k.fueraDeLaSuma}</span>}
             </div>
           ))}
@@ -59,7 +62,7 @@ export function PorEstaBandeja({ pieza }: { pieza: string }) {
             </div>
           ))}
           <div className="stage-row-sub" style={{ whiteSpace: 'normal' }}>
-            Cálculo de la app: Σ diámetro exterior de catálogo × cantidad.{r.fueraDeLaSuma ? ` ${r.fueraDeLaSuma} ítem(s) fuera de la suma, con el motivo.` : ''} El PE del trazado no es un circuito: lo cuenta el motor.
+            Cálculo de la app: Σ diámetro exterior × cantidad (el del catálogo o, en un cable declarado por el operador, el declarado).{r.fueraDeLaSuma ? ` ${r.fueraDeLaSuma} ítem(s) fuera de la suma, con el motivo.` : ''} El PE del trazado no es un circuito: lo cuenta el motor.
           </div>
         </div>
       )}

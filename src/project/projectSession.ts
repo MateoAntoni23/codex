@@ -48,7 +48,8 @@ import {
   type FileLibrary,
   type LibrarySnapshot,
 } from '../configurator/libraryBlock';
-import { useConductoresStore, respaldarConductores } from '../conductores/store';
+import { declaradosHidratados, useConductoresStore, respaldarConductores } from '../conductores/store';
+import { declaradoOf } from '../conexiones/declarado';
 import { declaradosUsados } from '../conductores/guia';
 import { describirDiferencia, diferenciaConductores, hayDiferencia } from '../conductores/bloqueArchivo';
 import type { ImportedCatalog } from '../import/types';
@@ -404,6 +405,12 @@ export function localLibrary(): LibrarySnapshot {
   };
 }
 
+/** Cables del catálogo del motor, si el servicio los mandó (sin motor: vacío). */
+function catalogoCablesActual() {
+  const r = useTrayStore.getState().context?.catalogoCables;
+  return r?.ok ? r.cables : [];
+}
+
 /** Serializa el proyecto actual (fileVersion 3, con biblioteca completa). Funciona sin motor. */
 export function buildProjectCopy(): { json: string; name: string } {
   const w = useWorkspaceStore.getState();
@@ -416,7 +423,7 @@ export function buildProjectCopy(): { json: string; name: string } {
     lib.overrides,
     w.importedCatalog,
     { approvals: lib.approvals, aporteOverrides: lib.aporteOverrides, calibracion: lib.calibracion },
-    declaradosUsados(useConductoresStore.getState().cables, w.importedCatalog?.tendidos ?? []),
+    declaradosUsados(declaradosHidratados(), w.importedCatalog?.tendidos ?? [], catalogoCablesActual(), declaradoOf(useTrayStore.getState().entrada)),
   );
   return { json, name: `workspace-${new Date().toISOString().slice(0, 10)}.json` };
 }

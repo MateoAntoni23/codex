@@ -3,6 +3,7 @@
  * modelos. Un fallo de escritura no cambia el estado en memoria y se informa: el
  * operador nunca cree que guardó algo que no quedó guardado.
  */
+import { useEffect } from 'react';
 import { create } from 'zustand';
 import { esCableDeclarado, type CableDeclarado } from './biblioteca';
 
@@ -100,3 +101,26 @@ export const useConductoresStore = create<ConductoresState>((set, get) => {
     },
   };
 });
+
+/**
+ * Los declarados de este equipo, leyendo la biblioteca local si todavía no se leyó.
+ * El cálculo (qué viaja al motor, ocupación de la app) siempre parte de acá: con la
+ * biblioteca sin leer, un tendido que casa con un declarado y un cable de catálogo
+ * podría viajar al motor con el de catálogo.
+ */
+export function declaradosHidratados(): readonly CableDeclarado[] {
+  const s = useConductoresStore.getState();
+  if (!s.hidratado) s.hidratar();
+  return useConductoresStore.getState().cables;
+}
+
+/** Hook: los declarados de este equipo (lee la biblioteca local la primera vez). */
+export function useDeclarados(): readonly CableDeclarado[] {
+  const hidratado = useConductoresStore((s) => s.hidratado);
+  const cables = useConductoresStore((s) => s.cables);
+  useEffect(() => { if (!hidratado) useConductoresStore.getState().hidratar(); }, [hidratado]);
+  if (hidratado) return cables;
+  // Primer render: se lee sin escribir el store (el efecto lo hidrata enseguida).
+  const r = leerConductoresLocales();
+  return r.ok ? r.cables : [];
+}

@@ -15,6 +15,7 @@ import { summarizeResultDe } from './stages/resultPresentation';
 import { curvasEslabonadas } from './computoEslabonado';
 import { completarComponentesMezclas } from './componentesUnionMezcla';
 import { bandasOf } from './segregacion/bandaDivisoria';
+import { useOcupacionDeLaApp } from './stages/BandaDivisoria';
 
 function JsonBlock({ value }: { value: unknown }) {
   return <pre className="tray-json">{JSON.stringify(value, null, 2)}</pre>;
@@ -27,7 +28,10 @@ export function TrayResults() {
   const entrada  = useTrayStore((s) => s.entrada);
   const selectTray = useWorkspaceStore((s) => s.selectTray);
 
+  const app = useOcupacionDeLaApp();
   const segregadas = new Set(bandasOf(entrada).map((b) => b.pieza));
+  // Biblioteca de conductores, parte B: las piezas con cables declarados tampoco muestran la ocupación del motor.
+  const conDeclarados = new Set((entrada?.piezas ?? []).map((p) => p.instancia_id).filter((id) => !segregadas.has(id) && app(id)?.tipo === 'declarados'));
   if (!result) {
     return <p style={{ padding: '8px 12px', fontSize: 12, color: '#666688' }}>Sin resultados. Calcular para consultar al motor.</p>;
   }
@@ -70,9 +74,9 @@ export function TrayResults() {
         }
       </details>
 
-      <p style={{ padding: '2px 12px', fontSize: 11 }} data-testid="respuesta-cruda-nota">Respuesta completa del motor, tal cual{segregadas.size ? `; la ocupación de ${segregadas.size} bandeja(s) segregada(s) no se muestra: la calcula la app (el motor no conoce la banda)` : ''}.</p>
+      <p style={{ padding: '2px 12px', fontSize: 11 }} data-testid="respuesta-cruda-nota">Respuesta completa del motor, tal cual{segregadas.size ? `; la ocupación de ${segregadas.size} bandeja(s) segregada(s) no se muestra: la calcula la app (el motor no conoce la banda)` : ''}{conDeclarados.size ? `; la ocupación de ${conDeclarados.size} bandeja(s) con cables declarados por el operador no se muestra: la calcula la app (los declarados no viajan al motor)` : ''}.</p>
       {Object.entries(result).filter(([k]) => k !== 'entrada').map(([key, val0]) => {
-        const val = key === 'ocupacion' && object(val0) ? Object.fromEntries(Object.entries(val0).filter(([id]) => !segregadas.has(id))) : val0;
+        const val = key === 'ocupacion' && object(val0) ? Object.fromEntries(Object.entries(val0).filter(([id]) => !segregadas.has(id) && !conDeclarados.has(id))) : val0;
         return (
         <details key={key} style={{ margin: '4px 0' }}>
           <summary style={{ padding: '3px 12px', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>{key}</summary>

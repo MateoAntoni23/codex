@@ -10,6 +10,8 @@ import { casarTendido } from '../conexiones/casarCable';
 import type { NaturalezaTendido, TendidoImportado } from '../import/types';
 import type { CableCatalogo } from '../workspace/cables/catalogoCables';
 import { casableDe, type CableDeclarado } from './biblioteca';
+import { cableDeTendido } from '../conexiones/tendidos';
+import { declaradoOf, type DeclaradoConexiones } from '../conexiones/declarado';
 
 type Casable = { cable_id: string; n_conductores: number; formacion: string };
 const candidatosDe = (t: TendidoImportado, cables: readonly Casable[]): readonly Casable[] => {
@@ -92,10 +94,21 @@ export function tendidosSinCable(
 }
 
 /**
- * Declarados que usa un proyecto: los que casan con al menos un tendido de su Excel.
- * Es lo que viaja en la copia del proyecto (A5). (Parte B: cuando el operador elija
- * entre candidatos, esto se acota a los elegidos o propuestos.)
+ * Declarados que usa un proyecto: los que lleva algún tendido de su Excel, elegidos por
+ * el operador o propuestos por la regla (único candidato) — parte B. Es lo que viaja en
+ * la copia del proyecto (A5). Un declarado que sólo es uno de varios candidatos, sin
+ * elegir, no lo lleva ningún tendido y no viaja.
  */
-export function declaradosUsados(declarados: readonly CableDeclarado[], tendidos: readonly TendidoImportado[]): CableDeclarado[] {
-  return declarados.filter((d) => tendidos.some((t) => candidatosDe(t, [casableDe(d)]).length > 0));
+export function declaradosUsados(
+  declarados: readonly CableDeclarado[],
+  tendidos: readonly TendidoImportado[],
+  cablesCatalogo: readonly CableCatalogo[] = [],
+  declarado: DeclaradoConexiones = declaradoOf(null),
+): CableDeclarado[] {
+  const usados = new Set<string>();
+  for (const t of tendidos) {
+    const d = cableDeTendido(t, cablesCatalogo, declarado, declarados).cableDeclarado;
+    if (d) usados.add(d.cable_id);
+  }
+  return declarados.filter((d) => usados.has(d.cable_id));
 }

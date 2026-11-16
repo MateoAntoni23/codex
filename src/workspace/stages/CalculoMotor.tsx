@@ -22,7 +22,8 @@ import { indexProducts, pieceLabelById } from './displayNames';
 import { Empty, Section } from './shared';
 import { explicacionDiscontinuosDe } from './resultPresentation';
 import { incumplimientosExplicados } from './discontinuidades';
-import { OcupacionSegregadaView, useOcupacionSegregada } from './BandaDivisoria';
+import { OcupacionDeLaAppView, textoReemplazo, useOcupacionDeLaApp } from './BandaDivisoria';
+import { useDeclarados } from '../../conductores/store';
 
 type R = Record<string, unknown>;
 const obj = (v: unknown): R => (object(v) ? v : {});
@@ -45,10 +46,11 @@ export function CircuitosAlMotor() {
   const elements = useWorkspaceStore((s) => s.elements);
   const catalog = useWorkspaceStore((s) => s.importedCatalog);
   const { cables, motivo } = useCatalogoCables();
+  const declarados = useDeclarados();
   const r = useMemo(() => {
     const ids = motivo ? undefined : cables.map((c) => c.cable_id);
-    return entrada ? circuitosParaMotor(entrada, elements, ids, { catalog, cables }) : null;
-  }, [entrada, elements, cables, motivo, catalog]);
+    return entrada ? circuitosParaMotor(entrada, elements, ids, { catalog, cables, declarados }) : null;
+  }, [entrada, elements, cables, motivo, catalog, declarados]);
   if (!entrada || circuitosOf(entrada).length === 0) return null;
   const nombre = new Map(circuitosOf(entrada).map((c) => [c.id, c.nombre]));
   // Circuitos ligados al Excel: uno por tendido de potencia (`<circuito>-<tendido>`).
@@ -60,7 +62,7 @@ export function CircuitosAlMotor() {
   return (
     <Section title="Circuitos y el motor" testid="circuitos-motor">
       <p className="stage-note" style={{ whiteSpace: 'normal' }}>
-        Viajan al motor los circuitos de potencia con cable; uno ligado al Excel, uno por cada tendido de potencia con cable de catálogo, todos con su recorrido. {PROCEDENCIA_SEPARADO} El PE viaja aparte, en su sección.
+        Viajan al motor los circuitos de potencia con cable; uno ligado al Excel, uno por cada tendido de potencia con cable de catálogo, todos con su recorrido. {PROCEDENCIA_SEPARADO} El PE viaja aparte, en su sección. Un cable declarado por el operador no viaja nunca: la ocupación de sus bandejas la calcula la app.
       </p>
       {r!.enviados.map((c) => (
         <div key={c.circuito_id} className="stage-card" data-testid="circuito-al-motor" data-circuito={c.circuito_id}>
@@ -68,7 +70,7 @@ export function CircuitosAlMotor() {
         </div>
       ))}
       {r!.noEnviados.map((c) => (
-        <div key={c.id} className="stage-card" data-testid="circuito-no-motor" data-circuito={c.id}>
+        <div key={c.id} className="stage-card" data-testid="circuito-no-motor" data-circuito={c.id} data-declarado={c.declarado?.cable_id ?? ''}>
           <div><strong>{c.nombre}</strong> · longitud {c.completa ? mm(c.sumaMm) : `incompleta (≥ ${mm(c.sumaMm)})`} · <em>no se calcula</em></div>
           <div className="tone-warn" style={{ whiteSpace: 'normal' }} data-testid="circuito-no-motor-motivo">{c.motivo}</div>
         </div>
@@ -83,7 +85,7 @@ export function CalculoMotorSection() {
   const entrada = useTrayStore((s) => s.entrada);
   const context = useTrayStore((s) => s.context);
   const idx = useMemo(() => indexProducts(context?.productos), [context]);
-  const segregada = useOcupacionSegregada();
+  const app = useOcupacionDeLaApp();
   if (!result) return null;
   const piezas = entrada?.piezas ?? [];
   const etiqueta = (id: string) => (piezas.some((p) => p.instancia_id === id) ? pieceLabelById(id, piezas, idx) : id);
@@ -140,17 +142,19 @@ export function CalculoMotorSection() {
       {Object.entries(ocupacion).map(([id, o0]) => {
         const secs = obj(obj(o0).secciones);
         const q = obj(cargas[id]);
-        // Bandeja segregada: el motor no conoce la banda; su ocupación (sin banda) no se usa. La informa la app.
-        const seg = segregada(id);
+        // Bandeja segregada (el motor no conoce la banda) o con cables declarados (no viajan al motor):
+        // su ocupación del motor no se usa. La informa la app.
+        const seg = app(id);
         return (
           <div key={id} className="stage-card" data-testid="motor-pieza" data-pieza={id}>
-            <div><strong>{etiqueta(id)}</strong> · masa {typeof q.q_kg_m === 'number' ? `${q.q_kg_m} kg/m` : '—'} (cables {str(q.cables_potencia_kg_m)} + PE {str(q.pe_kg_m)} kg/m)</div>
+            <div><strong>{etiqueta(id)}</strong> · masa {typeof q.q_kg_m === 'number' ? `${q.q_kg_m} kg/m` : '—'} (cables {str(q.cables_potencia_kg_m)} + PE {str(q.pe_kg_m)} kg/m)
+              {seg?.tipo === 'declarados' ? ' — sin los cables declarados (no viajan al motor)' : ''}</div>
             {seg && (
-              <div className="stage-row-sub" style={{ whiteSpace: 'normal' }} data-testid="motor-ocupacion-reemplazada">
-                Bandeja segregada: la ocupación de esta pieza la calcula la app; la del motor (sin la banda) no se usa.
+              <div className="stage-row-sub" style={{ whiteSpace: 'normal' }} data-testid="motor-ocupacion-reemplazada" data-motivo={seg.tipo}>
+                {textoReemplazo(seg)}
               </div>
             )}
-            {seg && <OcupacionSegregadaView o={seg} />}
+            {seg && <OcupacionDeLaAppView r={seg} />}
             {!seg && Object.entries(secs).map(([nom, s0]) => {
               const s = obj(s0);
               const rsv = obj(s.reserva);

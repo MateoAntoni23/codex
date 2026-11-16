@@ -26,7 +26,8 @@ import { Empty, Section } from './shared';
 import { useUiStore } from './uiStore';
 import { relacionConExcel } from '../../conexiones/estadoConexion';
 import { recalcularConExcel } from '../../conexiones/acciones';
-import { cablesDelCircuito, faltaConExcel, TEXTO_PROCEDENCIA, type CableEnCircuito } from '../../conexiones/tendidos';
+import { cablesDelCircuito, faltaConExcel, TEXTO_DECLARADO, TEXTO_PROCEDENCIA, type CableEnCircuito } from '../../conexiones/tendidos';
+import { useDeclarados } from '../../conductores/store';
 import { circuitosParaMotor } from '../motor/paraMotor';
 
 const num = (x: number) => x.toLocaleString('es-AR', { maximumFractionDigits: 1, minimumFractionDigits: 1, useGrouping: false });
@@ -46,6 +47,7 @@ export function CircuitosTabla() {
   const resaltar = useUiStore((s) => s.resaltarCircuito);
   const [editando, setEditando] = useState<{ id: string; valor: ValorCable } | null>(null);
   const { cables, motivo: sinCatalogo } = useCatalogoCables();
+  const declarados = useDeclarados();
   const ids = sinCatalogo ? undefined : cables.map((c) => c.cable_id);
   const textoDeCable = (id: string) => {
     const k = cables.find((x) => x.cable_id === id);
@@ -53,10 +55,10 @@ export function CircuitosTabla() {
   };
   /** Un tendido del Excel: «CB-001: Sintenax … × 6 (regla del operador…)» o su motivo. */
   const textoTendido = (k: CableEnCircuito) =>
-    `${k.tendidoId}: ${k.cable_id ? `${textoDeCable(k.cable_id)} × ${k.cantidad}` : `sin cable de catálogo (${k.motivoSinCable})`}${k.procedencia && k.procedencia !== 'circuito' ? ` — ${TEXTO_PROCEDENCIA[k.procedencia]}` : ''}`;
+    `${k.tendidoId}: ${k.declarado ? `${k.declarado.designacion} × ${k.cantidad} [${TEXTO_DECLARADO}]` : k.cable_id ? `${textoDeCable(k.cable_id)} × ${k.cantidad}` : `sin cable de catálogo (${k.motivoSinCable})`}${k.procedencia && k.procedencia !== 'circuito' ? ` — ${TEXTO_PROCEDENCIA[k.procedencia]}` : ''}`;
   const cableTexto = (c: CircuitoGuardado, excel: RelacionExcel) => {
     if (excel.tipo === 'ligado') {
-      const items = cablesDelCircuito(entrada, catalog, cables, c);
+      const items = cablesDelCircuito(entrada, catalog, cables, c, declarados);
       return items.length ? items.map(textoTendido).join(' | ') : 'sin tendidos (la conexión ya no está en el Excel)';
     }
     if (!c.cable) return 'sin cable';
@@ -71,11 +73,14 @@ export function CircuitosTabla() {
   const filas = circuitos.map((c) => ({
     c,
     estado: entrada ? estadoCircuito(entrada, elements, c, etiquetaPieza) : { vigente: true as const },
-    falta: faltaConExcel(entrada, catalog, cables, c, ids),
+    falta: faltaConExcel(entrada, catalog, cables, c, ids, declarados),
     excel: relacionConExcel(entrada, catalog, c),
   }));
   // Etapa 2: tendidos de potencia de circuitos ligados que no llevan cable de catálogo.
-  const potenciaSinCable = entrada ? circuitosParaMotor(entrada, elements, ids, { catalog, cables }).noEnviados.filter((n) => n.potenciaSinCable) : [];
+  // B5 (biblioteca de conductores): cuenta sólo los que tampoco tienen un declarado; los que lo tienen van aparte.
+  const noEnviados = entrada ? circuitosParaMotor(entrada, elements, ids, { catalog, cables, declarados }).noEnviados : [];
+  const potenciaSinCable = noEnviados.filter((n) => n.potenciaSinCable);
+  const potenciaDeclarados = noEnviados.filter((n) => n.declarado);
   const excelTexto = (r: RelacionExcel) =>
     r.tipo === 'fuera-del-excel' ? 'fuera del Excel' : [r.conexionId, ...r.motivos].join('; ');
   const parcial = (x: number, pantalla: boolean) => (pantalla ? mmPantalla(x) : num(x));
@@ -138,9 +143,22 @@ export function CircuitosTabla() {
 
   return (
     <Section title={`Circuitos (${circuitos.length})`} testid="circuitos-tabla">
+      {potenciaDeclarados.length > 0 && (
+        <div className="stage-note" style={{ whiteSpace: 'normal' }} data-testid="tendidos-potencia-declarados">
+          <strong>{potenciaDeclarados.length} tendido(s) de potencia con cable declarado por el operador: no viajan al motor; la ocupación de sus bandejas la calcula la app.</strong>
+          <ul style={{ margin: '2px 0 0 16px', padding: 0 }}>
+            {potenciaDeclarados.map((n) => (
+              <li key={n.id} data-testid="tendido-potencia-declarado" data-tendido={n.tendidoId} data-declarado={n.declarado!.cable_id}>
+                {n.nombre} — {n.conexionId}: {n.declarado!.designacion} ({n.declarado!.cable_id}
+                {n.declarado!.diametro_exterior_mm === null ? '; sin diámetro exterior: sus bandejas quedan sin ocupación calculable hasta completarlo' : ''}). Bandejas: {(n.piezas ?? []).map(etiquetaPieza).join(', ') || 'ninguna'}.
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       {potenciaSinCable.length > 0 && (
         <div className="stage-note tone-warn" style={{ whiteSpace: 'normal' }} data-testid="tendidos-potencia-sin-cable">
-          <strong>{potenciaSinCable.length} tendido(s) de potencia sin cable de catálogo: la ocupación de estas bandejas no los incluye.</strong>
+          <strong>{potenciaSinCable.length} tendido(s) de potencia sin cable de catálogo ni declarado: la ocupación de estas bandejas no los incluye.</strong>
           <ul style={{ margin: '2px 0 0 16px', padding: 0 }}>
             {potenciaSinCable.map((n) => (
               <li key={n.id} data-testid="tendido-potencia-sin-cable" data-tendido={n.tendidoId}>
@@ -207,8 +225,8 @@ export function CircuitosTabla() {
                     <td data-testid="circuito-destino-equipo">{nombreEquipo(c.destino.equipo)}</td>
                     {excel.tipo === 'ligado' ? (
                       <td data-testid="circuito-cable" style={{ whiteSpace: 'normal' }}>
-                        {cablesDelCircuito(entrada, catalog, cables, c).map((k) => (
-                          <div key={k.tendidoId} data-testid="circuito-tendido" data-tendido={k.tendidoId} className={k.cable_id ? undefined : 'tone-warn'}>{textoTendido(k)}</div>
+                        {cablesDelCircuito(entrada, catalog, cables, c, declarados).map((k) => (
+                          <div key={k.tendidoId} data-testid="circuito-tendido" data-tendido={k.tendidoId} data-declarado={k.declarado?.cable_id ?? ''} className={k.cable_id ? undefined : 'tone-warn'}>{textoTendido(k)}</div>
                         ))}
                       </td>
                     ) : (
