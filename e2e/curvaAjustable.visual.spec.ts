@@ -1,7 +1,8 @@
 /**
  * E2E — curva ajustable de escalera (CAS), con gestos reales, 1366×768.
  * Regla del operador (2026-11-14): radio interior = ancho, eje = 1,5 × ancho,
- * ángulo por instancia (90° por defecto), rango 1°–90° provisional. Una pieza por
+ * ángulo por instancia (90° por defecto); rango del producto 0°–90°, pieza colocada con
+ * más de 0° (a 0° no gira ni aporta longitud: se rechaza con ese motivo). Una pieza por
  * código.
  *
  *   - En el selector de tres pasos, dentro de «curva horizontal», la CAS es una
@@ -119,11 +120,20 @@ test.describe('Curva ajustable (CAS)', () => {
     const error = page.getByTestId('routing-placement-error');
     await expect(error).toBeVisible();
     await expect(error).toContainText('fuera de rango');
-    await expect(error).toContainText('de 1° a 90°');
+    await expect(error).toContainText('de 0° a 90°');
     await expect.poll(() => giroVistaPrevia(page)).toBeNull();
     await foto(page, 'fuera-de-rango');
     await page.locator('[data-testid="routing-confirmar"]').click();
-    await expect(page.locator('text=/No se puede colocar: .*de 1° a 90°/').first()).toBeVisible();
+    await expect(page.locator('text=/No se puede colocar: .*de 0° a 90°/').first()).toBeVisible();
+    expect((await piezas(page)).length).toBe(2);
+    // ── 0°: dentro del rango del producto, pero no es una pieza. Motivo propio, sin vista previa ni pieza.
+    await angulo.fill('0');
+    await expect(error).toBeVisible();
+    await expect(error).toContainText('no gira ni aporta longitud');
+    await expect(error).toContainText('tramo recto');
+    await expect(error).not.toContainText('fuera de rango');
+    await expect.poll(() => giroVistaPrevia(page)).toBeNull();
+    await page.locator('[data-testid="routing-confirmar"]').click();
     expect((await piezas(page)).length).toBe(2);
     // Dentro del rango otra vez: se coloca (90°).
     await angulo.fill('90');
@@ -139,7 +149,11 @@ test.describe('Curva ajustable (CAS)', () => {
     await expect(resumen).toHaveAttribute('data-angulo', '30');
     await page.getByTestId('ajustable-angulo').fill('95');
     await page.getByTestId('ajustable-aplicar').click();
-    await expect(page.getByTestId('ajustable-msg')).toContainText('de 1° a 90°');
+    await expect(page.getByTestId('ajustable-msg')).toContainText('de 0° a 90°');
+    await expect(resumen).toHaveAttribute('data-angulo', '30');
+    await page.getByTestId('ajustable-angulo').fill('0');
+    await page.getByTestId('ajustable-aplicar').click();
+    await expect(page.getByTestId('ajustable-msg')).toContainText('no gira ni aporta longitud');
     await expect(resumen).toHaveAttribute('data-angulo', '30');
     await page.getByTestId('ajustable-angulo').fill('60');
     await page.getByTestId('ajustable-aplicar').click();

@@ -1,7 +1,8 @@
 /**
  * Curva ajustable de escalera (CAS) — regla declarada por el operador (2026-11-14):
  * radio interior = ancho, eje = 1,5 × ancho, ángulo por instancia (90° por
- * defecto), rango 1°–90° provisional. Una pieza por código.
+ * defecto); rango del producto 0°–90° (2026-11-15), pieza colocada con más de 0°:
+ * a 0° no gira ni aporta longitud y se rechaza con ese motivo. Una pieza por código.
  *
  * Controles negativos (verificados a mano al cerrar, ver el traspaso):
  *   - si el ángulo elegido no llega a la pieza colocada (la colocación ignora
@@ -14,7 +15,7 @@ import { resolve } from 'node:path';
 import { buildCurvaAjustableRecipe } from '../curvaAjustable';
 import {
   ANGULO_AJUSTABLE_MAX, ANGULO_AJUSTABLE_MIN, ANGULO_AJUSTABLE_POR_DEFECTO, medidasCurvaAjustable, motivoAnguloAjustable,
-  PATRON_CURVA_AJUSTABLE,
+  MOTIVO_AJUSTABLE_CERO, PATRON_CURVA_AJUSTABLE, RANGO_AJUSTABLE_TEXTO,
 } from '../../reglaCurvaAjustable';
 import { seedStaticCatalog } from '../../../catalog/staticCatalog';
 import { clearCatalogPortIndex, clearPortMappingOverrides, clearProductCatalogIndex, setMasterResolver } from '../../../workspace/catalogPortMapping';
@@ -62,16 +63,26 @@ describe('regla del operador', () => {
     expect(ANGULO_AJUSTABLE_POR_DEFECTO).toBe(90);
   });
 
-  it('rango 1°–90° (provisional): los extremos se aceptan; afuera, motivo con el rango', () => {
-    expect([ANGULO_AJUSTABLE_MIN, ANGULO_AJUSTABLE_MAX]).toEqual([1, 90]);
-    for (const a of [1, 22.5, 45, 89.5, 90]) expect(motivoAnguloAjustable(a), `${a}°`).toBeNull();
-    for (const a of [0, 0.5, 90.5, 91, 120, 180, -45, Number.NaN]) {
+  it('rango del producto 0°–90° (declarado, ya no provisional); colocada, más de 0°', () => {
+    expect([ANGULO_AJUSTABLE_MIN, ANGULO_AJUSTABLE_MAX]).toEqual([0, 90]);
+    expect(RANGO_AJUSTABLE_TEXTO).toBe('de 0° a 90° (declarado por el operador)');
+    for (const a of [0.5, 1, 22.5, 45, 89.5, 90]) expect(motivoAnguloAjustable(a), `${a}°`).toBeNull();
+    for (const a of [-0.5, -45, 90.5, 91, 120, 180, Number.NaN]) {
       const m = motivoAnguloAjustable(a);
       expect(m, `${a}°`).not.toBeNull();
-      expect(m).toMatch(/de 1° a 90°/);
-      expect(m).toMatch(/provisional/);
+      expect(m).toMatch(/de 0° a 90°/);
+      expect(m).not.toMatch(/provisional/);
     }
     expect(() => medidasCurvaAjustable(300, 120)).toThrow(/fuera de rango/);
+  });
+
+  it('a 0° no es una pieza: motivo propio (no gira, no aporta longitud, va un tramo recto), no «fuera de rango»', () => {
+    const m = motivoAnguloAjustable(0);
+    expect(m).toBe(MOTIVO_AJUSTABLE_CERO);
+    expect(m).toMatch(/no gira ni aporta longitud/);
+    expect(m).toMatch(/tramo recto/);
+    expect(m).not.toMatch(/fuera de rango/);
+    expect(() => medidasCurvaAjustable(300, 0)).toThrow(/no gira ni aporta longitud/);
   });
 });
 
@@ -138,12 +149,15 @@ describe('catálogo: las 40 CAS', () => {
     expect(a.huella).not.toBe(b.huella);
   });
 
-  it('fuera de rango no hay definición, con el motivo y el rango', () => {
-    for (const ang of [0, 91, 135]) {
+  it('fuera de rango no hay definición, con el motivo y el rango; a 0° tampoco, con su motivo', () => {
+    for (const ang of [-1, 91, 135]) {
       const d = definicionEfectiva(P(CAS), { angulo_deg: ang });
       expect(d.ok, `${ang}°`).toBe(false);
-      if (!d.ok) expect(d.motivo).toMatch(/fuera de rango.*de 1° a 90°/);
+      if (!d.ok) expect(d.motivo).toMatch(/fuera de rango.*de 0° a 90°/);
     }
+    const cero = definicionEfectiva(P(CAS), { angulo_deg: 0 });
+    expect(cero.ok).toBe(false);
+    if (!cero.ok) expect(cero.motivo).toContain(MOTIVO_AJUSTABLE_CERO);
   });
 });
 
@@ -171,11 +185,23 @@ describe('colocar: el ángulo se elige al colocar', () => {
   });
 
   it('un ángulo fuera de rango no se coloca: motivo con el rango', () => {
-    for (const ang of [0, 90.5, 100]) {
+    for (const ang of [-5, 90.5, 100]) {
       const pl = computeRoutingPlacement({ product: P(CAS), startPort: ARRANQUE, entryPortName: 'P1', side: 'left', anguloDeg: ang });
       expect(pl.ok, `${ang}°`).toBe(false);
-      if (!pl.ok) expect(pl.motivo).toMatch(/de 1° a 90°/);
+      if (!pl.ok) expect(pl.motivo).toMatch(/de 0° a 90°/);
     }
+  });
+
+  it('a 0° no se coloca: no gira ni aporta longitud, va un tramo recto', () => {
+    const pl = computeRoutingPlacement({ product: P(CAS), startPort: ARRANQUE, entryPortName: 'P1', side: 'left', anguloDeg: 0 });
+    expect(pl.ok).toBe(false);
+    if (!pl.ok) expect(pl.motivo).toContain(MOTIVO_AJUSTABLE_CERO);
+  });
+
+  it('casi 0° (0,5°) sí se coloca: el rechazo es sólo para exactamente 0°', () => {
+    const pl = computeRoutingPlacement({ product: P(CAS), startPort: ARRANQUE, entryPortName: 'P1', side: 'left', anguloDeg: 0.5 });
+    if (!pl.ok) throw new Error(pl.motivo);
+    expect(pl.def.params.angulo_deg).toBe(0.5);
   });
 
   it('las dos manos giran a lados opuestos (izquierda / derecha)', () => {
@@ -224,7 +250,10 @@ describe('corregir el ángulo de una CAS colocada', () => {
     const t = conCAS(90);
     const fuera = cambiarAnguloAjustable(t, productos, 'C', 120);
     expect(fuera.ok).toBe(false);
-    if (!fuera.ok) expect(fuera.motivo).toMatch(/de 1° a 90°/);
+    if (!fuera.ok) expect(fuera.motivo).toMatch(/de 0° a 90°/);
+    const cero = cambiarAnguloAjustable(t, productos, 'C', 0);
+    expect(cero.ok).toBe(false);
+    if (!cero.ok) expect(cero.motivo).toContain(MOTIVO_AJUSTABLE_CERO);
     expect(cambiarAnguloAjustable(t, productos, 'X', 45)).toMatchObject({ ok: false });
   });
 

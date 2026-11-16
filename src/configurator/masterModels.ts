@@ -1023,7 +1023,7 @@ const MASTER_ESCALERA: readonly MasterModel[] = [
       kind: 'ala-independent',
       provenance: 'estimated',
       varies: ['ancho', 'ala', 'angulo'],
-      rationale: 'Regla declarada por el operador (2026-11-14): radio interior = ancho, radio del eje = interior + ancho/2, ángulo por instancia (90° por defecto), rango 1°–90° provisional. Sin STEP. El catálogo no declara ángulo ni radio («Ángulo ajustable: rango no declarado. Radio no declarado para esta pieza»). Una pieza por código: sin regla de eslabones.',
+      rationale: 'Regla declarada por el operador (2026-11-14): radio interior = ancho, radio del eje = interior + ancho/2, ángulo por instancia (90° por defecto), rango del producto 0°–90° (2026-11-15), pieza colocada con más de 0°. Sin STEP. El catálogo no declara ángulo ni radio («Ángulo ajustable: rango no declarado. Radio no declarado para esta pieza»). Una pieza por código: sin regla de eslabones.',
     },
     declaredVariantSkus: [],
     closure: {

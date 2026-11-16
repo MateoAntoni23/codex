@@ -11,7 +11,10 @@
  *     eslabones ni del ancho. El gráfico del catálogo «RADIO APROX EN MM» es una
  *     curva de 90° armada con N eslabones (θ_art = 90°/(N−1)); con 22,5° por
  *     articulación corresponde la fila de 5 eslabones: EPS 260 mm, CUS línea Z
- *     294 mm (el único armado que se vende como código: los 40 CUS son de 5);
+ *     294 mm (el único armado que se vende como código: los 40 CUS son de 5).
+ *     CONFIRMADO por el operador (2026-11-15): cada articulación abre lo mismo en
+ *     una curva de 45° que en una de 90°; usa menos eslabones, no los abre más.
+ *     Por eso el radio no depende del ángulo total;
  *   - el radio del gráfico se toma al INTERIOR (inferencia fundada: la tabla no
  *     declara la referencia; las curvas planas fijas de la misma familia sí, al
  *     interior). El eje de una curva vertical queda a radio + ala/2;
@@ -22,6 +25,7 @@
  * espesor toman el de la Z (equivalencia por acabado: mismo eslabón, otro baño,
  * coincidencia verificada en el catálogo); las demás quedan sin definición.
  */
+import { RANGO_AJUSTABLE_COLOCADA_TEXTO } from './reglaCurvaAjustable';
 
 /** Recetas de curva eslabonada (perforada y escalera): ángulo por instancia. */
 export const RECETAS_ESLABONADAS: ReadonlySet<string> = new Set(['curva_eslabonada', 'escalera:curva_eslabonada']);
@@ -47,7 +51,7 @@ export type PlanoDeGiro = 'vertical' | 'horizontal';
 /**
  * null si el ángulo es aceptable; si no, el motivo. Por debajo del mínimo, el motivo
  * depende del PLANO del giro, porque las alternativas no son intercambiables:
- *   - horizontal: está la curva ajustable CAS (gira en horizontal), de 1° a 90°;
+ *   - horizontal: está la curva ajustable CAS (gira en horizontal), colocada con más de 0° y hasta 90°;
  *   - vertical (sube o baja; el caso de la eslabonada, que es una curva vertical
  *     articulada): para un cambio de nivel menor el catálogo no publica ninguna pieza.
  *     No se sugiere una pieza de otro plano.
@@ -57,7 +61,7 @@ export function motivoAnguloEslabonada(anguloDeg: number, plano: PlanoDeGiro = '
   if (anguloDeg <= ANGULO_ESLABONADA_MIN) {
     const base = `ángulo ${grados(anguloDeg)}: la curva eslabonada necesita más de ${grados(ANGULO_ESLABONADA_MIN)} (3 eslabones o más), porque el gráfico de radios del catálogo arranca en 3 eslabones.`;
     return plano === 'horizontal'
-      ? `${base} Para un giro horizontal menor está la curva ajustable CAS, de 1° a 90°.`
+      ? `${base} Para un giro horizontal menor está la curva ajustable CAS (${RANGO_AJUSTABLE_COLOCADA_TEXTO}).`
       : `${base} Para un cambio de nivel menor, el catálogo no publica ninguna pieza.`;
   }
   if (anguloDeg > ANGULO_ESLABONADA_MAX) return `ángulo ${grados(anguloDeg)}: la curva eslabonada acepta hasta ${grados(ANGULO_ESLABONADA_MAX)}`;
