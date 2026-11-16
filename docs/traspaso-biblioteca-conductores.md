@@ -200,4 +200,9 @@ Igual que la biblioteca de modelos:
   el motor real: `res.entrada` sin ningún `OP-`, CB-010 fuera, y la pieza con declarado sin `motor-ocupacion`.
 - Typecheck y vitest completo: 127 archivos, 1959 pruebas. E2E tocadas, todas pasan: `tendidosImportados`
   (7, texto del aviso B5), `porBandeja` (3), `calculoMotor` (4) y `bibliotecaConductores` (4).
-- Verify completo: pendiente del aviso del operador.
+- Verify completo: ver abajo.
+
+## Verify de cierre del PR #13 (2026-11-16, sobre `777307e`)
+Por pasos, en el worktree, con puertos propios: tipos OK; vitest 1959/1959; motor 190 OK (2 omitidas, como
+siempre); Playwright en 8 tandas, una por una en primer plano: 21, 20, 20, 20, 20, 20, 20, 20, todas a la
+primera, sin fallas ni inestables. Total: **161/161**.
