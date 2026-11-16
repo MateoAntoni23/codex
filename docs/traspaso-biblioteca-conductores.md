@@ -1,7 +1,7 @@
 # Traspaso — biblioteca de conductores
 
-Rama `feat/biblioteca-conductores`, sobre `feat/conexiones-importadas` (PR #12, sin fusionar): la guía
-de qué cargar (A6) cuenta tendidos del Excel con el casamiento de ese PR, que todavía no está en `main`.
+Rama `feat/biblioteca-conductores` (PR #13). Nació sobre `feat/conexiones-importadas`; el PR #12 y el #14
+(curvas confirmadas) ya están en `main`, y `main` está fusionado en la rama (2026-11-16).
 Worktree `../codex-biblioteca`. E2E con puertos propios (`CI=1 CODEX_WEB_PORT=5273 CODEX_MOTOR_PORT=8865
 CODEX_NOMOTOR_WEB_PORT=5283`).
 
@@ -112,4 +112,85 @@ Igual que la biblioteca de modelos:
   el Excel importado: las siete combinaciones y sus cantidades, y la combinación cubierta.
 - Typecheck y vitest completo: 126 archivos, 1937 pruebas. E2E también: `interfazAlcance` (barra en una
   fila con el enlace nuevo), `proyectoPersistente`, `configuratorMaestroTab`.
+- Verify completo: pendiente del aviso del operador.
+
+## Parte B — cerrada (2026-11-16)
+
+### Dónde está
+- `src/conexiones/tendidos.ts`: `cableDeTendido(t, cables, declarado, declarados)` casa contra el catálogo y
+  los declarados JUNTOS, con la misma regla (`casarTendido`). Devuelve `cable` (catálogo) o `cableDeclarado`,
+  nunca los dos. `cablesDelCircuito` y `faltaConExcel` llevan el declarado (`CableEnCircuito.declarado`).
+- `src/workspace/motor/paraMotor.ts`: un tendido con declarado va a `noEnviados` con
+  `MOTIVO_DECLARADO_NO_VIAJA` y `declarado` (no `potenciaSinCable`). `asegurarSinDeclarados` corta en voz alta si
+  un `OP-…` llega a lo que se envía; lo llaman `circuitosParaMotor` y `toMotorEntrada` (también sobre los
+  circuitos crudos del trazado).
+- `src/workspace/segregacion/bandaDivisoria.ts`: la lectura de lo que cruza una pieza pasó a `crucesDePieza`
+  (con los declarados y su diámetro declarado) y el cálculo de un grupo a `evaluarGrupo`; `ocupacionSegregada`
+  usa las dos. Sin cambio de resultado para lo que ya existía (las pruebas de la banda pasan igual).
+- `src/conductores/ocupacionApp.ts`: `ocupacionConDeclarados` (bandeja sin banda con declarados) y
+  `ocupacionDeLaApp` (segregada o con declarados; null = manda el motor).
+- Pantalla: `useOcupacionDeLaApp`, `OcupacionDeLaAppView` y `BandejasConDeclaradosSection` en
+  `stages/BandaDivisoria.tsx`; los usan Cálculo del motor, el inspector de la pieza y la respuesta cruda.
+- `src/conductores/store.ts`: `declaradosHidratados()` (el cálculo nunca parte de la biblioteca sin leer) y
+  `useDeclarados()`. Si otra pestaña cambia la biblioteca local, se vuelve a leer (evento `storage`).
+
+### Decisiones (sin preguntar; el camino más chico, el otro anotado)
+- **B1, competencia catálogo/declarado.** Misma regla: si un tendido casa con un cable del catálogo Y con un
+  declarado (p. ej. un duplicado de un Sintenax), son varios candidatos y elige el operador; la regla del cobre
+  sigue siendo sólo entre cables del catálogo. Consecuencia a la vista: duplicar un cable del catálogo deja
+  sin propuesta los tendidos que antes tenían un único candidato («N candidatos (… del catálogo y …
+  declarado(s) por el operador): elegí uno»). Camino no tomado: que el catálogo gane sobre el declarado
+  (sería otra regla).
+- **B2, qué cuenta la app en una bandeja SIN banda.** Lo mismo que cuenta el motor —potencia y el PE que
+  recorre la pieza; mando, señal y comunicación no (D-11)— más los declarados de potencia, con su diámetro.
+  Una capa en contacto (W = Σ n·D, D-02), reserva D-05 sobre el ancho de referencia (útil si el catálogo lo
+  publica, si no nominal, como la banda), altura contra el ala (D-08). El PE entra como en el motor
+  (`ocupacion_seccion`: w = w_pot + n_PE·D_PE). Los de mando (de catálogo o declarados) se listan como «no
+  contados (D-11)». Basta que pase UN declarado (de cualquier función) para que la bandeja la calcule la app.
+  Camino no tomado: sumar también mando y señal en una bandeja sin banda (cambiaría la regla D-11 sólo en las
+  bandejas con declarados).
+- **B2, bandeja segregada.** Ya la calculaba la app: los declarados entran en su grupo (potencia o mando) con
+  su diámetro declarado, y se nombran.
+- **B3.** El texto dice «Bandeja mixta (catálogo del motor + declarados): manda el cálculo de la app porque…»
+  y nombra cada declarado con designación e id. Sin cables del catálogo: «Manda el cálculo de la app porque…».
+  La ocupación del motor de esa pieza no se muestra (Cálculo del motor, inspector, respuesta cruda: se filtra
+  como la de las segregadas).
+- **B4.** Un declarado sin diámetro que entraría en la suma deja la bandeja sin ocupación («sin ocupación
+  calculable: el cable declarado X (OP-…) no tiene diámetro exterior; completalo en la biblioteca de
+  conductores»). En una bandeja sin banda, uno de MANDO sin diámetro no bloquea (por D-11 no entra) y se dice.
+  En una segregada, cualquiera bloquea. El circuito lo lista además como lo que le falta.
+- **B5.** «N tendido(s) de potencia sin cable de catálogo ni declarado» cuenta sólo esos; los que llevan
+  declarado se listan aparte («… con cable declarado por el operador: no viajan al motor; la ocupación de sus
+  bandejas la calcula la app»), avisando si al declarado le falta el diámetro.
+- **Masa y vanos.** No se tocan: siguen siendo los del motor, que NO incluyen los declarados. Se dice al lado
+  de la masa de cada pieza con declarados («sin los cables declarados») y en el criterio de la app. Camino no
+  tomado: que la app sume la masa declarada a la carga por pieza (el encargo pide ocupación).
+- **A5 acotado.** `declaradosUsados` = los declarados que LLEVA algún tendido (elegidos, o propuestos por ser
+  único candidato). Un declarado que sólo es uno de varios candidatos sin elegir no viaja en la copia. Sin
+  motor (sin catálogo de cables) la cuenta puede incluir de más (un declarado que compite con el catálogo
+  parece único); incluir de más no pierde nada.
+- **Elegido y después borrado o editado.** Un tendido con un declarado elegido que ya no está en la
+  biblioteca de este equipo queda sin cable, con el motivo; uno que ya no casa (se editó la sección) avisa.
+
+### Pendiente anotado, NO hecho
+- Un resultado del motor calculado ANTES de agregar un declarado que compite con un cable del catálogo sigue
+  marcado vigente, aunque ese tendido ya no viajaría. La ocupación de la app se recalcula sola; el resultado
+  del motor no. Salida chica si el operador la pide: marcar el resultado como no vigente cuando cambia la
+  biblioteca de conductores.
+- La vista heredada `?ws=bandejas-legacy` (`tray/TrayWorkspace.tsx`) muestra la ocupación del motor tal cual,
+  sin filtrar segregadas ni declaradas (con la banda ya era así).
+
+### Pruebas
+- Unitarias `src/conductores/__tests__/parteB.test.ts` (19), sobre un tramo real con bajadas y circuitos
+  ligados: B1 (único candidato, misma regla, competencia con el catálogo, elegido que ya no está); B2 y
+  controles negativos (nada `OP-` en lo que sale hacia el motor; `asegurarSinDeclarados` y `toMotorEntrada`
+  fallan con un `OP-` colado; un circuito a mano con id declarado no viaja); B2/B3 (mixta: Σ = catálogo +
+  declarado + PE, nombra los declarados, mando fuera por D-11; sin declarados → null, manda el motor); B4
+  (sin ocupación, nombrando el que falta; mando sin diámetro no bloquea en bandeja sin banda; falta del
+  circuito); segregada con declarados (en su grupo; sin diámetro bloquea); B5; «por esta bandeja»; A5 acotado.
+- E2E `conductoresCalculo` (3), con puertos propios: B1 en Conexiones; B4/B5 en Resultados; B2/B3 con el
+  diámetro completado en la biblioteca, en otra pestaña: la bandeja mixta calculada por la app, y cálculo con
+  el motor real: `res.entrada` sin ningún `OP-`, CB-010 fuera, y la pieza con declarado sin `motor-ocupacion`.
+- Typecheck y vitest completo: 127 archivos, 1959 pruebas. E2E tocadas, todas pasan: `tendidosImportados`
+  (7, texto del aviso B5), `porBandeja` (3), `calculoMotor` (4) y `bibliotecaConductores` (4).
 - Verify completo: pendiente del aviso del operador.
