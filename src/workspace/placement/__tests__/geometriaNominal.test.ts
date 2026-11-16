@@ -99,6 +99,6 @@ describe('geometría nominal del catálogo', () => {
     const cas = snapshot.PRODUCTOS.find((p) => String(p.sku).startsWith('CAS-'))!;
     const r3 = definicionEfectiva(cas, { angulo_deg: 120 });
     expect(r3.ok).toBe(false);
-    if (!r3.ok) expect(r3.motivo).toMatch(/fuera de rango.*de 1° a 90°/);
+    if (!r3.ok) expect(r3.motivo).toMatch(/fuera de rango.*de 0° a 90°/);
   });
 });

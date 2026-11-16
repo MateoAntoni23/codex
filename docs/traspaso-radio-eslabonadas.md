@@ -43,6 +43,10 @@ articulación** (= 5 eslabones a 90°), el radio es el de esa apertura **para cu
 - **CUS: radio interior 294 mm** (fila de 5 eslabones; además es el único armado que se vende como código:
   los 40 CUS son de 5 eslabones, el «5» está en el código).
 
+**Confirmado por el operador el 2026-11-15:** cada articulación abre lo mismo en una curva de 45° que en
+una de 90°; una curva menor usa menos eslabones, no los abre más. Por eso el radio no depende del ángulo
+total y la regla implementada es la correcta.
+
 La cantidad de eslabones sigue saliendo de N = techo(θ/22,5°)+1 y se usa **sólo para el cómputo**. El
 resto del gráfico (3, 4, 6…10) no se usa para elegir radio. No depende del ancho.
 
@@ -75,7 +79,8 @@ El ángulo tiene que ser **mayor que 22,5°** (3 eslabones o más). El motivo di
 horizontal y la eslabonada sube o baja: no son intercambiables.
 - **Giro VERTICAL** (el de la eslabonada, que sube o baja): «Para un cambio de nivel menor, el catálogo no
   publica ninguna pieza.» Nada más: no se inventa una alternativa ni se sugiere una pieza de otro plano.
-- **Giro HORIZONTAL**: «Para un giro horizontal menor está la curva ajustable CAS, de 1° a 90°.»
+- **Giro HORIZONTAL**: «Para un giro horizontal menor está la curva ajustable CAS (más de 0° y hasta 90°).»
+  (Texto actualizado el 2026-11-15 con el rango nuevo de la CAS; antes decía «de 1° a 90°».)
 - El plano sale de la geometría de la pieza colocada (eje de giro entre P1 y P2: vertical → giro
   horizontal). Al colocar una nueva vale el tipo del catálogo, «curva vertical articulada». Hoy la app
   coloca las eslabonadas siempre subiendo o bajando, así que en la práctica el texto es el vertical.

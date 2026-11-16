@@ -278,3 +278,13 @@ el último recto mide 7000 mm para que CX-0001 supere sus 10 m.
   que exigía tocar cada dibujante de pieza; dentro de una curva el trazo une sus bocas en recta.
 - **E2E** `porBandeja` (3). El ejemplo no trae mando con cable de catálogo (todo el control es de 1 mm²): el grupo
   «mando» se prueba con un circuito a mano de 2 × Sintenax 2×1,5.
+
+## Verify de cierre del PR #12 (2026-11-15, sobre `fb4218b`)
+Por pasos, en el worktree, con puertos propios: tipos OK; vitest 1917/1917; motor OK; Playwright en
+8 tandas, una por una en primer plano:
+- Tandas 1 a 5, 7 y 8: completas a la primera (20, 20, 19, 19, 19, 19, 19).
+- Tanda 6: falló dos veces por el entorno, antes de ejercitar nada. Primera vez: carga de página
+  (`ERR_NETWORK_CHANGED` y timeout de arranque). Segunda vez: el motor no respondió en 60 s, con un error de
+  escritura del navegador y 2,6 GB libres. `calculoMotor` solo pasó 4/4. Repetida con la máquina más libre:
+  **19/19**.
+- Total: **154/154**.

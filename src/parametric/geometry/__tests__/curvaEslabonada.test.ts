@@ -60,7 +60,7 @@ describe('regla de eslabones (operador)', () => {
       // Horizontal: la curva ajustable CAS, que gira en horizontal.
       const h = motivoAnguloEslabonada(a, 'horizontal');
       expect(h).toMatch(/más de 22,5°.*3 eslabones.*gráfico de radios del catálogo/);
-      expect(h).toMatch(/Para un giro horizontal menor está la curva ajustable CAS, de 1° a 90°\.$/);
+      expect(h).toMatch(/Para un giro horizontal menor está la curva ajustable CAS \(más de 0° y hasta 90°\)\.$/);
       expect(h).not.toMatch(/cambio de nivel/);
       expect(() => eslabonesPara(a)).toThrow(/más de 22,5°/);
     }
@@ -268,7 +268,7 @@ describe('cambiar el ángulo de una curva colocada', () => {
     const r = cambiarAnguloEslabonada(t, productos, 'H', 20);
     expect(r.ok).toBe(false);
     if (!r.ok) {
-      expect(r.motivo).toMatch(/Para un giro horizontal menor está la curva ajustable CAS, de 1° a 90°/);
+      expect(r.motivo).toMatch(/Para un giro horizontal menor está la curva ajustable CAS \(más de 0° y hasta 90°\)/);
       expect(r.motivo).not.toMatch(/cambio de nivel/);
     }
   });
