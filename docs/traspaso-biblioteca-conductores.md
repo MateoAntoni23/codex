@@ -173,6 +173,13 @@ Igual que la biblioteca de modelos:
   biblioteca de este equipo queda sin cable, con el motivo; uno que ya no casa (se editó la sección) avisa.
 
 ### Pendiente anotado, NO hecho
+- **Peso de los declarados en los soportes (operador, 2026-11-16).** La masa por pieza y los vanos de soporte
+  salen del motor, que no conoce los cables declarados: el peso de esos cables NO entra en el cálculo de
+  soportes. Se cierra igual que la ocupación: si el operador carga la masa por km del declarado, la app suma
+  su carga a la de la pieza (masa × cantidad, marcada como cálculo de la app) y verifica los vanos con esa
+  carga, sin que el motor se entere; un declarado sin masa deja esa pieza sin carga calculable y se dice cuál
+  falta (la ficha ya lo anuncia: «sin masa por km no hay carga por pieza ni vanos»). Con cables de control es
+  despreciable; con los 5×6 y 5×10 de potencia, no.
 - Un resultado del motor calculado ANTES de agregar un declarado que compite con un cable del catálogo sigue
   marcado vigente, aunque ese tendido ya no viajaría. La ocupación de la app se recalcula sola; el resultado
   del motor no. Salida chica si el operador la pide: marcar el resultado como no vigente cuando cambia la
